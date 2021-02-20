@@ -46,6 +46,7 @@ namespace image_proc {
     void extend3(py::array_t<bool> &in, py::array_t<bool> &out);
 
     void backproject_depth_ushort(py::array_t<unsigned short>& image_in, py::array_t<float>& point_image_out, float fx, float fy, float cx, float cy, float normalizer);
+	py::array_t<float> backproject_depth_ushort(py::array_t<unsigned short>& image_in, float fx, float fy, float cx, float cy, float normalizer);
 
     void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& point_image_out, float fx, float fy, float cx, float cy);
 
@@ -60,10 +61,10 @@ namespace image_proc {
     );
 
     void compute_mesh_from_depth_and_flow(
-        const py::array_t<float>& pointImage, const py::array_t<float>& flowImage, float maxTriangleEdgeDistance, 
+        const py::array_t<float>& pointImage, const py::array_t<float>& flowImage, float maxTriangleEdgeDistance,
         py::array_t<float>& vertexPositions, py::array_t<float>& vertexFlows, py::array_t<int>& vertexPixels, py::array_t<int>& faceIndices
     );
-	
+
     void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsigned short>& depth_image_out, int radius);
 	py::array_t<unsigned short> filter_depth(py::array_t<unsigned short>& depth_image_in, int radius);
 
