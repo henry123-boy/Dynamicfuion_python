@@ -10,21 +10,18 @@
 namespace graph_proc {
 
     /**
-	 * Erodes mesh.
+	 * Erode mesh
 	 */
-	py::array_t<bool> erode_mesh(const py::array_t<float>& vertexPositions, const py::array_t<int>& faceIndices, int nIterations, int minNeighbors);
+	py::array_t<bool> get_vertex_erosion_mask(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int iteration_count, int min_neighbors);
 	
     /**
 	 * Samples nodes that cover all vertex positions with given node coverage.
 	 * Nodes are sampled from vertices, resulting node vertex indices are returned.
 	 */
 	int sample_nodes(
-		const py::array_t<float>& vertexPositions, const py::array_t<bool>& nonErodedVertices, 
-		py::array_t<float>& nodePositions, py::array_t<int>& nodeIndices, 
-		float nodeCoverage, 
-        const bool useOnlyValidIndices, 
-        const bool randomShuffle
-    );
+		    const py::array_t<float>& vertex_positions_in, const py::array_t<bool>& vertex_erosion_mask_in,
+		    py::array_t<float>& node_positions_out, py::array_t<int>& node_indices_out,
+		    float node_coverage, const bool use_only_non_eroded_indices, const bool random_shuffle);
 
 
 	/**
@@ -33,8 +30,8 @@ namespace graph_proc {
 	 */
 	void compute_edges_geodesic(
 		const py::array_t<float>& vertexPositions,
-		const py::array_t<bool>& validVertices, 
-		const py::array_t<int>& faceIndices, 
+		const py::array_t<bool>& validVertices,
+		const py::array_t<int>& faceIndices,
 		const py::array_t<int>& nodeIndices, 
 		const int nMaxNeighbors, const float nodeCoverage,
         py::array_t<int>& graphEdges,
@@ -65,17 +62,17 @@ namespace graph_proc {
         py::array_t<int> graph_clusters
     );
 
-	
+
     /**
 	 * For each input pixel it computes 4 nearest anchors, following graph edges. 
 	 * It also compute skinning weights for every pixel. 
 	 */ 
 	void compute_pixel_anchors_geodesic(
-        const py::array_t<float> &node_to_vertex_distance, 
-        const py::array_t<int> &valid_nodes_mask, 
+        const py::array_t<float> &node_to_vertex_distance,
+        const py::array_t<int> &valid_nodes_mask,
         const py::array_t<float> &vertices,
-        const py::array_t<int> &vertex_pixels, 
-        py::array_t<int>& pixel_anchors, 
+        const py::array_t<int> &vertex_pixels,
+        py::array_t<int>& pixel_anchors,
         py::array_t<float>& pixel_weights,
         const int width, const int height,
         const float node_coverage
