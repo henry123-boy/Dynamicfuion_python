@@ -19,7 +19,7 @@ namespace graph_proc {
 	 * Samples nodes that cover all vertex positions with given node coverage.
 	 * Nodes are sampled from vertices, resulting node vertex indices are returned.
 	 */
-	int sample_nodes(
+	py::tuple sample_nodes(
 		    const py::array_t<float>& vertex_positions_in, const py::array_t<bool>& vertex_erosion_mask_in,
 		    py::array_t<float>& node_positions_out, py::array_t<int>& node_indices_out,
 		    float node_coverage, const bool use_only_non_eroded_indices, const bool random_shuffle);
@@ -43,6 +43,7 @@ namespace graph_proc {
 	        const bool allow_only_valid_vertices,
 	        const bool enforce_total_num_neighbors
 	);
+
 
 	/**
 	 * Computes the graph edges between nodes, connecting nearest nodes using Euclidean
@@ -79,6 +80,7 @@ namespace graph_proc {
         const int width, const int height,
         const float node_coverage
     );
+
 
 	/**
 	 * For each input pixel it computes 4 nearest anchors, using Euclidean distances. 

@@ -22,48 +22,48 @@ py::array_t<bool> get_vertex_erosion_mask(const py::array_t<float>& vertex_posit
 	std::vector<bool> non_eroded_vertices_vec(vertex_count, false);
 
 	// Init list of eroded face indices with original list
-	std::vector<Eigen::Vector3i> eroded_face_indices_vec;
-	eroded_face_indices_vec.reserve(face_count);
+	std::vector<Eigen::Vector3i> non_erorded_face_indices_vec;
+	non_erorded_face_indices_vec.reserve(face_count);
 	for (int face_idx = 0; face_idx < face_count; ++face_idx) {
 		Eigen::Vector3i face(*face_indices.data(face_idx, 0), *face_indices.data(face_idx, 1), *face_indices.data(face_idx, 2));
-		eroded_face_indices_vec.push_back(face);
+		non_erorded_face_indices_vec.push_back(face);
 	}
 
-	// Erode mesh for a total of nIterations
+	// Erode mesh for a total of iteration_count
 	for (int i = 0; i < iteration_count; i++) {
-		face_count = eroded_face_indices_vec.size();
+		face_count = non_erorded_face_indices_vec.size();
 
 		// We compute the number of neighboring vertices for each vertex.
-		vector<int> neighbor_count(vertex_count, 0);
+		vector<int> vertex_neighbor_counts(vertex_count, 0);
 		for (int face_index = 0; face_index < face_count; face_index++) {
-			const auto& face = eroded_face_indices_vec[face_index];
-			neighbor_count[face[0]] += 1;
-			neighbor_count[face[1]] += 1;
-			neighbor_count[face[2]] += 1;
+			const auto& face = non_erorded_face_indices_vec[face_index];
+			vertex_neighbor_counts[face[0]] += 1;
+			vertex_neighbor_counts[face[1]] += 1;
+			vertex_neighbor_counts[face[2]] += 1;
 		}
 
 		std::vector<Eigen::Vector3i> tmp;
 		tmp.reserve(face_count);
 
 		for (int face_index = 0; face_index < face_count; face_index++) {
-			const auto& face = eroded_face_indices_vec[face_index];
-			if (neighbor_count[face[0]] >= min_neighbors &&
-			    neighbor_count[face[1]] >= min_neighbors &&
-			    neighbor_count[face[2]] >= min_neighbors) {
+			const auto& face = non_erorded_face_indices_vec[face_index];
+			if (vertex_neighbor_counts[face[0]] >= min_neighbors &&
+			    vertex_neighbor_counts[face[1]] >= min_neighbors &&
+			    vertex_neighbor_counts[face[2]] >= min_neighbors) {
 				tmp.push_back(face);
 			}
 		}
 
 		// We kill the faces with border vertices.
-		eroded_face_indices_vec.clear();
-		eroded_face_indices_vec = std::move(tmp);
+		non_erorded_face_indices_vec.clear();
+		non_erorded_face_indices_vec = std::move(tmp);
 	}
 
 	// Mark non isolated vertices as not eroded.
-	face_count = eroded_face_indices_vec.size();
+	face_count = non_erorded_face_indices_vec.size();
 
 	for (int i = 0; i < face_count; i++) {
-		const auto& face = eroded_face_indices_vec[i];
+		const auto& face = non_erorded_face_indices_vec[i];
 		non_eroded_vertices_vec[face[0]] = true;
 		non_eroded_vertices_vec[face[1]] = true;
 		non_eroded_vertices_vec[face[2]] = true;
@@ -77,7 +77,7 @@ py::array_t<bool> get_vertex_erosion_mask(const py::array_t<float>& vertex_posit
 	return non_eroded_vertices;
 }
 
-int sample_nodes(
+py::tuple sample_nodes(
 		const py::array_t<float>& vertex_positions_in, const py::array_t<bool>& vertex_erosion_mask_in,
 		py::array_t<float>& node_positions_out, py::array_t<int>& node_indices_out,
 		float node_coverage, const bool use_only_non_eroded_indices = true,
@@ -103,36 +103,49 @@ int sample_nodes(
 		std::default_random_engine re{std::random_device{}()};
 		std::shuffle(std::begin(shuffled_vertices), std::end(shuffled_vertices), re);
 	}
-	std::vector<Eigen::Vector3f> node_positions_vector;
-	for (int vertex_idx : shuffled_vertices) {
-		// for (int vertexIdx = 0; vertexIdx < nVertices; ++vertexIdx) {
-		Eigen::Vector3f point(*vertex_positions_in.data(vertex_idx, 0),
-		                      *vertex_positions_in.data(vertex_idx, 1),
-		                      *vertex_positions_in.data(vertex_idx, 2));
+	struct NodeInformation{
+		Eigen::Vector3f vertex_position;
+		int vertex_index;
+	};
 
-		if (use_only_non_eroded_indices && !(*vertex_erosion_mask_in.data(vertex_idx))) {
+	std::vector<NodeInformation> node_information_vector;
+
+	for (int vertex_index : shuffled_vertices) {
+		// for (int vertexIdx = 0; vertexIdx < nVertices; ++vertexIdx) {
+		Eigen::Vector3f point(*vertex_positions_in.data(vertex_index, 0),
+		                      *vertex_positions_in.data(vertex_index, 1),
+		                      *vertex_positions_in.data(vertex_index, 2));
+
+		if (use_only_non_eroded_indices && !(*vertex_erosion_mask_in.data(vertex_index))) {
 			continue;
 		}
 
 		bool is_node = true;
-		for (const auto& node_position : node_positions_vector) {
-			if ((point - node_position).squaredNorm() <= node_coverage_2) {
+		for (const auto& node_information : node_information_vector) {
+			if ((point - node_information.vertex_position).squaredNorm() <= node_coverage_2) {
 				is_node = false;
 				break;
 			}
 		}
 
 		if (is_node) {
-			node_positions_vector.push_back(point);
-			int new_node_index = static_cast<int>(node_positions_vector.size()) - 1;
-			*node_positions_out.mutable_data(new_node_index, 0) = point.x();
-			*node_positions_out.mutable_data(new_node_index, 1) = point.y();
-			*node_positions_out.mutable_data(new_node_index, 2) = point.z();
-			*node_indices_out.mutable_data(new_node_index, 0) = vertex_idx;
+			node_information_vector.push_back({point, vertex_index});
 		}
 	}
 
-	return node_positions_vector.size();
+	py::array_t<float> node_positions_out({static_cast<ssize_t>(node_information_vector.size()), static_cast<ssize_t>(3)});
+	py::array_t<int> node_indices_out({static_cast<ssize_t>(node_information_vector.size()), static_cast<ssize_t>(1)});
+
+	int node_index = 0;
+	for(const auto& node_information : node_information_vector){
+		*node_positions_out.mutable_data(node_index, 0) = node_information.vertex_position.x();
+		*node_positions_out.mutable_data(node_index, 1) = node_information.vertex_position.y();
+		*node_positions_out.mutable_data(node_index, 2) = node_information.vertex_position.z();
+		*node_indices_out.mutable_data(node_index, 0) = node_information.vertex_index;
+		node_index++;
+	}
+
+	return py::make_tuple(node_positions_out, node_indices_out);
 }
 
 /**
@@ -144,8 +157,9 @@ struct CustomCompare {
 	}
 };
 
-inline float compute_anchor_weight(const Eigen::Vector3f& pointPosition, const Eigen::Vector3f& nodePosition, float nodeCoverage) {
-	return std::exp(-(nodePosition - pointPosition).squaredNorm() / (2.f * nodeCoverage * nodeCoverage));
+
+inline float compute_anchor_weight(const Eigen::Vector3f& point_position, const Eigen::Vector3f& node_position, float node_coverage) {
+	return std::exp(-(node_position - point_position).squaredNorm() / (2.f * node_coverage * node_coverage));
 }
 
 inline float compute_anchor_weight(float dist, float nodeCoverage) {
@@ -225,7 +239,7 @@ void compute_edges_geodesic(
 			next_vertices_with_ids.pop();
 
 			int next_vertex_index = next_vertex.first;
-			float next_vertex_dist = next_vertex.second;
+			float next_vertex_distance = next_vertex.second;
 
 			// We skip the vertex, if it was already visited before.
 			if (visited_vertices.find(next_vertex_index) != visited_vertices.end()) continue;
@@ -236,16 +250,16 @@ void compute_edges_geodesic(
 			}
 
 			// We check if the vertex is a node.
-			int next_node_id = map_vertex_to_node[next_vertex_index];
-			if (next_node_id >= 0 && next_node_id != node_id) {
-				neighbor_node_ids.push_back(next_node_id);
+			int next_node_index = map_vertex_to_node[next_vertex_index];
+			if (next_node_index >= 0 && next_node_index != node_id) {
+				neighbor_node_ids.push_back(next_node_index);
 				neighbor_node_weights.push_back(compute_anchor_weight(next_vertex_dist, node_coverage));
 				neighbor_node_distances.push_back(next_vertex_dist);
 				if (neighbor_node_ids.size() >= max_neighbor_count) break;
 			}
 
 			// Note down the node-vertex distance.
-			*node_to_vertex_distances.mutable_data(node_id, next_vertex_index) = next_vertex_dist;
+			// *node_to_vertex_distance.mutable_data(next_node_index, next_vertex_index) = next_vertex_distance;
 
 			// We visit the vertex, and check all his neighbors.
 			// We add only valid vertices under a certain distance.
@@ -263,14 +277,14 @@ void compute_edges_geodesic(
 				Eigen::Vector3f neighbor_vertex_pos(*vertex_positions.data(neighbor_index, 0),
 				                                    *vertex_positions.data(neighbor_index, 1),
 				                                    *vertex_positions.data(neighbor_index, 2));
-				float dist = next_vertex_dist + (next_vertex_pos - neighbor_vertex_pos).norm();
+				float distance = next_vertex_distance + (next_vertex_pos - neighbor_vertex_pos).norm();
 
 				if (enforce_total_num_neighbors) {
-					next_vertices_with_ids.push(std::make_pair(neighbor_index, dist));
+					next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
 				} else {
 					// std::cout << dist << " " << maxInfluence << std::endl;
-					if (dist <= max_influence) {
-						next_vertices_with_ids.push(std::make_pair(neighbor_index, dist));
+					if (distance <= max_influence) {
+						next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
 					}
 				}
 			}
@@ -389,8 +403,6 @@ py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_position
 	return graph_edges;
 }
 
-static inline float compute_anchor_weight(const Eigen::Vector3f& point_position, const Eigen::Vector3f& node_position, float node_coverage) {
-	return std::exp(-(node_position - point_position).squaredNorm() / (2.f * node_coverage * node_coverage));
 inline int traverse_neighbors(const std::vector<std::set<int>>& node_neighbors, std::vector<int>& cluster_ids, int cluster_id, int node_id) {
     if (cluster_ids[node_id] != -1) return 0;
 
@@ -858,16 +870,16 @@ void construct_regular_graph(
 		int valid_node_index = 0;
 		for (int y = 0; y < y_nodes; y++) {
 			for (int x = 0; x < x_nodes; x++) {
-				int nodeIdx = y * x_nodes + x;
-				int nodeId = sampled_node_mapping[nodeIdx];
+				int node_index = y * x_nodes + x;
+				int sampled_node_index = sampled_node_mapping[node_index];
 
-				if (nodeId >= 0 && connected_nodes[nodeId]) {
-					valid_node_mapping[nodeId] = valid_node_index;
+				if (sampled_node_index >= 0 && connected_nodes[sampled_node_index]) {
+					valid_node_mapping[sampled_node_index] = valid_node_index;
 
-					Eigen::Vector3f nodePosition = node_positions[nodeId];
-					*graph_nodes.mutable_data(valid_node_index, 0) = nodePosition.x();
-					*graph_nodes.mutable_data(valid_node_index, 1) = nodePosition.y();
-					*graph_nodes.mutable_data(valid_node_index, 2) = nodePosition.z();
+					Eigen::Vector3f node_position = node_positions[sampled_node_index];
+					*graph_nodes.mutable_data(valid_node_index, 0) = node_position.x();
+					*graph_nodes.mutable_data(valid_node_index, 1) = node_position.y();
+					*graph_nodes.mutable_data(valid_node_index, 2) = node_position.z();
 
 					valid_node_index++;
 				}
