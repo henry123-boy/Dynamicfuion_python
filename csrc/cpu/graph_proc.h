@@ -50,7 +50,7 @@ py::tuple sample_nodes(
 	 * distances.
 	 */
 	py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, int max_neighbor_count);
-	
+
     /**
      * Removes invalid nodes (with less than 2 neighbors).
      */
@@ -81,6 +81,14 @@ py::tuple sample_nodes(
         const float node_coverage
     );
 
+py::tuple compute_pixel_anchors_geodesic(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<int>& graph_edges,
+		const py::array_t<float>& point_image,
+		int neighborhood_depth,
+		float node_coverage
+);
+
 
 /**
  * For each input pixel it computes 4 nearest anchors, using Euclidean distances.
@@ -105,7 +113,7 @@ void compute_pixel_anchors_euclidean(
     /**
 	 * It samples graph regularly from the image, using pixel-wise connectivity
      * (connecting each pixel with at most 8 neighbors).
-	 */ 
+	 */
 	void construct_regular_graph(
 		    const py::array_t<float>& point_image,
 		    int x_nodes, int y_nodes,
@@ -117,7 +125,6 @@ void compute_pixel_anchors_euclidean(
 		    py::array_t<int>& pixel_anchors,
 		    py::array_t<float>& pixel_weights
     );
-
 
 py::tuple construct_regular_graph(
 		const py::array_t<float>& point_image,

@@ -615,6 +615,7 @@ void compute_pixel_anchors_geodesic(
 
     int num_vertices = vertices.shape(0);
 
+    #pragma omp parallel for
     for (int vertex_id = 0; vertex_id < num_vertices; vertex_id++) {
         // Get corresponding pixel location
         int u = *vertex_pixels.data(vertex_id, 0);
@@ -635,11 +636,11 @@ void compute_pixel_anchors_geodesic(
             nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
         );
 
-        int num_anchors = nearest_geodesic_node_ids.size();
+        int anchor_count = nearest_geodesic_node_ids.size();
 
         // Compute skinning weights.
         float weight_sum{ 0.f };
-        for (int i = 0; i < num_anchors; ++i) {
+        for (int i = 0; i < anchor_count; ++i) {
             float geodesic_dist_to_node = dist_to_nearest_geodesic_nodes[i];
 
             float weight = compute_anchor_weight(geodesic_dist_to_node, node_coverage);
@@ -649,21 +650,35 @@ void compute_pixel_anchors_geodesic(
         }
 
         // Normalize the skinning weights.
-        if (weight_sum > 0) {
-            for (int i = 0; i < num_anchors; i++)
-                skinning_weights[i] /= weight_sum;
-        }
-        else if (num_anchors > 0) {
-            for (int i = 0; i < num_anchors; i++)
-                skinning_weights[i] = 1.f / num_anchors;
-        }
+	    if (weight_sum > 0) {
+		    for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
+			    skinning_weights[anchor_index] /= weight_sum;
+		    }
+	    } else if (anchor_count > 0) {
+		    for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
+			    skinning_weights[anchor_index] = 1.f / static_cast<float>(anchor_count);
+		    }
+	    }
 
         // Store the results.
-        for (int i = 0; i < num_anchors; i++) {
+        for (int i = 0; i < anchor_count; i++) {
             *pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
             *pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
         }
     }
+}
+
+py::tuple compute_pixel_anchors_geodesic(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<int>& graph_edges,
+		const py::array_t<float>& point_image,
+		int neighborhood_depth,
+		float node_coverage){
+	py::array_t<int> pixel_anchors;
+	py::array_t<float> pixel_weights;
+	compute_pixel_anchors_geodesic(graph_nodes, graph_edges, point_image, neighborhood_depth,
+	                               node_coverage, pixel_anchors, pixel_weights);
+	return py::make_tuple(pixel_anchors, pixel_weights);
 }
 
 void compute_pixel_anchors_euclidean(
