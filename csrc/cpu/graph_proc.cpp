@@ -673,7 +673,7 @@ py::tuple compute_pixel_anchors_geodesic(
 		const py::array_t<int>& graph_edges,
 		const py::array_t<float>& point_image,
 		int neighborhood_depth,
-		float node_coverage){
+		float node_coverage) {
 	py::array_t<int> pixel_anchors;
 	py::array_t<float> pixel_weights;
 	compute_pixel_anchors_geodesic(graph_nodes, graph_edges, point_image, neighborhood_depth,
