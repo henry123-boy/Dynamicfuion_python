@@ -25,7 +25,8 @@ def knn_graph_to_line_set(node_positions: np.ndarray, node_edges: np.ndarray, cl
     neighbor_line_source_sets = [lines_0]
     for neighbor_index in range(1, node_edges.shape[1]):
         neighbor_line_set = knn_edges_column_to_lines(node_edges, neighbor_index)
-        neighbor_line_source_sets.append(neighbor_line_set)
+        if len(neighbor_line_set.shape) == 2:
+            neighbor_line_source_sets.append(neighbor_line_set)
 
     lines = np.concatenate(neighbor_line_source_sets, axis=0)
 
@@ -111,20 +112,17 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, max_point
     return DeformationGraph(node_positions, edges, clusters)
 
 
-def build_deformation_graph_from_depth_image(depth_image: o3d.geometry.Image,
+def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
                                              intrinsics: o3d.camera.PinholeCameraIntrinsic,
                                              downsampling_factor: int) -> DeformationGraph:
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics)
 
-    depth_image_numpy = np.array(depth_image)
-    point_image = nnrt.backproject_depth_ushort(depth_image_numpy, fx, fy, cx, cy, 1000.0)
-    # print(point_image.shape)
-    # np.savetxt("point_image.txt", point_image.swapaxes(0, 2).reshape(-1, 3), delimiter=",")
+    point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
 
     node_positions, edges, pixel_anchors, pixel_weights = \
         nnrt.construct_regular_graph(point_image,
-                                     depth_image_numpy.shape[1] // downsampling_factor,
-                                     depth_image_numpy.shape[0] // downsampling_factor,
+                                     depth_image.shape[1] // downsampling_factor,
+                                     depth_image.shape[0] // downsampling_factor,
                                      2.0, 0.05, 3.0)
     clusters = find_knn_graph_connected_components(knn_edges=edges)
     return DeformationGraph(node_positions, edges, clusters)

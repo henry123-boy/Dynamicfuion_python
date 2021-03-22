@@ -35,6 +35,7 @@ def Backward(x, flow):
 
     mask = output[:, -1:, :, :]
 
+    # TODO: figure out the bug here, i.e. why does the old code not work
     # mask[mask > 0.999] = 1.0  # <-- Error occurs here! Something like: RuntimeError: invalid shape dimension -1096498240
     mask = torch.where(mask > 0.999, torch.ones_like(mask), mask)
     # mask[mask < 1.0] = 0.0 # <-- another error here

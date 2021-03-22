@@ -58,6 +58,7 @@ def main() -> None:
 
     # We will overwrite the default value in options.py / settings.py
     opt.use_mask = True
+    opt.gn_max_nodes = 1500
 
     #####################################################################################################
     # Load model
@@ -159,9 +160,14 @@ def main() -> None:
         block_count=initial_block_count,
         device=device)
 
+    #__DEBUG
     previous_color_image = None
+    previous_depth_image = None
+    first_color_image = None
+    first_depth_image = None
+    target_frame_index = 40
 
-    deformation_graph: graph.DeformationGraph|None = None
+    deformation_graph: graph.DeformationGraph | None = None
 
     for frame_index in range(0, frame_count):
         #####################################################################################################
@@ -178,6 +184,8 @@ def main() -> None:
         color_image = np.array(color_image_open3d_legacy)
 
         if frame_index == 0:
+            first_color_image = color_image
+            first_depth_image = depth_image
             depth_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
             color_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
             volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_gpu, 1000.0, 3.0)
@@ -187,7 +195,7 @@ def main() -> None:
             # === Construct initial deformation graph
             deformation_graph = graph.build_deformation_graph_from_mesh(mesh, 0.05)
             # uncomment to construct from image instead
-            # deformation_graph = graph.build_deformation_graph_from_depth_image(point_image, intrinsics, 16)
+            # deformation_graph = graph.build_deformation_graph_from_depth_image(depth_image, intrinsics_open3d_cpu, 16)
 
             # uncomment to visualize KNN graph with background image (no mesh) (deformation graph)
             # graph.draw_deformation_graph(deformation_graph, color_image_open3d_legacy)
@@ -200,18 +208,18 @@ def main() -> None:
             #                                   up=[0, -1.0, 0],
             #                                   zoom=0.7)
         # else: # __DEBUG
-        elif frame_index == 1:
+        elif frame_index < target_frame_index:
+            pass
+        elif frame_index == target_frame_index:
             # TODO: replace source with deformed isosurface render
             source, _, cropper = dataset.DeformDataset.prepare_pytorch_input(
-                color_image, depth_image, intrinsics_dict,
+                first_color_image, first_depth_image, intrinsics_dict,
                 opt.image_height, opt.image_width
             )
-            target, target_boundary_mask, _ = dataset.DeformDataset.prepare_pytorch_input(
+            target, _, _ = dataset.DeformDataset.prepare_pytorch_input(
                 color_image, depth_image, intrinsics_dict,
                 opt.image_height, opt.image_width,
-                cropper=cropper,
-                max_boundary_dist=opt.max_boundary_dist,
-                compute_boundary_mask=True
+                cropper=cropper
             )
 
             # TODO: this will all need to be replaced somehow by using the isosurface vertices / render process...
@@ -246,7 +254,6 @@ def main() -> None:
 
             source_cuda = torch.from_numpy(source).cuda().unsqueeze(0)
             target_cuda = torch.from_numpy(target).cuda().unsqueeze(0)
-            target_boundary_mask_cuda = torch.from_numpy(target_boundary_mask).cuda().unsqueeze(0)
             graph_nodes_cuda = torch.from_numpy(deformation_graph.live_node_positions).cuda().unsqueeze(0)
             graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
             # TODO: edge weights are for now all "1.0" since it's not clear how they are computed
@@ -259,8 +266,6 @@ def main() -> None:
 
             num_nodes_cuda = torch.from_numpy(num_nodes).cuda().unsqueeze(0)
 
-
-
             with torch.no_grad():
                 model_data = model(
                     source_cuda, target_cuda,
@@ -270,13 +275,14 @@ def main() -> None:
                     evaluate=True, split="test"
                 )
 
-                # Get some of the results
+            # Get some of the results
             rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
             translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
 
-            # mask_pred = model_data["mask_pred"]
-            # assert mask_pred is not None, "Make sure use_mask=True in options.py"
-            # mask_pred = mask_pred.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+
+            mask_pred = model_data["mask_pred"]
+            assert mask_pred is not None, "Make sure use_mask=True in options.py"
+            mask_pred = mask_pred.view(-1, opt.image_height, opt.image_width).cpu().numpy()
         else:  # __DEBUG
             break
 

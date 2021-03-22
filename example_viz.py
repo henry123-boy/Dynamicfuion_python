@@ -183,6 +183,8 @@ def main():
     # Get some of the results
     rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
     translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
+    #__DEBUG
+    print(translations_pred)
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure use_mask=True in options.py"

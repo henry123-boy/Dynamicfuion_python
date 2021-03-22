@@ -421,7 +421,36 @@ class DeformNet(torch.nn.Module):
                         print('cluster_id', cluster_id, cluster_match_weights)
 
                     if cluster_match_weights < opt.gn_min_num_correspondences_per_cluster:
-                        x = torch.where(graph_clusters_i == cluster_id)[0].tolist()
+                        # TODO: figure out the bug here, i.e. why does the old code not work
+                        mask = torch.where(graph_clusters_i == cluster_id, torch.ones_like(graph_clusters_i), torch.zeros_like(graph_clusters_i))
+                        dummy = mask.sum()  # TODO: figure out why there is some kind of lazy-evaluation bug in PyTorch without this line...
+                        del dummy
+                        x = torch.nonzero(mask, as_tuple=True)[0].tolist()
+
+                        # __DEBUG
+                        # print("mask.sum()......................: ", mask.sum())
+
+                        # __DEBUG
+                        # print("type(graph_clusters_i)..........: ", type(graph_clusters_i))
+                        # print("graph_clusters_i.shape..........: ", graph_clusters_i.shape)
+                        # print("graph_clusters_i.device.........: ", graph_clusters_i.device)
+                        # print("type(cluster_id)................: ", type(cluster_id))
+                        # print("cluster_id......................: ", cluster_id)
+
+
+                        # TODO: PyTorch devs/maintainers--this is where the bug occurs!
+                        # old code:
+                        # index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
+                        # dummy = index_equals_cluster_id[0].sum()  # This triggers some kind of bug too!
+                        # del dummy
+                        # x = index_equals_cluster_id[0].tolist()  # <-- original error here!
+
+                        # print("len(index_equals_cluster_id)....: ", len(index_equals_cluster_id))
+                        # print("type(index_equals_cluster_id)...: ", type(index_equals_cluster_id))
+                        # print("type(index_equals_cluster_id[0]): ", type(index_equals_cluster_id[0]))
+                        # print("index_equals_cluster_id[0].shape: ", index_equals_cluster_id[0].shape)
+
+
                         node_ids_for_removal += x
 
                 if opt.gn_debug:
@@ -512,7 +541,8 @@ class DeformNet(torch.nn.Module):
             t_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=x1.dtype, device=x1.device)
 
             if opt.gn_debug:
-                print("\tNum. matches: {0} || Num. canonical_node_positions: {1} || Num. edges: {2}".format(num_matches, opt_num_nodes_i, num_edges_i))
+                print(
+                    "\tNum. matches: {0} || Num. canonical_node_positions: {1} || Num. edges: {2}".format(num_matches, opt_num_nodes_i, num_edges_i))
 
             # Helper structures.
             data_increment_vec_0_3 = torch.arange(0, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_matches)
@@ -621,13 +651,13 @@ class DeformNet(torch.nn.Module):
 
                 # FLOW PART
                 res_data[data_increment_vec_0_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                            fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(num_matches))
+                        fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(num_matches))
                 res_data[data_increment_vec_1_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                            fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(num_matches))
+                        fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(num_matches))
 
                 # DEPTH PART
                 res_data[data_increment_vec_2_3, 0] = lambda_data_depth * correspondence_weights_filtered * (
-                            deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(num_matches)
+                        deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(num_matches)
 
                 if opt.gn_print_timings: print("\t\tData term: {:.3f} s".format(timer() - timer_data_start))
                 timer_arap_start = timer()

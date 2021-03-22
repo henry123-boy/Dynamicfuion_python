@@ -712,9 +712,9 @@ void compute_pixel_anchors_euclidean(
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			// Query 3d pixel position.
-			Eigen::Vector3f pixel_position(*point_image.data(0, y, x),
-			                               *point_image.data(1, y, x),
-			                               *point_image.data(2, y, x));
+			Eigen::Vector3f pixel_position(*point_image.data(y, x, 0),
+			                               *point_image.data(y, x, 1),
+			                               *point_image.data(y, x, 2));
 			if (pixel_position.z() <= 0) continue;
 
 			// Keep only the k nearest Euclidean neighbors.
@@ -802,8 +802,8 @@ void construct_regular_graph(
 		py::array_t<int>& pixel_anchors,
 		py::array_t<float>& pixel_weights
 ) {
-	int width = point_image.shape(2);
-	int height = point_image.shape(1);
+	int width = point_image.shape(1);
+	int height = point_image.shape(0);
 
 	float x_step = float(width - 1) / static_cast<float>(x_nodes - 1);
 	float y_step = float(height - 1) / static_cast<float>(y_nodes - 1);
@@ -826,9 +826,9 @@ void construct_regular_graph(
 			int x_pixel = static_cast<int>(std::round(static_cast<float>(x) * x_step));
 			int y_pixel = static_cast<int>(std::round(static_cast<float>(y) * y_step));
 
-			Eigen::Vector3f pixel_position(*point_image.data(0, y_pixel, x_pixel),
-			                               *point_image.data(1, y_pixel, x_pixel),
-			                               *point_image.data(2, y_pixel, x_pixel));
+			Eigen::Vector3f pixel_position(*point_image.data(y_pixel, x_pixel, 0),
+			                               *point_image.data(y_pixel, x_pixel, 1),
+			                               *point_image.data(y_pixel, x_pixel, 2));
 			if (pixel_position.z() <= 0 || pixel_position.z() > max_depth) continue;
 
 			node_positions.push_back(pixel_position);
@@ -981,10 +981,10 @@ void construct_regular_graph(
 			if (valid_node_00 < 0 || valid_node_01 < 0 || valid_node_10 < 0 || valid_node_11 < 0)
 				continue;
 
-			// Check that all canonical_node_positions are close enough to the point.
-			Eigen::Vector3f pixel_position(*point_image.data(0, y, x),
-			                               *point_image.data(1, y, x),
-			                               *point_image.data(2, y, x));
+			// Check that all nodes are close enough to the point.
+			Eigen::Vector3f pixel_position(*point_image.data(y, x, 0),
+			                               *point_image.data(y, x, 1),
+			                               *point_image.data(y, x, 2));
 			if (pixel_position.z() <= 0 || pixel_position.z() > max_depth) continue;
 
 			if ((pixel_position - node_positions[sampled_node_00]).squaredNorm() > max_point_to_node_distance_squared ||
