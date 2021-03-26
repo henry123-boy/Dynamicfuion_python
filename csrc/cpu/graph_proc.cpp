@@ -88,7 +88,6 @@ py::array_t<bool> get_vertex_erosion_mask(const py::array_t<float>& vertex_posit
 
 py::tuple sample_nodes(
 		const py::array_t<float>& vertex_positions_in, const py::array_t<bool>& vertex_erosion_mask_in,
-		py::array_t<float>& node_positions_out, py::array_t<int>& node_indices_out,
 		float node_coverage, const bool use_only_non_eroded_indices = true,
 		const bool random_shuffle = true
 ) {
@@ -102,8 +101,6 @@ py::tuple sample_nodes(
 	// assert(node_indices_out.shape(0) == nVertices);
 	// assert(node_indices_out.shape(1) == 1);
 
-	node_positions_out.resize({vertex_count, 3}, false);
-	node_indices_out.resize({vertex_count, 1}, false);
 
 	// create list of shuffled indices
 	std::vector<int> shuffled_vertices(vertex_count);
@@ -188,8 +185,8 @@ void compute_edges_geodesic(
 		py::array_t<float>& graph_edge_weights,
 		py::array_t<float>& graph_edges_distances,
 		py::array_t<float>& node_to_vertex_distances,
-		const bool allow_only_valid_vertices,
-		const bool enforce_total_num_neighbors
+		bool allow_only_valid_vertices,
+		bool enforce_total_num_neighbors
 ) {
 	int vertex_count = vertex_positions.shape(0);
 	int face_count = face_indices.shape(0);
@@ -224,8 +221,6 @@ void compute_edges_geodesic(
 	}
 
 	// Construct geodesic edges.
-	py::array_t<int> graph_edges = py::array_t<int>({node_count, max_neighbor_count});
-
 	//TODO: parallelize or remove pragma
 	// #pragma omp parallel for
 	for (int node_id = 0; node_id < node_count; node_id++) {
@@ -264,8 +259,8 @@ void compute_edges_geodesic(
 			int next_node_index = map_vertex_to_node[next_vertex_index];
 			if (next_node_index >= 0 && next_node_index != node_id) {
 				neighbor_node_ids.push_back(next_node_index);
-				neighbor_node_weights.push_back(compute_anchor_weight(next_vertex_dist, node_coverage));
-				neighbor_node_distances.push_back(next_vertex_dist);
+				neighbor_node_weights.push_back(compute_anchor_weight(next_vertex_distance, node_coverage));
+				neighbor_node_distances.push_back(next_vertex_distance);
 				if (neighbor_node_ids.size() >= max_neighbor_count) break;
 			}
 
@@ -596,8 +591,8 @@ void compute_pixel_anchors_geodesic(
     const py::array_t<int> &vertex_pixels,
     py::array_t<int>& pixel_anchors,
     py::array_t<float>& pixel_weights,
-    const int width, const int height,
-    const float node_coverage
+    int width, int height,
+    float node_coverage
 ) {
     // Allocate graph node ids and corresponding skinning weights.
     // Initialize with invalid anchors.
@@ -669,15 +664,16 @@ void compute_pixel_anchors_geodesic(
 }
 
 py::tuple compute_pixel_anchors_geodesic(
-		const py::array_t<float>& graph_nodes,
-		const py::array_t<int>& graph_edges,
-		const py::array_t<float>& point_image,
-		int neighborhood_depth,
+		const py::array_t<float> &node_to_vertex_distance,
+		const py::array_t<int> &valid_nodes_mask,
+		const py::array_t<float> &vertices,
+		const py::array_t<int> &vertex_pixels,
+		int width, int height,
 		float node_coverage) {
 	py::array_t<int> pixel_anchors;
 	py::array_t<float> pixel_weights;
-	compute_pixel_anchors_geodesic(graph_nodes, graph_edges, point_image, neighborhood_depth,
-	                               node_coverage, pixel_anchors, pixel_weights);
+	compute_pixel_anchors_geodesic(node_to_vertex_distance, valid_nodes_mask, vertices, vertex_pixels,
+	                               pixel_anchors, pixel_weights, width, height, node_coverage);
 	return py::make_tuple(pixel_anchors, pixel_weights);
 }
 
