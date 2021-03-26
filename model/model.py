@@ -431,18 +431,23 @@ class DeformNet(torch.nn.Module):
                         # print("mask.sum()......................: ", mask.sum())
 
                         # __DEBUG
+
                         # print("type(graph_clusters_i)..........: ", type(graph_clusters_i))
                         # print("graph_clusters_i.shape..........: ", graph_clusters_i.shape)
                         # print("graph_clusters_i.device.........: ", graph_clusters_i.device)
+                        # print("torch.isnan(graph_clusters_i).sum()",     torch.isnan(graph_clusters_i).sum())
                         # print("type(cluster_id)................: ", type(cluster_id))
                         # print("cluster_id......................: ", cluster_id)
 
 
                         # TODO: PyTorch devs/maintainers--this is where the bug occurs!
                         # old code:
+
                         # index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
+                        # torch.save(graph_clusters_i, "graph_clusters_i.pt")
+                        # torch.save(index_equals_cluster_id, "index_equals_cluster_id.pt")
                         # dummy = index_equals_cluster_id[0].sum()  # This triggers some kind of bug too!
-                        # del dummy
+                        # # del dummy
                         # x = index_equals_cluster_id[0].tolist()  # <-- original error here!
 
                         # print("len(index_equals_cluster_id)....: ", len(index_equals_cluster_id))

@@ -10,9 +10,9 @@ from model.loss import EPE_3D_eval
 from model import dataset
 
 import utils.utils as utils
-import utils.viz_utils as viz_utils
+import utils.visualization.flow_visualization as viz_utils
 import utils.nnutils as nnutils
-import utils.line_mesh as line_mesh_utils
+import utils.visualization.line_mesh as line_mesh_utils
 import options as opt
 
 
