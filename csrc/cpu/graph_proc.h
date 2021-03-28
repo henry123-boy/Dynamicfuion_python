@@ -47,7 +47,7 @@ void compute_edges_geodesic(
 
 
 /**
- * Computes the graph edges between nodes, connecting nearest nodes using Euclidean
+ * Compute the graph edges between nodes, connecting nearest nodes using Euclidean
  * distances.
  */
 py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, int max_neighbor_count);
@@ -58,7 +58,7 @@ py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_position
 void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<bool>& valid_nodes_mask);
 
 /**
- * Computes node clusters based on connectivity.
+ * Compute node clusters based on connectivity.
  * @returns Sizes (number of nodes) of each cluster.
  */
 std::vector<int> compute_clusters(

@@ -17,7 +17,7 @@ PYBIND11_MODULE(nnrt, m) {
 	m.def("compute_augmented_flow_from_rotation",
 	      &image_proc::compute_augmented_flow_from_rotation,
 	      "flow_image_rot_sa2so"_a, "flow_image_so2to"_a, "flow_image_rot_to2ta"_a, "height"_a, "width"_a,
-	      "Computes an optical flow image that reflects the augmentation applied to the source and target images.");
+	      "Compute an optical flow image that reflects the augmentation applied to the source and target images.");
 
 	//TODO: define what the hell this is and what it's supposed to do or remove if it's garbage
 	m.def("count_tp1", &image_proc::count_tp1, "");
@@ -52,17 +52,17 @@ PYBIND11_MODULE(nnrt, m) {
 
 	m.def("compute_mesh_from_depth_and_color", &image_proc::compute_mesh_from_depth_and_color, "point_image"_a, "background_image"_a,
 	      "max_triangle_edge_distance"_a, "vertex_positions"_a, "vertex_colors"_a, "face_indices"_a,
-	      "Computes a mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
+	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
 
 	m.def("compute_mesh_from_depth_and_flow", &image_proc::compute_mesh_from_depth_and_flow, "Computes a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
 
 	// image filtering
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
 	      "depth_image_in"_a, "depth_image_out"_a, "radius"_a,
-	      "Runs a median filter on input depth image, outputs to provided output image. Does not modify the original.");
+	      "Run a median filter on input depth image, outputs to provided output image. Does not modify the original.");
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
 	      "depth_image_in"_a, "radius"_a,
-	      "Runs a median filter on provided depth image and outputs a new image with the result. Does not modify the original.");
+	      "Run a median filter on provided depth image and outputs a new image with the result. Does not modify the original.");
 
 
 
@@ -70,13 +70,13 @@ PYBIND11_MODULE(nnrt, m) {
 	// warping via bilinear/trilinear interpolation
 
 	m.def("warp_flow", &image_proc::warp_flow, "image"_a, "flow"_a, "mask"_a,
-	      "Warps image (RGB) using provided 2D flow inside masked region using bilinear interpolation.\n"
+	      "Warp image (RGB) using provided 2D flow inside masked region using bilinear interpolation.\n"
 	      "We assume:\n    image shape: (3, h, w)\n    flow shape: (2, h, w)\n    mask shape: (2, h, w)");
 
 	m.def("warp_rigid", &image_proc::warp_rigid, "rgbxyz_image"_a, "rotation"_a, "translation"_a, "fx"_a, "fy"_a, "cx"_a, "cy"_a,
-	      "Warps image (concatenated RGB + XYZ ordered point cloud, i.e. 6 channels) using provided depth map and rigid pose. Assumed rotation shape: (9), translation shape: (2).");
+	      "Warp image (concatenated RGB + XYZ ordered point cloud, i.e. 6 channels) using provided depth map and rigid pose. Assumed rotation shape: (9), translation shape: (2).");
 
-	m.def("warp_3d", &image_proc::warp_3d, "Warps image inside masked region using provided warped point cloud and trilinear interpolation).",
+	m.def("warp_3d", &image_proc::warp_3d, "Warp image inside masked region using provided warped point cloud and trilinear interpolation).",
 	      "We assume:\n    image shape: (6, h, w)\n    flow shape: (3, h, w)\n    mask shape: (h, w)");
 
 	// procedures for deformation graph node sampling from a point-cloud-based mesh
@@ -94,16 +94,15 @@ PYBIND11_MODULE(nnrt, m) {
 	      "face_indices"_a, "node_indices"_a, "max_neighbor_count"_a, "node_coverage"_a,
 	      "graph_edges"_a, "graph_edge_weights"_a, "graph_edge_distances"_a, "node_to_vertex_distances"_a,
 	      "allow_only_valid_vertices"_a, "enforce_total_num_neighbors"_a,
-	      "Computes geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
+	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
 	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
 	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
 	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry in the node.");
 
 	//TODO: a tuple-return-type overload of the above
-
 	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "canonical_node_positions"_a, "max_neighbor_count"_a,
-	      "Computes Euclidean edges between given graph canonical_node_positions.\n"
+	      "Compute Euclidean edges between given graph canonical_node_positions.\n"
 	      "The output is returned as an array of (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      "the row's entries, if >=0, represent destination node indices, ordered by euclidean distance between source and destination.");
 
@@ -112,7 +111,7 @@ PYBIND11_MODULE(nnrt, m) {
 					&graph_proc::compute_pixel_anchors_geodesic),
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a, "pixel_anchors"_a,
 	      "pixel_weights"_a, "width"_a, "height"_a, "node_coverage"_a,
-	      "Computes anchor ids and skinning weights for every pixel using graph connectivity.\n"
+	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n"
 	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
@@ -122,7 +121,7 @@ PYBIND11_MODULE(nnrt, m) {
 			&graph_proc::compute_pixel_anchors_geodesic),
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a,
 	      "width"_a, "height"_a, "node_coverage"_a,
-	      "Computes anchor ids and skinning weights for every pixel using graph connectivity.\n"
+	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n"
 	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
@@ -130,14 +129,18 @@ PYBIND11_MODULE(nnrt, m) {
 
 	m.def("compute_pixel_anchors_euclidean", &graph_proc::compute_pixel_anchors_euclidean,
 	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a, "pixel_anchors"_a, "pixel_weights"_a,
-	      "Computes anchor ids and skinning weights for every pixel using Euclidean distances.\n"
+	      "Compute anchor ids and skinning weights for every pixel using Euclidean distances.\n"
 	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
 
 
-	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up, "Removes invalid nodes");
+	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up,
+	   "graph_edges"_a, "valid_nodes_mask"_a, "Remove invalid nodes");
+
+	m.def("compute_clusters", &graph_proc::compute_clusters,
+	   "graph_edges"_a, "graph_clusters"_a, "Computes graph node clusters");
 
 	m.def("construct_regular_graph",
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float, py::array_t<float>&, py::array_t<int>&, py::array_t<int>&, py::array_t<float>&>(
@@ -145,7 +148,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
 	      "edge_threshold"_a, "max_point_to_node_distance"_a, "max_depth"_a,
 	      "graph_nodes"_a, "graph_edges"_a, "pixel_anchors"_a, "pixel_weights"_a,
-	      "Samples graph uniformly in pixel space, and computes pixel anchors");
+	      "Sample graph uniformly in pixel space, and compute pixel anchors");
 
 	m.def("construct_regular_graph",
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float>(

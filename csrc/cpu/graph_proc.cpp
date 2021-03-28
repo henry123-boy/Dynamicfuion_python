@@ -91,15 +91,11 @@ py::tuple sample_nodes(
 		float node_coverage, const bool use_only_non_eroded_indices = true,
 		const bool random_shuffle = true
 ) {
-	// assert(vertex_positions_in.ndim() == 2);
+	assert(vertex_positions_in.ndim() == 2);
+	assert(vertex_positions_in.shape(1) == 3);
 
-	float node_coverage_2 = node_coverage * node_coverage;
+	float node_coverage_squared = node_coverage * node_coverage;
 	int vertex_count = vertex_positions_in.shape(0);
-	// assert(vertex_positions_in.shape(1) == 3);
-	// assert(node_positions_out.shape(0) == nVertices);
-	// assert(node_positions_out.shape(1) == 3);
-	// assert(node_indices_out.shape(0) == nVertices);
-	// assert(node_indices_out.shape(1) == 1);
 
 
 	// create list of shuffled indices
@@ -130,7 +126,7 @@ py::tuple sample_nodes(
 
 		bool is_node = true;
 		for (const auto& node_information : node_information_vector) {
-			if ((point - node_information.vertex_position).squaredNorm() <= node_coverage_2) {
+			if ((point - node_information.vertex_position).squaredNorm() <= node_coverage_squared) {
 				is_node = false;
 				break;
 			}
@@ -265,7 +261,7 @@ void compute_edges_geodesic(
 			}
 
 			// Note down the node-vertex distance.
-			// *node_to_vertex_distance.mutable_data(next_node_index, next_vertex_index) = next_vertex_distance;
+			*node_to_vertex_distances.mutable_data(next_node_index, next_vertex_index) = next_vertex_distance;
 
 			// We visit the vertex, and check all his neighbors.
 			// We add only valid vertices under a certain distance.
@@ -288,7 +284,7 @@ void compute_edges_geodesic(
 				if (enforce_total_num_neighbors) {
 					next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
 				} else {
-					// std::cout << dist << " " << maxInfluence << std::endl;
+
 					if (distance <= max_influence) {
 						next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
 					}
@@ -296,50 +292,23 @@ void compute_edges_geodesic(
 			}
 		}
 
-		// If we don't get any geodesic neighbors, we take one nearest Euclidean neighbor,
-		// to have a constrained optimization system at non-rigid tracking.
-		if (neighbor_node_ids.empty()) {
-			float nearest_squared_distance = std::numeric_limits<float>::infinity();
-			int nearest_node_id = -1;
-
-			Eigen::Vector3f nodePos(*vertex_positions.data(node_vertex_idx, 0), *vertex_positions.data(node_vertex_idx, 1),
-			                        *vertex_positions.data(node_vertex_idx, 2));
-
-			for (int node_index = 0; node_index < node_count; node_index++) {
-				int vertex_index = *node_indices.data(node_index);
-				if (node_index != node_id && vertex_index >= 0) {
-					Eigen::Vector3f neighbor_position(*vertex_positions.data(vertex_index, 0),
-					                                  *vertex_positions.data(vertex_index, 1),
-					                                  *vertex_positions.data(vertex_index, 2));
-
-					float squared_distance = (neighbor_position - nodePos).squaredNorm();
-					if (squared_distance < nearest_squared_distance) {
-						nearest_squared_distance = squared_distance;
-						nearest_node_id = node_index;
-					}
-				}
-			}
-
-			if (nearest_node_id >= 0) neighbor_node_ids.push_back(nearest_node_id);
-		}
-
 		// Store the nearest neighbors.
 		int nearest_neighbor_count = neighbor_node_ids.size();
 
 		float weight_sum = 0.f;
-		for (int i = 0; i < nearest_neighbor_count; i++) {
-			*graph_edges.mutable_data(node_id, i) = neighbor_node_ids[i];
-			weight_sum += neighbor_node_weights[i];
+		for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
+			*graph_edges.mutable_data(node_id, neighbor_index) = neighbor_node_ids[neighbor_index];
+			weight_sum += neighbor_node_weights[neighbor_index];
 		}
 
 		// Normalize weights
 		if (weight_sum > 0) {
-			for (int i = 0; i < nearest_neighbor_count; i++) {
-				*graph_edge_weights.mutable_data(node_id, i) = neighbor_node_weights[i] / weight_sum;
+			for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
+				*graph_edge_weights.mutable_data(node_id, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
 			}
 		} else if (nearest_neighbor_count > 0) {
-			for (int i = 0; i < nearest_neighbor_count; i++) {
-				*graph_edge_weights.mutable_data(node_id, i) = neighbor_node_weights[i] / weight_sum;
+			for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
+				*graph_edge_weights.mutable_data(node_id, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
 			}
 		}
 
@@ -687,7 +656,6 @@ void compute_pixel_anchors_euclidean(
 	int node_count = graph_nodes.shape(0);
 	int width = point_image.shape(2);
 	int height = point_image.shape(1);
-	// int nChannels = pointImage.shape(0);
 
 	// Allocate graph node ids and corresponding skinning weights.
 	// Initialize with invalid anchors.
