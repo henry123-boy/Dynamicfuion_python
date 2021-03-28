@@ -142,6 +142,10 @@ PYBIND11_MODULE(nnrt, m) {
 	m.def("compute_clusters", &graph_proc::compute_clusters,
 	   "graph_edges"_a, "graph_clusters"_a, "Computes graph node clusters");
 
+	m.def("update_pixel_anchors", &graph_proc::update_pixel_anchors, "node_id_mapping"_a,
+	   "pixel_anchors"_a,
+	   "Update pixel anchor after node id change");
+
 	m.def("construct_regular_graph",
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float, py::array_t<float>&, py::array_t<int>&, py::array_t<int>&, py::array_t<float>&>(
 			      &graph_proc::construct_regular_graph),
