@@ -1,16 +1,8 @@
 import os
-import shutil
 import numpy as np
-import json
-from PIL import Image
-from plyfile import PlyData, PlyElement
 from skimage import io
-from PIL import Image
-from timeit import default_timer as timer
-import datetime
 import open3d as o3d
-import trimesh
-import re
+
 
 from utils import utils, image_proc
 
@@ -28,6 +20,8 @@ if __name__ == "__main__":
     #########################################################################
     # Options
     #########################################################################
+    VISUAL_DEBUGGING = False
+
     # Depth-to-mesh conversion
     DEPTH_NORMALIZER = 1000.0
     MAX_TRIANGLE_DISTANCE = 0.05
@@ -83,6 +77,7 @@ if __name__ == "__main__":
 
     # Load scene flow image.
     scene_flow_image = utils.load_flow(scene_flow_path)
+    scene_flow_image = np.moveaxis(scene_flow_image, 0, 2)
 
     #########################################################################
     # Convert depth to mesh.
@@ -124,18 +119,19 @@ if __name__ == "__main__":
     )
 
     # Just for debugging.
-    # mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(faces))
-    # mesh.compute_vertex_normals()
-    
-    # pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(vertices[non_eroded_vertices.reshape(-1), :]))
+    if VISUAL_DEBUGGING:
+        mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(faces))
+        mesh.compute_vertex_normals()
 
-    # o3d.visualization.draw_geometries([mesh, pcd], mesh_show_back_face=True)
+        pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(vertices[non_eroded_vertices.reshape(-1), :]))
 
-    # mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows), o3d.utility.Vector3iVector(faces))
-    # mesh_transformed.compute_vertex_normals()
-    # mesh_transformed.paint_uniform_color([0.0, 1.0, 0.0])
+        o3d.visualization.draw_geometries([mesh, pcd], mesh_show_back_face=True)
 
-    # o3d.visualization.draw_geometries([mesh, mesh_transformed], mesh_show_back_face=True)
+        mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows), o3d.utility.Vector3iVector(faces))
+        mesh_transformed.compute_vertex_normals()
+        mesh_transformed.paint_uniform_color([0.0, 1.0, 0.0])
+
+        o3d.visualization.draw_geometries([mesh, mesh_transformed], mesh_show_back_face=True)
 
     #########################################################################
     # Sample graph nodes.
@@ -143,16 +139,14 @@ if __name__ == "__main__":
     valid_vertices = non_eroded_vertices
 
     # Sample graph nodes.
-    node_coords = np.zeros((0), dtype=np.float32)
-    node_indices = np.zeros((0), dtype=np.int32)
-
-    num_nodes = sample_nodes_c(
+    node_coords, node_indices = sample_nodes_c(
         vertices, valid_vertices,
-        node_coords, node_indices, 
         NODE_COVERAGE, 
         USE_ONLY_VALID_VERTICES,
         SAMPLE_RANDOM_SHUFFLE
     )
+
+    num_nodes = node_coords.shape[0]
 
     node_coords = node_coords[:num_nodes, :]
     node_indices = node_indices[:num_nodes, :]
@@ -164,9 +158,9 @@ if __name__ == "__main__":
     assert np.isfinite(node_deformations).all(), "All deformations should be valid."
     assert node_deformations.shape[0] == node_coords.shape[0] == node_indices.shape[0]
 
-    # Just for debugging
-    # pcd_nodes = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(node_coords))
-    # o3d.visualization.draw_geometries([pcd_nodes], mesh_show_back_face=True)
+    if VISUAL_DEBUGGING:
+        pcd_nodes = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(node_coords))
+        o3d.visualization.draw_geometries([pcd_nodes], mesh_show_back_face=True)
 
     #########################################################################
     # Compute graph edges.

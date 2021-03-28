@@ -54,7 +54,10 @@ PYBIND11_MODULE(nnrt, m) {
 	      "max_triangle_edge_distance"_a, "vertex_positions"_a, "vertex_colors"_a, "face_indices"_a,
 	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
 
-	m.def("compute_mesh_from_depth_and_flow", &image_proc::compute_mesh_from_depth_and_flow, "Computes a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
+	m.def("compute_mesh_from_depth_and_flow", &image_proc::compute_mesh_from_depth_and_flow,
+	   "point_image_in"_a, "flow_image_in"_a, "max_triangle_edge_distance"_a, "vertex_positions_out"_a,
+   "vertex_flows_out"_a, "vertex_pixels_out"_a, "face_indices_out"_a,
+	   "Compute a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
 
 	// image filtering
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, py::array_t<unsigned short>&, int>(&image_proc::filter_depth),

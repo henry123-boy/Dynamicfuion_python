@@ -374,7 +374,7 @@ void backproject_depth_ushort(py::array_t<unsigned short>& image_in, py::array_t
 	assert(point_image_out.shape(1) == width);
 	assert(point_image_out.shape(2) == 3);
 
-	#pragma omp parallel for
+#pragma omp parallel for
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float depth = float(*image_in.data(y, x)) / normalizer;
@@ -410,7 +410,7 @@ void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& p
 	assert(point_image_out.shape(1) == height);
 	assert(point_image_out.shape(2) == width);
 
-	#pragma omp parallel for
+#pragma omp parallel for
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float depth = *image_in.data(y, x);
@@ -706,164 +706,164 @@ void compute_mesh_from_depth_and_color(
 }
 
 
+void compute_mesh_from_depth_and_flow(
+		const py::array_t<float>& point_image_in, const py::array_t<float>& flow_image_in,
+		float max_triangle_edge_distance, py::array_t<float>& vertex_positions_out,
+		py::array_t<float>& vertex_flows_out, py::array_t<int>& vertex_pixels_out, py::array_t<int>& face_indices_out
+) {
+	int width = point_image_in.shape(1);
+	int height = point_image_in.shape(0);
 
-    void compute_mesh_from_depth_and_flow(
-        const py::array_t<float>& pointImage, const py::array_t<float>& flowImage, float maxTriangleEdgeDistance,
-        py::array_t<float>& vertexPositions, py::array_t<float>& vertexFlows, py::array_t<int>& vertexPixels, py::array_t<int>& faceIndices
-    ) {
-        int width = pointImage.shape(2);
-        int height = pointImage.shape(1);
+	// Compute valid pixel vertices and faces.
+	// We also need to compute the pixel -> vertex index mapping for
+	// computation of faces.
+	// We connect neighboring pixels on the square into two triangles.
+	// We only select valid triangles, i.e. with all valid vertices and
+	// not too far apart.
+	// Important: The triangle orientation is set such that the normals
+	// point towards the camera.
+	std::vector<Eigen::Vector3f> vertices;
+	std::vector<Eigen::Vector3f> flows;
+	std::vector<Eigen::Vector2i> pixels;
+	std::vector<Eigen::Vector3i> faces;
 
-        // Compute valid pixel vertices and faces.
-        // We also need to compute the pixel -> vertex index mapping for
-        // computation of faces.
-        // We connect neighboring pixels on the square into two triangles.
-        // We only select valid triangles, i.e. with all valid vertices and
-        // not too far apart.
-        // Important: The triangle orientation is set such that the normals
-        // point towards the camera.
-        std::vector<Eigen::Vector3f> vertices;
-        std::vector<Eigen::Vector3f> flows;
-        std::vector<Eigen::Vector2i> pixels;
-        std::vector<Eigen::Vector3i> faces;
+	int vertex_index = 0;
+	std::vector<int> pixel_to_vertex_index_map(width * height, -1);
 
-        int vertexIdx = 0;
-        std::vector<int> mapPixelToVertexIdx(width * height, -1);
+	for (int y = 0; y < height - 1; y++) {
+		for (int x = 0; x < width - 1; x++) {
+			Eigen::Vector3f obs00(*point_image_in.data(y, x, 0), *point_image_in.data(y, x, 1), *point_image_in.data(y, x, 2));
+			Eigen::Vector3f obs01(*point_image_in.data(y + 1, x, 0), *point_image_in.data(y + 1, x, 1), *point_image_in.data(y + 1, x, 2));
+			Eigen::Vector3f obs10(*point_image_in.data(y, x + 1, 0), *point_image_in.data(y, x + 1, 1), *point_image_in.data(y, x + 1, 2));
+			Eigen::Vector3f obs11(*point_image_in.data(y + 1, x + 1, 0), *point_image_in.data(y + 1, x + 1, 1), *point_image_in.data(y + 1, x + 1, 2));
 
-        for (int y = 0; y < height - 1; y++) {
-            for (int x = 0; x < width - 1; x++) {
-                Eigen::Vector3f obs00(*pointImage.data(0, y, x), *pointImage.data(1, y, x), *pointImage.data(2, y, x));
-                Eigen::Vector3f obs01(*pointImage.data(0, y + 1, x), *pointImage.data(1, y + 1, x), *pointImage.data(2, y + 1, x));
-                Eigen::Vector3f obs10(*pointImage.data(0, y, x + 1), *pointImage.data(1, y, x + 1), *pointImage.data(2, y, x + 1));
-                Eigen::Vector3f obs11(*pointImage.data(0, y + 1, x + 1), *pointImage.data(1, y + 1, x + 1), *pointImage.data(2, y + 1, x + 1));
+			Eigen::Vector3f flow00(*flow_image_in.data(y, x, 0), *flow_image_in.data(y, x, 1), *flow_image_in.data(y, x, 2));
+			Eigen::Vector3f flow01(*flow_image_in.data(y + 1, x, 0), *flow_image_in.data(y + 1, x, 1), *flow_image_in.data(y + 1, x, 2));
+			Eigen::Vector3f flow10(*flow_image_in.data(y, x + 1, 0), *flow_image_in.data(y, x + 1, 1), *flow_image_in.data(y, x + 1, 2));
+			Eigen::Vector3f flow11(*flow_image_in.data(y + 1, x + 1, 0), *flow_image_in.data(y + 1, x + 1, 1), *flow_image_in.data(y + 1, x + 1, 2));
 
-                Eigen::Vector3f flow00(*flowImage.data(0, y, x), *flowImage.data(1, y, x), *flowImage.data(2, y, x));
-                Eigen::Vector3f flow01(*flowImage.data(0, y + 1, x), *flowImage.data(1, y + 1, x), *flowImage.data(2, y + 1, x));
-                Eigen::Vector3f flow10(*flowImage.data(0, y, x + 1), *flowImage.data(1, y, x + 1), *flowImage.data(2, y, x + 1));
-                Eigen::Vector3f flow11(*flowImage.data(0, y + 1, x + 1), *flowImage.data(1, y + 1, x + 1), *flowImage.data(2, y + 1, x + 1));
+			int idx00 = y * width + x;
+			int idx01 = (y + 1) * width + x;
+			int idx10 = y * width + (x + 1);
+			int idx11 = (y + 1) * width + (x + 1);
 
-                int idx00 = y * width + x;
-                int idx01 = (y + 1) * width + x;
-                int idx10 = y * width + (x + 1);
-                int idx11 = (y + 1) * width + (x + 1);
+			bool valid00 = obs00.z() > 0 && std::isfinite(flow00.x()) && std::isfinite(flow00.y()) && std::isfinite(flow00.z());
+			bool valid01 = obs01.z() > 0 && std::isfinite(flow01.x()) && std::isfinite(flow01.y()) && std::isfinite(flow01.z());
+			bool valid10 = obs10.z() > 0 && std::isfinite(flow10.x()) && std::isfinite(flow10.y()) && std::isfinite(flow10.z());
+			bool valid11 = obs11.z() > 0 && std::isfinite(flow11.x()) && std::isfinite(flow11.y()) && std::isfinite(flow11.z());
 
-                bool valid00 = obs00.z() > 0 && std::isfinite(flow00.x()) && std::isfinite(flow00.y()) && std::isfinite(flow00.z());
-                bool valid01 = obs01.z() > 0 && std::isfinite(flow01.x()) && std::isfinite(flow01.y()) && std::isfinite(flow01.z());
-                bool valid10 = obs10.z() > 0 && std::isfinite(flow10.x()) && std::isfinite(flow10.y()) && std::isfinite(flow10.z());
-                bool valid11 = obs11.z() > 0 && std::isfinite(flow11.x()) && std::isfinite(flow11.y()) && std::isfinite(flow11.z());
+			if (valid00 && valid01 && valid10) {
+				float d0 = (obs00 - obs01).norm();
+				float d1 = (obs00 - obs10).norm();
+				float d2 = (obs01 - obs10).norm();
 
-                if (valid00 && valid01 && valid10) {
-                    float d0 = (obs00 - obs01).norm();
-                    float d1 = (obs00 - obs10).norm();
-                    float d2 = (obs01 - obs10).norm();
+				if (d0 <= max_triangle_edge_distance && d1 <= max_triangle_edge_distance && d2 <= max_triangle_edge_distance) {
+					int vertex_index_0 = pixel_to_vertex_index_map[idx00];
+					int vertex_index_1 = pixel_to_vertex_index_map[idx01];
+					int vertex_index_2 = pixel_to_vertex_index_map[idx10];
 
-                    if (d0 <= maxTriangleEdgeDistance && d1 <= maxTriangleEdgeDistance && d2 <= maxTriangleEdgeDistance) {
-                        int vIdx0 = mapPixelToVertexIdx[idx00];
-                        int vIdx1 = mapPixelToVertexIdx[idx01];
-                        int vIdx2 = mapPixelToVertexIdx[idx10];
+					if (vertex_index_0 == -1) {
+						vertex_index_0 = vertex_index;
+						pixel_to_vertex_index_map[idx00] = vertex_index;
+						vertices.push_back(obs00);
+						flows.push_back(flow00);
+						pixels.emplace_back(x, y);
+						vertex_index++;
+					}
+					if (vertex_index_1 == -1) {
+						vertex_index_1 = vertex_index;
+						pixel_to_vertex_index_map[idx01] = vertex_index;
+						vertices.push_back(obs01);
+						flows.push_back(flow01);
+						pixels.emplace_back(x, y + 1);
+						vertex_index++;
+					}
+					if (vertex_index_2 == -1) {
+						vertex_index_2 = vertex_index;
+						pixel_to_vertex_index_map[idx10] = vertex_index;
+						vertices.push_back(obs10);
+						flows.push_back(flow10);
+						pixels.emplace_back(x + 1, y);
+						vertex_index++;
+					}
 
-                        if (vIdx0 == -1) {
-                            vIdx0 = vertexIdx;
-                            mapPixelToVertexIdx[idx00] = vertexIdx;
-                            vertices.push_back(obs00);
-                            flows.push_back(flow00);
-                            pixels.push_back(Eigen::Vector2i(x, y));
-                            vertexIdx++;
-                        }
-                        if (vIdx1 == -1) {
-                            vIdx1 = vertexIdx;
-                            mapPixelToVertexIdx[idx01] = vertexIdx;
-                            vertices.push_back(obs01);
-                            flows.push_back(flow01);
-                            pixels.push_back(Eigen::Vector2i(x, y + 1));
-                            vertexIdx++;
-                        }
-                        if (vIdx2 == -1) {
-                            vIdx2 = vertexIdx;
-                            mapPixelToVertexIdx[idx10] = vertexIdx;
-                            vertices.push_back(obs10);
-                            flows.push_back(flow10);
-                            pixels.push_back(Eigen::Vector2i(x + 1, y));
-                            vertexIdx++;
-                        }
+					faces.emplace_back(vertex_index_0, vertex_index_1, vertex_index_2);
+				}
+			}
 
-                        faces.push_back(Eigen::Vector3i(vIdx0, vIdx1, vIdx2));
-                    }
-                }
+			if (valid01 && valid10 && valid11) {
+				float d0 = (obs10 - obs01).norm();
+				float d1 = (obs10 - obs11).norm();
+				float d2 = (obs01 - obs11).norm();
 
-                if (valid01 && valid10 && valid11) {
-                    float d0 = (obs10 - obs01).norm();
-                    float d1 = (obs10 - obs11).norm();
-                    float d2 = (obs01 - obs11).norm();
+				if (d0 <= max_triangle_edge_distance && d1 <= max_triangle_edge_distance && d2 <= max_triangle_edge_distance) {
+					int vertex_index_0 = pixel_to_vertex_index_map[idx11];
+					int vertex_index_1 = pixel_to_vertex_index_map[idx10];
+					int vertex_index_2 = pixel_to_vertex_index_map[idx01];
 
-                    if (d0 <= maxTriangleEdgeDistance && d1 <= maxTriangleEdgeDistance && d2 <= maxTriangleEdgeDistance) {
-                        int vIdx0 = mapPixelToVertexIdx[idx11];
-                        int vIdx1 = mapPixelToVertexIdx[idx10];
-                        int vIdx2 = mapPixelToVertexIdx[idx01];
+					if (vertex_index_0 == -1) {
+						vertex_index_0 = vertex_index;
+						pixel_to_vertex_index_map[idx11] = vertex_index;
+						vertices.push_back(obs11);
+						flows.push_back(flow11);
+						pixels.emplace_back(x + 1, y + 1);
+						vertex_index++;
+					}
+					if (vertex_index_1 == -1) {
+						vertex_index_1 = vertex_index;
+						pixel_to_vertex_index_map[idx10] = vertex_index;
+						vertices.push_back(obs10);
+						flows.push_back(flow10);
+						pixels.emplace_back(x + 1, y);
+						vertex_index++;
+					}
+					if (vertex_index_2 == -1) {
+						vertex_index_2 = vertex_index;
+						pixel_to_vertex_index_map[idx01] = vertex_index;
+						vertices.push_back(obs01);
+						flows.push_back(flow01);
+						pixels.emplace_back(x, y + 1);
+						vertex_index++;
+					}
 
-                        if (vIdx0 == -1) {
-                            vIdx0 = vertexIdx;
-                            mapPixelToVertexIdx[idx11] = vertexIdx;
-                            vertices.push_back(obs11);
-                            flows.push_back(flow11);
-                            pixels.push_back(Eigen::Vector2i(x + 1, y + 1));
-                            vertexIdx++;
-                        }
-                        if (vIdx1 == -1) {
-                            vIdx1 = vertexIdx;
-                            mapPixelToVertexIdx[idx10] = vertexIdx;
-                            vertices.push_back(obs10);
-                            flows.push_back(flow10);
-                            pixels.push_back(Eigen::Vector2i(x + 1, y));
-                            vertexIdx++;
-                        }
-                        if (vIdx2 == -1) {
-                            vIdx2 = vertexIdx;
-                            mapPixelToVertexIdx[idx01] = vertexIdx;
-                            vertices.push_back(obs01);
-                            flows.push_back(flow01);
-                            pixels.push_back(Eigen::Vector2i(x, y + 1));
-                            vertexIdx++;
-                        }
+					faces.emplace_back(vertex_index_0, vertex_index_1, vertex_index_2);
+				}
+			}
+		}
+	}
 
-                        faces.push_back(Eigen::Vector3i(vIdx0, vIdx1, vIdx2));
-                    }
-                }
-            }
-        }
+	// Convert to numpy array.
+	int vertex_count = vertices.size();
+	int face_count = faces.size();
 
-        // Convert to numpy array.
-        int nVertices = vertices.size();
-        int nFaces = faces.size();
+	if (vertex_count > 0 && face_count > 0) {
+		// Reference check should be set to false otherwise there is a runtime
+		// error. Check why that is the case.
+		vertex_positions_out.resize({vertex_count, 3}, false);
+		vertex_flows_out.resize({vertex_count, 3}, false);
+		vertex_pixels_out.resize({vertex_count, 2}, false);
+		face_indices_out.resize({face_count, 3}, false);
 
-        if (nVertices > 0 && nFaces > 0) {
-            // Reference check should be set to false otherwise there is a runtime
-            // error. Check why that is the case.
-            vertexPositions.resize({ nVertices, 3 }, false);
-            vertexFlows.resize({ nVertices, 3 }, false);
-            vertexPixels.resize({ nVertices, 2 }, false);
-            faceIndices.resize({ nFaces, 3 }, false);
+		for (int i = 0; i < vertex_count; i++) {
+			*vertex_positions_out.mutable_data(i, 0) = vertices[i].x();
+			*vertex_positions_out.mutable_data(i, 1) = vertices[i].y();
+			*vertex_positions_out.mutable_data(i, 2) = vertices[i].z();
 
-            for (int i = 0; i < nVertices; i++) {
-                *vertexPositions.mutable_data(i, 0) = vertices[i].x();
-                *vertexPositions.mutable_data(i, 1) = vertices[i].y();
-                *vertexPositions.mutable_data(i, 2) = vertices[i].z();
+			*vertex_flows_out.mutable_data(i, 0) = flows[i].x();
+			*vertex_flows_out.mutable_data(i, 1) = flows[i].y();
+			*vertex_flows_out.mutable_data(i, 2) = flows[i].z();
 
-                *vertexFlows.mutable_data(i, 0) = flows[i].x();
-                *vertexFlows.mutable_data(i, 1) = flows[i].y();
-                *vertexFlows.mutable_data(i, 2) = flows[i].z();
+			*vertex_pixels_out.mutable_data(i, 0) = pixels[i].x();
+			*vertex_pixels_out.mutable_data(i, 1) = pixels[i].y();
+		}
 
-                *vertexPixels.mutable_data(i, 0) = pixels[i].x();
-                *vertexPixels.mutable_data(i, 1) = pixels[i].y();
-            }
-
-            for (int i = 0; i < nFaces; i++) {
-                *faceIndices.mutable_data(i, 0) = faces[i].x();
-                *faceIndices.mutable_data(i, 1) = faces[i].y();
-                *faceIndices.mutable_data(i, 2) = faces[i].z();
-            }
-        }
-    }
+		for (int i = 0; i < face_count; i++) {
+			*face_indices_out.mutable_data(i, 0) = faces[i].x();
+			*face_indices_out.mutable_data(i, 1) = faces[i].y();
+			*face_indices_out.mutable_data(i, 2) = faces[i].z();
+		}
+	}
+}
 
 void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsigned short>& depth_image_out, int radius) {
 	assert(depth_image_in.ndim() == 2);
@@ -888,9 +888,9 @@ void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsig
 			std::vector<unsigned short> window_values;
 			window_values.reserve(window_size);
 
-			for (int yNear = y_min; yNear <= y_max; yNear++) {
-				for (int xNear = x_min; xNear <= x_max; xNear++) {
-					unsigned short depth = *depth_image_in.data(yNear, xNear);
+			for (int y_near = y_min; y_near <= y_max; y_near++) {
+				for (int x_near = x_min; x_near <= x_max; x_near++) {
+					unsigned short depth = *depth_image_in.data(y_near, x_near);
 					if (depth > 0) {
 						window_values.push_back(depth);
 					}
@@ -898,11 +898,11 @@ void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsig
 			}
 
 			// Sort the values and pick the median as the middle element.
-			unsigned n_elements = window_values.size();
+			unsigned element_count = window_values.size();
 			std::sort(window_values.begin(), window_values.end());
 
-			unsigned middle_idx = std::floor(n_elements / 2);
-			unsigned short median = window_values[middle_idx];
+			unsigned middle_index = std::floor(element_count / 2);
+			unsigned short median = window_values[middle_index];
 
 			// Write out the median value.
 			*depth_image_out.mutable_data(y, x) = median;
