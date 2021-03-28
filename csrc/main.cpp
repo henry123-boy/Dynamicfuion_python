@@ -55,9 +55,9 @@ PYBIND11_MODULE(nnrt, m) {
 	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
 
 	m.def("compute_mesh_from_depth_and_flow", &image_proc::compute_mesh_from_depth_and_flow,
-	   "point_image_in"_a, "flow_image_in"_a, "max_triangle_edge_distance"_a, "vertex_positions_out"_a,
-   "vertex_flows_out"_a, "vertex_pixels_out"_a, "face_indices_out"_a,
-	   "Compute a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
+	      "point_image_in"_a, "flow_image_in"_a, "max_triangle_edge_distance"_a, "vertex_positions_out"_a,
+	      "vertex_flows_out"_a, "vertex_pixels_out"_a, "face_indices_out"_a,
+	      "Compute a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
 
 	// image filtering
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
@@ -89,28 +89,56 @@ PYBIND11_MODULE(nnrt, m) {
 	      "Compile a vertex mask that can be used to erode the provided mesh (iteratively mask out vertices at surface discontinuities, leave only non-eroded vertices)");
 
 	m.def("sample_nodes", &graph_proc::sample_nodes, "vertex_positions_in"_a, "vertex_erosion_mask_in"_a, "node_coverage"_a,
-	      "use_only_non_eroded_indices"_a, "random_shuffle"_a,"Samples graph canonical_node_positions that cover given vertices.");
+	      "use_only_non_eroded_indices"_a, "random_shuffle"_a, "Samples graph canonical_node_positions that cover given vertices.");
 
 	// procedures for deformation graph processing
-	m.def("compute_edges_geodesic", &graph_proc::compute_edges_geodesic, "vertex_positions"_a, "valid_vertices"_a,
-	      "face_indices"_a, "node_indices"_a, "max_neighbor_count"_a, "node_coverage"_a,
-	      "graph_edges"_a, "graph_edge_weights"_a, "graph_edge_distances"_a, "node_to_vertex_distances"_a,
-	      "allow_only_valid_vertices"_a, "enforce_total_num_neighbors"_a,
+	m.def("compute_edges_geodesic",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<bool>&, const py::array_t<int>&,
+			      const py::array_t<int>&, int, float, py::array_t<int>&, py::array_t<float>&, py::array_t<float>&, py::array_t<float>&,
+			      bool>(&graph_proc::compute_edges_geodesic), "vertex_positions_in"_a, "vertex_mask_in"_a,
+	      "face_indices_in"_a, "node_indices_in"_a, "max_neighbor_count"_a, "node_coverage"_a,
+	      "graph_edges_out"_a, "graph_edge_weights_out"_a, "graph_edge_distances_out"_a, "node_to_vertex_distances_out"_a,
+	      "enforce_total_num_neighbors"_a,
 	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
 	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
 	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
-	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry in the node.");
+	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry in "
+	      "the node.");
 
-	//TODO: a tuple-return-type overload of the above
+	m.def("compute_edges_geodesic",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<bool>&, const py::array_t<int>&,
+			      const py::array_t<int>&, int, float, bool>(&graph_proc::compute_edges_geodesic),
+	      "vertex_positions_in"_a, "vertex_mask_in"_a, "face_indices_in"_a, "node_indices_in"_a,
+	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a,
+	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
+	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
+	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
+	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
+	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry "
+	      "in the node.");
+
+	m.def("compute_edges_geodesic",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<int>&,
+			      const py::array_t<int>&, int, float, bool>(&graph_proc::compute_edges_geodesic),
+	      "vertex_positions_in"_a, "face_indices_in"_a, "node_indices_in"_a,
+	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a,
+	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
+	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
+	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
+	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
+	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry in"
+	      " the node.");
+
+
 	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "canonical_node_positions"_a, "max_neighbor_count"_a,
 	      "Compute Euclidean edges between given graph canonical_node_positions.\n"
 	      "The output is returned as an array of (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      "the row's entries, if >=0, represent destination node indices, ordered by euclidean distance between source and destination.");
 
 	m.def("compute_pixel_anchors_geodesic", py::overload_cast<const py::array_t<float>&,
-			const py::array_t<int>&, const py::array_t<float>&, const py::array_t<int>&,  py::array_t<int>&, py::array_t<float>&, int, int, float>(
-					&graph_proc::compute_pixel_anchors_geodesic),
+			      const py::array_t<int>&, const py::array_t<float>&, const py::array_t<int>&, py::array_t<int>&, py::array_t<float>&, int, int, float>(
+			&graph_proc::compute_pixel_anchors_geodesic),
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a, "pixel_anchors"_a,
 	      "pixel_weights"_a, "width"_a, "height"_a, "node_coverage"_a,
 	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n"
@@ -139,14 +167,14 @@ PYBIND11_MODULE(nnrt, m) {
 
 
 	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up,
-	   "graph_edges"_a, "valid_nodes_mask"_a, "Remove invalid nodes");
+	      "graph_edges"_a, "valid_nodes_mask"_a, "Remove invalid nodes");
 
 	m.def("compute_clusters", &graph_proc::compute_clusters,
-	   "graph_edges"_a, "graph_clusters"_a, "Computes graph node clusters");
+	      "graph_edges"_a, "graph_clusters"_a, "Computes graph node clusters");
 
 	m.def("update_pixel_anchors", &graph_proc::update_pixel_anchors, "node_id_mapping"_a,
-	   "pixel_anchors"_a,
-	   "Update pixel anchor after node id change");
+	      "pixel_anchors"_a,
+	      "Update pixel anchor after node id change");
 
 	m.def("construct_regular_graph",
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float, py::array_t<float>&, py::array_t<int>&, py::array_t<int>&, py::array_t<float>&>(

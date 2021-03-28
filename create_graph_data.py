@@ -166,20 +166,12 @@ if __name__ == "__main__":
     # Compute graph edges.
     #########################################################################
     # Compute edges between nodes.
-    graph_edges              = -np.ones((num_nodes, NUM_NEIGHBORS), dtype=np.int32)
-    graph_edges_weights      =  np.zeros((num_nodes, NUM_NEIGHBORS), dtype=np.float32)
-    graph_edges_distances    =  np.zeros((num_nodes, NUM_NEIGHBORS), dtype=np.float32)
-    node_to_vertex_distances = -np.ones((num_nodes, num_vertices), dtype=np.float32)
 
     visible_vertices = np.ones_like(valid_vertices)
 
-    compute_edges_geodesic_c(
-        vertices, visible_vertices, faces, node_indices, 
-        NUM_NEIGHBORS, NODE_COVERAGE, 
-        graph_edges, graph_edges_weights, graph_edges_distances,
-        node_to_vertex_distances,
-        USE_ONLY_VALID_VERTICES,
-        ENFORCE_TOTAL_NUM_NEIGHBORS
+    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = compute_edges_geodesic_c(
+        vertices, visible_vertices, faces, node_indices,
+        NUM_NEIGHBORS, NODE_COVERAGE, ENFORCE_TOTAL_NUM_NEIGHBORS
     )
 
     # Remove nodes 
@@ -191,7 +183,7 @@ if __name__ == "__main__":
         node_and_edge_clean_up_c(graph_edges, valid_nodes_mask)
 
         # Get the list of invalid nodes
-        node_id_black_list = np.where(valid_nodes_mask == False)[0].tolist()
+        node_id_black_list = np.where(valid_nodes_mask is False)[0].tolist()
     else:
         print("You're allowing nodes with not enough neighbors!")
 

@@ -170,22 +170,39 @@ inline float compute_anchor_weight(float dist, float nodeCoverage) {
 	return std::exp(-(dist * dist) / (2.f * nodeCoverage * nodeCoverage));
 }
 
-void compute_edges_geodesic(
-		const py::array_t<float>& vertex_positions,
-		const py::array_t<bool>& valid_vertices,
-		const py::array_t<int>& face_indices,
-		const py::array_t<int>& node_indices,
-		const int max_neighbor_count, const float node_coverage,
-		py::array_t<int>& graph_edges,
-		py::array_t<float>& graph_edges_weights,
-		py::array_t<float>& graph_edges_distances,
-		py::array_t<float>& node_to_vertex_distances,
-		const bool allow_only_valid_vertices,
-		const bool enforce_total_num_neighbors
+
+template<typename TVertexCheckLambda>
+inline void compute_edges_geodesic_generic(
+		const py::array_t<float>& vertex_positions_in,
+		const py::array_t<int>& face_indices_in,
+		const py::array_t<int>& node_indices_in,
+		const int max_neighbor_count,
+		const float node_coverage,
+		py::array_t<int>& graph_edges_out,
+		py::array_t<float>& graph_edges_weights_out,
+		py::array_t<float>& graph_edges_distances_out,
+		py::array_t<float>& node_to_vertex_distances_out,
+		const bool enforce_total_num_neighbors,
+		TVertexCheckLambda&& vertex_is_valid
 ) {
-	int vertex_count = vertex_positions.shape(0);
-	int face_count = face_indices.shape(0);
-	int node_count = node_indices.shape(0);
+
+	assert(graph_edges_out.ndim() == 2);
+	assert(graph_edges_weights_out.ndim() == 2);
+	assert(graph_edges_distances_out.ndim() == 2);
+	assert(node_to_vertex_distances_out.ndim() == 2);
+
+	int vertex_count = vertex_positions_in.shape(0);
+	int face_count = face_indices_in.shape(0);
+	int node_count = node_indices_in.shape(0);
+
+	assert(graph_edges_out.shape(0) == node_count);
+	assert(graph_edges_out.shape(1) == max_neighbor_count);
+	assert(graph_edges_weights_out.shape(0) == node_count);
+	assert(graph_edges_weights_out.shape(1) == max_neighbor_count);
+	assert(graph_edges_distances_out.shape(0) == node_count);
+	assert(graph_edges_distances_out.shape(1) == max_neighbor_count);
+	assert(node_to_vertex_distances_out.shape(0) == node_count);
+	assert(graph_edges_distances_out.shape(1) == vertex_count);
 
 	float max_influence = 2.f * node_coverage;
 
@@ -193,10 +210,10 @@ void compute_edges_geodesic(
 	vector<std::set<int>> vertex_neighbors(vertex_count);
 	for (int face_index = 0; face_index < face_count; face_index++) {
 		for (int face_vertex_index = 0; face_vertex_index < 3; face_vertex_index++) {
-			int vertex_index = *face_indices.data(face_index, face_vertex_index);
+			int vertex_index = *face_indices_in.data(face_index, face_vertex_index);
 
 			for (int other_face_vertex_index = 0; other_face_vertex_index < 3; other_face_vertex_index++) {
-				int other_vertex_index = *face_indices.data(face_index, other_face_vertex_index);
+				int other_vertex_index = *face_indices_in.data(face_index, other_face_vertex_index);
 
 				if (vertex_index == other_vertex_index) continue;
 				vertex_neighbors[vertex_index].insert(other_vertex_index);
@@ -208,7 +225,7 @@ void compute_edges_geodesic(
 	vector<int> vertex_to_node_map(vertex_count, -1);
 
 	for (int node_index = 0; node_index < node_count; node_index++) {
-		int vertex_index = *node_indices.data(node_index);
+		int vertex_index = *node_indices_in.data(node_index);
 		if (vertex_index >= 0) {
 			vertex_to_node_map[vertex_index] = node_index;
 		}
@@ -227,7 +244,7 @@ void compute_edges_geodesic(
 		std::set<int> visited_vertices;
 
 		// Add node vertex as the first vertex to be visited.
-		int node_vertex_index = *node_indices.data(node_index);
+		int node_vertex_index = *node_indices_in.data(node_index);
 		if (node_vertex_index < 0) continue;
 		next_vertices_with_distances.push(std::make_pair(node_vertex_index, 0.f));
 
@@ -245,10 +262,7 @@ void compute_edges_geodesic(
 			// We skip the vertex, if it was already visited before.
 			if (visited_vertices.find(next_vertex_index) != visited_vertices.end()) continue;
 
-			if (allow_only_valid_vertices && !*valid_vertices.data(next_vertex_index)) {
-				std::cout << "compute_edges_geodesic:: ufff... we shouldn't be checking out this vertex" << std::endl;
-				exit(0);
-			}
+			assert(std::forward<TVertexCheckLambda>(vertex_is_valid)(next_vertex_index));
 
 			// We check if the vertex is a node.
 			int next_node_id = vertex_to_node_map[next_vertex_index];
@@ -260,26 +274,25 @@ void compute_edges_geodesic(
 			}
 
 			// Note down the node-vertex distance.
-			*node_to_vertex_distances.mutable_data(node_index, next_vertex_index) = next_vertex_distance;
+			*node_to_vertex_distances_out.mutable_data(node_index, next_vertex_index) = next_vertex_distance;
 
 			// We visit the vertex, and check all his neighbors.
 			// We add only valid vertices under a certain distance
 			visited_vertices.insert(next_vertex_index);
-			Eigen::Vector3f next_vertex_position(*vertex_positions.data(next_vertex_index, 0),
-			                                     *vertex_positions.data(next_vertex_index, 1),
-			                                     *vertex_positions.data(next_vertex_index, 2));
+			Eigen::Vector3f next_vertex_position(*vertex_positions_in.data(next_vertex_index, 0),
+			                                     *vertex_positions_in.data(next_vertex_index, 1),
+			                                     *vertex_positions_in.data(next_vertex_index, 2));
 
 			const auto& next_neighbors = vertex_neighbors[next_vertex_index];
 			for (int neighbor_index : next_neighbors) {
 
-				bool is_valid_vertex = *valid_vertices.data(neighbor_index);
-				if (allow_only_valid_vertices && !is_valid_vertex) {
+				if (!std::forward<TVertexCheckLambda>(vertex_is_valid)(neighbor_index)) {
 					continue;
 				}
 
-				Eigen::Vector3f neighbor_vertex_position(*vertex_positions.data(neighbor_index, 0),
-				                                         *vertex_positions.data(neighbor_index, 1),
-				                                         *vertex_positions.data(neighbor_index, 2));
+				Eigen::Vector3f neighbor_vertex_position(*vertex_positions_in.data(neighbor_index, 0),
+				                                         *vertex_positions_in.data(neighbor_index, 1),
+				                                         *vertex_positions_in.data(neighbor_index, 2));
 				float distance = next_vertex_distance + (next_vertex_position - neighbor_vertex_position).norm();
 
 				if (enforce_total_num_neighbors) {
@@ -297,26 +310,136 @@ void compute_edges_geodesic(
 
 		float weight_sum = 0.f;
 		for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
-			*graph_edges.mutable_data(node_index, neighbor_index) = neighbor_node_indices[neighbor_index];
+			*graph_edges_out.mutable_data(node_index, neighbor_index) = neighbor_node_indices[neighbor_index];
 			weight_sum += neighbor_node_weights[neighbor_index];
 		}
 
 		// Normalize weights
 		if (weight_sum > 0) {
 			for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
-				*graph_edges_weights.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
+				*graph_edges_weights_out.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
 			}
 		} else if (neighbor_count > 0) {
 			for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
-				*graph_edges_weights.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / neighbor_count;
+				*graph_edges_weights_out.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / neighbor_count;
 			}
 		}
 
 		// Store edge distance.
 		for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
-			*graph_edges_distances.mutable_data(node_index, neighbor_index) = neighbor_node_distances[neighbor_index];
+			*graph_edges_distances_out.mutable_data(node_index, neighbor_index) = neighbor_node_distances[neighbor_index];
 		}
 	}
+}
+
+/**
+ * \brief Compute the graph edges between nodes, connecting nearest nodes using geodesic distances.
+ * \param vertex_positions_in
+ * \param vertex_mask_in
+ * \param face_indices_in
+ * \param node_indices_in
+ * \param max_neighbor_count
+ * \param node_coverage
+ * \param graph_edges_out
+ * \param graph_edges_weights_out
+ * \param graph_edges_distances_out
+ * \param node_to_vertex_distances_out
+ * \param enforce_total_num_neighbors
+ */
+void compute_edges_geodesic(
+		const py::array_t<float>& vertex_positions_in,
+		const py::array_t<bool>& vertex_mask_in,
+		const py::array_t<int>& face_indices_in,
+		const py::array_t<int>& node_indices_in,
+		const int max_neighbor_count, const float node_coverage,
+		py::array_t<int>& graph_edges_out,
+		py::array_t<float>& graph_edges_weights_out,
+		py::array_t<float>& graph_edges_distances_out,
+		py::array_t<float>& node_to_vertex_distances_out,
+		const bool enforce_total_num_neighbors
+) {
+	compute_edges_geodesic_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                               graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                               enforce_total_num_neighbors,
+	                               [&vertex_mask_in](int vertex_index) { return *vertex_mask_in.data(vertex_index); });
+}
+
+void compute_edges_geodesic(
+		const py::array_t<float>& vertex_positions_in,
+		const py::array_t<int>& face_indices_in,
+		const py::array_t<int>& node_indices_in,
+		const int max_neighbor_count, const float node_coverage,
+		py::array_t<int>& graph_edges_out,
+		py::array_t<float>& graph_edges_weights_out,
+		py::array_t<float>& graph_edges_distances_out,
+		py::array_t<float>& node_to_vertex_distances_out,
+		const bool enforce_total_num_neighbors
+) {
+	compute_edges_geodesic_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                               graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                               enforce_total_num_neighbors,
+	                               [](int vertex_index) { return true; });
+}
+
+py::tuple compute_edges_geodesic(
+		const py::array_t<float>& vertex_positions_in,
+		const py::array_t<bool>& vertex_mask_in,
+		const py::array_t<int>& face_indices_in,
+		const py::array_t<int>& node_indices_in,
+		const int max_neighbor_count,
+		const float node_coverage,
+		const bool enforce_total_num_neighbors) {
+
+
+	const ssize_t node_count = node_indices_in.shape(0);
+	const ssize_t vertex_count = vertex_positions_in.shape(0);
+
+	py::array_t<int> graph_edges_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	std::fill_n(graph_edges_out.mutable_data(0, 0), graph_edges_out.size(), -1);
+
+	py::array_t<float> graph_edges_weights_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	memset(graph_edges_weights_out.mutable_data(0, 0), 0, graph_edges_weights_out.size() * sizeof(float));
+
+	py::array_t<float> graph_edges_distances_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	memset(graph_edges_distances_out.mutable_data(0, 0), 0, graph_edges_distances_out.size() * sizeof(float));
+
+	py::array_t<float> node_to_vertex_distances_out({node_count, vertex_count});
+	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0), node_to_vertex_distances_out.size(), -1.f);
+
+	compute_edges_geodesic(vertex_positions_in, vertex_mask_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                       graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                       enforce_total_num_neighbors);
+
+	return py::make_tuple(graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out);
+}
+
+py::tuple compute_edges_geodesic(
+		const py::array_t<float>& vertex_positions_in,
+		const py::array_t<int>& face_indices_in,
+		const py::array_t<int>& node_indices_in,
+		const int max_neighbor_count, const float node_coverage,
+		const bool enforce_total_num_neighbors
+) {
+	const ssize_t node_count = node_indices_in.shape(0);
+	const ssize_t vertex_count = vertex_positions_in.shape(0);
+
+	py::array_t<int> graph_edges_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	std::fill_n(graph_edges_out.mutable_data(0, 0, 0), graph_edges_out.size(), -1);
+
+	py::array_t<float> graph_edges_weights_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	memset(graph_edges_weights_out.mutable_data(0, 0, 0), 0, graph_edges_weights_out.size() * sizeof(float));
+
+	py::array_t<float> graph_edges_distances_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
+	memset(graph_edges_distances_out.mutable_data(0, 0, 0), 0, graph_edges_distances_out.size() * sizeof(float));
+
+	py::array_t<float> node_to_vertex_distances_out({node_count, vertex_count});
+	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0, 0), node_to_vertex_distances_out.size(), -1.f);
+
+	compute_edges_geodesic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                       graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                       enforce_total_num_neighbors);
+
+	return py::make_tuple(graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out);
 }
 
 
