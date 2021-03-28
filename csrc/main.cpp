@@ -110,25 +110,13 @@ PYBIND11_MODULE(nnrt, m) {
 	      py::overload_cast<const py::array_t<float>&, const py::array_t<bool>&, const py::array_t<int>&,
 			      const py::array_t<int>&, int, float, bool>(&graph_proc::compute_edges_geodesic),
 	      "vertex_positions_in"_a, "vertex_mask_in"_a, "face_indices_in"_a, "node_indices_in"_a,
-	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a,
-	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
-	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
-	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
-	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
-	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry "
-	      "in the node.");
+	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a);
 
 	m.def("compute_edges_geodesic",
 	      py::overload_cast<const py::array_t<float>&, const py::array_t<int>&,
 			      const py::array_t<int>&, int, float, bool>(&graph_proc::compute_edges_geodesic),
 	      "vertex_positions_in"_a, "face_indices_in"_a, "node_indices_in"_a,
-	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a,
-	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
-	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
-	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
-	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
-	      "If the source node has no geodesic neighbors, the nearest euclidean neighbor node's index will appear as the first and only entry in"
-	      " the node.");
+	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a);
 
 
 	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "canonical_node_positions"_a, "max_neighbor_count"_a,
@@ -170,7 +158,9 @@ PYBIND11_MODULE(nnrt, m) {
 	      "graph_edges"_a, "valid_nodes_mask"_a, "Remove invalid nodes");
 
 	m.def("compute_clusters", &graph_proc::compute_clusters,
-	      "graph_edges"_a, "graph_clusters"_a, "Computes graph node clusters");
+	      "graph_edges_in"_a,
+	      "Computes graph node clusters sizes. Output is in the form of a tuple (sizes, clusters), where clusters is an N x 1 array"
+	      " (N being the number of nodes, i.e. number of rows in the input graph_edges_in array).");
 
 	m.def("update_pixel_anchors", &graph_proc::update_pixel_anchors, "node_id_mapping"_a,
 	      "pixel_anchors"_a,
@@ -180,7 +170,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float, py::array_t<float>&, py::array_t<int>&, py::array_t<int>&, py::array_t<float>&>(
 			      &graph_proc::construct_regular_graph),
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
-	      "edge_threshold"_a, "max_point_to_node_distance"_a, "max_depth"_a,
+	      "edge_threshold"_a, "node_coverage"_a, "max_depth"_a,
 	      "graph_nodes"_a, "graph_edges"_a, "pixel_anchors"_a, "pixel_weights"_a,
 	      "Sample graph uniformly in pixel space, and compute pixel anchors");
 
@@ -188,7 +178,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      py::overload_cast<const py::array_t<float>&, int, int, float, float, float>(
 			      &graph_proc::construct_regular_graph),
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
-	      "edge_threshold"_a, "max_point_to_node_distance"_a, "max_depth"_a,
+	      "edge_threshold"_a, "node_coverage"_a, "max_depth"_a,
 	      "Samples graph uniformly in pixel space, and computes pixel anchors");
 
 

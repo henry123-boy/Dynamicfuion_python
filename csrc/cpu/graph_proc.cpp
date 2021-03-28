@@ -424,16 +424,16 @@ py::tuple compute_edges_geodesic(
 	const ssize_t vertex_count = vertex_positions_in.shape(0);
 
 	py::array_t<int> graph_edges_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
-	std::fill_n(graph_edges_out.mutable_data(0, 0, 0), graph_edges_out.size(), -1);
+	std::fill_n(graph_edges_out.mutable_data(0, 0), graph_edges_out.size(), -1);
 
 	py::array_t<float> graph_edges_weights_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
-	memset(graph_edges_weights_out.mutable_data(0, 0, 0), 0, graph_edges_weights_out.size() * sizeof(float));
+	memset(graph_edges_weights_out.mutable_data(0, 0), 0, graph_edges_weights_out.size() * sizeof(float));
 
 	py::array_t<float> graph_edges_distances_out({node_count, static_cast<ssize_t>(max_neighbor_count)});
-	memset(graph_edges_distances_out.mutable_data(0, 0, 0), 0, graph_edges_distances_out.size() * sizeof(float));
+	memset(graph_edges_distances_out.mutable_data(0, 0), 0, graph_edges_distances_out.size() * sizeof(float));
 
 	py::array_t<float> node_to_vertex_distances_out({node_count, vertex_count});
-	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0, 0), node_to_vertex_distances_out.size(), -1.f);
+	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0), node_to_vertex_distances_out.size(), -1.f);
 
 	compute_edges_geodesic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
 	                       graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
@@ -584,20 +584,23 @@ void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<boo
 	}
 }
 
-std::vector<int> compute_clusters(
-		const py::array_t<int> graph_edges,
-		py::array_t<int> graph_clusters
+py::tuple compute_clusters(
+		const py::array_t<int>& graph_edges_in
 ) {
-	int num_nodes = graph_edges.shape(0);
-	int max_num_neighbors = graph_edges.shape(1);
+
+	int node_count = graph_edges_in.shape(0);
+	int max_neighbor_count = graph_edges_in.shape(1);
+
+	py::array_t<int> graph_clusters_out ({static_cast<ssize_t>(node_count), static_cast<ssize_t>(1)});
+	std::fill_n(graph_clusters_out.mutable_data(0,0), graph_clusters_out.size(), -1);
 
 	// convert graph_edges to a vector of sets
-	std::vector<std::set<int>> node_neighbors(num_nodes);
+	std::vector<std::set<int>> node_neighbors(node_count);
 
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
-		for (int neighbor_idx = 0; neighbor_idx < max_num_neighbors; ++neighbor_idx) {
+	for (int node_id = 0; node_id < node_count; ++node_id) {
+		for (int neighbor_idx = 0; neighbor_idx < max_neighbor_count; ++neighbor_idx) {
 
-			int neighbor_id = *graph_edges.data(node_id, neighbor_idx);
+			int neighbor_id = *graph_edges_in.data(node_id, neighbor_idx);
 
 			if (neighbor_id == -1) {
 				break;
@@ -608,23 +611,23 @@ std::vector<int> compute_clusters(
 		}
 	}
 
-	std::vector<int> cluster_ids(num_nodes, -1);
-	std::vector<int> clusters_size;
+	std::vector<int> cluster_ids(node_count, -1);
+	std::vector<int> cluster_sizes_out;
 
 	int cluster_id = 0;
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
+	for (int node_id = 0; node_id < node_count; ++node_id) {
 		int cluster_size = traverse_neighbors(node_neighbors, cluster_ids, cluster_id, node_id);
 		if (cluster_size > 0) {
 			cluster_id++;
-			clusters_size.push_back(cluster_size);
+			cluster_sizes_out.push_back(cluster_size);
 		}
 	}
 
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
-		*graph_clusters.mutable_data(node_id, 0) = cluster_ids[node_id];
+	for (int node_id = 0; node_id < node_count; ++node_id) {
+		*graph_clusters_out.mutable_data(node_id, 0) = cluster_ids[node_id];
 	}
 
-	return clusters_size;
+	return py::make_tuple(cluster_sizes_out, graph_clusters_out);
 }
 
 inline void compute_nearest_geodesic_nodes(
@@ -701,13 +704,16 @@ void compute_pixel_anchors_geodesic(
 		}
 	}
 
-	int num_vertices = vertices.shape(0);
+	int vertex_count = vertices.shape(0);
 
-#pragma omp parallel for
-	for (int vertex_id = 0; vertex_id < num_vertices; vertex_id++) {
+	//__DEBUG
+// #pragma omp parallel for
+	std::cout << "__DEBUG 1" << std::endl;
+	for (int vertex_id = 0; vertex_id < vertex_count; vertex_id++) {
 		// Get corresponding pixel location
 		int u = *vertex_pixels.data(vertex_id, 0);
 		int v = *vertex_pixels.data(vertex_id, 1);
+		std::cout << "__DEBUG 2: " << vertex_id << std::endl;
 
 		// Initialize some variables
 		std::vector<int> nearest_geodesic_node_ids;
@@ -723,6 +729,7 @@ void compute_pixel_anchors_geodesic(
 				node_to_vertex_distance, valid_nodes_mask, vertex_id,
 				nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
 		);
+		std::cout << "__DEBUG 3: " << vertex_id << std::endl;
 
 		int anchor_count = nearest_geodesic_node_ids.size();
 
@@ -737,6 +744,8 @@ void compute_pixel_anchors_geodesic(
 			skinning_weights.push_back(weight);
 		}
 
+		std::cout << "__DEBUG 4: " << vertex_id << std::endl;
+
 		// Normalize the skinning weights.
 		if (weight_sum > 0) {
 			for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
@@ -747,12 +756,14 @@ void compute_pixel_anchors_geodesic(
 				skinning_weights[anchor_index] = 1.f / static_cast<float>(anchor_count);
 			}
 		}
+		std::cout << "__DEBUG 5: " << vertex_id << std::endl;
 
 		// Store the results.
 		for (int i = 0; i < anchor_count; i++) {
 			*pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
 			*pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
 		}
+		std::cout << "__DEBUG 6: " << vertex_id << std::endl;
 	}
 }
 

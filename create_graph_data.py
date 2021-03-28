@@ -2,7 +2,7 @@ import os
 import numpy as np
 from skimage import io
 import open3d as o3d
-
+import cv2
 
 from utils import utils, image_proc
 
@@ -14,7 +14,6 @@ from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
 from nnrt import compute_pixel_anchors_geodesic as compute_pixel_anchors_geodesic_c
 from nnrt import compute_clusters as compute_clusters_c
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
-
 
 if __name__ == "__main__":
     #########################################################################
@@ -31,7 +30,7 @@ if __name__ == "__main__":
     EROSION_MIN_NEIGHBORS = 4
 
     # Node sampling and edges computation
-    NODE_COVERAGE = 0.05 # in meters
+    NODE_COVERAGE = 0.05  # in meters
     USE_ONLY_VALID_VERTICES = True
     NUM_NEIGHBORS = 8
     ENFORCE_TOTAL_NUM_NEIGHBORS = False
@@ -41,7 +40,7 @@ if __name__ == "__main__":
     NEIGHBORHOOD_DEPTH = 2
 
     MIN_CLUSTER_SIZE = 3
-    MIN_NUM_NEIGHBORS = 2 
+    MIN_NUM_NEIGHBORS = 2
 
     # Node clean-up
     REMOVE_NODES_WITH_NOT_ENOUGH_NEIGHBORS = True
@@ -49,7 +48,7 @@ if __name__ == "__main__":
     #########################################################################
     # Paths.
     #########################################################################
-    seq_dir = os.path.join("example_data" , "train", "seq258")
+    seq_dir = os.path.join("example_data", "train", "seq258")
 
     depth_image_path = os.path.join(seq_dir, "depth", "000000.png")
     mask_image_path = os.path.join(seq_dir, "mask", "000000_shirt.png")
@@ -70,10 +69,10 @@ if __name__ == "__main__":
     cy = intrinsics[1, 2]
 
     # Load depth image.
-    depth_image = io.imread(depth_image_path) 
+    depth_image = io.imread(depth_image_path)
 
     # Load mask image.
-    mask_image = io.imread(mask_image_path) 
+    mask_image = io.imread(mask_image_path)
 
     # Load scene flow image.
     scene_flow_image = utils.load_flow(scene_flow_path)
@@ -103,11 +102,11 @@ if __name__ == "__main__":
     faces = np.zeros((0), dtype=np.int32)
 
     compute_mesh_from_depth_and_flow_c(
-        point_image, scene_flow_image, 
-        MAX_TRIANGLE_DISTANCE, 
+        point_image, scene_flow_image,
+        MAX_TRIANGLE_DISTANCE,
         vertices, vertex_flows, vertex_pixels, faces
     )
-    
+
     num_vertices = vertices.shape[0]
     num_faces = faces.shape[0]
 
@@ -141,7 +140,7 @@ if __name__ == "__main__":
     # Sample graph nodes.
     node_coords, node_indices = sample_nodes_c(
         vertices, valid_vertices,
-        NODE_COVERAGE, 
+        NODE_COVERAGE,
         USE_ONLY_VALID_VERTICES,
         SAMPLE_RANDOM_SHUFFLE
     )
@@ -176,7 +175,6 @@ if __name__ == "__main__":
 
     # Remove nodes 
     valid_nodes_mask = np.ones((num_nodes, 1), dtype=bool)
-    node_id_black_list = []
 
     if REMOVE_NODES_WITH_NOT_ENOUGH_NEIGHBORS:
         # Mark nodes with not enough neighbors
@@ -185,6 +183,7 @@ if __name__ == "__main__":
         # Get the list of invalid nodes
         node_id_black_list = np.where(valid_nodes_mask is False)[0].tolist()
     else:
+        node_id_black_list = []
         print("You're allowing nodes with not enough neighbors!")
 
     print("Node filtering: initial num nodes", num_nodes, "| invalid nodes", len(node_id_black_list), "({})".format(node_id_black_list))
@@ -192,32 +191,28 @@ if __name__ == "__main__":
     #########################################################################
     # Compute pixel anchors.
     #########################################################################
-    pixel_anchors = np.zeros((0), dtype=np.int32)
-    pixel_weights = np.zeros((0), dtype=np.float32)
-
-    compute_pixel_anchors_geodesic_c(
-        node_to_vertex_distances, valid_nodes_mask, 
-        vertices, vertex_pixels, 
-        pixel_anchors, pixel_weights,
+    pixel_anchors, pixel_weights = compute_pixel_anchors_geodesic_c(
+        node_to_vertex_distances, valid_nodes_mask,
+        vertices, vertex_pixels,
         width, height, NODE_COVERAGE
     )
-   
+
     print("Valid pixels:", np.sum(np.all(pixel_anchors != -1, axis=2)))
 
-    # Just for debugging.
-    # pixel_anchors_image = np.sum(pixel_anchors, axis=2)
-    # pixel_anchors_mask = np.copy(pixel_anchors_image).astype(np.uint8)
-    # pixel_anchors_mask[...] = 1
-    # pixel_anchors_mask[pixel_anchors_image == -4] = 0
-    # utils.save_grayscale_image("output/pixel_anchors_mask.jpeg", pixel_anchors_mask)
+    if VISUAL_DEBUGGING:
+        pixel_anchors_image = np.sum(pixel_anchors, axis=2)
+        pixel_anchors_mask_ed = np.copy(pixel_anchors_image).astype(np.uint8)
+        pixel_anchors_mask_ed[...] = 1
+        pixel_anchors_mask_ed[pixel_anchors_image == -4] = 0
+        utils.save_grayscale_image("pixel_anchors_mask_ed.jpeg", pixel_anchors_mask_ed)
 
     # Get only valid nodes and their corresponding info
-    node_coords           = node_coords[valid_nodes_mask.squeeze()]
-    node_indices          = node_indices[valid_nodes_mask.squeeze()]
-    node_deformations     = node_deformations[valid_nodes_mask.squeeze()]
-    graph_edges           = graph_edges[valid_nodes_mask.squeeze()] 
-    graph_edges_weights   = graph_edges_weights[valid_nodes_mask.squeeze()] 
-    graph_edges_distances = graph_edges_distances[valid_nodes_mask.squeeze()] 
+    node_coords = node_coords[valid_nodes_mask.squeeze()]
+    node_indices = node_indices[valid_nodes_mask.squeeze()]
+    node_deformations = node_deformations[valid_nodes_mask.squeeze()]
+    graph_edges = graph_edges[valid_nodes_mask.squeeze()]
+    graph_edges_weights = graph_edges_weights[valid_nodes_mask.squeeze()]
+    graph_edges_distances = graph_edges_distances[valid_nodes_mask.squeeze()]
 
     #########################################################################
     # Graph checks.
@@ -225,7 +220,7 @@ if __name__ == "__main__":
     num_nodes = node_coords.shape[0]
 
     # Check that we have enough nodes
-    if (num_nodes == 0):
+    if num_nodes == 0:
         print("No nodes! Exiting ...")
         exit()
 
@@ -247,27 +242,29 @@ if __name__ == "__main__":
             valid_neighboring_nodes = np.invert(np.isin(graph_edge, node_id_black_list))
 
             # make a copy of the current neighbors' ids
-            graph_edge_copy           = np.copy(graph_edge)
-            graph_edge_weights_copy   = np.copy(graph_edges_weights[node_id])
+            graph_edge_copy = np.copy(graph_edge)
+            graph_edge_weights_copy = np.copy(graph_edges_weights[node_id])
             graph_edge_distances_copy = np.copy(graph_edges_distances[node_id])
 
             # set the neighbors' ids to -1
-            graph_edges[node_id]           = -np.ones_like(graph_edge_copy)
-            graph_edges_weights[node_id]   =  np.zeros_like(graph_edge_weights_copy)
-            graph_edges_distances[node_id] =  np.zeros_like(graph_edge_distances_copy)
+            graph_edges[node_id] = -np.ones_like(graph_edge_copy)
+            graph_edges_weights[node_id] = np.zeros_like(graph_edge_weights_copy)
+            graph_edges_distances[node_id] = np.zeros_like(graph_edge_distances_copy)
 
             count_valid_neighbors = 0
             for neighbor_idx, is_valid_neighbor in enumerate(valid_neighboring_nodes):
                 if is_valid_neighbor:
                     # current neighbor id
-                    current_neighbor_id = graph_edge_copy[neighbor_idx]    
+                    current_neighbor_id = graph_edge_copy[neighbor_idx]
 
                     # get mapped neighbor id       
-                    if current_neighbor_id == -1: mapped_neighbor_id = -1
-                    else:                         mapped_neighbor_id = node_id_mapping[current_neighbor_id]    
+                    if current_neighbor_id == -1:
+                        mapped_neighbor_id = -1
+                    else:
+                        mapped_neighbor_id = node_id_mapping[current_neighbor_id]
 
-                    graph_edges[node_id, count_valid_neighbors]           = mapped_neighbor_id
-                    graph_edges_weights[node_id, count_valid_neighbors]   = graph_edge_weights_copy[neighbor_idx]
+                    graph_edges[node_id, count_valid_neighbors] = mapped_neighbor_id
+                    graph_edges_weights[node_id, count_valid_neighbors] = graph_edge_weights_copy[neighbor_idx]
                     graph_edges_distances[node_id, count_valid_neighbors] = graph_edge_distances_copy[neighbor_idx]
 
                     count_valid_neighbors += 1
@@ -287,12 +284,11 @@ if __name__ == "__main__":
     #########################################################################
     # Compute clusters.
     #########################################################################
-    graph_clusters = -np.ones((graph_edges.shape[0], 1), dtype=np.int32)
-    clusters_size_list = compute_clusters_c(graph_edges, graph_clusters)
+    cluster_sizes, graph_clusters = compute_clusters_c(graph_edges)
 
-    for i, cluster_size in enumerate(clusters_size_list):
+    for i, cluster_size in enumerate(cluster_sizes):
         if cluster_size <= 2:
-            print("Cluster is too small {}".format(clusters_size_list))
+            print("Cluster is too small {}".format(cluster_sizes))
             print("It only has nodes:", np.where(graph_clusters == i)[0])
             exit()
 
@@ -320,14 +316,14 @@ if __name__ == "__main__":
     dst_pixel_weights_dir = os.path.join(seq_dir, "pixel_weights")
     if not os.path.exists(dst_pixel_weights_dir): os.makedirs(dst_pixel_weights_dir)
 
-    output_graph_nodes_path           = os.path.join(dst_graph_nodes_dir, pair_name           + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_graph_edges_path           = os.path.join(dst_graph_edges_dir, pair_name           + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_graph_edges_weights_path   = os.path.join(dst_graph_edges_weights_dir, pair_name   + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_node_deformations_path     = os.path.join(dst_node_deformations_dir, pair_name     + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_graph_clusters_path        = os.path.join(dst_graph_clusters_dir, pair_name        + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_pixel_anchors_path         = os.path.join(dst_pixel_anchors_dir, pair_name         + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    output_pixel_weights_path         = os.path.join(dst_pixel_weights_dir, pair_name         + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
-    
+    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_graph_edges_path = os.path.join(dst_graph_edges_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_node_deformations_path = os.path.join(dst_node_deformations_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+    output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+
     utils.save_graph_nodes(output_graph_nodes_path, node_coords)
     utils.save_graph_edges(output_graph_edges_path, graph_edges)
     utils.save_graph_edges_weights(output_graph_edges_weights_path, graph_edges_weights)
@@ -343,4 +339,3 @@ if __name__ == "__main__":
     assert np.array_equal(graph_clusters, utils.load_graph_clusters(output_graph_clusters_path))
     assert np.array_equal(pixel_anchors, utils.load_int_image(output_pixel_anchors_path))
     assert np.array_equal(pixel_weights, utils.load_float_image(output_pixel_weights_path))
-

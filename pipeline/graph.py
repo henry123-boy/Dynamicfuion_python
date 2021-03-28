@@ -82,10 +82,13 @@ def find_knn_graph_connected_components(knn_edges: np.ndarray) -> np.ndarray:
 
 
 class DeformationGraph:
-    def __init__(self, canonical_node_positions: np.ndarray, edges: np.ndarray, clusters: np.ndarray):
+    def __init__(self, canonical_node_positions: np.ndarray, edges: np.ndarray, edge_weights: np.ndarray,
+                 edge_distances: np.ndarray, node_to_vertex_distances: np.ndarray, clusters: np.ndarray):
         self.canonical_node_positions = canonical_node_positions
         self.edges = edges
-        self.edge_weights = np.ones_like(edges, dtype=np.float32)
+        self.edge_weights = edge_weights
+        self.edge_distances = edge_distances
+        self.node_to_vertex_distances = node_to_vertex_distances
         self.clusters = clusters
         self.live_node_positions = canonical_node_positions.copy()
 
@@ -99,17 +102,34 @@ class DeformationGraph:
         return knn_graph_to_line_set(self.live_node_positions, self.edges, self.clusters)
 
 
-def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, max_point_to_node_distance: float) -> DeformationGraph:
+def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
+                                      erosion_iteration_count: int = 10, erosion_min_neighbor_count: int = 4,
+                                      neighbor_count: int = 8) -> DeformationGraph:
     vertex_positions = np.array(mesh.vertices)
     triangle_vertex_indices = np.array(mesh.triangles)
 
     # === Build deformation graph ===
 
-    erosion_mask = nnrt.get_vertex_erosion_mask(vertex_positions, triangle_vertex_indices, 1, 3)
-    node_positions, node_vertex_indices = nnrt.sample_nodes(vertex_positions, erosion_mask, max_point_to_node_distance, True)
-    edges = nnrt.compute_edges_geodesic(vertex_positions, triangle_vertex_indices, node_vertex_indices, 4, 0.5)
-    clusters = find_knn_graph_connected_components(knn_edges=edges)
-    return DeformationGraph(node_positions, edges, clusters)
+    erosion_mask = nnrt.get_vertex_erosion_mask(vertex_positions, triangle_vertex_indices, erosion_iteration_count, erosion_min_neighbor_count)
+    node_positions, node_vertex_indices = \
+        nnrt.sample_nodes(vertex_positions, erosion_mask, node_coverage, use_only_non_eroded_indices=True, random_shuffle=False)
+
+    node_count = node_positions.shape[0]
+
+    graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
+        nnrt.compute_edges_geodesic(vertex_positions, triangle_vertex_indices, node_vertex_indices,
+                                    neighbor_count, node_coverage, True)
+
+    # TODO: do the cleanup properly in a separate routine, follow logic from create_graph_data.py
+    # valid_nodes_mask = np.ones((node_count, 1), dtype=bool)
+    # # Mark nodes with not enough neighbors
+    # nnrt.node_and_edge_clean_up(graph_edges, valid_nodes_mask)
+    # # Get the list of invalid nodes
+    # node_id_black_list = np.where(valid_nodes_mask is False)[0].tolist()
+
+    cluster_sizes, graph_clusters = nnrt.compute_clusters(graph_edges)
+
+    return DeformationGraph(node_positions, graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances, graph_clusters)
 
 
 def build_deformation_graph_from_depth_image(depth_image: np.ndarray,

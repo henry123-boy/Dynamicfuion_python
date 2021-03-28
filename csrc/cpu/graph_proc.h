@@ -84,10 +84,7 @@ void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<boo
  * Compute node clusters based on connectivity.
  * @returns Sizes (number of nodes) of each cluster.
  */
-std::vector<int> compute_clusters(
-		const py::array_t<int> graph_edges,
-		py::array_t<int> graph_clusters
-);
+py::tuple compute_clusters(const py::array_t<int>& graph_edges_in);
 
 
 /**

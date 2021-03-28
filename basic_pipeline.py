@@ -160,7 +160,7 @@ def main() -> None:
         block_count=initial_block_count,
         device=device)
 
-    #__DEBUG
+    # __DEBUG
     previous_color_image = None
     previous_depth_image = None
     first_color_image = None
@@ -222,22 +222,20 @@ def main() -> None:
                 cropper=cropper
             )
 
-            # TODO: this will all need to be replaced somehow by using the isosurface vertices / render process...
-            #  before this, it can be optimized -- point_image is already computed inside prepare_pytorch_input,
-            #  that can be further split into subroutines that isolate the depth projection
-            point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
+            mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+            mesh.compute_vertex_normals()
 
-            # TODO: Weights & anchors should probably be computed for isosurface points instead of pixels (?)
-            # pixel_anchors = np.zeros(1, dtype=np.int32)
-            # pixel_weights = np.zeros(1, dtype=np.float32)
-            #
-            # nnrt.compute_pixel_anchors_geodesic(
-            #     deformation_graph.live_node_positions, deformation_graph.edges,
-            #     point_image, 1, 0.05, pixel_anchors, pixel_weights
-            # )
+            source_point_image = nnrt.backproject_depth_ushort(first_depth_image, fx, fy, cx, cy, 1000.0)
+            vertex_positions = np.array(mesh.vertices)
+
+            # TODO: this will all need to be replaced somehow by using the isosurface vertices / render process...
+            #  before this, it can be optimized -- target_point_image is already computed inside prepare_pytorch_input,
+            #  that can be further split into subroutines that isolate the depth projection
+            valid_nodes_mask = np.ones((vertex_positions.shape[0], 1), dtype=bool)
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_geodesic(
-                deformation_graph.live_node_positions, deformation_graph.edges,
-                point_image, 1, 0.05
+                deformation_graph.node_to_vertex_distances, valid_nodes_mask,
+                vertex_positions, source_point_image,
+                opt.image_width, opt.image_height, 0.05
             )
 
             pixel_anchors = cropper(pixel_anchors)
@@ -278,7 +276,6 @@ def main() -> None:
             # Get some of the results
             rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
             translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
-
 
             mask_pred = model_data["mask_pred"]
             assert mask_pred is not None, "Make sure use_mask=True in options.py"
