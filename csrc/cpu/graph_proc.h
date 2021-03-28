@@ -27,22 +27,21 @@ py::tuple sample_nodes(
 
 
 /**
- * Computes the graph edges between nodes, connecting nearest nodes using geodesic
- * distances.
- */
+	 * Computes the graph edges between nodes, connecting nearest nodes using geodesic
+	 * distances.
+	 */
 void compute_edges_geodesic(
 		const py::array_t<float>& vertex_positions,
 		const py::array_t<bool>& valid_vertices,
 		const py::array_t<int>& face_indices,
 		const py::array_t<int>& node_indices,
-		int max_neighbor_count,
-		float node_coverage,
+		const int max_neighbor_count, const float node_coverage,
 		py::array_t<int>& graph_edges,
-		py::array_t<float>& graph_edge_weights,
-		py::array_t<float>& graph_edge_distances,
+		py::array_t<float>& graph_edges_weights,
+		py::array_t<float>& graph_edges_distances,
 		py::array_t<float>& node_to_vertex_distances,
-		bool allow_only_valid_vertices,
-		bool enforce_total_num_neighbors
+		const bool allow_only_valid_vertices,
+		const bool enforce_total_num_neighbors
 );
 
 

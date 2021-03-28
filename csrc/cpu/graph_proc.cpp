@@ -107,7 +107,7 @@ py::tuple sample_nodes(
 		std::shuffle(std::begin(shuffled_vertices), std::end(shuffled_vertices), re);
 	}
 
-	struct NodeInformation{
+	struct NodeInformation {
 		Eigen::Vector3f vertex_position;
 		int vertex_index;
 	};
@@ -175,14 +175,13 @@ void compute_edges_geodesic(
 		const py::array_t<bool>& valid_vertices,
 		const py::array_t<int>& face_indices,
 		const py::array_t<int>& node_indices,
-		int max_neighbor_count,
-		float node_coverage,
+		const int max_neighbor_count, const float node_coverage,
 		py::array_t<int>& graph_edges,
-		py::array_t<float>& graph_edge_weights,
+		py::array_t<float>& graph_edges_weights,
 		py::array_t<float>& graph_edges_distances,
 		py::array_t<float>& node_to_vertex_distances,
-		bool allow_only_valid_vertices,
-		bool enforce_total_num_neighbors
+		const bool allow_only_valid_vertices,
+		const bool enforce_total_num_neighbors
 ) {
 	int vertex_count = vertex_positions.shape(0);
 	int face_count = face_indices.shape(0);
@@ -196,49 +195,49 @@ void compute_edges_geodesic(
 		for (int face_vertex_index = 0; face_vertex_index < 3; face_vertex_index++) {
 			int vertex_index = *face_indices.data(face_index, face_vertex_index);
 
-			// mark any vertex in the same triangle face as a neighbor of the other two
-			for (int neighbor_face_vertex_index = 0; neighbor_face_vertex_index < 3; neighbor_face_vertex_index++) {
-				int neighbor_vertex_index = *face_indices.data(face_index, neighbor_face_vertex_index);
+			for (int other_face_vertex_index = 0; other_face_vertex_index < 3; other_face_vertex_index++) {
+				int other_vertex_index = *face_indices.data(face_index, other_face_vertex_index);
 
-				if (vertex_index == neighbor_vertex_index) continue;
-				vertex_neighbors[vertex_index].insert(neighbor_vertex_index);
+				if (vertex_index == other_vertex_index) continue;
+				vertex_neighbors[vertex_index].insert(other_vertex_index);
 			}
 		}
 	}
 
 	// Compute inverse vertex -> node relationship.
-	vector<int> map_vertex_to_node(vertex_count, -1);
+	vector<int> vertex_to_node_map(vertex_count, -1);
 
-	for (int node_id = 0; node_id < node_count; node_id++) {
-		int vertex_index = *node_indices.data(node_id);
+	for (int node_index = 0; node_index < node_count; node_index++) {
+		int vertex_index = *node_indices.data(node_index);
 		if (vertex_index >= 0) {
-			map_vertex_to_node[vertex_index] = node_id;
+			vertex_to_node_map[vertex_index] = node_index;
 		}
 	}
 
-	// Construct geodesic edges.
 	//TODO: parallelize or remove pragma
 	// #pragma omp parallel for
-	for (int node_id = 0; node_id < node_count; node_id++) {
+	for (int node_index = 0; node_index < node_count; node_index++) {
+		// vertex queue
 		std::priority_queue<
 				std::pair<int, float>,
 				vector<std::pair<int, float>>,
-				CustomCompare> next_vertices_with_ids;
+				CustomCompare
+		> next_vertices_with_distances;
 
 		std::set<int> visited_vertices;
 
 		// Add node vertex as the first vertex to be visited.
-		int node_vertex_idx = *node_indices.data(node_id);
-		if (node_vertex_idx < 0) continue;
-		next_vertices_with_ids.push(std::make_pair(node_vertex_idx, 0.f));
+		int node_vertex_index = *node_indices.data(node_index);
+		if (node_vertex_index < 0) continue;
+		next_vertices_with_distances.push(std::make_pair(node_vertex_index, 0.f));
 
 		// Traverse all neighbors in the monotonically increasing order.
-		vector<int> neighbor_node_ids;
+		vector<int> neighbor_node_indices;
 		vector<float> neighbor_node_weights;
 		vector<float> neighbor_node_distances;
-		while (!next_vertices_with_ids.empty()) {
-			auto next_vertex = next_vertices_with_ids.top();
-			next_vertices_with_ids.pop();
+		while (!next_vertices_with_distances.empty()) {
+			auto next_vertex = next_vertices_with_distances.top();
+			next_vertices_with_distances.pop();
 
 			int next_vertex_index = next_vertex.first;
 			float next_vertex_distance = next_vertex.second;
@@ -252,72 +251,74 @@ void compute_edges_geodesic(
 			}
 
 			// We check if the vertex is a node.
-			int next_node_index = map_vertex_to_node[next_vertex_index];
-			if (next_node_index >= 0 && next_node_index != node_id) {
-				neighbor_node_ids.push_back(next_node_index);
+			int next_node_id = vertex_to_node_map[next_vertex_index];
+			if (next_node_id >= 0 && next_node_id != node_index) {
+				neighbor_node_indices.push_back(next_node_id);
 				neighbor_node_weights.push_back(compute_anchor_weight(next_vertex_distance, node_coverage));
 				neighbor_node_distances.push_back(next_vertex_distance);
-				if (neighbor_node_ids.size() >= max_neighbor_count) break;
+				if (neighbor_node_indices.size() >= max_neighbor_count) break;
 			}
 
 			// Note down the node-vertex distance.
-			*node_to_vertex_distances.mutable_data(next_node_index, next_vertex_index) = next_vertex_distance;
+			*node_to_vertex_distances.mutable_data(node_index, next_vertex_index) = next_vertex_distance;
 
 			// We visit the vertex, and check all his neighbors.
-			// We add only valid vertices under a certain distance.
+			// We add only valid vertices under a certain distance
 			visited_vertices.insert(next_vertex_index);
-			Eigen::Vector3f next_vertex_pos(*vertex_positions.data(next_vertex_index, 0),
-			                                *vertex_positions.data(next_vertex_index, 1),
-			                                *vertex_positions.data(next_vertex_index, 2));
+			Eigen::Vector3f next_vertex_position(*vertex_positions.data(next_vertex_index, 0),
+			                                     *vertex_positions.data(next_vertex_index, 1),
+			                                     *vertex_positions.data(next_vertex_index, 2));
 
 			const auto& next_neighbors = vertex_neighbors[next_vertex_index];
 			for (int neighbor_index : next_neighbors) {
+
 				bool is_valid_vertex = *valid_vertices.data(neighbor_index);
 				if (allow_only_valid_vertices && !is_valid_vertex) {
 					continue;
 				}
-				Eigen::Vector3f neighbor_vertex_pos(*vertex_positions.data(neighbor_index, 0),
-				                                    *vertex_positions.data(neighbor_index, 1),
-				                                    *vertex_positions.data(neighbor_index, 2));
-				float distance = next_vertex_distance + (next_vertex_pos - neighbor_vertex_pos).norm();
+
+				Eigen::Vector3f neighbor_vertex_position(*vertex_positions.data(neighbor_index, 0),
+				                                         *vertex_positions.data(neighbor_index, 1),
+				                                         *vertex_positions.data(neighbor_index, 2));
+				float distance = next_vertex_distance + (next_vertex_position - neighbor_vertex_position).norm();
 
 				if (enforce_total_num_neighbors) {
-					next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
+					next_vertices_with_distances.push(std::make_pair(neighbor_index, distance));
 				} else {
-
 					if (distance <= max_influence) {
-						next_vertices_with_ids.push(std::make_pair(neighbor_index, distance));
+						next_vertices_with_distances.push(std::make_pair(neighbor_index, distance));
 					}
 				}
 			}
 		}
 
 		// Store the nearest neighbors.
-		int nearest_neighbor_count = neighbor_node_ids.size();
+		int neighbor_count = neighbor_node_indices.size();
 
 		float weight_sum = 0.f;
-		for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
-			*graph_edges.mutable_data(node_id, neighbor_index) = neighbor_node_ids[neighbor_index];
+		for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
+			*graph_edges.mutable_data(node_index, neighbor_index) = neighbor_node_indices[neighbor_index];
 			weight_sum += neighbor_node_weights[neighbor_index];
 		}
 
 		// Normalize weights
 		if (weight_sum > 0) {
-			for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
-				*graph_edge_weights.mutable_data(node_id, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
+			for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
+				*graph_edges_weights.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
 			}
-		} else if (nearest_neighbor_count > 0) {
-			for (int neighbor_index = 0; neighbor_index < nearest_neighbor_count; neighbor_index++) {
-				*graph_edge_weights.mutable_data(node_id, neighbor_index) = neighbor_node_weights[neighbor_index] / weight_sum;
+		} else if (neighbor_count > 0) {
+			for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
+				*graph_edges_weights.mutable_data(node_index, neighbor_index) = neighbor_node_weights[neighbor_index] / neighbor_count;
 			}
 		}
 
 		// Store edge distance.
-		for (int i = 0; i < nearest_neighbor_count; i++) {
-			*graph_edges_distances.mutable_data(node_id, i) = neighbor_node_distances[i];
+		for (int neighbor_index = 0; neighbor_index < neighbor_count; neighbor_index++) {
+			*graph_edges_distances.mutable_data(node_index, neighbor_index) = neighbor_node_distances[neighbor_index];
 		}
 	}
 }
+
 
 py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, int max_neighbor_count) {
 	int node_count = node_positions.shape(0);
@@ -379,264 +380,264 @@ py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_position
 }
 
 inline int traverse_neighbors(const std::vector<std::set<int>>& node_neighbors, std::vector<int>& cluster_ids, int cluster_id, int node_id) {
-    if (cluster_ids[node_id] != -1) return 0;
+	if (cluster_ids[node_id] != -1) return 0;
 
-    std::set<int> active_node_indices;
+	std::set<int> active_node_indices;
 
-    // Initialize with current node.
-    int cluster_size = 0;
-    active_node_indices.insert(node_id);
+	// Initialize with current node.
+	int cluster_size = 0;
+	active_node_indices.insert(node_id);
 
-    // Process until we have no active nodes anymore.
-    while (!active_node_indices.empty()) {
-        int active_node_id = *active_node_indices.begin();
-        active_node_indices.erase(active_node_indices.begin());
+	// Process until we have no active nodes anymore.
+	while (!active_node_indices.empty()) {
+		int active_node_id = *active_node_indices.begin();
+		active_node_indices.erase(active_node_indices.begin());
 
-        if (cluster_ids[active_node_id] == -1) {
-            cluster_ids[active_node_id] = cluster_id;
-            ++cluster_size;
-        }
+		if (cluster_ids[active_node_id] == -1) {
+			cluster_ids[active_node_id] = cluster_id;
+			++cluster_size;
+		}
 
-        // Look if we need to process any of the neighbors
-        for (const auto& n_idx : node_neighbors[active_node_id]) {
-            if (cluster_ids[n_idx] == -1) {	// If it doesn't have a cluster yet
-                active_node_indices.insert(n_idx);
-            }
-        }
-    }
+		// Look if we need to process any of the neighbors
+		for (const auto& n_idx : node_neighbors[active_node_id]) {
+			if (cluster_ids[n_idx] == -1) {    // If it doesn't have a cluster yet
+				active_node_indices.insert(n_idx);
+			}
+		}
+	}
 
-    return cluster_size;
+	return cluster_size;
 }
 
 void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<bool>& valid_nodes_mask) {
-    int num_nodes = graph_edges.shape(0);
-    int max_num_neighbors = graph_edges.shape(1);
+	int num_nodes = graph_edges.shape(0);
+	int max_num_neighbors = graph_edges.shape(1);
 
-    std::list<int> removed_nodes;
+	std::list<int> removed_nodes;
 
-    while (true) {
-        int num_newly_removed_nodes = 0;
+	while (true) {
+		int num_newly_removed_nodes = 0;
 
-        for (int node_id = 0; node_id < num_nodes; ++node_id) {
+		for (int node_id = 0; node_id < num_nodes; ++node_id) {
 
-            if (*valid_nodes_mask.data(node_id, 0) == false) {
-                // if node has been already removed, continue
-                continue;
-            }
+			if (*valid_nodes_mask.data(node_id, 0) == false) {
+				// if node has been already removed, continue
+				continue;
+			}
 
-            int num_neighbors = 0;
-            for (int i = 0; i < max_num_neighbors; ++i) {
+			int num_neighbors = 0;
+			for (int i = 0; i < max_num_neighbors; ++i) {
 
-                int neighbor_id = *graph_edges.data(node_id, i);
+				int neighbor_id = *graph_edges.data(node_id, i);
 
-                // if neighboring node is -1, break, since by design 'graph_edges' has
-                // the shape [2, 3, 6, -1, -1, -1, -1, -1]
-                if (neighbor_id == -1) {
-                    break;
-                }
+				// if neighboring node is -1, break, since by design 'graph_edges' has
+				// the shape [2, 3, 6, -1, -1, -1, -1, -1]
+				if (neighbor_id == -1) {
+					break;
+				}
 
-                // if neighboring node has been marked as invalid, continue
-                if (std::find(removed_nodes.begin(), removed_nodes.end(), neighbor_id) != removed_nodes.end()) {
-                    continue;
-                }
+				// if neighboring node has been marked as invalid, continue
+				if (std::find(removed_nodes.begin(), removed_nodes.end(), neighbor_id) != removed_nodes.end()) {
+					continue;
+				}
 
-                ++num_neighbors;
-            }
+				++num_neighbors;
+			}
 
-            if (num_neighbors <= 1) {
-                // remove node
-                *valid_nodes_mask.mutable_data(node_id, 0) = false;
-                removed_nodes.emplace_back(node_id);
-                // std::cout << "\tremoving node_id " << node_id << std::endl;
-                ++num_newly_removed_nodes;
-            }
-        }
+			if (num_neighbors <= 1) {
+				// remove node
+				*valid_nodes_mask.mutable_data(node_id, 0) = false;
+				removed_nodes.emplace_back(node_id);
+				// std::cout << "\tremoving node_id " << node_id << std::endl;
+				++num_newly_removed_nodes;
+			}
+		}
 
-        // std::cout << "num_newly_removed_nodes: " << num_newly_removed_nodes << std::endl;
+		// std::cout << "num_newly_removed_nodes: " << num_newly_removed_nodes << std::endl;
 
-        if (num_newly_removed_nodes == 0) {
-            break;
-        }
-    }
+		if (num_newly_removed_nodes == 0) {
+			break;
+		}
+	}
 }
 
 std::vector<int> compute_clusters(
-    const py::array_t<int> graph_edges,
-    py::array_t<int> graph_clusters
+		const py::array_t<int> graph_edges,
+		py::array_t<int> graph_clusters
 ) {
-    int num_nodes = graph_edges.shape(0);
-    int max_num_neighbors = graph_edges.shape(1);
+	int num_nodes = graph_edges.shape(0);
+	int max_num_neighbors = graph_edges.shape(1);
 
-    // convert graph_edges to a vector of sets
-    std::vector<std::set<int>> node_neighbors(num_nodes);
+	// convert graph_edges to a vector of sets
+	std::vector<std::set<int>> node_neighbors(num_nodes);
 
-    for (int node_id = 0; node_id < num_nodes; ++node_id) {
-        for (int neighbor_idx = 0; neighbor_idx < max_num_neighbors; ++neighbor_idx) {
+	for (int node_id = 0; node_id < num_nodes; ++node_id) {
+		for (int neighbor_idx = 0; neighbor_idx < max_num_neighbors; ++neighbor_idx) {
 
-            int neighbor_id = *graph_edges.data(node_id, neighbor_idx);
+			int neighbor_id = *graph_edges.data(node_id, neighbor_idx);
 
-            if (neighbor_id == -1) {
-                break;
-            }
+			if (neighbor_id == -1) {
+				break;
+			}
 
-            node_neighbors[node_id].insert(neighbor_id);
-            node_neighbors[neighbor_id].insert(node_id);
-        }
-    }
+			node_neighbors[node_id].insert(neighbor_id);
+			node_neighbors[neighbor_id].insert(node_id);
+		}
+	}
 
-    std::vector<int> cluster_ids(num_nodes, -1);
-    std::vector<int> clusters_size;
+	std::vector<int> cluster_ids(num_nodes, -1);
+	std::vector<int> clusters_size;
 
-    int cluster_id = 0;
-    for (int node_id = 0; node_id < num_nodes; ++node_id) {
-        int cluster_size = traverse_neighbors(node_neighbors, cluster_ids, cluster_id, node_id);
-        if (cluster_size > 0) {
-            cluster_id++;
-            clusters_size.push_back(cluster_size);
-        }
-    }
+	int cluster_id = 0;
+	for (int node_id = 0; node_id < num_nodes; ++node_id) {
+		int cluster_size = traverse_neighbors(node_neighbors, cluster_ids, cluster_id, node_id);
+		if (cluster_size > 0) {
+			cluster_id++;
+			clusters_size.push_back(cluster_size);
+		}
+	}
 
-    for (int node_id = 0; node_id < num_nodes; ++node_id) {
-        *graph_clusters.mutable_data(node_id, 0) = cluster_ids[node_id];
-    }
+	for (int node_id = 0; node_id < num_nodes; ++node_id) {
+		*graph_clusters.mutable_data(node_id, 0) = cluster_ids[node_id];
+	}
 
-    return clusters_size;
+	return clusters_size;
 }
 
 inline void compute_nearest_geodesic_nodes(
-    const py::array_t<float>&  node_to_vertex_distance,
-    const py::array_t<int>& valid_nodes_mask,
-    const int vertex_id,
-    std::vector<int>& nearest_geodesic_node_ids,
-    std::vector<float>& dist_to_nearest_geodesic_nodes
+		const py::array_t<float>& node_to_vertex_distance,
+		const py::array_t<int>& valid_nodes_mask,
+		const int vertex_id,
+		std::vector<int>& nearest_geodesic_node_ids,
+		std::vector<float>& dist_to_nearest_geodesic_nodes
 ) {
-    int num_nodes = node_to_vertex_distance.shape(0);
+	int num_nodes = node_to_vertex_distance.shape(0);
 
-    std::map<int, float> node_map;
+	std::map<int, float> node_map;
 
-    for (int n = 0; n < num_nodes; ++n) {
+	for (int n = 0; n < num_nodes; ++n) {
 
-        // discard node if it was marked as invalid (due to not having enough neighbors)
-        if (*valid_nodes_mask.data(n, 0) == false) {
-            continue;
-        }
+		// discard node if it was marked as invalid (due to not having enough neighbors)
+		if (*valid_nodes_mask.data(n, 0) == false) {
+			continue;
+		}
 
-        float dist = *node_to_vertex_distance.data(n, vertex_id);
+		float dist = *node_to_vertex_distance.data(n, vertex_id);
 
-        if (dist >= 0) {
-            node_map.emplace(n, dist);
-        }
-    }
+		if (dist >= 0) {
+			node_map.emplace(n, dist);
+		}
+	}
 
-    // Sort the map by distance
-    // Declaring the type of Predicate that accepts 2 pairs and return a bool
-    typedef std::function<bool(std::pair<int, float>, std::pair<int, float>)> Comparator;
+	// Sort the map by distance
+	// Declaring the type of Predicate that accepts 2 pairs and return a bool
+	typedef std::function<bool(std::pair<int, float>, std::pair<int, float>)> Comparator;
 
-    // Defining a lambda function to compare two pairs. It will compare two pairs using second field
-    Comparator comp_functor =
-        [](std::pair<int, float> node1 ,std::pair<int, float> node2) {
-            return node1.second < node2.second;
-        };
+	// Defining a lambda function to compare two pairs. It will compare two pairs using second field
+	Comparator comp_functor =
+			[](std::pair<int, float> node1, std::pair<int, float> node2) {
+				return node1.second < node2.second;
+			};
 
-    // Declaring a set that will store the pairs using above comparision logic
-    std::set<std::pair<int, float>, Comparator> node_set(
-        node_map.begin(), node_map.end(), comp_functor
-    );
+	// Declaring a set that will store the pairs using above comparision logic
+	std::set<std::pair<int, float>, Comparator> node_set(
+			node_map.begin(), node_map.end(), comp_functor
+	);
 
-    for (auto n : node_set) {
-        nearest_geodesic_node_ids.push_back(n.first);
-        dist_to_nearest_geodesic_nodes.push_back(n.second);
+	for (auto n : node_set) {
+		nearest_geodesic_node_ids.push_back(n.first);
+		dist_to_nearest_geodesic_nodes.push_back(n.second);
 
-        if (nearest_geodesic_node_ids.size() == GRAPH_K) {
-            break;
-        }
-    }
+		if (nearest_geodesic_node_ids.size() == GRAPH_K) {
+			break;
+		}
+	}
 }
 
 void compute_pixel_anchors_geodesic(
-    const py::array_t<float> &node_to_vertex_distance,
-    const py::array_t<int> &valid_nodes_mask,
-    const py::array_t<float> &vertices,
-    const py::array_t<int> &vertex_pixels,
-    py::array_t<int>& pixel_anchors,
-    py::array_t<float>& pixel_weights,
-    int width, int height,
-    float node_coverage
+		const py::array_t<float>& node_to_vertex_distance,
+		const py::array_t<int>& valid_nodes_mask,
+		const py::array_t<float>& vertices,
+		const py::array_t<int>& vertex_pixels,
+		py::array_t<int>& pixel_anchors,
+		py::array_t<float>& pixel_weights,
+		int width, int height,
+		float node_coverage
 ) {
-    // Allocate graph node ids and corresponding skinning weights.
-    // Initialize with invalid anchors.
-    pixel_anchors.resize({ height, width, GRAPH_K }, false);
-    pixel_weights.resize({ height, width, GRAPH_K }, false);
+	// Allocate graph node ids and corresponding skinning weights.
+	// Initialize with invalid anchors.
+	pixel_anchors.resize({height, width, GRAPH_K}, false);
+	pixel_weights.resize({height, width, GRAPH_K}, false);
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            for (int k = 0; k < GRAPH_K; k++) {
-                *pixel_anchors.mutable_data(y, x, k) = -1;
-                *pixel_weights.mutable_data(y, x, k) = 0.f;
-            }
-        }
-    }
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			for (int k = 0; k < GRAPH_K; k++) {
+				*pixel_anchors.mutable_data(y, x, k) = -1;
+				*pixel_weights.mutable_data(y, x, k) = 0.f;
+			}
+		}
+	}
 
-    int num_vertices = vertices.shape(0);
+	int num_vertices = vertices.shape(0);
 
-    #pragma omp parallel for
-    for (int vertex_id = 0; vertex_id < num_vertices; vertex_id++) {
-        // Get corresponding pixel location
-        int u = *vertex_pixels.data(vertex_id, 0);
-        int v = *vertex_pixels.data(vertex_id, 1);
+#pragma omp parallel for
+	for (int vertex_id = 0; vertex_id < num_vertices; vertex_id++) {
+		// Get corresponding pixel location
+		int u = *vertex_pixels.data(vertex_id, 0);
+		int v = *vertex_pixels.data(vertex_id, 1);
 
-        // Initialize some variables
-        std::vector<int> nearest_geodesic_node_ids;
-        std::vector<float> dist_to_nearest_geodesic_nodes;
-        std::vector<float> skinning_weights;
+		// Initialize some variables
+		std::vector<int> nearest_geodesic_node_ids;
+		std::vector<float> dist_to_nearest_geodesic_nodes;
+		std::vector<float> skinning_weights;
 
-        nearest_geodesic_node_ids.reserve(GRAPH_K);
-        dist_to_nearest_geodesic_nodes.reserve(GRAPH_K);
-        skinning_weights.reserve(GRAPH_K);
+		nearest_geodesic_node_ids.reserve(GRAPH_K);
+		dist_to_nearest_geodesic_nodes.reserve(GRAPH_K);
+		skinning_weights.reserve(GRAPH_K);
 
-        // Find closest geodesic nodes
-        compute_nearest_geodesic_nodes(
-            node_to_vertex_distance, valid_nodes_mask, vertex_id,
-            nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
-        );
+		// Find closest geodesic nodes
+		compute_nearest_geodesic_nodes(
+				node_to_vertex_distance, valid_nodes_mask, vertex_id,
+				nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
+		);
 
-        int anchor_count = nearest_geodesic_node_ids.size();
+		int anchor_count = nearest_geodesic_node_ids.size();
 
-        // Compute skinning weights.
-        float weight_sum{ 0.f };
-        for (int i = 0; i < anchor_count; ++i) {
-            float geodesic_dist_to_node = dist_to_nearest_geodesic_nodes[i];
+		// Compute skinning weights.
+		float weight_sum{0.f};
+		for (int i = 0; i < anchor_count; ++i) {
+			float geodesic_dist_to_node = dist_to_nearest_geodesic_nodes[i];
 
-            float weight = compute_anchor_weight(geodesic_dist_to_node, node_coverage);
-            weight_sum += weight;
+			float weight = compute_anchor_weight(geodesic_dist_to_node, node_coverage);
+			weight_sum += weight;
 
-            skinning_weights.push_back(weight);
-        }
+			skinning_weights.push_back(weight);
+		}
 
-        // Normalize the skinning weights.
-	    if (weight_sum > 0) {
-		    for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
-			    skinning_weights[anchor_index] /= weight_sum;
-		    }
-	    } else if (anchor_count > 0) {
-		    for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
-			    skinning_weights[anchor_index] = 1.f / static_cast<float>(anchor_count);
-		    }
-	    }
+		// Normalize the skinning weights.
+		if (weight_sum > 0) {
+			for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
+				skinning_weights[anchor_index] /= weight_sum;
+			}
+		} else if (anchor_count > 0) {
+			for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
+				skinning_weights[anchor_index] = 1.f / static_cast<float>(anchor_count);
+			}
+		}
 
-        // Store the results.
-        for (int i = 0; i < anchor_count; i++) {
-            *pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
-            *pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
-        }
-    }
+		// Store the results.
+		for (int i = 0; i < anchor_count; i++) {
+			*pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
+			*pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
+		}
+	}
 }
 
 py::tuple compute_pixel_anchors_geodesic(
-		const py::array_t<float> &node_to_vertex_distance,
-		const py::array_t<int> &valid_nodes_mask,
-		const py::array_t<float> &vertices,
-		const py::array_t<int> &vertex_pixels,
+		const py::array_t<float>& node_to_vertex_distance,
+		const py::array_t<int>& valid_nodes_mask,
+		const py::array_t<float>& vertices,
+		const py::array_t<int>& vertex_pixels,
 		int width, int height,
 		float node_coverage) {
 	py::array_t<int> pixel_anchors;
@@ -998,31 +999,31 @@ py::tuple construct_regular_graph(
 
 
 void update_pixel_anchors(
-    const std::map<int, int>& node_id_mapping,
-    py::array_t<int>& pixel_anchors
+		const std::map<int, int>& node_id_mapping,
+		py::array_t<int>& pixel_anchors
 ) {
-    int height      = pixel_anchors.shape(0);
-    int width       = pixel_anchors.shape(1);
-    int num_anchors = pixel_anchors.shape(2);
+	int height = pixel_anchors.shape(0);
+	int width = pixel_anchors.shape(1);
+	int num_anchors = pixel_anchors.shape(2);
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
 
-            for (int a = 0; a < num_anchors; a++) {
+			for (int a = 0; a < num_anchors; a++) {
 
-                int current_anchor_id = *pixel_anchors.data(y, x, a);
+				int current_anchor_id = *pixel_anchors.data(y, x, a);
 
-                if (current_anchor_id != -1) {
-                    int mapped_anchor_id = node_id_mapping.at(current_anchor_id);
+				if (current_anchor_id != -1) {
+					int mapped_anchor_id = node_id_mapping.at(current_anchor_id);
 
-                    // update anchor only if it would actually change something
-                    if (mapped_anchor_id != current_anchor_id) {
-                        *pixel_anchors.mutable_data(y, x, a) = mapped_anchor_id;
-                    }
-                }
-            }
-        }
-    }
+					// update anchor only if it would actually change something
+					if (mapped_anchor_id != current_anchor_id) {
+						*pixel_anchors.mutable_data(y, x, a) = mapped_anchor_id;
+					}
+				}
+			}
+		}
+	}
 }
 
 } // namespace graph_proc

@@ -92,7 +92,6 @@ PYBIND11_MODULE(nnrt, m) {
 	      "use_only_non_eroded_indices"_a, "random_shuffle"_a,"Samples graph canonical_node_positions that cover given vertices.");
 
 	// procedures for deformation graph processing
-
 	m.def("compute_edges_geodesic", &graph_proc::compute_edges_geodesic, "vertex_positions"_a, "valid_vertices"_a,
 	      "face_indices"_a, "node_indices"_a, "max_neighbor_count"_a, "node_coverage"_a,
 	      "graph_edges"_a, "graph_edge_weights"_a, "graph_edge_distances"_a, "node_to_vertex_distances"_a,
