@@ -126,7 +126,7 @@ def main() -> None:
         frame_count = count_frames(os.path.join(frames_directory, "depth"), re.compile(r'\d{6}\.png'))
 
     first_depth_image_path = depth_image_filename_mask.format(0)
-    intrinsics_open3d_cpu = camera.load_intrinsics_from_text_4x4_matrix_and_first_image(depth_intrinsics_path, first_depth_image_path)
+    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_first_image(depth_intrinsics_path, first_depth_image_path)
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
     intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
     camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
@@ -194,6 +194,18 @@ def main() -> None:
 
             # === Construct initial deformation graph
             deformation_graph = graph.build_deformation_graph_from_mesh(mesh, 0.05)
+
+            simplified_mesh = mesh.simplify_quadric_decimation(100)
+            #__DEBUG
+            vertex_positions = np.array(simplified_mesh.vertices)
+            face_indices = np.array(simplified_mesh.triangles)
+
+            depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
+                                                  intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
+
+
+
+
             # uncomment to construct from image instead
             # deformation_graph = graph.build_deformation_graph_from_depth_image(depth_image, intrinsics_open3d_cpu, 16)
 
@@ -232,9 +244,10 @@ def main() -> None:
             #  before this, it can be optimized -- target_point_image is already computed inside prepare_pytorch_input,
             #  that can be further split into subroutines that isolate the depth projection
             valid_nodes_mask = np.ones((vertex_positions.shape[0], 1), dtype=bool)
+            vertex_pixels = None  # TODO
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_geodesic(
                 deformation_graph.node_to_vertex_distances, valid_nodes_mask,
-                vertex_positions, source_point_image,
+                vertex_positions, vertex_pixels,
                 opt.image_width, opt.image_height, 0.05
             )
 
@@ -254,8 +267,6 @@ def main() -> None:
             target_cuda = torch.from_numpy(target).cuda().unsqueeze(0)
             graph_nodes_cuda = torch.from_numpy(deformation_graph.live_node_positions).cuda().unsqueeze(0)
             graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
-            # TODO: edge weights are for now all "1.0" since it's not clear how they are computed
-            #  (and the default option disables them anyway)
             graph_edges_weights_cuda = torch.from_numpy(deformation_graph.edge_weights).cuda().unsqueeze(0)
             graph_clusters_cuda = torch.from_numpy(deformation_graph.clusters.reshape(-1, 1)).cuda().unsqueeze(0)
             pixel_anchors_cuda = torch.from_numpy(pixel_anchors).cuda().unsqueeze(0)

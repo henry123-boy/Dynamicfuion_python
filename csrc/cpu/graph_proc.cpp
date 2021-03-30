@@ -115,7 +115,6 @@ py::tuple sample_nodes(
 	std::vector<NodeInformation> node_information_vector;
 
 	for (int vertex_index : shuffled_vertices) {
-		// for (int vertexIdx = 0; vertexIdx < nVertices; ++vertexIdx) {
 		Eigen::Vector3f point(*vertex_positions_in.data(vertex_index, 0),
 		                      *vertex_positions_in.data(vertex_index, 1),
 		                      *vertex_positions_in.data(vertex_index, 2));
@@ -687,8 +686,8 @@ void compute_pixel_anchors_geodesic(
 		const py::array_t<int>& vertex_pixels,
 		py::array_t<int>& pixel_anchors,
 		py::array_t<float>& pixel_weights,
-		int width, int height,
-		float node_coverage
+		const int width, const int height,
+		const float node_coverage
 ) {
 	// Allocate graph node ids and corresponding skinning weights.
 	// Initialize with invalid anchors.
@@ -704,16 +703,14 @@ void compute_pixel_anchors_geodesic(
 		}
 	}
 
-	int vertex_count = vertices.shape(0);
+	const int vertex_count = vertices.shape(0);
 
-	//__DEBUG
-// #pragma omp parallel for
-	std::cout << "__DEBUG 1" << std::endl;
+	#pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask, node_to_vertex_distance)\
+	firstprivate(vertex_count, node_coverage)
 	for (int vertex_id = 0; vertex_id < vertex_count; vertex_id++) {
 		// Get corresponding pixel location
 		int u = *vertex_pixels.data(vertex_id, 0);
 		int v = *vertex_pixels.data(vertex_id, 1);
-		std::cout << "__DEBUG 2: " << vertex_id << std::endl;
 
 		// Initialize some variables
 		std::vector<int> nearest_geodesic_node_ids;
@@ -729,7 +726,6 @@ void compute_pixel_anchors_geodesic(
 				node_to_vertex_distance, valid_nodes_mask, vertex_id,
 				nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
 		);
-		std::cout << "__DEBUG 3: " << vertex_id << std::endl;
 
 		int anchor_count = nearest_geodesic_node_ids.size();
 
@@ -744,8 +740,6 @@ void compute_pixel_anchors_geodesic(
 			skinning_weights.push_back(weight);
 		}
 
-		std::cout << "__DEBUG 4: " << vertex_id << std::endl;
-
 		// Normalize the skinning weights.
 		if (weight_sum > 0) {
 			for (int anchor_index = 0; anchor_index < anchor_count; anchor_index++) {
@@ -756,14 +750,12 @@ void compute_pixel_anchors_geodesic(
 				skinning_weights[anchor_index] = 1.f / static_cast<float>(anchor_count);
 			}
 		}
-		std::cout << "__DEBUG 5: " << vertex_id << std::endl;
 
 		// Store the results.
 		for (int i = 0; i < anchor_count; i++) {
 			*pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
 			*pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
 		}
-		std::cout << "__DEBUG 6: " << vertex_id << std::endl;
 	}
 }
 
@@ -784,13 +776,13 @@ py::tuple compute_pixel_anchors_geodesic(
 void compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
-		float node_coverage,
+		const float node_coverage,
 		py::array_t<int>& pixel_anchors,
 		py::array_t<float>& pixel_weights
 ) {
-	int node_count = graph_nodes.shape(0);
-	int width = point_image.shape(2);
-	int height = point_image.shape(1);
+	const int node_count = graph_nodes.shape(0);
+	const int width = point_image.shape(2);
+	const int height = point_image.shape(1);
 
 	// Allocate graph node ids and corresponding skinning weights.
 	// Initialize with invalid anchors.
@@ -807,7 +799,7 @@ void compute_pixel_anchors_euclidean(
 	}
 
 	// Compute anchors for every pixel.
-#pragma omp parallel for
+#pragma omp parallel for default(none) shared(point_image, pixel_anchors, pixel_weights, graph_nodes), firstprivate(height, width, node_count, node_coverage)
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			// Query 3d pixel position.

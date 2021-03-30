@@ -3,7 +3,21 @@ import open3d as o3d
 from typing import Tuple
 
 
-def load_intrinsics_from_text_4x4_matrix_and_first_image(path_matrix: str, path_image: str) -> o3d.camera.PinholeCameraIntrinsic:
+def load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(path_matrix: str) -> dict:
+    intrinsic_matrix = np.loadtxt(path_matrix)
+    fx = intrinsic_matrix[0, 0]
+    fy = intrinsic_matrix[1, 1]
+    cx = intrinsic_matrix[0, 2]
+    cy = intrinsic_matrix[1, 2]
+    return {
+        "fx": fx,
+        "fy": fy,
+        "cx": cx,
+        "cy": cy
+    }
+
+
+def load_open3d_intrinsics_from_text_4x4_matrix_and_first_image(path_matrix: str, path_image: str) -> o3d.camera.PinholeCameraIntrinsic:
     intrinsic_matrix = np.loadtxt(path_matrix)
     fx = intrinsic_matrix[0, 0]
     fy = intrinsic_matrix[1, 1]

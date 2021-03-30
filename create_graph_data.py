@@ -107,6 +107,9 @@ if __name__ == "__main__":
         vertices, vertex_flows, vertex_pixels, faces
     )
 
+    print(vertex_pixels.shape)
+    print(vertex_pixels)
+
     num_vertices = vertices.shape[0]
     num_faces = faces.shape[0]
 

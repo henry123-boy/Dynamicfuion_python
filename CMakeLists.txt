@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
 
+option(WITH_OPENMP                "Use OpenMP multi-threading"               ON )
 option(DEVELOPER_BUILD      "Add +commit_hash to the project version number" ON )
 option(USE_SYSTEM_EIGEN3          "Use system pre-installed eigen3"          OFF)
 option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF)
 option(USE_SYSTEM_CATCH2          "Use system pre-installed Catch2"          OFF)
 option(GLIBCXX_USE_CXX11_ABI      "Set -D_GLIBCXX_USE_CXX11_ABI=1"           ON)
-option(BUILD_CPP_TESTS            "Build C++ tests"                         OFF)
+option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
 
 # Parse NNRT version number
 file(STRINGS "csrc/version.txt" NNRT_VERSION_READ)

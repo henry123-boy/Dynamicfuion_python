@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 import os
+import re
 
 import open3d as o3d
 import torch
 import numpy as np
 
+from pipeline.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
 from utils import image_proc
 from model.model import DeformNet
 from model import dataset
@@ -15,6 +17,14 @@ import utils.visualization.line_mesh as line_mesh_utils
 import utils.visualization.viewer as viewer
 import options as opt
 
+from enum import Enum
+
+
+class DataSection(Enum):
+    TEST = "test"
+    VALIDATION = "val"
+    TRAIN = "train"
+
 
 def main():
     #####################################################################################################
@@ -22,22 +32,20 @@ def main():
     #####################################################################################################
 
     # Source-target example
+    use_local_example_data = False
 
-    split = "test"
-    seq_id = 17
+    if use_local_example_data:
+        data_dir = "example_data"
+    else:
+        data_dir = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced"
+
+    data_section = DataSection.VALIDATION
+
+    split = data_section.value
+    seq_id = 14
 
     src_id = 300  # source frame
     tgt_id = 600  # target frame
-
-    srt_tgt_str = "5dbd7c9104df0300f329f294_shirt_000300_000600_geodesic_0.05"
-
-    # Make sure to use the intrinsics corresponding to the seq_id above!!  
-    intrinsics = {
-        "fx": 575.548,
-        "fy": 577.46,
-        "cx": 323.172,
-        "cy": 236.417
-    }
 
     # Train set example
     # Important: You need to generate graph data using create_graph_data.py first.
@@ -48,18 +56,9 @@ def main():
     # src_id = 0 # source frame
     # tgt_id = 110 # target frame
 
-    # srt_tgt_str = "generated_shirt_000000_000110_geodesic_0.05"
-
-    # # Make sure to use the intrinsics corresponding to the seq_id above!!  
-    # intrinsics = {
-    #     "fx": 575.548,
-    #     "fy": 577.46,
-    #     "cx": 323.172,
-    #     "cy": 236.417
-    # }
 
     # Some params for coloring the predicted correspondence confidences
-    weight_thr = 0.3
+    weight_threshold = 0.3
     weight_scale = 1
 
     # We will overwrite the default value in options.py / settings.py
@@ -101,25 +100,32 @@ def main():
     #####################################################################################################
     # Load example dataset
     #####################################################################################################
-    example_dir = os.path.join("example_data", f"{split}/seq{str(seq_id).zfill(3)}")
+    example_dir = os.path.join(data_dir, f"{split}/seq{str(seq_id).zfill(3)}")
+
+    intrinsics_path = os.path.join(example_dir, "intrinsics.txt")
+    intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(intrinsics_path)
 
     image_height = opt.image_height
     image_width = opt.image_width
     max_boundary_dist = opt.max_boundary_dist
 
-    src_id_str = str(src_id).zfill(6)
-    tgt_id_str = str(tgt_id).zfill(6)
+    source_image_filename = str(src_id).zfill(6)
+    target_image_filename = str(tgt_id).zfill(6)
 
-    src_color_image_path = os.path.join(example_dir, "color", src_id_str + ".jpg")
-    src_depth_image_path = os.path.join(example_dir, "depth", src_id_str + ".png")
-    tgt_color_image_path = os.path.join(example_dir, "color", tgt_id_str + ".jpg")
-    tgt_depth_image_path = os.path.join(example_dir, "depth", tgt_id_str + ".png")
-    graph_nodes_path = os.path.join(example_dir, "graph_nodes", srt_tgt_str + ".bin")
-    graph_edges_path = os.path.join(example_dir, "graph_edges", srt_tgt_str + ".bin")
-    graph_edges_weights_path = os.path.join(example_dir, "graph_edges_weights", srt_tgt_str + ".bin")
-    graph_clusters_path = os.path.join(example_dir, "graph_clusters", srt_tgt_str + ".bin")
-    pixel_anchors_path = os.path.join(example_dir, "pixel_anchors", srt_tgt_str + ".bin")
-    pixel_weights_path = os.path.join(example_dir, "pixel_weights", srt_tgt_str + ".bin")
+    graph_edges_dir = os.path.join(example_dir, "graph_edges")
+    parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
+    graph_filename = parts[0] + "_" + parts[1] + "_" + source_image_filename + "_" + target_image_filename + "_geodesic_0.05"
+
+    src_color_image_path = os.path.join(example_dir, "color", source_image_filename + ".jpg")
+    src_depth_image_path = os.path.join(example_dir, "depth", source_image_filename + ".png")
+    tgt_color_image_path = os.path.join(example_dir, "color", target_image_filename + ".jpg")
+    tgt_depth_image_path = os.path.join(example_dir, "depth", target_image_filename + ".png")
+    graph_nodes_path = os.path.join(example_dir, "graph_nodes", graph_filename + ".bin")
+    graph_edges_path = os.path.join(example_dir, "graph_edges", graph_filename + ".bin")
+    graph_edges_weights_path = os.path.join(example_dir, "graph_edges_weights", graph_filename + ".bin")
+    graph_clusters_path = os.path.join(example_dir, "graph_clusters", graph_filename + ".bin")
+    pixel_anchors_path = os.path.join(example_dir, "pixel_anchors", graph_filename + ".bin")
+    pixel_weights_path = os.path.join(example_dir, "pixel_weights", graph_filename + ".bin")
 
     # Source color and depth
     source, _, cropper = dataset.DeformDataset.load_image(
@@ -183,8 +189,7 @@ def main():
     # Get some of the results
     rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
     translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
-    #__DEBUG
-    print(translations_pred)
+
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure use_mask=True in options.py"
@@ -337,7 +342,7 @@ def main():
     ################################
     # "Good" matches
     ################################
-    good_mask = valid_correspondences & (mask_pred_flat >= weight_thr)
+    good_mask = valid_correspondences & (mask_pred_flat >= weight_threshold)
     good_source_points_corresp = source_points[good_mask]
     good_target_matches_corresp = target_matches[good_mask]
     good_mask_pred = mask_pred_flat[good_mask]
@@ -371,7 +376,7 @@ def main():
 
     good_weighted_matches_colors = np.ones_like(good_source_points_corresp)
 
-    weights_normalized = np.maximum(np.minimum(0.5 + (good_mask_pred - weight_thr) / weight_scale, 1.0), 0.0)
+    weights_normalized = np.maximum(np.minimum(0.5 + (good_mask_pred - weight_threshold) / weight_scale, 1.0), 0.0)
     weights_normalized_opposite = 1 - weights_normalized
 
     good_weighted_matches_colors[:, 0] = weights_normalized * high_color[0] + weights_normalized_opposite * low_color[0]
@@ -387,7 +392,7 @@ def main():
     ################################
     # "Bad" matches
     ################################
-    bad_mask = valid_correspondences & (mask_pred_flat < weight_thr)
+    bad_mask = valid_correspondences & (mask_pred_flat < weight_threshold)
     bad_source_points_corresp = source_points[bad_mask]
     bad_target_matches_corresp = target_matches[bad_mask]
     bad_mask_pred = mask_pred_flat[bad_mask]
@@ -413,7 +418,7 @@ def main():
 
     bad_weighted_matches_colors = np.ones_like(bad_source_points_corresp)
 
-    weights_normalized = np.maximum(np.minimum(0.5 + (bad_mask_pred - weight_thr) / weight_scale, 1.0), 0.0)
+    weights_normalized = np.maximum(np.minimum(0.5 + (bad_mask_pred - weight_threshold) / weight_scale, 1.0), 0.0)
     weights_normalized_opposite = 1 - weights_normalized
 
     bad_weighted_matches_colors[:, 0] = weights_normalized * high_color[0] + weights_normalized_opposite * low_color[0]

@@ -39,11 +39,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(HEADER_FILES
     cpu/graph_proc.h
     cpu/image_proc.h
+    rendering.hpp
 )
 
 set(SOURCE_FILES
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
+    rendering.cpp
 )
 
 add_library(nnrt_cpp STATIC

@@ -248,7 +248,26 @@ function(nnrt_link_3rdparty_libraries target)
 endfunction()
 
 # Python
-find_package(PythonExecutable REQUIRED) # invokes the module in 3rdparty/CMake
+find_package(PythonExecutable REQUIRED) # invokes the module in 3rd-party/CMake
+
+# Threads
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE) # -pthread instead of -lpthread
+find_package(Threads REQUIRED)
+list(APPEND NNRT_3RDPARTY_EXTERNAL_MODULES "Threads")
+
+# OpenMP
+if(WITH_OPENMP)
+    find_package(OpenMP)
+    if(TARGET OpenMP::OpenMP_CXX)
+        message(STATUS "Building with OpenMP")
+        set(OPENMP_TARGET "OpenMP::OpenMP_CXX")
+        list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${OPENMP_TARGET}")
+        if(NOT BUILD_SHARED_LIBS)
+            list(APPEND NNRT_3RDPARTY_EXTERNAL_MODULES "OpenMP")
+        endif()
+    endif()
+endif()
 
 # Eigen3
 if(USE_SYSTEM_EIGEN3)

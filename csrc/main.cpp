@@ -1,5 +1,6 @@
 #include "cpu/image_proc.h"
 #include "cpu/graph_proc.h"
+#include "rendering.hpp"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -180,6 +181,11 @@ PYBIND11_MODULE(nnrt, m) {
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
 	      "edge_threshold"_a, "node_coverage"_a, "max_depth"_a,
 	      "Samples graph uniformly in pixel space, and computes pixel anchors");
+
+	// rendering / ray cast routines
+	m.def("render_mesh", &rendering::render_mesh, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
+	      "camera_intrinsic_matrix"_a, "depth_scale_factor"_a,
+	      "Render a depth image and a point image of a mesh by simple raycasting.");
 
 
 }
