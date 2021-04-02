@@ -119,8 +119,8 @@ def main() -> None:
         frame_count = count_frames(frames_directory, re.compile(r'frame-\d{6}\.depth\.png'))
     elif dataset_to_use is DatasetPreset.RED_SHORTS:
         # == val/seq014 dataset from DeepDeform (red shorts)
-        frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/"
-        depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/intrinsics.txt"
+        frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/"
+        depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/intrinsics.txt"
         color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
         depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
         frame_count = count_frames(os.path.join(frames_directory, "depth"), re.compile(r'\d{6}\.png'))
@@ -195,13 +195,8 @@ def main() -> None:
             # === Construct initial deformation graph
             deformation_graph = graph.build_deformation_graph_from_mesh(mesh, 0.05)
 
-            simplified_mesh = mesh.simplify_quadric_decimation(100)
-            #__DEBUG
-            vertex_positions = np.array(simplified_mesh.vertices)
-            face_indices = np.array(simplified_mesh.triangles)
-
-            depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
-                                                  intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
+            # depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
+            #                                       intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
 
 
 

@@ -26,26 +26,33 @@ class DataSection(Enum):
     TRAIN = "train"
 
 
+# TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
+#  (See https://refactoring.guru/smells/long-parameter-list for reasons, downsides, and refactoring solutions)
+#  Through better OO design and refactoring, these should be grouped into objects, replaced with internal
+#  method calls, etc.
+
 def main():
     #####################################################################################################
     # Options
     #####################################################################################################
 
     # Source-target example
-    use_local_example_data = False
+    use_local_example_data = True
 
     if use_local_example_data:
         data_dir = "example_data"
     else:
         data_dir = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced"
 
-    data_section = DataSection.VALIDATION
+    data_section = DataSection.TEST
 
     split = data_section.value
-    seq_id = 14
+    seq_id = 17  # sequence id (the number in the directory name of the sequence)
 
     src_id = 300  # source frame
     tgt_id = 600  # target frame
+
+    segment_name = None  # specify if graph is available for more than one segment in the dataset (e.g. Shirt0)
 
     # Train set example
     # Important: You need to generate graph data using create_graph_data.py first.
@@ -55,7 +62,6 @@ def main():
 
     # src_id = 0 # source frame
     # tgt_id = 110 # target frame
-
 
     # Some params for coloring the predicted correspondence confidences
     weight_threshold = 0.3
@@ -114,7 +120,9 @@ def main():
 
     graph_edges_dir = os.path.join(example_dir, "graph_edges")
     parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
-    graph_filename = parts[0] + "_" + parts[1] + "_" + source_image_filename + "_" + target_image_filename + "_geodesic_0.05"
+    if segment_name is None:
+        segment_name = parts[1]
+    graph_filename = parts[0] + "_" + segment_name + "_" + source_image_filename + "_" + target_image_filename + "_geodesic_0.05"
 
     src_color_image_path = os.path.join(example_dir, "color", source_image_filename + ".jpg")
     src_depth_image_path = os.path.join(example_dir, "depth", source_image_filename + ".png")
@@ -189,7 +197,6 @@ def main():
     # Get some of the results
     rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
     translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
-
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure use_mask=True in options.py"
