@@ -3,6 +3,20 @@ import open3d as o3d
 from typing import Tuple
 
 
+def load_intrinsic_3x3_matrix_from_text_4x4_matrix(path_matrix: str) -> np.ndarray:
+    intrinsic_matrix = np.loadtxt(path_matrix)
+    return intrinsic_matrix[0:3, 0:3].copy()
+
+
+def load_intrinsic_matrix_entries_from_text_4x4_matrix(path_matrix: str) -> Tuple[float, float, float, float]:
+    intrinsic_matrix = np.loadtxt(path_matrix)
+    fx = intrinsic_matrix[0, 0]
+    fy = intrinsic_matrix[1, 1]
+    cx = intrinsic_matrix[0, 2]
+    cy = intrinsic_matrix[1, 2]
+    return fx, fy, cx, cy
+
+
 def load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(path_matrix: str) -> dict:
     intrinsic_matrix = np.loadtxt(path_matrix)
     fx = intrinsic_matrix[0, 0]

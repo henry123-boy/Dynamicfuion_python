@@ -99,11 +99,11 @@ def main() -> None:
 
     device = o3d.core.Device('cuda:0')
 
-    dataset_to_use = DatasetPreset.RED_SHORTS
-
     #####################################################################################################
     # === dataset parameters ===
     #####################################################################################################
+
+    dataset_to_use = DatasetPreset.RED_SHORTS
 
     color_image_filename_mask = None
     depth_image_filename_mask = None
