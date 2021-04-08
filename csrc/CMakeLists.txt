@@ -34,7 +34,6 @@ file(MAKE_DIRECTORY ${STUBS_PACKAGE_DST_DIR})
 
 
 # ==================== set up NNRT C++ library ============================
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(HEADER_FILES
     cpu/graph_proc.h

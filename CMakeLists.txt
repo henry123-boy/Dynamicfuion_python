@@ -7,6 +7,7 @@ option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF
 option(USE_SYSTEM_CATCH2          "Use system pre-installed Catch2"          OFF)
 option(GLIBCXX_USE_CXX11_ABI      "Set -D_GLIBCXX_USE_CXX11_ABI=1"           ON)
 option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
+option(USE_SYSTEM_GLEW            "Use system pre-installed glew"            OFF)
 
 # Parse NNRT version number
 file(STRINGS "csrc/version.txt" NNRT_VERSION_READ)
@@ -56,6 +57,11 @@ message(STATUS "NNRT ${NNRT_VERSION_FULL}")
 ### global functions
 
 function(nnrt_set_global_properties target)
+    # Libraries need to be compiled with position independent code
+    get_target_property(target_type ${target} TYPE)
+    if (NOT target_type STREQUAL "EXECUTABLE")
+        set_target_properties(${target} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
     if(GLIBCXX_USE_CXX11_ABI)
         target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=1)
     else()

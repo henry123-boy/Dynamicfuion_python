@@ -19,11 +19,15 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
+
 namespace py = pybind11;
 
 namespace rendering {
 
-py::tuple render_mesh(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
-                      const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor);
+py::tuple render_mesh_cpu(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
+                          const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor);
+
+py::tuple render_mesh_gl(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
+                         const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor);
 
 } // namespace rendering

@@ -175,7 +175,7 @@ function(build_3rdparty_library name)
         target_include_directories(${name} PUBLIC
             $<INSTALL_INTERFACE:${NNRT_INSTALL_INCLUDE_DIR}/open3d/3rdparty>
             )
-        open3d_set_global_properties(${name})
+        nnrt_set_global_properties(${name})
         set_target_properties(${name} PROPERTIES
             OUTPUT_NAME "${PROJECT_NAME}_${name}"
             )
@@ -268,6 +268,45 @@ if(WITH_OPENMP)
         endif()
     endif()
 endif()
+
+
+# GLEW
+if(USE_SYSTEM_GLEW)
+    find_package(GLEW)
+    if(TARGET GLEW::GLEW)
+        message(STATUS "Using installed third-party library GLEW ${GLEW_VERSION}")
+        list(APPEND NNRT_3RDPARTY_EXTERNAL_MODULES "GLEW")
+        set(GLEW_TARGET "GLEW::GLEW")
+    else()
+        pkg_config_3rdparty_library(3rdparty_glew glew)
+        if(3rdparty_glew_FOUND)
+            set(GLEW_TARGET "3rdparty_glew")
+        else()
+            set(USE_SYSTEM_GLEW OFF)
+        endif()
+    endif()
+endif()
+if(NOT USE_SYSTEM_GLEW)
+    build_3rdparty_library(3rdparty_glew HEADER DIRECTORY glew SOURCES src/glew.c INCLUDE_DIRS include/)
+    if(ENABLE_HEADLESS_RENDERING)
+        target_compile_definitions(3rdparty_glew PUBLIC GLEW_OSMESA)
+    endif()
+    if(WIN32)
+        target_compile_definitions(3rdparty_glew PUBLIC GLEW_STATIC)
+    endif()
+    set(GLEW_TARGET "3rdparty_glew")
+endif()
+list(APPEND NNRT_3RDPARTY_HEADER_TARGETS "${GLEW_TARGET}")
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${GLEW_TARGET}")
+
+# OpenGL
+find_package(OpenGL REQUIRED)
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS OpenGL::GL OpenGL::GLU)
+
+## Freeglut
+find_package(GLUT REQUIRED)
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS GLUT::GLUT)
+
 
 # Eigen3
 if(USE_SYSTEM_EIGEN3)

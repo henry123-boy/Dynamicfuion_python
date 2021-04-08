@@ -183,9 +183,16 @@ PYBIND11_MODULE(nnrt, m) {
 	      "Samples graph uniformly in pixel space, and computes pixel anchors");
 
 	// rendering / ray cast routines
-	m.def("render_mesh", &rendering::render_mesh, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
+	m.def("render_mesh_cpu", &rendering::render_mesh_cpu, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
 	      "camera_intrinsic_matrix"_a, "depth_scale_factor"_a,
 	      "Render a depth image and a point image of a mesh by simple raycasting.");
+
+	// rendering / ray cast routines
+	m.def("render_mesh_gl", &rendering::render_mesh_gl, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
+	      "camera_intrinsic_matrix"_a, "depth_scale_factor"_a,
+	      "Render a depth image and a point image of a mesh by simple raycasting.");
+
+
 
 
 }

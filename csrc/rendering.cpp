@@ -17,6 +17,14 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+#define GL_GLEXT_PROTOTYPES 1
+
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glut.h>
+#include <GL/glext.h>
+
+
 using namespace Eigen;
 
 namespace rendering {
@@ -118,8 +126,8 @@ unsigned short cast_ray(
  * \return a tuple containing the resulting depth image (unsigned short width x height array)
  * and point image (ordered point cloud, a float width x height x 3 array)
  */
-py::tuple render_mesh(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, const int width, const int height,
-                      const py::array_t<float>& camera_intrinsic_matrix, const float depth_scale_factor) {
+py::tuple render_mesh_cpu(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
+                          const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor) {
 
 	assert(camera_intrinsic_matrix.ndim() == 2);
 	assert(camera_intrinsic_matrix.shape(0) == 3 && camera_intrinsic_matrix.shape(1) == 3);
@@ -161,6 +169,140 @@ firstprivate(height, width, f_x, f_y, c_x, c_y, camera_origin, depth_scale_facto
 	}
 
 	return py::make_tuple(depth_image, point_image);
+}
+
+static bool glut_initialized = false;
+
+static void initialize_gl_if_needed() {
+	if (glut_initialized) {
+		return;
+	} else {
+		int argc = 1;
+		char* argv[1] = {(char*)" "};
+		glutInit(&argc, argv);
+	}
+}
+
+class GlutRenderWrapper{
+private:
+	const py::array_t<float>& vertex_positions;
+	const py::array_t<int>& face_indices;
+	const int width;
+	const int height;
+	const py::array_t<float>&  camera_intrinsic_matrix;
+	const float depth_scale_factor;
+
+	GLuint fbo;
+	GLuint rbo_color;
+	GLuint rbo_depth;
+	GLubyte* pixels = nullptr;
+private:
+	void init(){
+		int glget;
+
+		/*  Framebuffer */
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		//glBufferData(GL_ARRAY_BUFFER, vertex_positions);
+
+		/* Color renderbuffer. */
+		glGenRenderbuffers(1, &rbo_color);
+		glBindRenderbuffer(GL_RENDERBUFFER, rbo_color);
+
+
+		/* Storage must be one of: */
+		/* GL_RGBA4, GL_RGB565, GL_RGB5_A1, GL_DEPTH_COMPONENT16, GL_STENCIL_INDEX8. */
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_RGB565, width, height);
+		glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo_color);
+
+		/* Depth renderbuffer. */
+		glGenRenderbuffers(1, &rbo_depth);
+		glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+		glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_depth);
+
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+		/* Sanity check. */
+		assert(glCheckFramebufferStatus(GL_FRAMEBUFFER));
+		glGetIntegerv(GL_MAX_RENDERBUFFER_SIZE, &glget);
+		assert(width < (unsigned int)glget);
+		assert(height < (unsigned int)glget);
+
+		glClearColor(0.0, 0.0, 0.0, 0.0);
+		glEnable(GL_DEPTH_TEST);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glViewport(0, 0, width, height);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glMatrixMode(GL_MODELVIEW);
+	}
+	static constexpr char* window_name = "hidden";
+public:
+
+	static GlutRenderWrapper* instance;
+
+	GlutRenderWrapper(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
+	                  const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor) :
+	                  vertex_positions(vertex_positions),
+	                  face_indices(face_indices),
+	                  width(width),
+	                  height(height),
+	                  camera_intrinsic_matrix(camera_intrinsic_matrix),
+	                  depth_scale_factor(depth_scale_factor){
+		initialize_gl_if_needed();
+		glutInitWindowSize(width, height);
+		glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA | GLUT_DEPTH);
+		glutCreateWindow(window_name);
+		init();
+		instance = this;
+		glutDisplayFunc(display);
+		glutIdleFunc(idle);
+		atexit(deinit);
+	}
+
+	~GlutRenderWrapper(){
+
+	}
+
+	static void display(){
+
+	}
+
+
+	static void idle() {
+		glutPostRedisplay();
+	}
+
+	static void run(){
+		glutMainLoop();
+	}
+
+	static void deinit()  {
+		free(instance->pixels);
+
+		glDeleteFramebuffers(1, &instance->fbo);
+		glDeleteRenderbuffers(1, &instance->rbo_color);
+		glDeleteRenderbuffers(1, &instance->rbo_depth);
+
+	}
+};
+
+
+
+py::tuple render_mesh_gl(const py::array_t<float>& vertex_positions, const py::array_t<int>& face_indices, int width, int height,
+                         const py::array_t<float>& camera_intrinsic_matrix, float depth_scale_factor) {
+
+	GlutRenderWrapper wrapper(vertex_positions, face_indices, width, height, camera_intrinsic_matrix, depth_scale_factor);
+	wrapper.run();
+
+
+
+
+
+
+
+	return py::make_tuple();
 }
 
 
