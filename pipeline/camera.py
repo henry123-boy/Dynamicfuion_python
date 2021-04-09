@@ -31,7 +31,7 @@ def load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(path_matrix: str)
     }
 
 
-def load_open3d_intrinsics_from_text_4x4_matrix_and_first_image(path_matrix: str, path_image: str) -> o3d.camera.PinholeCameraIntrinsic:
+def load_open3d_intrinsics_from_text_4x4_matrix_and_image(path_matrix: str, path_image: str) -> o3d.camera.PinholeCameraIntrinsic:
     intrinsic_matrix = np.loadtxt(path_matrix)
     fx = intrinsic_matrix[0, 0]
     fy = intrinsic_matrix[1, 1]

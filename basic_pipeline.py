@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+# experimental fusion pipeline based on original NNRT code
+# Copyright 2021 Gregory Kramida
+
 # stdlib
 import os
 import sys
@@ -126,18 +129,15 @@ def main() -> None:
         frame_count = count_frames(os.path.join(frames_directory, "depth"), re.compile(r'\d{6}\.png'))
 
     first_depth_image_path = depth_image_filename_mask.format(0)
-    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_first_image(depth_intrinsics_path, first_depth_image_path)
+    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, first_depth_image_path)
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
     intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
     camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
-    extrinsics = np.array([[1.0, 0.0, 0.0, 0],
-                           [0.0, 1.0, 0.0, 0],
-                           [0.0, 0.0, 1.0, 0],
-                           [0.0, 0.0, 0.0, 1.0]])
-    extrinsics_gpu = o3d.core.Tensor(extrinsics, o3d.core.Dtype.Float32, device)
+    extrinsics_numpy = np.eye(4)
+    extrinsics_gpu = o3d.core.Tensor(extrinsics_numpy, o3d.core.Dtype.Float32, device)
 
     #####################################################################################################
     # === volume representation parameters ===
