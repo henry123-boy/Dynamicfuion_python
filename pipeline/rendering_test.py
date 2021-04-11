@@ -3,14 +3,12 @@
 # A minimal example that renders a triangle mesh into a depth image using predefined perspective projection matrix
 # Copyright 2021 Gregory Kramida
 
-import math
 import sys
 import open3d as o3d
 import cv2
 
 import numpy as np
-import pytorch3d.utils
-from pytorch3d.renderer.cameras import PerspectiveCameras, FoVPerspectiveCameras, look_at_view_transform
+from pytorch3d.renderer.cameras import PerspectiveCameras
 from pytorch3d.renderer.mesh import MeshRasterizer, RasterizationSettings, MeshRenderer, SoftPhongShader, TexturesVertex
 from pytorch3d.renderer.lighting import PointLights
 from pytorch3d.structures.meshes import Meshes
@@ -19,8 +17,6 @@ import torch
 from pipeline import camera
 
 PROGRAM_EXIT_SUCCESS = 0
-
-
 
 
 def main():
