@@ -32,18 +32,16 @@ class Viewer:
     def __init__(self):
         cross_section_count = 20
         cylinder_height = 5.0
-        node_count = 3
+        self.node_count = 3
         node_coverage = 1.2
 
-        node_y_coordinates = np.linspace(0.0, cylinder_height, node_count)
-        self.edge_lengths = [node_y_coordinates[i_node + 1] - node_y_coordinates[i_node] for i_node in range(len(node_y_coordinates) - 1)]
+        node_y_coordinates = np.linspace(0.0, cylinder_height, self.node_count)
+        self.edge_lengths = [node_y_coordinates[i_node + 1] - node_y_coordinates[i_node] for i_node in range(self.node_count - 1)]
         self.node_locations = np.array([[0.0, y, 0.0] for y in node_y_coordinates])
 
         self.node_dual_quaternions = [dualquat(quat.identity())]
         for edge_length in self.edge_lengths:
             self.node_dual_quaternions.append(dualquat(quat.identity(), [0.0, edge_length, 0.0]))
-        # for y_coordinate in node_y_coordinates:
-        #     self.node_dual_quaternions.append(dualquat(quat.identity(), [0.0, y_coordinate, 0.0]))
 
         self.cylinder_mesh = o3d.geometry.TriangleMesh.create_cylinder(0.5, 5.0, 20, cross_section_count)
         self.cylinder_mesh.compute_vertex_normals()
@@ -62,20 +60,21 @@ class Viewer:
         self.vertices = vertices
 
         self.i_frame = 0
-        self.angle_increment = 0.25
+        self.angle_increment = 0.5
 
     def run_visualizer(self):
         def deform(visualizer):
             self.i_frame += 1
-            if self.i_frame > 90 / (self.angle_increment * (len(self.node_dual_quaternions) - 1)):
+            if self.i_frame > 90 / self.angle_increment:
                 return
-            node_angles_degrees = [self.i_frame * self.angle_increment * i_node for i_node in range(1, len(self.node_dual_quaternions))]
+            per_node_increment = self.angle_increment / (self.node_count - 1)
+            node_angles_degrees = [self.i_frame * per_node_increment * i_node for i_node in range(1, self.node_count)]
 
             # transformations from frame 0 to this frame
             node_rotations = [dualquat(quat(*tf.quaternion_from_euler(0.0, 0.0, np.deg2rad(angle)))) for angle in node_angles_degrees]
 
             transformed_nodes_dual_quaternions: List[dualquat] = [self.node_dual_quaternions[0]]
-            for i_node in range(1, len(self.node_dual_quaternions)):
+            for i_node in range(1, self.node_count):
                 original_dq = self.node_dual_quaternions[i_node]
                 transformed_dq: dualquat = original_dq * node_rotations[i_node - 1] * original_dq.inverse()
                 transformed_nodes_dual_quaternions.append(transformed_dq)
