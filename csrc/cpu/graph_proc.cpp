@@ -165,8 +165,8 @@ inline float compute_anchor_weight(const Eigen::Vector3f& point_position, const 
 	return std::exp(-(node_position - point_position).squaredNorm() / (2.f * node_coverage * node_coverage));
 }
 
-inline float compute_anchor_weight(float dist, float nodeCoverage) {
-	return std::exp(-(dist * dist) / (2.f * nodeCoverage * nodeCoverage));
+inline float compute_anchor_weight(float dist, float node_coverage) {
+	return std::exp(-(dist * dist) / (2.f * node_coverage * node_coverage));
 }
 
 
@@ -781,8 +781,8 @@ void compute_pixel_anchors_euclidean(
 		py::array_t<float>& pixel_weights
 ) {
 	const int node_count = graph_nodes.shape(0);
-	const int width = point_image.shape(2);
-	const int height = point_image.shape(1);
+	const int width = point_image.shape(1);
+	const int height = point_image.shape(0);
 
 	// Allocate graph node ids and corresponding skinning weights.
 	// Initialize with invalid anchors.
@@ -861,7 +861,7 @@ void compute_pixel_anchors_euclidean(
 			}
 
 			// Normalize the skinning weights.
-			int anchor_count = nearest_euclidean_node_indices.size();
+			int anchor_count = static_cast<int>(nearest_euclidean_node_indices.size());
 
 			if (weight_sum > 0) {
 				for (int i = 0; i < anchor_count; i++) skinning_weights[i] /= weight_sum;
@@ -876,6 +876,19 @@ void compute_pixel_anchors_euclidean(
 			}
 		}
 	}
+}
+
+py::tuple compute_pixel_anchors_euclidean(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<float>& point_image,
+		float node_coverage
+){
+	py::array_t<int> pixel_anchors;
+	py::array_t<float> pixel_weights;
+
+	compute_pixel_anchors_euclidean(graph_nodes, point_image, node_coverage, pixel_anchors, pixel_weights);
+
+	return py::make_tuple(pixel_anchors, pixel_weights);
 }
 
 /**

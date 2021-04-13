@@ -1,6 +1,5 @@
 #include "cpu/image_proc.h"
 #include "cpu/graph_proc.h"
-#include "rendering.hpp"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -135,24 +134,26 @@ PYBIND11_MODULE(nnrt, m) {
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
+
 	m.def("compute_pixel_anchors_geodesic", py::overload_cast<const py::array_t<float>&,
 			      const py::array_t<int>&, const py::array_t<float>&, const py::array_t<int>&, int, int, float>(
 			&graph_proc::compute_pixel_anchors_geodesic),
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a,
 	      "width"_a, "height"_a, "node_coverage"_a,
-	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n"
-	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
-	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
-	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
-	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
+	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n");
 
-	m.def("compute_pixel_anchors_euclidean", &graph_proc::compute_pixel_anchors_euclidean,
+	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float,
+			      py::array_t<int>&, py::array_t<float>&>(&graph_proc::compute_pixel_anchors_euclidean),
 	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a, "pixel_anchors"_a, "pixel_weights"_a,
 	      "Compute anchor ids and skinning weights for every pixel using Euclidean distances.\n"
 	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
+
+	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float>(
+			&graph_proc::compute_pixel_anchors_euclidean),
+	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a);
 
 
 	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up,
@@ -181,18 +182,6 @@ PYBIND11_MODULE(nnrt, m) {
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
 	      "edge_threshold"_a, "node_coverage"_a, "max_depth"_a,
 	      "Samples graph uniformly in pixel space, and computes pixel anchors");
-
-	// rendering / ray cast routines
-	m.def("render_mesh_cpu", &rendering::render_mesh_cpu, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
-	      "camera_intrinsic_matrix"_a, "depth_scale_factor"_a,
-	      "Render a depth image and a point image of a mesh by simple raycasting.");
-
-	// rendering / ray cast routines
-	m.def("render_mesh_gl", &rendering::render_mesh_gl, "vertex_positions"_a, "face_indices"_a, "width"_a, "height"_a,
-	      "camera_intrinsic_matrix"_a, "depth_scale_factor"_a,
-	      "Render a depth image and a point image of a mesh by simple raycasting.");
-
-
 
 
 }

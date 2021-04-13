@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import enum
+import typing
 
 # 3rd-party
 import numpy as np
@@ -15,6 +16,7 @@ import open3d as o3d
 import torch
 
 # local
+import options
 import options as opt
 import nnrt
 from pipeline import camera
@@ -167,7 +169,7 @@ def main() -> None:
     first_depth_image = None
     target_frame_index = 40
 
-    deformation_graph: graph.DeformationGraph | None = None
+    deformation_graph: typing.Union[graph.DeformationGraph, None] = None
 
     for frame_index in range(0, frame_count):
         #####################################################################################################
@@ -193,7 +195,7 @@ def main() -> None:
             mesh.compute_vertex_normals()
 
             # === Construct initial deformation graph
-            deformation_graph = graph.build_deformation_graph_from_mesh(mesh, 0.05)
+            deformation_graph = graph.build_deformation_graph_from_mesh(mesh, options.coverage)
 
             # depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
             #                                       intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
@@ -238,13 +240,11 @@ def main() -> None:
             # TODO: this will all need to be replaced somehow by using the isosurface vertices / render process...
             #  before this, it can be optimized -- target_point_image is already computed inside prepare_pytorch_input,
             #  that can be further split into subroutines that isolate the depth projection
+            #  Some toy programs were this were implemented in pipeline/rendering_test.py and pipeline/skinning_3d_test.py
             valid_nodes_mask = np.ones((vertex_positions.shape[0], 1), dtype=bool)
-            vertex_pixels = None  # TODO
-            pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_geodesic(
-                deformation_graph.node_to_vertex_distances, valid_nodes_mask,
-                vertex_positions, vertex_pixels,
-                opt.image_width, opt.image_height, 0.05
-            )
+            pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
+                deformation_graph.live_node_positions, source_point_image,
+                options.coverage)
 
             pixel_anchors = cropper(pixel_anchors)
             pixel_weights = cropper(pixel_weights)

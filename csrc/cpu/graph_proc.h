@@ -125,6 +125,16 @@ void compute_pixel_anchors_euclidean(
 );
 
 /**
+ * For each input pixel it computes 4 nearest anchors, using Euclidean distances.
+ * It also compute skinning weights for every pixel.
+ */
+py::tuple compute_pixel_anchors_euclidean(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<float>& point_image,
+		float node_coverage
+);
+
+/**
  * Updates pixel anchor after node id change.
  */
 void update_pixel_anchors(

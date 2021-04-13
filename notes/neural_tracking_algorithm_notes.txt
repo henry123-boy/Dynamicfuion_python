@@ -1,0 +1,36 @@
+Based on model/model.py file, "forward" method of the DeformNet class. 
+
+Track 2 frames:
+	0. Some initialization
+	1. Compute dense flow from source to target.
+	2. Initialize graph data.
+	3. Apply dense flow to warp the source points to target frame.
+	4. Construct point-to-point correspondences between source <-> target points.
+	5. Run MaskNet on correspondences + source & target data.
+	6. Initialize graph data.
+	7. Estimate node deformations using differentiable Gauss-Newton.
+		Initialize some counters / state variables.
+		Then, for each batch, do:
+		
+		7.0 Some reporting and initialization
+		7.1 Filter invalid matches
+		7.2 Generate weight info to estimate average weight.
+		7.3 Randomly subsample matches, if necessary.
+		7.4 Remove canonical_node_positions if their corresponding clusters don't have enough correspondences
+		7.5 Filter invalid edges.
+		7.6 Execute Gauss-Newton solver.
+			Initialize some parameters. 
+			Initialize the output rotations & translations.
+			Initialize helper data structures.
+			Then, for each iteration up to max number of iterations, do:
+
+				7.6.1 Compute data residual and jacobian.
+				7.6.2 Compute ARAP residual and jacobian
+				7.6.3 Solve linear system
+
+		7.7 Write the solutions.
+		7.8 Warp all valid source points using estimated deformations.
+		7.9 Write to some state variables & output debugging info.
+
+	8. (Housekeeping) Invalidate complete batch if there are too many matches in total.
+	9. Return result as data dictionary.

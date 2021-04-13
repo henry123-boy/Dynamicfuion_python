@@ -81,26 +81,29 @@ def main():
 
     fragments = rasterizer.forward(meshes_torch3d)
 
-    zbuf = fragments.zbuf.cpu().numpy().reshape(480, 640, 1)
-    rendered_depth = zbuf
+    z_buffer = fragments.zbuf.cpu().numpy().reshape(480, 640, 1)
+    rendered_depth = z_buffer
     rendered_depth[rendered_depth == -1.0] = 0.0
     rendered_depth /= 4.0
     rendered_depth_uint8 = (rendered_depth * 255).astype(np.uint8)
-    cv2.imshow("image", rendered_depth_uint8)
+
+    depth_image_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/depth/000000.png"
+    depth_image = cv2.imread(depth_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 4000
+    cv2.imshow("source depth", (depth_image * 255).astype(np.uint8))
     cv2.waitKey()
-    cv2.imwrite("../output/rendered_depth.png", rendered_depth_uint8)
+    cv2.imwrite("../output/source_depth.png", (depth_image * 255).astype(np.uint8))
 
     images = renderer(meshes_torch3d)
     rendered_mesh = images[0, ..., :3].cpu().numpy()
     rendered_mesh_uint8 = (rendered_mesh * 255).astype(np.uint8)
-    cv2.imshow("image", rendered_mesh_uint8)
+    cv2.imshow("rendered mesh", rendered_mesh_uint8)
     cv2.waitKey()
     cv2.imwrite("../output/rendered_mesh.png", rendered_mesh_uint8)
-    depth_image_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/depth/000000.png"
-    depth_image = cv2.imread(depth_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 4000
-    cv2.imshow("image", (depth_image * 255).astype(np.uint8))
+
+    cv2.imshow("rendered depth", rendered_depth_uint8)
     cv2.waitKey()
-    cv2.imwrite("../output/source_depth.png", (depth_image * 255).astype(np.uint8))
+    cv2.imwrite("../output/rendered_depth.png", rendered_depth_uint8)
+
     return PROGRAM_EXIT_SUCCESS
 
 

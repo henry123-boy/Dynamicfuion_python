@@ -101,6 +101,8 @@ if __name__ == "__main__":
     vertex_pixels = np.zeros((0), dtype=np.int32)
     faces = np.zeros((0), dtype=np.int32)
 
+    print("flow shape", scene_flow_image.shape)
+
     compute_mesh_from_depth_and_flow_c(
         point_image, scene_flow_image,
         MAX_TRIANGLE_DISTANCE,
@@ -109,6 +111,10 @@ if __name__ == "__main__":
 
     print(vertex_pixels.shape)
     print(vertex_pixels)
+    print(vertex_pixels[:, 1].max())
+    print(vertex_pixels[:, 1].min())
+    print(vertex_pixels[:, 0].max())
+    print(vertex_pixels[:, 0].min())
 
     num_vertices = vertices.shape[0]
     num_faces = faces.shape[0]

@@ -714,14 +714,20 @@ void compute_mesh_from_depth_and_flow(
 	int width = point_image_in.shape(1);
 	int height = point_image_in.shape(0);
 
+
+	// TODO: what constitutes a valid vertex?
 	// Compute valid pixel vertices and faces.
-	// We also need to compute the pixel -> vertex index mapping for
-	// computation of faces.
+
+	// We also need to compute the pixel -> vertex index mapping for computation of faces.
+	// TODO: why are there no vertex indices > 400, if the total image has 640x480=307200 pixels?
+
 	// We connect neighboring pixels on the square into two triangles.
-	// We only select valid triangles, i.e. with all valid vertices and
-	// not too far apart.
-	// Important: The triangle orientation is set such that the normals
-	// point towards the camera.
+	// TODO: what square?
+
+	// We only select valid triangles, i.e. with all valid vertices and not too far apart.
+
+	// Important: The triangle orientation is set such that the normals point towards the camera.
+
 	std::vector<Eigen::Vector3f> vertices;
 	std::vector<Eigen::Vector3f> flows;
 	std::vector<Eigen::Vector2i> pixels;
