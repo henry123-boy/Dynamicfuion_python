@@ -65,6 +65,10 @@ def main() -> None:
     opt.use_mask = True
     opt.gn_max_nodes = 1500
 
+    # internal verbosity options
+    print_frame_info = False
+    print_intrinsics = False
+
     #####################################################################################################
     # Load model
     #####################################################################################################
@@ -134,7 +138,8 @@ def main() -> None:
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, first_depth_image_path)
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
     intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
-    camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
+    if print_intrinsics:
+        camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -175,13 +180,16 @@ def main() -> None:
         #####################################################################################################
         # grab images, transfer to GPU versions for Open3D
         #####################################################################################################
-        print("Processing frame:", frame_index)
+        if print_frame_info:
+            print("Processing frame:", frame_index)
+            print(depth_image_path)
+            print(color_image_path)
         depth_image_path = depth_image_filename_mask.format(frame_index)
-        print(depth_image_path)
+
         depth_image_open3d_legacy = o3d.io.read_image(depth_image_path)
         depth_image = np.array(depth_image_open3d_legacy)
         color_image_path = color_image_filename_mask.format(frame_index)
-        print(color_image_path)
+
         color_image_open3d_legacy = o3d.io.read_image(color_image_path)
         color_image = np.array(color_image_open3d_legacy)
 
@@ -199,9 +207,6 @@ def main() -> None:
 
             # depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
             #                                       intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
-
-
-
 
             # uncomment to construct from image instead
             # deformation_graph = graph.build_deformation_graph_from_depth_image(depth_image, intrinsics_open3d_cpu, 16)

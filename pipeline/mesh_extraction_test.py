@@ -2,7 +2,7 @@
 
 # A minimal example that generates a TSDF based on a depth image and then extracts the mesh from it
 # Copyright 2021 Gregory Kramida
-
+import os
 import sys
 import open3d as o3d
 import torch
@@ -14,6 +14,11 @@ PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
+    # Options
+
+    use_mask = True
+    segment = None
+
     #####################################################################################################
     # === open3d device, image paths, camera intrinsics ===
     #####################################################################################################
@@ -24,16 +29,21 @@ def main():
 
     # === compile image paths ===
 
-    frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/"
-    frame_index = 0
+    frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/"
+    frame_index = 400
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
+    color_image_path = color_image_filename_mask.format(frame_index)
     depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
     depth_image_path = depth_image_filename_mask.format(frame_index)
-    color_image_path = color_image_filename_mask.format(frame_index)
+
+    mask_image_folder = frames_directory + "mask"
+    if segment is None:
+        segment = os.path.splitext(os.listdir(mask_image_folder)[0])[0].split('_')[1]
+    mask_image_path = os.path.join(mask_image_folder, "{:06d}_{:s}.png".format(frame_index, segment))
 
     # === handle intrinsics ===
 
-    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/intrinsics.txt"
+    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/intrinsics.txt"
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -67,8 +77,19 @@ def main():
 
     # === images & TSDF integration/fusion ===
 
-    depth_image_open3d_legacy = o3d.io.read_image(depth_image_path)
-    color_image_open3d_legacy = o3d.io.read_image(color_image_path)
+    if use_mask:
+        depth_image_numpy = np.array(o3d.io.read_image(depth_image_path))
+        color_image_numpy = np.array(o3d.io.read_image(color_image_path))
+        mask_image_numpy = np.array(o3d.io.read_image(mask_image_path))
+        mask_image_numpy_color = np.dstack((mask_image_numpy, mask_image_numpy, mask_image_numpy)).astype(np.uint8)
+        # apply mask
+        depth_image_numpy &= mask_image_numpy
+        color_image_numpy &= mask_image_numpy_color
+        depth_image_open3d_legacy = o3d.geometry.Image(depth_image_numpy)
+        color_image_open3d_legacy = o3d.geometry.Image(color_image_numpy)
+    else:
+        depth_image_open3d_legacy = o3d.io.read_image(depth_image_path)
+        color_image_open3d_legacy = o3d.io.read_image(color_image_path)
 
     depth_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
     color_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
@@ -88,7 +109,7 @@ def main():
                                       up=[0, -1.0, 0],
                                       zoom=0.7)
 
-    o3d.io.write_triangle_mesh("../output/mesh_000000_red_shorts2.ply", mesh)
+    o3d.io.write_triangle_mesh("../output/mesh_{:06d}_red_shorts.ply".format(frame_index), mesh)
 
     return PROGRAM_EXIT_SUCCESS
 

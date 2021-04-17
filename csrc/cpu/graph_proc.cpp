@@ -590,8 +590,8 @@ py::tuple compute_clusters(
 	int node_count = graph_edges_in.shape(0);
 	int max_neighbor_count = graph_edges_in.shape(1);
 
-	py::array_t<int> graph_clusters_out ({static_cast<ssize_t>(node_count), static_cast<ssize_t>(1)});
-	std::fill_n(graph_clusters_out.mutable_data(0,0), graph_clusters_out.size(), -1);
+	py::array_t<int> graph_clusters_out({static_cast<ssize_t>(node_count), static_cast<ssize_t>(1)});
+	std::fill_n(graph_clusters_out.mutable_data(0, 0), graph_clusters_out.size(), -1);
 
 	// convert graph_edges to a vector of sets
 	std::vector<std::set<int>> node_neighbors(node_count);
@@ -705,8 +705,8 @@ void compute_pixel_anchors_geodesic(
 
 	const int vertex_count = vertices.shape(0);
 
-	#pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask, node_to_vertex_distance)\
-	firstprivate(vertex_count, node_coverage)
+#pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask, node_to_vertex_distance)\
+    firstprivate(vertex_count, node_coverage)
 	for (int vertex_id = 0; vertex_id < vertex_count; vertex_id++) {
 		// Get corresponding pixel location
 		int u = *vertex_pixels.data(vertex_id, 0);
@@ -773,6 +773,17 @@ py::tuple compute_pixel_anchors_geodesic(
 	return py::make_tuple(pixel_anchors, pixel_weights);
 }
 
+/**
+ * \brief For each input pixel it computes 4 nearest anchors, using Euclidean distances.
+ * It also compute skinning weights for every pixel.
+ * \param graph_nodes N X 3 graph node positions
+ * \param point_image height x width x 3 point cloud
+ * \param node_coverage the maximal distance of each point in the point cloud to the nearest node used to generate the graph
+ * \param pixel_anchors [out] height x width x 4 array, where each 2d sampling with four values holds the indices of the nodes
+ * chosen as (controlling) anchor points for the pixel at the same 2d location
+ * \param pixel_weights [out] height x width x 4 array, where each 2d sampling with four values holds the
+ * influence weights of the nodes assigned to the pixel in pixel_anchors
+ */
 void compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
@@ -882,13 +893,101 @@ py::tuple compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
 		float node_coverage
-){
+) {
 	py::array_t<int> pixel_anchors;
 	py::array_t<float> pixel_weights;
 
 	compute_pixel_anchors_euclidean(graph_nodes, point_image, node_coverage, pixel_anchors, pixel_weights);
 
 	return py::make_tuple(pixel_anchors, pixel_weights);
+}
+
+py::tuple compute_vertex_anchors_euclidean(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<float>& vertices,
+		float node_coverage
+) {
+	py::array_t<int> vertex_anchors({vertices.shape(0), static_cast<ssize_t>(GRAPH_K)});
+	py::array_t<float> vertex_weights({vertices.shape(0), static_cast<ssize_t>(GRAPH_K)});
+	std::fill_n(vertex_anchors.mutable_data(0), vertex_anchors.size(), -1);
+	std::fill_n(vertex_weights.mutable_data(0), vertex_weights.size(), 0.f);
+
+#pragma omp parallel for default(none) shared(vertices, graph_nodes, vertex_anchors, vertex_weights), firstprivate(node_coverage)
+	for (int i_vertex = 0; i_vertex < vertices.shape(0); i_vertex++) {
+		// Query 3d pixel position.
+		Eigen::Vector3f vertex(*vertices.data(i_vertex, 0),
+		                       *vertices.data(i_vertex, 1),
+		                       *vertices.data(i_vertex, 2));
+		if (vertex.z() <= 0) continue;
+
+		// Keep only the k nearest Euclidean neighbors.
+		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;
+
+		for (int node_index = 0; node_index < graph_nodes.shape(0); node_index++) {
+			Eigen::Vector3f node_position(*graph_nodes.data(node_index, 0),
+			                              *graph_nodes.data(node_index, 1),
+			                              *graph_nodes.data(node_index, 2));
+
+			float squared_distance = (vertex - node_position).squaredNorm();
+			bool nodes_inserted = false;
+			for (auto it = nearest_nodes_with_squared_distances.begin(); it != nearest_nodes_with_squared_distances.end(); ++it) {
+				// We insert the element at the first position where its distance is smaller than the other
+				// element's distance, which enables us to always keep a sorted list of at most k nearest
+				// neighbors.
+				if (squared_distance <= it->second) {
+					it = nearest_nodes_with_squared_distances.insert(it, std::make_pair(node_index, squared_distance));
+					nodes_inserted = true;
+					break;
+				}
+			}
+
+			if (!nodes_inserted && nearest_nodes_with_squared_distances.size() < GRAPH_K) {
+				nearest_nodes_with_squared_distances.emplace_back(std::make_pair(node_index, squared_distance));
+			}
+
+			// We keep only the list of k nearest elements.
+			if (nodes_inserted && nearest_nodes_with_squared_distances.size() > GRAPH_K) {
+				nearest_nodes_with_squared_distances.pop_back();
+			}
+		}
+
+		// Compute skinning weights.
+		std::vector<int> nearest_euclidean_node_indices;
+		nearest_euclidean_node_indices.reserve(nearest_nodes_with_squared_distances.size());
+
+		std::vector<float> skinning_weights;
+		skinning_weights.reserve(nearest_nodes_with_squared_distances.size());
+
+		float weight_sum{0.f};
+		for (auto& nearest_nodes_with_squared_distance : nearest_nodes_with_squared_distances) {
+			int node_index = nearest_nodes_with_squared_distance.first;
+
+			Eigen::Vector3f node_position(*graph_nodes.data(node_index, 0),
+			                              *graph_nodes.data(node_index, 1),
+			                              *graph_nodes.data(node_index, 2));
+			float weight = compute_anchor_weight(vertex, node_position, node_coverage);
+			weight_sum += weight;
+
+			nearest_euclidean_node_indices.push_back(node_index);
+			skinning_weights.push_back(weight);
+		}
+
+		// Normalize the skinning weights.
+		int anchor_count = static_cast<int>(nearest_euclidean_node_indices.size());
+
+		if (weight_sum > 0) {
+			for (int i = 0; i < anchor_count; i++) skinning_weights[i] /= weight_sum;
+		} else if (anchor_count > 0) {
+			for (int i = 0; i < anchor_count; i++) skinning_weights[i] = 1.f / static_cast<float>(anchor_count);
+		}
+
+		// Store the results.
+		for (int i_anchor_node = 0; i_anchor_node < anchor_count; i_anchor_node++) {
+			*vertex_anchors.mutable_data(i_vertex, i_anchor_node) = nearest_euclidean_node_indices[i_anchor_node];
+			*vertex_weights.mutable_data(i_vertex, i_anchor_node) = skinning_weights[i_anchor_node];
+		}
+	}
+	return py::make_tuple(vertex_anchors, vertex_weights);
 }
 
 /**

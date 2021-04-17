@@ -21,7 +21,7 @@ PROGRAM_EXIT_SUCCESS = 0
 
 def main():
     mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000000_red_shorts.ply")
-    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/intrinsics.txt"
+    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/intrinsics.txt"
     # intrinsic_matrix = np.loadtxt(depth_intrinsics_path).astype(np.float32)
     fx_screen, fy_screen, px_screen, py_screen = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(depth_intrinsics_path)
 
@@ -87,7 +87,7 @@ def main():
     rendered_depth /= 4.0
     rendered_depth_uint8 = (rendered_depth * 255).astype(np.uint8)
 
-    depth_image_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/depth/000000.png"
+    depth_image_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/depth/000000.png"
     depth_image = cv2.imread(depth_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 4000
     cv2.imshow("source depth", (depth_image * 255).astype(np.uint8))
     cv2.waitKey()

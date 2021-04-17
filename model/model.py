@@ -112,16 +112,16 @@ class DeformNet(torch.nn.Module):
         self.vec_to_skew_mat = torch.from_numpy(vec_to_skew_mat_np).to('cuda')
 
     def forward(
-            self, x1, x2,
+            self, source, target,
             graph_nodes, graph_edges, graph_edges_weights, graph_clusters,
             pixel_anchors, pixel_weights,
             num_nodes_vec, intrinsics,
             evaluate=False, split="train"
     ):
-        batch_size = x1.shape[0]
+        batch_size = source.shape[0]
 
-        image_width = x1.shape[3]
-        image_height = x1.shape[2]
+        image_width = source.shape[3]
+        image_height = source.shape[2]
 
         convergence_info = []
         for i in range(batch_size):
@@ -137,8 +137,10 @@ class DeformNet(torch.nn.Module):
         ########################################################################
         # region Compute dense flow from source to target.
         ########################################################################
-
-        flow2, flow3, flow4, flow5, flow6, features2 = self.flow_net.forward(x1[:, :3, :, :], x2[:, :3, :, :])
+        # __DEBUG
+        source_color = torch.clone(source[:, :3, :, :])
+        target_color = torch.clone(target[:, :3, :, :])
+        flow2, flow3, flow4, flow5, flow6, features2 = self.flow_net.forward(source_color, target_color)
 
         assert torch.isfinite(flow2).all()
         assert torch.isfinite(features2).all()
@@ -158,8 +160,8 @@ class DeformNet(torch.nn.Module):
         ########################################################################
         # region Apply dense flow to warp the source points to target frame.
         ########################################################################
-        x_coords = torch.arange(image_width, dtype=torch.float32, device=x1.device).unsqueeze(0).expand(image_height, image_width).unsqueeze(0)
-        y_coords = torch.arange(image_height, dtype=torch.float32, device=x1.device).unsqueeze(1).expand(image_height, image_width).unsqueeze(0)
+        x_coords = torch.arange(image_width, dtype=torch.float32, device=source.device).unsqueeze(0).expand(image_height, image_width).unsqueeze(0)
+        y_coords = torch.arange(image_height, dtype=torch.float32, device=source.device).unsqueeze(1).expand(image_height, image_width).unsqueeze(0)
 
         xy_coords = torch.cat([x_coords, y_coords], 0)
         xy_coords = xy_coords.unsqueeze(0).repeat(batch_size, 1, 1, 1)  # (bs, 2, 448, 640)
@@ -182,11 +184,11 @@ class DeformNet(torch.nn.Module):
         # region Construct point-to-point correspondences between source <-> target points.
         ########################################################################
         # Mask out invalid source points.
-        source_points = x1[:, 3:, :, :].clone()
+        source_points = source[:, 3:, :, :].clone()
         source_anchor_validity = torch.all(pixel_anchors >= 0.0, dim=3)
 
         # Sample target points at computed pixel locations.
-        target_points = x2[:, 3:, :, :].clone()
+        target_points = target[:, 3:, :, :].clone()
         target_matches = torch.nn.functional.grid_sample(
             target_points, xy_coords_warped, mode=opt.gn_depth_sampling_mode, padding_mode='zeros', align_corners=False
         )
@@ -205,10 +207,10 @@ class DeformNet(torch.nn.Module):
 
         # Prepare the input of both the MaskNet and AttentionNet, if we actually use either of them
         if opt.use_mask:
-            target_rgb = x2[:, :3, :, :].clone()
+            target_rgb = target[:, :3, :, :].clone()
             target_rgb_warped = torch.nn.functional.grid_sample(target_rgb, xy_coords_warped, padding_mode='zeros', align_corners=False)
 
-            mask_input = torch.cat([x1, target_rgb_warped, target_matches], 1)
+            mask_input = torch.cat([source, target_rgb_warped, target_matches], 1)
         # endregion
         ########################################################################
         # region MaskNet
@@ -253,13 +255,13 @@ class DeformNet(torch.nn.Module):
         # We assume we always use 4 nearest anchors.
         assert pixel_anchors.shape[3] == 4
 
-        node_rotations = torch.eye(3, dtype=x1.dtype, device=x1.device).view(1, 1, 3, 3).repeat(batch_size, num_nodes_total, 1, 1)
-        node_translations = torch.zeros((batch_size, num_nodes_total, 3), dtype=x1.dtype, device=x1.device)
-        deformations_validity = torch.zeros((batch_size, num_nodes_total), dtype=x1.dtype, device=x1.device)
-        valid_solve = torch.zeros((batch_size), dtype=torch.uint8, device=x1.device)
-        deformed_points_pred = torch.zeros((batch_size, opt.gn_max_warped_points, 3), dtype=x1.dtype, device=x1.device)
-        deformed_points_idxs = torch.zeros((batch_size, opt.gn_max_warped_points), dtype=torch.int64, device=x1.device)
-        deformed_points_subsampled = torch.zeros((batch_size), dtype=torch.uint8, device=x1.device)
+        node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3).repeat(batch_size, num_nodes_total, 1, 1)
+        node_translations = torch.zeros((batch_size, num_nodes_total, 3), dtype=source.dtype, device=source.device)
+        deformations_validity = torch.zeros((batch_size, num_nodes_total), dtype=source.dtype, device=source.device)
+        valid_solve = torch.zeros((batch_size), dtype=torch.uint8, device=source.device)
+        deformed_points_pred = torch.zeros((batch_size, opt.gn_max_warped_points, 3), dtype=source.dtype, device=source.device)
+        deformed_points_idxs = torch.zeros((batch_size, opt.gn_max_warped_points), dtype=torch.int64, device=source.device)
+        deformed_points_subsampled = torch.zeros((batch_size), dtype=torch.uint8, device=source.device)
 
         # Skip the solver
         if not evaluate and opt.skip_solver:
@@ -296,7 +298,7 @@ class DeformNet(torch.nn.Module):
             "total_corres_weight": 0.0
         }
 
-        self.vec_to_skew_mat.to(x1.device)
+        self.vec_to_skew_mat.to(source.device)
 
         for i in range(batch_size):
             if opt.gn_debug:
@@ -414,7 +416,7 @@ class DeformNet(torch.nn.Module):
                     total_match_weights += match_weights
 
                 # we'll build a mask that stores which canonical_node_positions will survive
-                valid_nodes_mask_i = torch.ones((num_nodes_i), dtype=torch.bool, device=x1.device)
+                valid_nodes_mask_i = torch.ones((num_nodes_i), dtype=torch.bool, device=source.device)
 
                 # if not enough matches in a cluster, mark all cluster's canonical_node_positions for removal
                 node_ids_for_removal = []
@@ -424,10 +426,10 @@ class DeformNet(torch.nn.Module):
 
                     if cluster_match_weights < opt.gn_min_num_correspondences_per_cluster:
                         # TODO: figure out the bug here, i.e. why does the old code not work
-                        mask = torch.where(graph_clusters_i == cluster_id, torch.ones_like(graph_clusters_i), torch.zeros_like(graph_clusters_i))
-                        dummy = mask.sum()  # TODO: figure out why there is some kind of lazy-evaluation bug in PyTorch without this line...
-                        del dummy
-                        x = torch.nonzero(mask, as_tuple=True)[0].tolist()
+                        # mask = torch.where(graph_clusters_i == cluster_id, torch.ones_like(graph_clusters_i), torch.zeros_like(graph_clusters_i))
+                        # dummy = mask.sum()  # TODO: figure out why there is some kind of lazy-evaluation bug in PyTorch without this line...
+                        # del dummy
+                        # x = torch.nonzero(mask, as_tuple=True)[0].tolist()
 
                         # __DEBUG
                         # print("mask.sum()......................: ", mask.sum())
@@ -448,9 +450,9 @@ class DeformNet(torch.nn.Module):
                         index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
                         # torch.save(graph_clusters_i, "graph_clusters_i.pt")
                         # torch.save(index_equals_cluster_id, "index_equals_cluster_id.pt")
-                        dummy = index_equals_cluster_id[0].sum()  # This triggers some kind of bug too!
+                        # dummy = index_equals_cluster_id[0].sum()  # This triggers some kind of bug too!
                         # # del dummy
-                        # x = index_equals_cluster_id[0].tolist()  # <-- original error here!
+                        x = index_equals_cluster_id[0].tolist()  # <-- original error here!
 
                         # print("len(index_equals_cluster_id)....: ", len(index_equals_cluster_id))
                         # print("type(index_equals_cluster_id)...: ", type(index_equals_cluster_id))
@@ -476,7 +478,7 @@ class DeformNet(torch.nn.Module):
                     opt_num_nodes_i = graph_nodes_i.shape[0]
 
                     # Get mask of correspondences for which any one of their anchors is an invalid node
-                    valid_corresp_mask = torch.ones((num_matches), dtype=torch.bool, device=x1.device)
+                    valid_corresp_mask = torch.ones((num_matches), dtype=torch.bool, device=source.device)
                     for node_id_for_removal in node_ids_for_removal:
                         valid_corresp_mask = valid_corresp_mask & torch.all(source_anchors != node_id_for_removal, axis=1)
 
@@ -519,8 +521,8 @@ class DeformNet(torch.nn.Module):
             ###############################################################################################################
             # region Filter invalid edges.
             ###############################################################################################################
-            node_ids = torch.arange(opt_num_nodes_i, dtype=torch.int32, device=x1.device).view(-1, 1).repeat(1,
-                                                                                                             num_neighbors)  # (opt_num_nodes_i, num_neighbors)
+            node_ids = torch.arange(opt_num_nodes_i, dtype=torch.int32, device=source.device).view(-1, 1).repeat(1,
+                                                                                                                 num_neighbors)  # (opt_num_nodes_i, num_neighbors)
             graph_edge_pairs = torch.cat([node_ids.view(-1, num_neighbors, 1), graph_edges_i.view(-1, num_neighbors, 1)],
                                          2)  # (opt_num_nodes_i, num_neighbors, 2)
 
@@ -544,23 +546,23 @@ class DeformNet(torch.nn.Module):
             # translation for every node. All node rotation parameters are listed first, and
             # then all node translation parameters are listed.
             #                        x = [w_current_all, t_current_all]
-            R_current = torch.eye(3, dtype=x1.dtype, device=x1.device).view(1, 3, 3).repeat(opt_num_nodes_i, 1, 1)
-            t_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=x1.dtype, device=x1.device)
+            R_current = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 3, 3).repeat(opt_num_nodes_i, 1, 1)
+            t_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=source.dtype, device=source.device)
 
             if opt.gn_debug:
                 print(
                     "\tNum. matches: {0} || Num. canonical_node_positions: {1} || Num. edges: {2}".format(num_matches, opt_num_nodes_i, num_edges_i))
 
             # Helper structures.
-            data_increment_vec_0_3 = torch.arange(0, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_matches)
-            data_increment_vec_1_3 = torch.arange(1, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_matches)
-            data_increment_vec_2_3 = torch.arange(2, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_matches)
+            data_increment_vec_0_3 = torch.arange(0, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
+            data_increment_vec_1_3 = torch.arange(1, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
+            data_increment_vec_2_3 = torch.arange(2, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
 
             if num_edges_i > 0:
-                arap_increment_vec_0_3 = torch.arange(0, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_edges_i)
-                arap_increment_vec_1_3 = torch.arange(1, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_edges_i)
-                arap_increment_vec_2_3 = torch.arange(2, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=x1.device)  # (num_edges_i)
-                arap_one_vec = torch.ones((num_edges_i), dtype=x1.dtype, device=x1.device)
+                arap_increment_vec_0_3 = torch.arange(0, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_increment_vec_1_3 = torch.arange(1, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_increment_vec_2_3 = torch.arange(2, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_one_vec = torch.ones((num_edges_i), dtype=source.dtype, device=source.device)
 
             ill_posed_system = False
 
@@ -570,9 +572,9 @@ class DeformNet(torch.nn.Module):
                 ##########################################
                 # region Compute data residual and jacobian.
                 ##########################################
-                jacobian_data = torch.zeros((num_matches * 3, opt_num_nodes_i * 6), dtype=x1.dtype,
-                                            device=x1.device)  # (num_matches*3, opt_num_nodes_i*6)
-                deformed_points = torch.zeros((num_matches, 3, 1), dtype=x1.dtype, device=x1.device)
+                jacobian_data = torch.zeros((num_matches * 3, opt_num_nodes_i * 6), dtype=source.dtype,
+                                            device=source.device)  # (num_matches*3, opt_num_nodes_i*6)
+                deformed_points = torch.zeros((num_matches, 3, 1), dtype=source.dtype, device=source.device)
 
                 for k in range(4):  # Our data uses 4 anchors for every point
                     node_idxs_k = source_anchors[:, k]  # (num_matches)
@@ -654,7 +656,7 @@ class DeformNet(torch.nn.Module):
 
                     assert torch.isfinite(jacobian_data).all(), jacobian_data
 
-                res_data = torch.zeros((num_matches * 3, 1), dtype=x1.dtype, device=x1.device)
+                res_data = torch.zeros((num_matches * 3, 1), dtype=source.dtype, device=source.device)
 
                 # FLOW PART
                 res_data[data_increment_vec_0_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
@@ -673,8 +675,8 @@ class DeformNet(torch.nn.Module):
                 # region Compute arap residual and jacobian.
                 ##########################################
                 if num_edges_i > 0:
-                    jacobian_arap = torch.zeros((num_edges_i * 3, opt_num_nodes_i * 6), dtype=x1.dtype,
-                                                device=x1.device)  # (num_edges_i*3, opt_num_nodes_i*6)
+                    jacobian_arap = torch.zeros((num_edges_i * 3, opt_num_nodes_i * 6), dtype=source.dtype,
+                                                device=source.device)  # (num_edges_i*3, opt_num_nodes_i*6)
 
                     node_idxs_0 = graph_edge_pairs_filtered[:, 0]  # i node
                     node_idxs_1 = graph_edge_pairs_filtered[:, 1]  # j node
@@ -870,7 +872,7 @@ class DeformNet(torch.nn.Module):
                 source_anchors_i = source_anchors_i.type(torch.int64)
 
                 # Now we deform all source points.
-                deformed_points_i = torch.zeros((num_points, 3, 1), dtype=x1.dtype, device=x1.device)
+                deformed_points_i = torch.zeros((num_points, 3, 1), dtype=source.dtype, device=source.device)
                 graph_nodes_complete_i = graph_nodes[i, :num_nodes_i, :]
 
                 R_final = node_rotations[i, :num_nodes_i, :, :].view(num_nodes_i, 3, 3)

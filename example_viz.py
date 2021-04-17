@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import re
+import typing
 
 import open3d as o3d
 import torch
@@ -15,15 +16,42 @@ import utils.visualization.coordinate_transformations as viz_utils
 import utils.mesh_utils as mesh_utils
 import utils.visualization.line_mesh as line_mesh_utils
 import utils.visualization.viewer as viewer
-import options as opt
+import options
 
 from enum import Enum
 
 
-class DataSection(Enum):
+class DataSplit(Enum):
     TEST = "test"
     VALIDATION = "val"
     TRAIN = "train"
+
+
+class FramePairDataset:
+    def __init__(self, source_frame_index: int, target_frame_index: int, sequence_id: int, split: DataSplit, is_local: bool = False,
+                 segment_name: typing.Union[None, str] = None):
+        """
+
+        :param source_frame_index:
+        :param target_frame_index:
+        :param sequence_id:
+        :param split: which data split to use
+        :param is_local: whether to use the local example folder as the root for the split & sequence data
+        :param segment_name: specify segment name if graph is available for more than one segment in the dataset (e.g. Shirt0)
+        """
+        self.source_frame_index = source_frame_index
+        self.target_frame_index = target_frame_index
+        self.sequence_id = sequence_id
+        self.split = split
+        self.is_local = is_local
+        self.segment_name = segment_name
+
+
+class FramePair(Enum):
+    GREY_SHIRT_TEST_LOCAL = FramePairDataset(300, 600, 17, DataSplit.TEST, True)
+    GREY_SHIRT_TEST = FramePairDataset(300, 600, 17, DataSplit.TEST)
+    GREY_SHIRT_TRAIN_LOCAL = FramePairDataset(0, 110, 258, DataSplit.TRAIN, True)
+    RED_SHORTS = FramePairDataset(200, 400, 14, DataSplit.VALIDATION, True)
 
 
 # TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
@@ -31,50 +59,46 @@ class DataSection(Enum):
 #  Through better OO design and refactoring, these should be grouped into objects, replaced with internal
 #  method calls, etc.
 
+# TODO: all of the original NNRT code is suffering from major cases of the God-function antipattern, i.e.
+#  the ~700-line-long forward function in DeformNet and the like. These god-functions should be split up
+#  into sub-functions that "do only one thing"
 def main():
     #####################################################################################################
     # Options
     #####################################################################################################
 
     # Source-target example
-    use_local_example_data = True
+    use_local_example_data = False
+
+    frame_pair = FramePair.RED_SHORTS
+    frame_pair_name = frame_pair.name.lower()
+    frame_pair_dataset: FramePairDataset = frame_pair.value
+
+    save_node_transformations = True
 
     if use_local_example_data:
         data_dir = "example_data"
     else:
-        data_dir = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced"
+        data_dir = "/mnt/Data/Reconstruction/real_data/deepdeform"
 
-    data_section = DataSection.TEST
-
-    split = data_section.value
-    seq_id = 17  # sequence id (the number in the directory name of the sequence)
-
-    src_id = 300  # source frame
-    tgt_id = 600  # target frame
-
-    segment_name = None  # specify if graph is available for more than one segment in the dataset (e.g. Shirt0)
-
-    # Train set example
-    # Important: You need to generate graph data using create_graph_data.py first.
-
-    # split = "train"
-    # seq_id = 258
-
-    # src_id = 0 # source frame
-    # tgt_id = 110 # target frame
+    split = frame_pair_dataset.split.value
+    sequence_id = frame_pair_dataset.sequence_id
+    source_frame_index = frame_pair_dataset.source_frame_index
+    target_frame_index = frame_pair_dataset.target_frame_index
+    segment_name = frame_pair_dataset.segment_name
 
     # Some params for coloring the predicted correspondence confidences
     weight_threshold = 0.3
     weight_scale = 1
 
     # We will overwrite the default value in options.py / settings.py
-    opt.use_mask = True
+    options.use_mask = True
 
     #####################################################################################################
     # Load model
     #####################################################################################################
 
-    saved_model = opt.saved_model
+    saved_model = options.saved_model
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
     pretrained_dict = torch.load(saved_model)
@@ -85,10 +109,10 @@ def main():
     if "chairs_things" in saved_model:
         model.flow_net.load_state_dict(pretrained_dict)
     else:
-        if opt.model_module_to_load == "full_model":
+        if options.model_module_to_load == "full_model":
             # Load completely model            
             model.load_state_dict(pretrained_dict)
-        elif opt.model_module_to_load == "only_flow_net":
+        elif options.model_module_to_load == "only_flow_net":
             # Load only optical flow part
             model_dict = model.state_dict()
             # 1. filter out unnecessary keys
@@ -98,7 +122,7 @@ def main():
             # 3. load the new state dict
             model.load_state_dict(model_dict)
         else:
-            print(opt.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
+            print(options.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
             exit()
 
     model.eval()
@@ -106,34 +130,28 @@ def main():
     #####################################################################################################
     # Load example dataset
     #####################################################################################################
-    example_dir = os.path.join(data_dir, f"{split}/seq{str(seq_id).zfill(3)}")
+    sequence_directory = os.path.join(data_dir, f"{split}/seq{str(sequence_id).zfill(3)}")
 
-    intrinsics_path = os.path.join(example_dir, "intrinsics.txt")
+    intrinsics_path = os.path.join(sequence_directory, "intrinsics.txt")
     intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(intrinsics_path)
 
-    image_height = opt.image_height
-    image_width = opt.image_width
-    max_boundary_dist = opt.max_boundary_dist
+    image_height = options.image_height
+    image_width = options.image_width
+    max_boundary_distance = options.max_boundary_dist
 
-    source_image_filename = str(src_id).zfill(6)
-    target_image_filename = str(tgt_id).zfill(6)
+    source_image_filename = str(source_frame_index).zfill(6)
+    target_image_filename = str(target_frame_index).zfill(6)
 
-    graph_edges_dir = os.path.join(example_dir, "graph_edges")
+    graph_edges_dir = os.path.join(sequence_directory, "graph_edges")
     parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
     if segment_name is None:
         segment_name = parts[1]
     graph_filename = parts[0] + "_" + segment_name + "_" + source_image_filename + "_" + target_image_filename + "_geodesic_0.05"
 
-    src_color_image_path = os.path.join(example_dir, "color", source_image_filename + ".jpg")
-    src_depth_image_path = os.path.join(example_dir, "depth", source_image_filename + ".png")
-    tgt_color_image_path = os.path.join(example_dir, "color", target_image_filename + ".jpg")
-    tgt_depth_image_path = os.path.join(example_dir, "depth", target_image_filename + ".png")
-    graph_nodes_path = os.path.join(example_dir, "graph_nodes", graph_filename + ".bin")
-    graph_edges_path = os.path.join(example_dir, "graph_edges", graph_filename + ".bin")
-    graph_edges_weights_path = os.path.join(example_dir, "graph_edges_weights", graph_filename + ".bin")
-    graph_clusters_path = os.path.join(example_dir, "graph_clusters", graph_filename + ".bin")
-    pixel_anchors_path = os.path.join(example_dir, "pixel_anchors", graph_filename + ".bin")
-    pixel_weights_path = os.path.join(example_dir, "pixel_weights", graph_filename + ".bin")
+    src_color_image_path = os.path.join(sequence_directory, "color", source_image_filename + ".jpg")
+    src_depth_image_path = os.path.join(sequence_directory, "depth", source_image_filename + ".png")
+    tgt_color_image_path = os.path.join(sequence_directory, "color", target_image_filename + ".jpg")
+    tgt_depth_image_path = os.path.join(sequence_directory, "depth", target_image_filename + ".png")
 
     # Source color and depth
     source, _, cropper = dataset.DeformDataset.load_image(
@@ -143,15 +161,12 @@ def main():
     # Target color and depth (and boundary mask)
     target, target_boundary_mask, _ = dataset.DeformDataset.load_image(
         tgt_color_image_path, tgt_depth_image_path, intrinsics, image_height, image_width, cropper=cropper,
-        max_boundary_dist=max_boundary_dist, compute_boundary_mask=True
+        max_boundary_dist=max_boundary_distance, compute_boundary_mask=True
     )
 
     # Graph
     graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
-        dataset.DeformDataset.load_graph_data(
-            graph_nodes_path, graph_edges_path, graph_edges_weights_path, None,
-            graph_clusters_path, pixel_anchors_path, pixel_weights_path, cropper
-        )
+        dataset.DeformDataset.load_graph_data(sequence_directory, graph_filename, False, cropper)
 
     num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
@@ -197,20 +212,28 @@ def main():
     # Get some of the results
     rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
     translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
+    if save_node_transformations:
+        # Save rotations & translations
+        with open('output/{:s}_{:s}_{:06d}_{:06d}_rotations.np'.format(
+                  frame_pair_name, segment_name, source_frame_index, target_frame_index), 'wb') as file:
+            np.save(file, rotations_pred)
+        with open('output/{:s}_{:s}_{:06d}_{:06d}_translations.np'.format(
+                frame_pair_name, segment_name, source_frame_index, target_frame_index), 'wb') as file:
+            np.save(file, translations_pred)
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure use_mask=True in options.py"
-    mask_pred = mask_pred.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+    mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
 
     # Compute mask gt for mask baseline
     _, source_points, valid_source_points, target_matches, \
     valid_target_matches, valid_correspondences, _, \
     _ = model_data["correspondence_info"]
 
-    target_matches = target_matches.view(-1, opt.image_height, opt.image_width).cpu().numpy()
-    valid_source_points = valid_source_points.view(-1, opt.image_height, opt.image_width).cpu().numpy()
-    valid_target_matches = valid_target_matches.view(-1, opt.image_height, opt.image_width).cpu().numpy()
-    valid_correspondences = valid_correspondences.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+    target_matches = target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
+    valid_source_points = valid_source_points.view(-1, options.image_height, options.image_width).cpu().numpy()
+    valid_target_matches = valid_target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
+    valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
 
     deformed_graph_nodes = graph_nodes + translations_pred
 

@@ -89,7 +89,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      "Compile a vertex mask that can be used to erode the provided mesh (iteratively mask out vertices at surface discontinuities, leave only non-eroded vertices)");
 
 	m.def("sample_nodes", &graph_proc::sample_nodes, "vertex_positions_in"_a, "vertex_erosion_mask_in"_a, "node_coverage"_a,
-	      "use_only_non_eroded_indices"_a, "random_shuffle"_a, "Samples graph canonical_node_positions that cover given vertices.");
+	      "use_only_non_eroded_indices"_a, "random_shuffle"_a, "Samples graph nodes that cover given vertices.");
 
 	// procedures for deformation graph processing
 	m.def("compute_edges_geodesic",
@@ -99,7 +99,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      "face_indices_in"_a, "node_indices_in"_a, "max_neighbor_count"_a, "node_coverage"_a,
 	      "graph_edges_out"_a, "graph_edge_weights_out"_a, "graph_edge_distances_out"_a, "node_to_vertex_distances_out"_a,
 	      "enforce_total_num_neighbors"_a,
-	      "Compute geodesic edges between given graph canonical_node_positions (subsampled vertices on given mesh)\n"
+	      "Compute geodesic edges between given graph nodes (subsampled vertices on given mesh)\n"
 	      " using a priority-queue-based implementation of Djikstra's algorithm.\n"
 	      "Output is returned as an array of dimensions (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      " the row's entries, if >=0, represent destination node indices, ordered by geodesic distance between source and destination. \n"
@@ -119,8 +119,8 @@ PYBIND11_MODULE(nnrt, m) {
 	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a);
 
 
-	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "canonical_node_positions"_a, "max_neighbor_count"_a,
-	      "Compute Euclidean edges between given graph canonical_node_positions.\n"
+	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "nodes"_a, "max_neighbor_count"_a,
+	      "Compute Euclidean edges between given graph nodes.\n"
 	      "The output is returned as an array of (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      "the row's entries, if >=0, represent destination node indices, ordered by euclidean distance between source and destination.");
 
@@ -130,7 +130,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a, "pixel_anchors"_a,
 	      "pixel_weights"_a, "width"_a, "height"_a, "node_coverage"_a,
 	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n"
-	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
+	      "Output pixel anchors array (height, width, K) contains indices of K graph nodes that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
@@ -141,12 +141,14 @@ PYBIND11_MODULE(nnrt, m) {
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a,
 	      "width"_a, "height"_a, "node_coverage"_a,
 	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n");
+	
+	
 
 	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float,
 			      py::array_t<int>&, py::array_t<float>&>(&graph_proc::compute_pixel_anchors_euclidean),
 	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a, "pixel_anchors"_a, "pixel_weights"_a,
 	      "Compute anchor ids and skinning weights for every pixel using Euclidean distances.\n"
-	      "Output pixel anchors array (height, width, K) contains indices of K graph canonical_node_positions that \n"
+	      "Output pixel anchors array (height, width, K) contains indices of K graph nodes that \n"
 	      "influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
@@ -154,6 +156,12 @@ PYBIND11_MODULE(nnrt, m) {
 	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float>(
 			&graph_proc::compute_pixel_anchors_euclidean),
 	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a);
+
+	m.def("compute_vertex_anchors_euclidean", &graph_proc::compute_vertex_anchors_euclidean, "graph_nodes"_a, "point_image"_a, "node_coverage"_a,
+	      "Output pixel anchors array (V, K) contains, for every vertex with index in [0,V), indices of K graph "
+	      "nodes that influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
+	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
+	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
 
 
 	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up,

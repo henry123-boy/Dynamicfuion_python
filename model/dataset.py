@@ -4,19 +4,13 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 from skimage import io
+from multipledispatch import dispatch
+
+from snoop import pp
 
 from utils.utils import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
     load_graph_clusters, load_int_image, load_float_image
 from utils import image_proc
-from nnrt import compute_pixel_anchors_geodesic as compute_pixel_anchors_geodesic_c
-from nnrt import compute_pixel_anchors_euclidean as compute_pixel_anchors_euclidean_c
-from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
-from nnrt import get_vertex_erosion_mask as erode_mesh_c
-from nnrt import sample_nodes as sample_nodes_c
-from nnrt import compute_edges_geodesic as compute_edges_geodesic_c
-from nnrt import compute_edges_euclidean as compute_edges_euclidean_c
-
-from utils import utils
 
 
 class StaticCenterCrop(object):
@@ -154,6 +148,7 @@ class DeformDataset(Dataset):
         image = np.zeros((6, input_height, input_width), dtype=np.float32)
 
         image[:3, :, :] = np.moveaxis(color_image, -1, 0) / 255.0  # (3, h, w)
+
         assert np.max(image[:3, :, :]) <= 1.0, np.max(image[:3, :, :])
         image[3:, :, :] = np.moveaxis(depth_image, -1, 0)  # (3, h, w)
 
@@ -215,16 +210,18 @@ class DeformDataset(Dataset):
         return optical_flow_image, optical_flow_mask, scene_flow_image, scene_flow_mask
 
     @staticmethod
+    @dispatch(str, str, str, object, str, str, str, StaticCenterCrop)
     def load_graph_data(
-            graph_nodes_path, graph_edges_path, graph_edges_weights_path,
-            graph_node_deformations_path, graph_clusters_path,
-            pixel_anchors_path, pixel_weights_path, cropper
+            graph_nodes_path: str, graph_edges_path: str, graph_edges_weights_path: str,
+            graph_node_deformations_path: str, graph_clusters_path: str,
+            pixel_anchors_path: str, pixel_weights_path: str, cropper: StaticCenterCrop
     ):
         # Load data.
         graph_nodes = load_graph_nodes(graph_nodes_path)
         graph_edges = load_graph_edges(graph_edges_path)
         graph_edges_weights = load_graph_edges_weights(graph_edges_weights_path)
-        graph_node_deformations = load_graph_node_deformations(graph_node_deformations_path) if graph_node_deformations_path is not None else None
+        graph_node_deformations = load_graph_node_deformations(graph_node_deformations_path) \
+            if graph_node_deformations_path is not None else None
         graph_clusters = load_graph_clusters(graph_clusters_path)
         pixel_anchors = cropper(load_int_image(pixel_anchors_path))
         pixel_weights = cropper(load_float_image(pixel_weights_path))
@@ -238,6 +235,21 @@ class DeformDataset(Dataset):
             assert graph_node_deformations.dtype == np.float32
 
         return graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights
+
+    @staticmethod
+    @dispatch(str, str, bool, StaticCenterCrop)
+    def load_graph_data(sequence_directory: str, graph_filename: str, load_deformations: bool, cropper: StaticCenterCrop):
+        graph_nodes_path = os.path.join(sequence_directory, "graph_nodes", graph_filename + ".bin")
+        graph_edges_path = os.path.join(sequence_directory, "graph_edges", graph_filename + ".bin")
+        graph_edges_weights_path = os.path.join(sequence_directory, "graph_edges_weights", graph_filename + ".bin")
+        graph_node_deformations_path = None if not load_deformations \
+            else os.path.join(sequence_directory, "graph_node_deformations", graph_filename + ".bin")
+        graph_clusters_path = os.path.join(sequence_directory, "graph_clusters", graph_filename + ".bin")
+        pixel_anchors_path = os.path.join(sequence_directory, "pixel_anchors", graph_filename + ".bin")
+        pixel_weights_path = os.path.join(sequence_directory, "pixel_weights", graph_filename + ".bin")
+        return DeformDataset.load_graph_data(graph_nodes_path, graph_edges_path, graph_edges_weights_path,
+                                             graph_node_deformations_path, graph_clusters_path, pixel_anchors_path,
+                                             pixel_weights_path, cropper)
 
     @staticmethod
     def collate_with_padding(batch):

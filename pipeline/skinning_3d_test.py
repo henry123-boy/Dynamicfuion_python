@@ -79,8 +79,8 @@ class Viewer:
                 transformed_dq: dualquat = original_dq * node_rotations[i_node - 1] * original_dq.inverse()
                 transformed_nodes_dual_quaternions.append(transformed_dq)
 
-            transformed_vertices = np.array([op.dlb(weights, transformed_nodes_dual_quaternions).transform_point(vertex)
-                                             for weights, vertex in zip(self.weights, self.vertices)])
+            transformed_vertices = np.array([op.dlb(weight, transformed_nodes_dual_quaternions).transform_point(vertex)
+                                             for weight, vertex in zip(self.weights, self.vertices)])
             self.cylinder_mesh.vertices = o3d.utility.Vector3dVector(transformed_vertices)
             self.cylinder_mesh.compute_vertex_normals()
             visualizer.update_geometry(self.cylinder_mesh)

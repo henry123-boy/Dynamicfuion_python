@@ -112,10 +112,7 @@ py::tuple compute_pixel_anchors_geodesic(
 );
 
 
-/**
- * For each input pixel it computes 4 nearest anchors, using Euclidean distances.
- * It also compute skinning weights for every pixel.
- */
+
 void compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
@@ -124,13 +121,15 @@ void compute_pixel_anchors_euclidean(
 		py::array_t<float>& pixel_weights
 );
 
-/**
- * For each input pixel it computes 4 nearest anchors, using Euclidean distances.
- * It also compute skinning weights for every pixel.
- */
 py::tuple compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
+		float node_coverage
+);
+
+py::tuple compute_vertex_anchors_euclidean(
+		const py::array_t<float>& graph_nodes,
+		const py::array_t<float>& vertices,
 		float node_coverage
 );
 
