@@ -34,3 +34,35 @@ Track 2 frames:
 
 	8. (Housekeeping) Invalidate complete batch if there are too many matches in total.
 	9. Return result as data dictionary.
+
+
+# Meeting Notes
+Date: 16th April 2021
+According to implementation by dolphin-li(currently the best implementation of dynamic fusion found online): https://github.com/dolphin-li/DynamicFusion
+
+
+For every frame: 
+
+1. Get the Graph & RGBD Image from canonical pose for Neural Non-Rigid Tracking(NNRT) 
+
+2. Get Deformed Graph from NNRT 
+
+3. Create WarpField on voxel space from the deformed graph
+	The warp field class has 2 important parts: 	
+		2.1. KDTree for finding nearest neighbors of each voxel  
+		2.2. warp_voxel_space(x,y,z) 
+
+4. Perform surface fusion with the live frame
+
+5. Extract the new canonical pose using marching cubes
+
+6. Find new nodes to be inserted
+7. Update Edges in the graph. (No need for pyramid update like in the original paper) 
+
+8. Update the KDTree of the warp field
+
+Current Tasks:- 
+	1. Find TSDF volume implementation which can work with an input warp field (either Open3D or PYCuda Implementation: https://github.com/andyzeng/tsdf-fusion-python/blob/master/fusion.py)
+	2. Implement WarpField Class using KDTree & Dual Quaternions
+		2.1 Perform Trivail test by translating 3x3 Cube using a single-noded graph
+		2.2 Perform Trivail test by affine transform 9x9 Cube using a multi-node graph
