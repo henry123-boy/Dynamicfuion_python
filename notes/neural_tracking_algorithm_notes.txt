@@ -66,3 +66,35 @@ Current Tasks:-
 	2. Implement WarpField Class using KDTree & Dual Quaternions
 		2.1 Perform Trivail test by translating 3x3 Cube using a single-noded graph
 		2.2 Perform Trivail test by affine transform 9x9 Cube using a multi-node graph
+
+## Installation instructions to use nnrt:
+1. Reclone repos 
+	3rd-party/pybind11:
+	3rd-party/Eigen: 
+```
+	cd 3rd-party
+	rm Eigen
+	git clone https://gitlab.com/libeigen/eigen.git
+	mv eigen Eigen 
+	cd Eigen 
+	git checkout 199c5f2
+	cd ..
+
+	rm pybind11
+	git clone https://github.com/pybind/pybind11.git
+	cd pybind11
+	git checkout 59f8d7f
+```
+2. Make nnrt module 
+```
+	cd <Neural Tracking Dir>
+	cmake . 
+	make 
+```
+
+3. Whenever you need to use the nnrt module  
+```
+import sys
+sys.append("<Neural Tracking Dir>/csrc")
+
+```
