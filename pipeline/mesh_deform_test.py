@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 # =================================================================================================
-# A minimal example that loads a 3d mesh previously generated using a depth map and image,
-# deforms it using node transformations (to a certain target frame) previously output from
-# NeuralTracking, and compares it to the mesh generated from the target frame.
+# A minimal example that loads a 3d mesh previously generated using a depth map and image
+# (via TSDF integration and marching cubes), deforms it using node transformations
+# (to a certain target frame) previously output from NeuralTracking, and compares it to the mesh
+# generated from the target frame.
 #
 # Copyright 2021 Gregory Kramida
 # =================================================================================================
@@ -74,8 +75,14 @@ def main():
     mesh200_transformed = o3d.geometry.TriangleMesh(o3d.cuda.pybind.utility.Vector3dVector(deformed_vertices), mesh200.triangles)
     mesh200_transformed.compute_vertex_normals()
 
+    # o3d.visualization.draw_geometries([mesh200],
+    #                                   front=[0, 0, -1],
+    #                                   lookat=[0, 0, 1.5],
+    #                                   up=[0, -1.0, 0],
+    #                                   zoom=0.7)
+
     # TODO: add visualization toggle switch between meshes, use shortcuts: T(ransformed), G(round truth),B(oth)
-    o3d.visualization.draw_geometries([mesh200_transformed, mesh400],
+    o3d.visualization.draw_geometries([mesh400, mesh200_transformed],
                                       front=[0, 0, -1],
                                       lookat=[0, 0, 1.5],
                                       up=[0, -1.0, 0],

@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
-# A minimal example that generates a TSDF based on a depth image and then extracts the mesh from it
-# Copyright 2021 Gregory Kramida
+# ==================================================================================================
+# A toy code example that tests extracting the TSDF voxel centers from a TSDF
+#
+# ==================================================================================================
 import os
 import sys
 import open3d as o3d
@@ -28,6 +30,8 @@ def main():
     device = o3d.core.Device('cuda:0')
 
     # === compile image paths ===
+
+    # TODO: instead of using real data, generate toy color & image data of a plane at a fixed distance from the camera
 
     frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/"
     frame_index = 200
@@ -97,6 +101,8 @@ def main():
     volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
 
     # === mesh extraction ===
+
+    # TODO: replace mesh extraction here with center extraction
 
     mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
     mesh.compute_vertex_normals()
