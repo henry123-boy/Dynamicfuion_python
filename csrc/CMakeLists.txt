@@ -11,9 +11,11 @@ endif()
 
 include(get_python_version)
 include(get_python_include_dir)
+include(get_python_local_site_packages_dir)
 
 get_python_version(${PYTHON_EXECUTABLE} PYTHON_VERSION)
 get_python_include_dir(${PYTHON_EXECUTABLE} PYTHON_INCLUDE_DIR)
+get_python_local_site_packages_dir(${PYTHON_EXECUTABLE} PYTHON_LOCAL_PACKAGES_DIR)
 
 if (NOT PYTHON_EXECUTABLE)
     message(FATAL_ERROR "PYTHON_EXECUTABLE should be set in top level CMakeLists.txt")
@@ -21,7 +23,6 @@ endif()
 
 # We need to get python version to configure some meta files
 message(STATUS "Using Python version: ${PYTHON_VERSION}")
-
 
 set(PIP_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/pip_package")
 set(STUBS_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/stubs")
@@ -105,6 +106,8 @@ set(PYBIND_STUBGEN_IN_PATH)
 add_custom_target(python-stubs
     COMMAND ${PYBIND11_STUBGEN_EXECUTABLE} nnrt -o ${STUBS_PACKAGE_DST_DIR}
     COMMAND echo "pybind11 stubs package created at ${STUBS_PACKAGE_DST_DIR}"
+    COMMAND cp -r ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs ${PYTHON_LOCAL_PACKAGES_DIR}
+    COMMAND echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs to ${PYTHON_LOCAL_PACKAGES_DIR}"
     DEPENDS install-pip-package
 )
 
