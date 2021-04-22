@@ -101,12 +101,8 @@ def main():
 
     volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
 
-    # === mesh extraction ===
-
-    # TODO: replace mesh extraction here with center extraction
-
     voxel_centers = volume.extract_voxel_centers()
-    print(voxel_centers)
+    np.save("output/voxel_centers_000200_red_shorts.np", voxel_centers)
 
     return PROGRAM_EXIT_SUCCESS
 
