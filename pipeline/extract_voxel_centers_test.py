@@ -2,7 +2,8 @@
 
 # ==================================================================================================
 # A toy code example that tests extracting the TSDF voxel centers from a TSDF
-#
+# Requires a custom build of Open3D found at https://github.com/Algomorph/Open3D/tree/extract-tsdf-voxel-centers
+# (branch extract-tsdf-voxel-centers)
 # ==================================================================================================
 import os
 import sys
@@ -104,18 +105,8 @@ def main():
 
     # TODO: replace mesh extraction here with center extraction
 
-    mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-    mesh.compute_vertex_normals()
-
-    # === visualization ===
-
-    o3d.visualization.draw_geometries([mesh],
-                                      front=[0, 0, -1],
-                                      lookat=[0, 0, 1.5],
-                                      up=[0, -1.0, 0],
-                                      zoom=0.7)
-
-    o3d.io.write_triangle_mesh("../output/mesh_{:06d}_red_shorts.ply".format(frame_index), mesh)
+    voxel_centers = volume.extract_voxel_centers()
+    print(voxel_centers)
 
     return PROGRAM_EXIT_SUCCESS
 
