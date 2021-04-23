@@ -8,6 +8,7 @@
 import os
 import sys
 import open3d as o3d
+import open3d.core as o3c
 import torch
 import numpy as np
 
@@ -102,9 +103,9 @@ def main():
     volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
 
     voxel_centers = volume.extract_voxel_centers()
-    print(voxel_centers[:380928, :])
+    voxel_centers_np = np.array(voxel_centers)
     with open("output/voxel_centers_000200_red_shorts.np", 'wb') as file:
-        np.save(file, voxel_centers)
+        np.save(file, voxel_centers_np)
 
     return PROGRAM_EXIT_SUCCESS
 
