@@ -74,31 +74,16 @@ class RGBDVideoLoader():
 	def get_frame_path(self,index):
 		return os.path.join(self.seq_dir,"color",self.images_path[index]),os.path.join(self.seq_dir,"depth",self.images_path[index].replace('jpg','png'))
 
-	def get_data(self,source_frame,target_frame):
-	
-		# Options
-		image_height = opt.image_height
-		image_width  = opt.image_width
-		max_boundary_dist = opt.max_boundary_dist
-
+	def get_source_data(self,source_frame):
 		# Source color and depth
 		src_color_image_path,src_depth_image_path = self.get_frame_path(source_frame)
 		source, _, cropper = dataset.DeformDataset.load_image(
-			src_color_image_path, src_depth_image_path, self.intrinsics, image_height, image_width
-		)
-
-		# Target color and depth (and boundary mask)
-		tgt_color_image_path,tgt_depth_image_path = self.get_frame_path(target_frame)
-		target, target_boundary_mask, _ = dataset.DeformDataset.load_image(
-			tgt_color_image_path, tgt_depth_image_path, self.intrinsics, image_height, image_width, cropper=cropper,
-			max_boundary_dist=max_boundary_dist, compute_boundary_mask=True
-		)
+			src_color_image_path, src_depth_image_path, self.intrinsics, opt.image_height, opt.image_width)
 
 		# Update intrinsics to reflect the crops
 		fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
 			self.intrinsics['fx'], self.intrinsics['fy'], self.intrinsics['cx'], self.intrinsics['cy'], 
-			image_height, image_width, original_h=cropper.h, original_w=cropper.w
-		)
+			opt.image_height, opt.image_width, original_h=cropper.h, original_w=cropper.w		)
 
 		intrinsics_cropped = np.zeros((4), dtype=np.float32)
 		intrinsics_cropped[0] = fx
@@ -106,33 +91,26 @@ class RGBDVideoLoader():
 		intrinsics_cropped[2] = cx
 		intrinsics_cropped[3] = cy
 
-		# Graph
-		graph_dict = self.get_graph_path(source_frame)
+		source_data = {}
+		source_data["source"]				= source
+		source_data["cropper"]				= cropper
+		source_data["intrinsics"]			= intrinsics_cropped
 
-		graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = dataset.DeformDataset.load_graph_data(
-			graph_dict["graph_nodes_path"], graph_dict["graph_edges_path"], graph_dict["graph_edges_weights_path"], None, 
-			graph_dict["graph_clusters_path"], graph_dict["pixel_anchors_path"], graph_dict["pixel_weights_path"], cropper
-		)
+		return source_data
 
-		num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)	
 
-		input_data = {}
-		input_data["source"]				= source
-		input_data["target"]				= target
-		input_data["target_boundary_mask"]	= target_boundary_mask
-		input_data["intrinsics"]			= intrinsics_cropped
-		input_data["num_nodes"]				= num_nodes
+	def get_target_data(self,target_frame,cropper):
+		# Target color and depth (and boundary mask)
+		tgt_color_image_path,tgt_depth_image_path = self.get_frame_path(target_frame)
+		target, target_boundary_mask, _ = dataset.DeformDataset.load_image(
+			tgt_color_image_path, tgt_depth_image_path, self.intrinsics, opt.image_height, opt.image_width, cropper=cropper,
+			max_boundary_dist=opt.max_boundary_dist, compute_boundary_mask=True)
 
-		input_data["graph"] = {}
-		input_data["graph"]["graph_nodes"]				= graph_nodes
-		input_data["graph"]["graph_edges"]				= graph_edges
-		input_data["graph"]["graph_edges_weights"]		= graph_edges_weights
-		input_data["graph"]["graph_clusters"]			= graph_clusters
-		input_data["graph"]["pixel_weights"]			= pixel_weights
-		input_data["graph"]["pixel_anchors"]			= pixel_anchors
+		target_data = {}
+		target_data["target"]				= target
+		target_data["target_boundary_mask"]	= target_boundary_mask
 
-		return input_data
-
+		return target_data 				
 	def get_graph_path(self,index):
 		"""
 			This function returns the paths to the graph generated for a particular frame, and geodesic distance (required for sampling nodes, estimating edge weights etc.)
@@ -147,6 +125,28 @@ class RGBDVideoLoader():
 				)
 
 		return self.graph_dicts[index]
+
+	def get_graph(self,index,cropper):
+		# Graph
+		graph_path_dict = self.get_graph_path(index)
+
+		graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = dataset.DeformDataset.load_graph_data(
+			graph_path_dict["graph_nodes_path"], graph_path_dict["graph_edges_path"], graph_path_dict["graph_edges_weights_path"], None, 
+			graph_path_dict["graph_clusters_path"], graph_path_dict["pixel_anchors_path"], graph_path_dict["pixel_weights_path"], cropper
+		)
+
+		num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)	
+
+		graph_dict = {}
+		graph_dict["graph_nodes"]				= graph_nodes
+		graph_dict["graph_edges"]				= graph_edges
+		graph_dict["graph_edges_weights"]		= graph_edges_weights
+		graph_dict["graph_clusters"]			= graph_clusters
+		graph_dict["pixel_weights"]				= pixel_weights
+		graph_dict["pixel_anchors"]				= pixel_anchors
+		graph_dict["num_nodes"]					= num_nodes
+		graph_dict["node_coverage"]				= graph_path_dict["node_coverage"]
+		return graph_dict
 
 	def get_video_length(self):
 		return len(self.images_path)
