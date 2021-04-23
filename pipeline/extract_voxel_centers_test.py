@@ -4,6 +4,11 @@
 # A toy code example that tests extracting the TSDF voxel centers from a TSDF
 # Requires a custom build of Open3D found at https://github.com/Algomorph/Open3D/tree/extract-tsdf-voxel-centers
 # (branch extract-tsdf-voxel-centers)
+#
+# To make "output" folder path coincide with repository root, please run script from repository root, i.e.:
+# python3 ./pipeline/extract_voxel_centers_test.py
+#
+# Copyright 2021 Gregory Kramida
 # ==================================================================================================
 import os
 import sys
@@ -102,8 +107,8 @@ def main():
 
     volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
 
-    voxel_centers = volume.extract_voxel_centers()
-    voxel_centers_np = np.array(voxel_centers)
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
     with open("output/voxel_centers_000200_red_shorts.np", 'wb') as file:
         np.save(file, voxel_centers_np)
 
