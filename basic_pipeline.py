@@ -203,7 +203,7 @@ def main() -> None:
             mesh.compute_vertex_normals()
 
             # === Construct initial deformation graph
-            deformation_graph = graph.build_deformation_graph_from_mesh(mesh, options.coverage)
+            deformation_graph = graph.build_deformation_graph_from_mesh(mesh, options.node_coverage)
 
             # depth, point_image = nnrt.render_mesh(vertex_positions, face_indices, opt.image_width, opt.image_height,
             #                                       intrinsics_open3d_cpu.intrinsic_matrix, 1000.0)
@@ -249,7 +249,7 @@ def main() -> None:
             valid_nodes_mask = np.ones((vertex_positions.shape[0], 1), dtype=bool)
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
                 deformation_graph.live_node_positions, source_point_image,
-                options.coverage)
+                options.node_coverage)
 
             pixel_anchors = cropper(pixel_anchors)
             pixel_weights = cropper(pixel_weights)

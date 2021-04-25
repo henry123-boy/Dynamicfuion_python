@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 # =================================================================================================
 # A minimal example that loads a 3d mesh previously generated using a depth map and image
 # (via TSDF integration and marching cubes), deforms it using node transformations
@@ -7,6 +5,9 @@
 # generated from the target frame.
 #
 # Copyright 2021 Gregory Kramida
+#
+# Please only run script from repository root
+#
 # =================================================================================================
 
 import sys
@@ -43,7 +44,7 @@ def main():
 
     # Compute vertex anchors & weights
     vertices = np.array(mesh200.vertices)
-    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, options.coverage)
+    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, options.node_coverage)
 
     # Load graph transformation
     with open("output/red_shorts_shorts_000200_000400_rotations.np", 'rb') as file:

@@ -4,9 +4,11 @@ import os
 # DATA OPTIONS
 #####################################################################################################################
 # dataset_base_dir    = "/cluster/lothlann/data/nonrigid/public/"
-dataset_base_dir    = "/mnt/slurm_cluster/lothlann/data/nonrigid/hidden/"
+# dataset_base_dir    = "/mnt/slurm_cluster/lothlann/data/nonrigid/hidden/"
+dataset_base_dir    = "/mnt/Data/Reconstruction/real_data/deepdeform"
 workspace           = "."
-experiments_dir     = os.path.join(workspace, "experiments")
+# experiments_dir     = os.path.join(workspace, "experiments")
+experiments_dir     = os.path.join(workspace, "output")
 
 image_width = 640
 image_height = 448
@@ -17,7 +19,7 @@ num_samples_eval = 700
 #####################################################################################################################
 # GRAPH OPTIONS
 #####################################################################################################################
-coverage = 0.05
+node_coverage = 0.05
 
 #####################################################################################################################
 # MODEL INFO
