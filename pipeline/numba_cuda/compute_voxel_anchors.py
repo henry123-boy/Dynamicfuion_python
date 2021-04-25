@@ -140,8 +140,8 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
     for i_anchor in range(GRAPH_K):
         distance = distance_array[i_anchor]
         index = index_array[i_anchor]
-        # if distance > 2 * node_coverage:
-        #     continue
+        if distance > 2 * node_coverage:
+            continue
         weight = math.exp(-math.pow(distance, 2) /
                           (2 * node_coverage * node_coverage))
         weight_sum += weight
