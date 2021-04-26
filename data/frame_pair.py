@@ -40,25 +40,25 @@ class FramePairDataset(GenericDataset):
         self.target_frame_index = target_frame_index
         self.segment_name = segment_name
 
-    def get_source_color_frame_path(self):
+    def get_source_color_frame_path(self) -> str:
         return self._color_image_filename_mask.format(self.source_frame_index)
 
-    def get_target_color_frame_path(self):
+    def get_target_color_frame_path(self) -> str:
         return self._color_image_filename_mask.format(self.target_frame_index)
 
-    def get_source_depth_frame_path(self):
+    def get_source_depth_frame_path(self) -> str:
         return self._depth_image_filename_mask.format(self.source_frame_index)
 
-    def get_target_depth_frame_path(self):
+    def get_target_depth_frame_path(self) -> str:
         return self._depth_image_filename_mask.format(self.target_frame_index)
 
-    def get_source_mask_frame_path(self):
+    def get_source_mask_frame_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.source_frame_index)
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")
 
-    def get_target_mask_frame_path(self):
+    def get_target_mask_frame_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.target_frame_index)
         else:

@@ -4,6 +4,7 @@ import os
 import re
 
 import options
+from abc import ABC, abstractmethod, ABCMeta
 
 
 class DataSplit(Enum):
@@ -18,7 +19,7 @@ class DatasetType(Enum):
     CUSTOM = 2
 
 
-def make_frame_file_name_mask(name: str, extension: str):
+def make_frame_file_name_mask(name: str, extension: str) -> str:
     """
     Compile a mask based on specified frame file name and extension
     :param name: name of the file (excluding the extension), e.g. if the whole file is "frame-000000.color.png",
@@ -29,7 +30,7 @@ def make_frame_file_name_mask(name: str, extension: str):
     """
     search_result = re.search(r"\d+", name)
     span = search_result.span()
-    name_mask = name[span[0]] + "{:0" + str(span[1] - span[0]) + "d}" + extension
+    name_mask = name[:span[0]] + "{:0" + str(span[1] - span[0]) + "d}" + extension
     return name_mask
 
 
@@ -113,23 +114,37 @@ class GenericDataset:
                 self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, name_mask)
             self._intrinsics_file_path = os.path.join(self._sequence_directory, "intrinsics.txt")
 
-    def get_sequence_directory(self):
+    def get_sequence_directory(self) -> str:
         return self._sequence_directory
 
-    def get_color_frame_directory(self):
+    def get_color_frame_directory(self) -> str:
         return self._color_frame_directory
 
-    def get_depth_frame_directory(self):
+    def get_depth_frame_directory(self) -> str:
         return self._depth_frame_directory
 
-    def get_mask_frame_directory(self):
+    def get_mask_frame_directory(self) -> str:
         return self._mask_frame_directory
 
-    def get_intrinsics_path(self):
+    def get_intrinsics_path(self) -> str:
         return self._intrinsics_file_path
 
 
-class FrameDataset(GenericDataset):
+class FrameDataset(metaclass=ABCMeta):
+    @abstractmethod
+    def get_color_frame_path(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_depth_frame_path(self) -> str:
+        pass
+
+    @abstractmethod
+    def get_mask_frame_path(self) -> str:
+        pass
+
+
+class StandaloneFrameDataset(GenericDataset, FrameDataset):
     def __init__(self, frame_index: int, sequence_id: int, split: DataSplit, base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None):
         """
@@ -146,14 +161,34 @@ class FrameDataset(GenericDataset):
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
         self.frame_index = frame_index
 
-    def get_color_frame_path(self):
+    def get_color_frame_path(self) -> str:
         return self._color_image_filename_mask.format(self.frame_index)
 
-    def get_depth_frame_path(self):
+    def get_depth_frame_path(self) -> str:
         return self._depth_image_filename_mask.format(self.frame_index)
 
-    def get_mask_frame_path(self):
+    def get_mask_frame_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.frame_index)
+        else:
+            raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")
+
+
+class SequenceFrameDataset(FrameDataset):
+    def __init__(self, frame_index: int, color_frame_path: str, depth_frame_path: str, mask_frame_path: typing.Union[None, str] = None):
+        self.frame_index = frame_index
+        self.color_frame_path = color_frame_path
+        self.depth_frame_path = depth_frame_path
+        self.mask_frame_path = mask_frame_path
+
+    def get_color_frame_path(self) -> str:
+        return self.color_frame_path
+
+    def get_depth_frame_path(self) -> str:
+        return self.depth_frame_path
+
+    def get_mask_frame_path(self) -> str:
+        if self.mask_frame_path is not None:
+            return self.mask_frame_path
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")

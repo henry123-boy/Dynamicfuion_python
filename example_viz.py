@@ -32,7 +32,7 @@ def main():
     #####################################################################################################
 
     # Source-target example
-    frame_pair_preset: FramePairPreset = FramePairPreset.RED_SHORTS
+    frame_pair_preset: FramePairPreset = FramePairPreset.RED_SHORTS_200_400
     frame_pair_name = frame_pair_preset.name.lower()
     frame_pair_dataset: FramePairDataset = frame_pair_preset.value
 
