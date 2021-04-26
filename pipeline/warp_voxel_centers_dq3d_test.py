@@ -46,18 +46,11 @@ def main():
 
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
-    print(graph_nodes.shape)
-    print(voxel_centers[0])
-    print(np.linalg.norm(graph_nodes - voxel_centers[0], axis=1).min())
 
     voxel_center_anchors, voxel_center_weights = cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes,
                                                                                    camera_rotation, camera_translation,
                                                                                    options.node_coverage)
 
-    print("Anchors:")
-    print(voxel_center_anchors)
-    print("Weights:")
-    print(voxel_center_weights)
 
     return PROGRAM_EXIT_SUCCESS
 

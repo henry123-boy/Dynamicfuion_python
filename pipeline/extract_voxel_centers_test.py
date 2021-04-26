@@ -41,7 +41,7 @@ def main():
     sequence_number = 14
     frame_index = 200
     split = "val"
-    frames_directory = os.path.join(options.dataset_base_directory, "{:s}}/seq{:03d}/".format(split, sequence_number))
+    frames_directory = os.path.join(options.dataset_base_directory, "{:s}/seq{:03d}/".format(split, sequence_number))
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
     color_image_path = color_image_filename_mask.format(frame_index)
     depth_image_filename_mask = frames_directory + "depth/{:06d}.png"

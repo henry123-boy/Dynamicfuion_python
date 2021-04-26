@@ -7,14 +7,14 @@ import cmath
 
 @cuda.jit(device=True)
 def euclidean_distance(x1, y1, z1, x2, y2, z2):
-    square_distance = math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2) + math.pow(z1 - z2, 2)
+    square_distance = (x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2
     distance = math.sqrt(square_distance)
     return distance
 
 
 @cuda.jit(device=True)
 def square_euclidean_distance(x1, y1, z1, x2, y2, z2):
-    square_distance = math.pow(x1 - x2, 2) + math.pow(y1 - y2, 2) + math.pow(z1 - z2, 2)
+    square_distance = (x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2
     return square_distance
 
 

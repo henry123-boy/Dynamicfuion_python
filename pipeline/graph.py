@@ -106,7 +106,7 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
     # === Build deformation graph ===
 
     erosion_mask = nnrt.get_vertex_erosion_mask(vertex_positions, triangle_vertex_indices, erosion_iteration_count, erosion_min_neighbor_count)
-    node_positions, node_vertex_indices = \
+    nodes, node_vertex_indices = \
         nnrt.sample_nodes(vertex_positions, erosion_mask, node_coverage, use_only_non_eroded_indices=True, random_shuffle=False)
 
     graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
@@ -123,7 +123,7 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
 
     cluster_sizes, graph_clusters = nnrt.compute_clusters(graph_edges)
 
-    return DeformationGraph(node_positions, graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances, graph_clusters)
+    return DeformationGraph(nodes, graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances, graph_clusters)
 
 
 def build_deformation_graph_from_depth_image(depth_image: np.ndarray,

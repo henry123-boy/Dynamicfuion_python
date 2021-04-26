@@ -142,23 +142,23 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
     for i_anchor in range(GRAPH_K):
         distance = distance_array[i_anchor]
         index = index_array[i_anchor]
-        # if distance > 2 * node_coverage:
-        #     continue
-        weight = math.exp(-distance / (2 * node_coverage * node_coverage))
+        if distance > 2 * node_coverage:
+            continue
+        weight = math.exp(-distance**2 / (2 * node_coverage * node_coverage))
         weight_sum += weight
         anchor_count += 1
 
         voxel_center_anchors[workload_index, i_anchor] = index
         voxel_center_weights[workload_index, i_anchor] = weight
-        voxel_center_weights[workload_index, i_anchor] = distance
+        # voxel_center_weights[workload_index, i_anchor] = distance
 
-    # if weight_sum > 0:
-    #     for i_anchor in range(GRAPH_K):
-    #         voxel_center_weights[workload_index, i_anchor] /= weight_sum
-    #         # voxel_center_weights[workload_index, i_anchor] = weight_sum
-    # elif anchor_count > 0:
-    #     for i_anchor in range(GRAPH_K):
-    #         voxel_center_weights[workload_index, i_anchor] = 1 / anchor_count
+    if weight_sum > 0:
+        for i_anchor in range(GRAPH_K):
+            voxel_center_weights[workload_index, i_anchor] /= weight_sum
+            # voxel_center_weights[workload_index, i_anchor] = weight_sum
+    elif anchor_count > 0:
+        for i_anchor in range(GRAPH_K):
+            voxel_center_weights[workload_index, i_anchor] = 1 / anchor_count
 
 
 def cuda_compute_voxel_center_anchors(voxel_centers: np.ndarray, graph_nodes: np.ndarray,
