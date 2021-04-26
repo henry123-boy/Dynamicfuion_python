@@ -20,8 +20,8 @@ import options
 import options as opt
 import nnrt
 from pipeline import camera
-from model import dataset
-from utils import image_proc
+from data import dataset
+from utils import image
 from model.model import DeformNet
 from pipeline import graph
 
@@ -254,7 +254,7 @@ def main() -> None:
             pixel_anchors = cropper(pixel_anchors)
             pixel_weights = cropper(pixel_weights)
 
-            fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
+            fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
                 intrinsics_dict['fx'], intrinsics_dict['fy'], intrinsics_dict['cx'], intrinsics_dict['cy'],
                 opt.image_height, opt.image_width, original_h=cropper.h, original_w=cropper.w
             )

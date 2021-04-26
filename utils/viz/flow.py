@@ -19,7 +19,7 @@ from __future__ import print_function
 import numpy as np
 
 
-def make_colorwheel():
+def make_color_wheel():
     """
     Generates a color wheel for optical flow visualization as presented in:
         Baker et al. "A Database and Evaluation Methodology for Optical Flow" (ICCV, 2007)
@@ -78,7 +78,7 @@ def flow_compute_color(u, v, convert_to_bgr=False):
 
     flow_image = np.zeros((u.shape[0], u.shape[1], 3), np.uint8)
 
-    colorwheel = make_colorwheel()  # shape [55x3]
+    colorwheel = make_color_wheel()  # shape [55x3]
     ncols = colorwheel.shape[0]
 
     rad = np.sqrt(np.square(u) + np.square(v))
@@ -135,3 +135,27 @@ def flow_to_color(flow_uv, clip_flow=None, convert_to_bgr=False):
     v = v / (rad_max + epsilon)
 
     return flow_compute_color(u, v, convert_to_bgr)
+
+
+def flow_to_color_safe(flow_image: np.ndarray) -> np.ndarray:
+    """
+    Cleans the input flow image first of Inf and NaN values,
+    then converts to flow
+    :param flow_image:
+    :return:
+    """
+    # Make copy of flow image
+    flow_image_vis = np.copy(flow_image)
+
+    # If channels are on first axis, move to last
+    if flow_image_vis.shape[0] == 2:
+        flow_image_vis = np.moveaxis(flow_image_vis, 0, -1)
+
+    assert flow_image_vis.shape[2] == 2
+
+    # Set to 0 if invalid
+    flow_image_vis[flow_image_vis == np.NAN] = 0.0
+    flow_image_vis[flow_image_vis == -np.Inf] = 0.0
+    flow_image_vis[flow_image_vis == np.Inf] = 0.0
+
+    return flow_to_color(flow_image_vis)

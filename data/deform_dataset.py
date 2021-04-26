@@ -6,23 +6,11 @@ import numpy as np
 from skimage import io
 from multipledispatch import dispatch
 
-from snoop import pp
-
-from utils.utils import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
+from data.io import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
     load_graph_clusters, load_int_image, load_float_image
-from utils import image_proc
+from utils import image as image_utils
 
-
-class StaticCenterCrop(object):
-    def __init__(self, image_size, crop_size):
-        self.th, self.tw = crop_size
-        self.h, self.w = image_size
-
-    def __call__(self, img):
-        if len(img.shape) == 2:
-            return img[(self.h - self.th) // 2:(self.h + self.th) // 2, (self.w - self.tw) // 2:(self.w + self.tw) // 2]
-        else:
-            return img[(self.h - self.th) // 2:(self.h + self.th) // 2, (self.w - self.tw) // 2:(self.w + self.tw) // 2, :]
+from data.cropping import StaticCenterCrop
 
 
 class DeformDataset(Dataset):
@@ -95,7 +83,7 @@ class DeformDataset(Dataset):
         cx = data["intrinsics"]["cx"]
         cy = data["intrinsics"]["cy"]
 
-        fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
+        fx, fy, cx, cy = image_utils.modify_intrinsics_due_to_cropping(
             fx, fy, cx, cy, self.input_height, self.input_width, original_h=480, original_w=640
         )
 
@@ -132,10 +120,9 @@ class DeformDataset(Dataset):
     def prepare_pytorch_input(color_image, depth_image, intrinsics, input_height, input_width, cropper=None,
                               max_boundary_dist=0.1, compute_boundary_mask=False):
         # Backproject depth image.
-        depth_image = image_proc.backproject_depth(depth_image, intrinsics["fx"], intrinsics["fy"], intrinsics["cx"], intrinsics["cy"])  # (3, h, w)
+        depth_image = image_utils.backproject_depth(depth_image, intrinsics["fx"], intrinsics["fy"], intrinsics["cx"], intrinsics["cy"])  # (3, h, w)
         depth_image = depth_image.astype(np.float32)
-        depth_image = np.moveaxis(depth_image,0,-1)
-
+        depth_image = np.moveaxis(depth_image, 0, -1)
 
         image_size = color_image.shape[:2]
 
@@ -159,7 +146,7 @@ class DeformDataset(Dataset):
             return image, None, cropper
         else:
             assert max_boundary_dist
-            boundary_mask = image_proc.compute_boundary_mask(depth_image, max_boundary_dist)
+            boundary_mask = image_utils.compute_boundary_mask(depth_image, max_boundary_dist)
             return image, boundary_mask, cropper
 
     @staticmethod

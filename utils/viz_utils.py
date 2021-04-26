@@ -4,7 +4,7 @@ import copy
 import open3d as o3d
 import numpy as np
 
-import utils.visualization.line_mesh as line_mesh_utils
+import utils.viz.line_mesh as line_mesh_utils
 
 def get_pcd(rgbd_image):
     #####################################################################################################

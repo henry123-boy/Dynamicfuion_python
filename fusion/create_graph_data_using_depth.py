@@ -1,25 +1,10 @@
 import os
-import sys
-import shutil
 import numpy as np
-import json
-from PIL import Image
-from plyfile import PlyData, PlyElement
 from skimage import io
-from PIL import Image
-from timeit import default_timer as timer
-import datetime
 import open3d as o3d
-import trimesh
-import re
 
-
-import matplotlib.pyplot as plt
-
-
-from utils import utils, image_proc
-import utils.viz_utils as viz_utils
-from NeuralNRT._C import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
+from utils import image
+from utils.viz import image
 from NeuralNRT._C import compute_mesh_from_depth as compute_mesh_from_depth_c
 from NeuralNRT._C import erode_mesh as erode_mesh_c
 from NeuralNRT._C import sample_nodes as sample_nodes_c
@@ -103,7 +88,7 @@ def create_graph_data_using_depth(depth_image_path,max_triangle_distance=0.05,er
     depth_image = depth_image * mask_image
 
     # Backproject depth images into 3D.
-    point_image = image_proc.backproject_depth(depth_image, fx, fy, cx, cy, normalizer=DEPTH_NORMALIZER)
+    point_image = image.backproject_depth(depth_image, fx, fy, cx, cy, normalizer=DEPTH_NORMALIZER)
     point_image = point_image.astype(np.float32)
     # Convert depth image into mesh, using pixelwise connectivity.
     # We also compute flow values, and invalidate any vertex with non-finite
@@ -343,19 +328,19 @@ def create_graph_data_using_depth(depth_image_path,max_triangle_distance=0.05,er
     graph_path_dict["pixel_anchors_path"]         = os.path.join(dst_pixel_anchors_dir, pair_name         + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
     graph_path_dict["pixel_weights_path"]         = os.path.join(dst_pixel_weights_dir, pair_name         + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
     
-    utils.save_graph_nodes(graph_path_dict["graph_nodes_path"], node_coords)
-    utils.save_graph_edges(graph_path_dict["graph_edges_path"], graph_edges)
-    utils.save_graph_edges_weights(graph_path_dict["graph_edges_weights_path"], graph_edges_weights)
-    utils.save_graph_clusters(graph_path_dict["graph_clusters_path"], graph_clusters)
-    utils.save_int_image(graph_path_dict["pixel_anchors_path"], pixel_anchors)
-    utils.save_float_image(graph_path_dict["pixel_weights_path"], pixel_weights)
+    image.save_graph_nodes(graph_path_dict["graph_nodes_path"], node_coords)
+    image.save_graph_edges(graph_path_dict["graph_edges_path"], graph_edges)
+    image.save_graph_edges_weights(graph_path_dict["graph_edges_weights_path"], graph_edges_weights)
+    image.save_graph_clusters(graph_path_dict["graph_clusters_path"], graph_clusters)
+    image.save_int_image(graph_path_dict["pixel_anchors_path"], pixel_anchors)
+    image.save_float_image(graph_path_dict["pixel_weights_path"], pixel_weights)
 
-    assert np.array_equal(node_coords, utils.load_graph_nodes(graph_path_dict["graph_nodes_path"]))
-    assert np.array_equal(graph_edges, utils.load_graph_edges(graph_path_dict["graph_edges_path"]))
-    assert np.array_equal(graph_edges_weights, utils.load_graph_edges_weights(graph_path_dict["graph_edges_weights_path"]))
-    assert np.array_equal(graph_clusters, utils.load_graph_clusters(graph_path_dict["graph_clusters_path"]))
-    assert np.array_equal(pixel_anchors, utils.load_int_image(graph_path_dict["pixel_anchors_path"]))
-    assert np.array_equal(pixel_weights, utils.load_float_image(graph_path_dict["pixel_weights_path"]))
+    assert np.array_equal(node_coords, image.load_graph_nodes(graph_path_dict["graph_nodes_path"]))
+    assert np.array_equal(graph_edges, image.load_graph_edges(graph_path_dict["graph_edges_path"]))
+    assert np.array_equal(graph_edges_weights, image.load_graph_edges_weights(graph_path_dict["graph_edges_weights_path"]))
+    assert np.array_equal(graph_clusters, image.load_graph_clusters(graph_path_dict["graph_clusters_path"]))
+    assert np.array_equal(pixel_anchors, image.load_int_image(graph_path_dict["pixel_anchors_path"]))
+    assert np.array_equal(pixel_weights, image.load_float_image(graph_path_dict["pixel_weights_path"]))
 
     return graph_path_dict
 

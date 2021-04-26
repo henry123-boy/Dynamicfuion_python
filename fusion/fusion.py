@@ -12,7 +12,7 @@ import numpy as np
 sys.path.append("../")  # Making it easier to load modules
 
 # Modules
-from utils import image_proc
+from utils import image
 import utils.viz_utils as viz_utils
 import utils.line_mesh as line_mesh_utils
 
@@ -50,7 +50,7 @@ class DynamicFusion:
 		source_object_pcd = source_pcd.select_by_index(np.where(valid_source_mask)[0])
 
 		# Source warped
-		warped_deform_pred_3d_np = image_proc.warp_deform_3d(
+		warped_deform_pred_3d_np = image.warp_deform_3d(
 			source_data["source"], graph_data["pixel_anchors"], graph_data["pixel_weights"], graph_data["graph_nodes"],
 			model_data["node_rotations"], model_data["node_translations"]
 		)

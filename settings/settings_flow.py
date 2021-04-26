@@ -48,6 +48,12 @@ gn_min_num_correspondences_per_cluster = 2000
 gn_invalidate_too_far_away_translations = True
 gn_max_mean_translation_error = 0.5
 
+gn_num_iter = 3
+gn_data_flow = 0.001
+gn_data_depth = 1.0
+gn_arap = 1.0
+gn_lm_factor = 0.1
+
 
 #####################################################################################################################
 # Losses

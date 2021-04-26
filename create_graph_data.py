@@ -2,9 +2,9 @@ import os
 import numpy as np
 from skimage import io
 import open3d as o3d
-import cv2
 
-from utils import utils, image_proc
+from utils import image
+from utils.viz import image
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import get_vertex_erosion_mask as erode_mesh_c
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     mask_image = io.imread(mask_image_path)
 
     # Load scene flow image.
-    scene_flow_image = utils.load_flow(scene_flow_path)
+    scene_flow_image = image.load_flow(scene_flow_path)
     scene_flow_image = np.moveaxis(scene_flow_image, 0, 2)
 
     #########################################################################
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     depth_image = depth_image * mask_image
 
     # Backproject depth images into 3D.
-    point_image = image_proc.backproject_depth(depth_image, fx, fy, cx, cy, normalizer=DEPTH_NORMALIZER)
+    point_image = image.backproject_depth(depth_image, fx, fy, cx, cy, normalizer=DEPTH_NORMALIZER)
     point_image = point_image.astype(np.float32)
 
     # Convert depth image into mesh, using pixelwise connectivity.
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         pixel_anchors_mask_ed = np.copy(pixel_anchors_image).astype(np.uint8)
         pixel_anchors_mask_ed[...] = 1
         pixel_anchors_mask_ed[pixel_anchors_image == -4] = 0
-        utils.save_grayscale_image("pixel_anchors_mask_ed.jpeg", pixel_anchors_mask_ed)
+        image.save_grayscale_image("pixel_anchors_mask_ed.jpeg", pixel_anchors_mask_ed)
 
     # Get only valid nodes and their corresponding info
     node_coords = node_coords[valid_nodes_mask.squeeze()]
@@ -333,18 +333,18 @@ if __name__ == "__main__":
     output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
     output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
 
-    utils.save_graph_nodes(output_graph_nodes_path, node_coords)
-    utils.save_graph_edges(output_graph_edges_path, graph_edges)
-    utils.save_graph_edges_weights(output_graph_edges_weights_path, graph_edges_weights)
-    utils.save_graph_node_deformations(output_node_deformations_path, node_deformations)
-    utils.save_graph_clusters(output_graph_clusters_path, graph_clusters)
-    utils.save_int_image(output_pixel_anchors_path, pixel_anchors)
-    utils.save_float_image(output_pixel_weights_path, pixel_weights)
+    image.save_graph_nodes(output_graph_nodes_path, node_coords)
+    image.save_graph_edges(output_graph_edges_path, graph_edges)
+    image.save_graph_edges_weights(output_graph_edges_weights_path, graph_edges_weights)
+    image.save_graph_node_deformations(output_node_deformations_path, node_deformations)
+    image.save_graph_clusters(output_graph_clusters_path, graph_clusters)
+    image.save_int_image(output_pixel_anchors_path, pixel_anchors)
+    image.save_float_image(output_pixel_weights_path, pixel_weights)
 
-    assert np.array_equal(node_coords, utils.load_graph_nodes(output_graph_nodes_path))
-    assert np.array_equal(graph_edges, utils.load_graph_edges(output_graph_edges_path))
-    assert np.array_equal(graph_edges_weights, utils.load_graph_edges_weights(output_graph_edges_weights_path))
-    assert np.allclose(node_deformations, utils.load_graph_node_deformations(output_node_deformations_path))
-    assert np.array_equal(graph_clusters, utils.load_graph_clusters(output_graph_clusters_path))
-    assert np.array_equal(pixel_anchors, utils.load_int_image(output_pixel_anchors_path))
-    assert np.array_equal(pixel_weights, utils.load_float_image(output_pixel_weights_path))
+    assert np.array_equal(node_coords, image.load_graph_nodes(output_graph_nodes_path))
+    assert np.array_equal(graph_edges, image.load_graph_edges(output_graph_edges_path))
+    assert np.array_equal(graph_edges_weights, image.load_graph_edges_weights(output_graph_edges_weights_path))
+    assert np.allclose(node_deformations, image.load_graph_node_deformations(output_node_deformations_path))
+    assert np.array_equal(graph_clusters, image.load_graph_clusters(output_graph_clusters_path))
+    assert np.array_equal(pixel_anchors, image.load_int_image(output_pixel_anchors_path))
+    assert np.array_equal(pixel_weights, image.load_float_image(output_pixel_weights_path))

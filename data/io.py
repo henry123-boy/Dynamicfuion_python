@@ -1,24 +1,12 @@
-import sys, os
+import os
+import sys
 import struct
-import json
-import numpy as np
-import torch
-import math
-import matplotlib.pyplot as plt
 import re
-from skimage import io
-from PIL import Image
+from skimage.io import imsave
 
-from utils.visualization import flow_visualization
-
-
-def show_mask_image(image_numpy):
-    assert image_numpy.dtype == np.bool
-    image_to_show = np.copy(image_numpy)
-    image_to_show = (image_to_show * 255).astype(np.uint8)
-
-    img = Image.fromarray(image_to_show)
-    img.show()
+import numpy as np
+import utils.viz.image as im_aux
+from utils.viz import flow
 
 
 def save_rgb_image(filename, image_numpy):
@@ -35,7 +23,7 @@ def save_rgb_image(filename, image_numpy):
         image_to_save = image_to_save * 255.0
         image_to_save = image_to_save.astype(np.uint8)
 
-    io.imsave(filename, image_to_save)
+    imsave(filename, image_to_save)
 
 
 def save_grayscale_image(filename, image_numpy):
@@ -43,15 +31,21 @@ def save_grayscale_image(filename, image_numpy):
     image_to_save = (image_to_save * 255).astype(np.uint8)
 
     if len(image_to_save.shape) == 2:
-        io.imsave(filename, image_to_save)
+        imsave(filename, image_to_save)
     elif len(image_to_save.shape) == 3:
         assert image_to_save.shape[0] == 1 or image_to_save.shape[-1] == 1
         image_to_save = image_to_save[0]
-        io.imsave(filename, image_to_save)
+        imsave(filename, image_to_save)
 
 
-def depth_image_to_grayscale(depth_image):
-    return (depth_image * 255 / np.max(depth_image)).astype('uint8')
+def overlay_images_and_save(filename, image_original_1, image_original_2, alpha=0.5):
+    final_image = im_aux.overlay_images(image_original_1, image_original_2, alpha)
+    final_image.save(filename, "PNG")
+
+
+def overlay_mask_and_save(filename, image_original, mask_original, alpha=0.5):
+    masked_image = im_aux.overlay_mask(image_original, mask_original, alpha)
+    masked_image.save(filename, "PNG")
 
 
 def load_PFM(file):
@@ -383,171 +377,5 @@ def load_int_image(filename):
 
     return image
 
-
-def overlay_mask_and_save(filename, image_original, mask_original, alpha=0.5):
-    from PIL import Image
-
-    image = np.copy(image_original)
-    mask = np.copy(mask_original)
-
-    assert np.max(image) <= 1.0
-    assert image.dtype == np.float32, image.dtype
-    assert image.shape[0] == 3
-
-    source = np.moveaxis(image, 0, -1) * 255.0
-    source = source.astype(np.uint8)
-
-    assert len(mask.shape) == 2
-    assert np.max(mask) <= 1.0
-    assert mask.dtype == np.bool
-
-    mask = mask[:, :, np.newaxis] * 255.0
-    mask = np.repeat(mask, 4, axis=-1)
-    mask[..., -1] *= alpha
-    mask = mask.astype(np.uint8)
-
-    mask = Image.fromarray(mask)
-
-    source = Image.fromarray(source)
-    source.paste(mask, (0, 0), mask)
-    source.save(filename, "PNG")
-
-
-def overlay_images_and_save(filename, image_original_1, image_original_2, alpha=0.5):
-    from PIL import Image
-
-    image_1 = np.copy(image_original_1)
-    image_2 = np.copy(image_original_2)
-
-    assert np.max(image_1) <= 1.0
-    assert image_1.dtype == np.float32, image_1.dtype
-    assert image_1.shape[0] == 3
-
-    assert np.max(image_2) <= 1.0
-    assert image_2.dtype == np.float32, image_2.dtype
-    assert image_2.shape[0] == 3
-
-    # Image 1
-    image_1 = np.moveaxis(image_1, 0, -1) * 255.0
-    image_1 = image_1.astype(np.uint8)
-
-    image_1 = Image.fromarray(image_1)
-
-    # Image 2
-    image_2 = np.moveaxis(image_2, 0, -1) * 255.0
-    image_2 = image_2.astype(np.uint8)
-
-    image_2_alpha = np.ones((image_2.shape[0], image_2.shape[1], 1), dtype=np.float32) * 255.0 * alpha
-    image_2_alpha = image_2_alpha.astype(np.uint8)
-
-    image_2 = np.append(image_2, image_2_alpha, axis=2)
-    image_2 = Image.fromarray(image_2)
-
-    # Overlay
-    image_1.paste(image_2, (0, 0), image_2)
-
-    image_1.save(filename, "PNG")
-
-
-def overlay_images(image_original_1, image_original_2, alpha=0.5):
-    from PIL import Image
-
-    image_1 = np.copy(image_original_1)
-    image_2 = np.copy(image_original_2)
-
-    assert np.max(image_1) <= 1.0
-    assert image_1.dtype == np.float32, image_1.dtype
-    assert image_1.shape[0] == 3
-
-    assert np.max(image_2) <= 1.0
-    assert image_2.dtype == np.float32, image_2.dtype
-    assert image_2.shape[0] == 3
-
-    # Image 1
-    image_1 = np.moveaxis(image_1, 0, -1) * 255.0
-    image_1 = image_1.astype(np.uint8)
-
-    image_1 = Image.fromarray(image_1)
-
-    # Image 2
-    image_2 = np.moveaxis(image_2, 0, -1) * 255.0
-    image_2 = image_2.astype(np.uint8)
-
-    image_2_alpha = np.ones((image_2.shape[0], image_2.shape[1], 1), dtype=np.float32) * 255.0 * alpha
-    image_2_alpha = image_2_alpha.astype(np.uint8)
-
-    image_2 = np.append(image_2, image_2_alpha, axis=2)
-    image_2 = Image.fromarray(image_2)
-
-    # Overlay
-    image_1.paste(image_2, (0, 0), image_2)
-
-    # Convert back to numpy
-    image_1_np = np.array(image_1)
-
-    return np.moveaxis(image_1_np, -1, 0).astype(np.float32) / 255.0
-
-
 def draw_optical_flow_and_save(flow_image, filename):
-    # Make copy of flow image
-    flow_image_vis = np.copy(flow_image)
-
-    # If channels are on first axis, move to last
-    if flow_image_vis.shape[0] == 2:
-        flow_image_vis = np.moveaxis(flow_image_vis, 0, -1)
-
-    assert flow_image_vis.shape[2] == 2
-
-    # Set to 0 if invalid
-    flow_image_vis[flow_image_vis == -np.Inf] = 0.0
-    flow_image_vis[flow_image_vis == np.Inf] = 0.0
-
-    flow_color = flow_visualization.flow_to_color(flow_image_vis)
-
-    plt.imsave(filename, flow_color)
-
-
-def find_best_model_name(model_dirname, data_version, verbose=False):
-    from tensorflow.python.summary.summary_iterator import summary_iterator
-
-    import tensorflow.python.util.deprecation as deprecation
-    deprecation._PRINT_DEPRECATION_WARNINGS = False
-
-    events_file_dir = "/data/nonrigid/training/tf_runs/deformdata/{}/{}".format(model_dirname, data_version)
-
-    events_files = os.listdir(events_file_dir)
-    assert len(events_files) == 1
-    events_file = os.path.join(events_file_dir, events_files[0])
-
-    if not os.path.exists(events_file):
-        print()
-        raise Exception("File does not exist! Exiting.")
-
-    best_step = 0
-    best_error = float('Inf')
-
-    for e in summary_iterator(events_file):
-
-        for v in e.summary.value:
-            if not v.tag == "Metrics/EPE_3D":
-                continue
-
-            if v.simple_value < best_error:
-                best_error = v.simple_value
-                best_step = e.step
-
-    if verbose:
-        print("Best step {} at step {}".format(best_error, best_step))
-
-    # Find model name based on step
-    model_dir = "/data/nonrigid/training/models/deformdata/{}".format(model_dirname)
-
-    best_model_name = None
-    for mn in os.listdir(model_dir):
-        model_step = mn.split("_")[3]
-
-        if model_step == str(best_step):
-            assert best_model_name == None
-            best_model_name = mn
-
-    return os.path.splitext(best_model_name)[0]
+    save_rgb_image(filename, flow.flow_to_color_safe(flow_image))

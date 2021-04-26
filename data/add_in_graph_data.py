@@ -1,4 +1,9 @@
 #!/usr/bin/python3
+
+# ================================================================================================================
+# A script to add in graph data from deep_deform_graph into the main deep_deform dataset.
+# ================================================================================================================
+
 import sys
 import shutil
 import os
@@ -17,8 +22,11 @@ def main():
     args = parser.parse_args()
     graph_data_path = args.graph_data_path
     deep_deform_data_path = args.deep_deform_data_path
-
     splits = ["test", "train", "val"]
+    # copy the root-level .json files
+    for split in splits:
+        shutil.copy(os.path.join(graph_data_path, f"{split:s}_graphs.json"), os.path.join(deep_deform_data_path, "{split:s}_graphs.json"))
+    # copy each sequence
     for split in splits:
         deep_deform_split_path = os.path.join(deep_deform_data_path, split)
         graph_split_path = os.path.join(graph_data_path, split)

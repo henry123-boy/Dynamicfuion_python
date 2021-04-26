@@ -1,23 +1,15 @@
 # Given a video sequence we want to run NNRT to extract motion
 # Usage python3 example_video.py <path to frames>
 
-import os
 import open3d as o3d
-import torch
 import numpy as np
 
-from utils import image_proc
-from model.model import DeformNet
-from model import dataset
+from utils import image
 
-import utils.utils as utils
 import utils.viz_utils as viz_utils
-import utils.nnutils as nnutils
 import utils.line_mesh as line_mesh_utils
-import options as opt
 
-
-	#####################################################################################################
+#####################################################################################################
 	# Prepare data
 	#####################################################################################################
 
@@ -47,7 +39,7 @@ import options as opt
 	#####################################################################################################
 	# Source warped
 	#####################################################################################################
-	warped_deform_pred_3d_np = image_proc.warp_deform_3d(
+	warped_deform_pred_3d_np = image.warp_deform_3d(
 		source, pixel_anchors, pixel_weights, graph_nodes, rotations_pred, translations_pred
 	)
 

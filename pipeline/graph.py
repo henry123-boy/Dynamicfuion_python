@@ -1,11 +1,10 @@
 import numpy as np
 import open3d as o3d
 import nnrt
-from typing import Tuple
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
-from utils.visualization.primitive import make_z_aligned_image_plane
+from utils.viz.primitive import make_z_aligned_image_plane
 from pipeline import camera
 
 
@@ -84,22 +83,18 @@ def find_knn_graph_connected_components(knn_edges: np.ndarray) -> np.ndarray:
 class DeformationGraph:
     def __init__(self, canonical_node_positions: np.ndarray, edges: np.ndarray, edge_weights: np.ndarray,
                  edge_distances: np.ndarray, node_to_vertex_distances: np.ndarray, clusters: np.ndarray):
-        self.canonical_node_positions = canonical_node_positions
+        self.nodes = canonical_node_positions
         self.edges = edges
         self.edge_weights = edge_weights
         self.edge_distances = edge_distances
         self.node_to_vertex_distances = node_to_vertex_distances
         self.clusters = clusters
-        self.live_node_positions = canonical_node_positions.copy()
 
     def get_extent_canonical(self):
-        return self.canonical_node_positions.max(axis=0), self.canonical_node_positions.min(axis=0)
+        return self.nodes.max(axis=0), self.nodes.min(axis=0)
 
     def as_line_set_canonical(self):
-        return knn_graph_to_line_set(self.canonical_node_positions, self.edges, self.clusters)
-
-    def as_line_set_live(self):
-        return knn_graph_to_line_set(self.live_node_positions, self.edges, self.clusters)
+        return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
 
 def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
@@ -114,13 +109,12 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
     node_positions, node_vertex_indices = \
         nnrt.sample_nodes(vertex_positions, erosion_mask, node_coverage, use_only_non_eroded_indices=True, random_shuffle=False)
 
-    node_count = node_positions.shape[0]
-
     graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
         nnrt.compute_edges_geodesic(vertex_positions, triangle_vertex_indices, node_vertex_indices,
                                     neighbor_count, node_coverage, True)
 
     # TODO: do the cleanup properly in a separate routine, follow logic from create_graph_data.py
+    # node_count = node_positions.shape[0]
     # valid_nodes_mask = np.ones((node_count, 1), dtype=bool)
     # # Mark nodes with not enough neighbors
     # nnrt.node_and_edge_clean_up(graph_edges, valid_nodes_mask)

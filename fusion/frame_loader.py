@@ -5,9 +5,9 @@ import os
 import numpy as np
 
 # Modules
-from model import dataset
+from data import dataset
 import options as opt
-from utils import image_proc
+from utils import image
 
 # Modules for Fusion
 from create_graph_data_using_depth import create_graph_data_using_depth
@@ -81,7 +81,7 @@ class RGBDVideoLoader():
 			src_color_image_path, src_depth_image_path, self.intrinsics, opt.image_height, opt.image_width)
 
 		# Update intrinsics to reflect the crops
-		fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
+		fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
 			self.intrinsics['fx'], self.intrinsics['fy'], self.intrinsics['cx'], self.intrinsics['cy'], 
 			opt.image_height, opt.image_width, original_h=cropper.h, original_w=cropper.w		)
 

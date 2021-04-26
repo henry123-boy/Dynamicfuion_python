@@ -1,28 +1,22 @@
-import sys,os
+import os
 import argparse
 from datetime import datetime
 import torch
 from tensorboardX import SummaryWriter
 from shutil import copyfile
-import random
 import sys
 import numpy as np
 from timeit import default_timer as timer
-from skimage import io
 import math
-import torchvision.models as models
 
 from model import evaluate
-from model import dataset
-from utils import utils
+from data import dataset
 import options as opt
 from utils.snapshot_manager import SnapshotManager
 from utils.time_statistics import TimeStatistics
-from utils import nnutils
+from utils import nn
 from model.model import DeformNet
 from model.loss import DeformLoss
-import utils.query as query
-
 
 if __name__ == "__main__":
     torch.set_num_threads(opt.num_threads)
@@ -72,7 +66,7 @@ if __name__ == "__main__":
     # Creating tf writer and folders 
     #####################################################################################
     # Writer initialization.
-    tf_runs = os.path.join(opt.experiments_dir, "tf_runs")
+    tf_runs = os.path.join(opt.experiments_directory, "tf_runs")
     log_name = "{0}_{1}".format(date, experiment_name)
     log_dir = os.path.join(tf_runs, log_name)
 
@@ -91,7 +85,7 @@ if __name__ == "__main__":
     copyfile(options_file_in, options_file_out)
 
     # Creation of model dir.
-    training_models = os.path.join(opt.experiments_dir, "models")
+    training_models = os.path.join(opt.experiments_directory, "models")
     if not os.path.exists(training_models): os.mkdir(training_models)
     saving_model_dir = os.path.join(training_models, log_name)
     if not os.path.exists(saving_model_dir): os.mkdir(saving_model_dir)    
@@ -188,7 +182,7 @@ if __name__ == "__main__":
     # VAL dataset
     #####################################################################################
     val_dataset = dataset.DeformDataset(
-        opt.dataset_base_dir, val_dir, 
+        opt.dataset_base_directory, val_dir,
         opt.image_width, opt.image_height, opt.max_boundary_dist
     )
 
@@ -211,7 +205,7 @@ if __name__ == "__main__":
     # TRAIN dataset
     #####################################################################################
     train_dataset = dataset.DeformDataset(
-        opt.dataset_base_dir, train_dir, 
+        opt.dataset_base_directory, train_dir,
         opt.image_width, opt.image_height, opt.max_boundary_dist
     )
 
@@ -405,7 +399,7 @@ if __name__ == "__main__":
                 
                 with torch.no_grad():
                     # Downscale groundtruth flow
-                    flow_gts, flow_masks = nnutils.downscale_gt_flow(
+                    flow_gts, flow_masks = nn.downscale_gt_flow(
                         optical_flow_gt, optical_flow_mask, opt.image_height, opt.image_width
                     )    
 
@@ -414,7 +408,7 @@ if __name__ == "__main__":
                         valid_target_matches, valid_correspondences, deformed_points_idxs, \
                             deformed_points_subsampled = model_data["correspondence_info"]
 
-                    mask_gt, valid_mask_pixels = nnutils.compute_baseline_mask_gt(
+                    mask_gt, valid_mask_pixels = nn.compute_baseline_mask_gt(
                         xy_coords_warped, 
                         target_matches, valid_target_matches,
                         source_points, valid_source_points,
@@ -423,7 +417,7 @@ if __name__ == "__main__":
                     )
 
                     # Compute deformed point gt
-                    deformed_points_gt, deformed_points_mask = nnutils.compute_deformed_points_gt(
+                    deformed_points_gt, deformed_points_mask = nn.compute_deformed_points_gt(
                         source_points, scene_flow_gt, 
                         model_data["valid_solve"], valid_correspondences, 
                         deformed_points_idxs, deformed_points_subsampled

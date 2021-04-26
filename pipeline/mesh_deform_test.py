@@ -11,13 +11,11 @@
 # =================================================================================================
 
 import sys
-import os
 
 import open3d as o3d
 import numpy as np
 import options
-from model.dataset import StaticCenterCrop, DeformDataset
-import transformations as tf
+from data.dataset import StaticCenterCrop, DeformDataset
 from dq3d import quat, dualquat
 from dq3d import op
 

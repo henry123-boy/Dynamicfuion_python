@@ -5,8 +5,9 @@ import math
 import kornia
 from timeit import default_timer as timer
 
+import options
 import options as opt
-from utils.nnutils import make_conv_2d, ResBlock2d, Identity
+from utils.nn import make_conv_2d, ResBlock2d, Identity
 from model import pwcnet
 
 
@@ -78,11 +79,11 @@ class DeformNet(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.gn_num_iter = 3
-        self.gn_data_flow = 0.001
-        self.gn_data_depth = 1.0
-        self.gn_arap = 1.0
-        self.gn_lm_factor = 0.1
+        self.gn_num_iter = options.gn_num_iter
+        self.gn_data_flow = options.gn_data_flow
+        self.gn_data_depth = options.gn_data_depth
+        self.gn_arap = options.gn_arap
+        self.gn_lm_factor = options.gn_lm_factor
 
         # Optical flow network
         self.flow_net = pwcnet.PWCNet()

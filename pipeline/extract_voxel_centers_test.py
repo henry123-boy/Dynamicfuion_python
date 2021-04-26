@@ -1,11 +1,9 @@
-#!/usr/bin/python3
-
 # ==================================================================================================
 # A toy code example that tests extracting the TSDF voxel centers from a TSDF
 # Requires a custom build of Open3D found at https://github.com/Algomorph/Open3D/tree/extract-tsdf-voxel-centers
 # (branch extract-tsdf-voxel-centers)
 #
-# To make "output" folder path coincide with repository root, please run script from repository root, i.e.:
+# Please run script from repository root, i.e.:
 # python3 ./pipeline/extract_voxel_centers_test.py
 #
 # Copyright 2021 Gregory Kramida
@@ -16,6 +14,7 @@ import open3d as o3d
 import open3d.core as o3c
 import torch
 import numpy as np
+import options
 
 import camera
 
@@ -39,9 +38,10 @@ def main():
     # === compile image paths ===
 
     # TODO: instead of using real data, generate toy color & image data of a plane at a fixed distance from the camera
-
-    frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/"
+    sequence_number = 14
     frame_index = 200
+    split = "val"
+    frames_directory = os.path.join(options.dataset_base_directory, "{:s}}/seq{:03d}/".format(split, sequence_number))
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
     color_image_path = color_image_filename_mask.format(frame_index)
     depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
@@ -54,7 +54,7 @@ def main():
 
     # === handle intrinsics ===
 
-    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/intrinsics.txt"
+    depth_intrinsics_path = os.path.join(options.dataset_base_directory, "val/seq014/intrinsics.txt")
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -109,7 +109,10 @@ def main():
 
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
-    with open("output/voxel_centers_000200_red_shorts.np", 'wb') as file:
+
+    print(voxel_centers_np)
+
+    with open(os.path.join(options.output_directory, "voxel_centers_000200_red_shorts.np"), 'wb') as file:
         np.save(file, voxel_centers_np)
 
     return PROGRAM_EXIT_SUCCESS

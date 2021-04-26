@@ -5,10 +5,10 @@ import os
 #####################################################################################################################
 # dataset_base_dir    = "/cluster/lothlann/data/nonrigid/public/"
 # dataset_base_dir    = "/mnt/slurm_cluster/lothlann/data/nonrigid/hidden/"
-dataset_base_dir    = "/mnt/Data/Reconstruction/real_data/deepdeform"
-workspace           = "."
-# experiments_dir     = os.path.join(workspace, "experiments")
-experiments_dir     = os.path.join(workspace, "output")
+dataset_base_directory = "/mnt/Data/Reconstruction/real_data/deepdeform"
+workspace = "."
+experiments_directory = os.path.join(workspace, "experiments")
+output_directory = os.path.join(workspace, "output")
 
 image_width = 640
 image_height = 448
@@ -29,18 +29,18 @@ node_coverage = 0.05
 # - In train.py, this info is only used if use_pretrained_model=True
 # - In generate.py, evaluate.py or example_viz.py, it is used regardless of the value of use_pretrained_model
 
-use_pretrained_model = False # used only in train.py
+use_pretrained_model = False  # used only in train.py
 
-model_module_to_load = "full_model"    # A: "only_flow_net", B: "full_model"
-model_name           = "model_A"       # your model's name
-model_iteration      = 0               # iteration number of the model you want to load
+model_module_to_load = "full_model"  # A: "only_flow_net", B: "full_model"
+model_name = "model_A"  # your model's name
+model_iteration = 0  # iteration number of the model you want to load
 
-saved_model = os.path.join(experiments_dir, "models", model_name, f"{model_name}_{model_iteration}.pt")
+saved_model = os.path.join(experiments_directory, "models", model_name, f"{model_name}_{model_iteration}.pt")
 
 #####################################################################################################################
 # TRAINING OPTIONS
 #####################################################################################################################
-mode = "0_flow" # ["0_flow", "1_solver", "2_mask", "3_refine"]
+mode = "0_flow"  # ["0_flow", "1_solver", "2_mask", "3_refine"]
 
 if mode == "0_flow":
     from settings.settings_flow import *
@@ -53,6 +53,7 @@ elif mode == "3_refine":
 elif mode == "4_your_custom_settings":
     # from settings.4_your_custom_settings import *
     pass
+
 
 #####################################################################################################################
 # Print options
@@ -72,7 +73,7 @@ def print_hyperparams():
         print("\tfreeze_mask_net              ", freeze_mask_net)
     else:
         print("\tPretrained model              None")
-    
+
     print()
     print("\tuse_adam                     ", use_adam)
     print("\tbatch_size                   ", batch_size)
@@ -89,7 +90,8 @@ def print_hyperparams():
     print("\tgn_max_matches_eval          ", gn_max_matches_eval)
     print("\tgn_depth_sampling_mode       ", gn_depth_sampling_mode)
     print("\tgn_num_iter                  ", gn_num_iter)
-    print("\tgn_data                      ", gn_data)
+    print("\tgn_data_flow                      ", gn_data_flow)
+    print("\tgn_data_depth                      ", gn_data_depth)
     print("\tgn_arap                      ", gn_arap)
     print("\tgn_lm_factor                 ", gn_lm_factor)
     print("\tgn_use_edge_weighting        ", gn_use_edge_weighting)

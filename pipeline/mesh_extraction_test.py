@@ -9,6 +9,7 @@ import torch
 import numpy as np
 
 import camera
+import options
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -28,8 +29,9 @@ def main():
     device = o3d.core.Device('cuda:0')
 
     # === compile image paths ===
-
-    frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/"
+    data_split = "val"
+    sequence_index = 14
+    frames_directory = os.path.join(options.dataset_base_directory, f"{data_split}/seq{sequence_index:03d}/")
     frame_index = 200
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
     color_image_path = color_image_filename_mask.format(frame_index)
@@ -43,7 +45,7 @@ def main():
 
     # === handle intrinsics ===
 
-    depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014/intrinsics.txt"
+    depth_intrinsics_path = os.path.join(options.dataset_base_directory, frames_directory, "intrinsics.txt")
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -99,6 +101,7 @@ def main():
     # === mesh extraction ===
 
     mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+    print(mesh.vertices)
     mesh.compute_vertex_normals()
 
     # === visualization ===

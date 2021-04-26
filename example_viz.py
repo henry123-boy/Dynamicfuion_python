@@ -1,57 +1,21 @@
 #!/usr/bin/python3
 import os
-import re
-import typing
 
 import open3d as o3d
 import torch
 import numpy as np
 
 from pipeline.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
-from utils import image_proc
-from model.model import DeformNet
-from model import dataset
+from utils import image
+from model import DeformNet
 
-import utils.visualization.coordinate_transformations as viz_utils
-import utils.mesh_utils as mesh_utils
-import utils.visualization.line_mesh as line_mesh_utils
-import utils.visualization.viewer as viewer
+import utils.viz.coordinate_transformations as viz_utils
+import utils.mesh as mesh_utils
+import utils.viz.line_mesh as line_mesh_utils
+import utils.viz.example_viewer as viewer
 import options
 
-from enum import Enum
-
-
-class DataSplit(Enum):
-    TEST = "test"
-    VALIDATION = "val"
-    TRAIN = "train"
-
-
-class FramePairDataset:
-    def __init__(self, source_frame_index: int, target_frame_index: int, sequence_id: int, split: DataSplit, is_local: bool = False,
-                 segment_name: typing.Union[None, str] = None):
-        """
-
-        :param source_frame_index:
-        :param target_frame_index:
-        :param sequence_id:
-        :param split: which data split to use
-        :param is_local: whether to use the local example folder as the root for the split & sequence data
-        :param segment_name: specify segment name if graph is available for more than one segment in the dataset (e.g. Shirt0)
-        """
-        self.source_frame_index = source_frame_index
-        self.target_frame_index = target_frame_index
-        self.sequence_id = sequence_id
-        self.split = split
-        self.is_local = is_local
-        self.segment_name = segment_name
-
-
-class FramePair(Enum):
-    GREY_SHIRT_TEST_LOCAL = FramePairDataset(300, 600, 17, DataSplit.TEST, True)
-    GREY_SHIRT_TEST = FramePairDataset(300, 600, 17, DataSplit.TEST)
-    GREY_SHIRT_TRAIN_LOCAL = FramePairDataset(0, 110, 258, DataSplit.TRAIN, True)
-    RED_SHORTS = FramePairDataset(200, 400, 14, DataSplit.VALIDATION, True)
+from data import FramePairDataset, FramePairPreset, DeformDataset
 
 
 # TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
@@ -68,21 +32,12 @@ def main():
     #####################################################################################################
 
     # Source-target example
-    use_local_example_data = False
+    frame_pair_preset: FramePairPreset = FramePairPreset.RED_SHORTS
+    frame_pair_name = frame_pair_preset.name.lower()
+    frame_pair_dataset: FramePairDataset = frame_pair_preset.value
 
-    frame_pair = FramePair.RED_SHORTS
-    frame_pair_name = frame_pair.name.lower()
-    frame_pair_dataset: FramePairDataset = frame_pair.value
+    save_node_transformations = False
 
-    save_node_transformations = True
-
-    if use_local_example_data:
-        data_dir = "example_data"
-    else:
-        data_dir = "/mnt/Data/Reconstruction/real_data/deepdeform"
-
-    split = frame_pair_dataset.split.value
-    sequence_id = frame_pair_dataset.sequence_id
     source_frame_index = frame_pair_dataset.source_frame_index
     target_frame_index = frame_pair_dataset.target_frame_index
     segment_name = frame_pair_dataset.segment_name
@@ -130,48 +85,37 @@ def main():
     #####################################################################################################
     # Load example dataset
     #####################################################################################################
-    sequence_directory = os.path.join(data_dir, f"{split}/seq{str(sequence_id).zfill(3)}")
-
-    intrinsics_path = os.path.join(sequence_directory, "intrinsics.txt")
-    intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(intrinsics_path)
+    intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(frame_pair_dataset.get_intrinsics_path())
 
     image_height = options.image_height
     image_width = options.image_width
     max_boundary_distance = options.max_boundary_dist
 
-    source_image_filename = str(source_frame_index).zfill(6)
-    target_image_filename = str(target_frame_index).zfill(6)
-
-    graph_edges_dir = os.path.join(sequence_directory, "graph_edges")
-    parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
-    if segment_name is None:
-        segment_name = parts[1]
-    graph_filename = parts[0] + "_" + segment_name + "_" + source_image_filename + "_" + target_image_filename + "_geodesic_0.05"
-
-    src_color_image_path = os.path.join(sequence_directory, "color", source_image_filename + ".jpg")
-    src_depth_image_path = os.path.join(sequence_directory, "depth", source_image_filename + ".png")
-    tgt_color_image_path = os.path.join(sequence_directory, "color", target_image_filename + ".jpg")
-    tgt_depth_image_path = os.path.join(sequence_directory, "depth", target_image_filename + ".png")
+    src_color_image_path = frame_pair_dataset.get_source_color_frame_path()
+    src_depth_image_path = frame_pair_dataset.get_source_depth_frame_path()
+    tgt_color_image_path = frame_pair_dataset.get_target_color_frame_path()
+    tgt_depth_image_path = frame_pair_dataset.get_target_depth_frame_path()
 
     # Source color and depth
-    source, _, cropper = dataset.DeformDataset.load_image(
+    source, _, cropper = DeformDataset.load_image(
         src_color_image_path, src_depth_image_path, intrinsics, image_height, image_width
     )
 
     # Target color and depth (and boundary mask)
-    target, target_boundary_mask, _ = dataset.DeformDataset.load_image(
+    target, target_boundary_mask, _ = DeformDataset.load_image(
         tgt_color_image_path, tgt_depth_image_path, intrinsics, image_height, image_width, cropper=cropper,
         max_boundary_dist=max_boundary_distance, compute_boundary_mask=True
     )
 
     # Graph
     graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
-        dataset.DeformDataset.load_graph_data(sequence_directory, graph_filename, False, cropper)
+        DeformDataset.load_graph_data(frame_pair_dataset.get_sequence_directory(),
+                                      frame_pair_dataset.graph_filename, False, cropper)
 
     num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
     # Update intrinsics to reflect the crops
-    fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
+    fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
         intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
         image_height, image_width, original_h=cropper.h, original_w=cropper.w
     )
@@ -215,7 +159,7 @@ def main():
     if save_node_transformations:
         # Save rotations & translations
         with open('output/{:s}_{:s}_{:06d}_{:06d}_rotations.np'.format(
-                  frame_pair_name, segment_name, source_frame_index, target_frame_index), 'wb') as file:
+                frame_pair_name, segment_name, source_frame_index, target_frame_index), 'wb') as file:
             np.save(file, rotations_pred)
         with open('output/{:s}_{:s}_{:06d}_{:06d}_translations.np'.format(
                 frame_pair_name, segment_name, source_frame_index, target_frame_index), 'wb') as file:
@@ -281,7 +225,7 @@ def main():
     #####################################################################################################
     # Source warped
     #####################################################################################################
-    warped_deform_pred_3d_np = image_proc.warp_deform_3d(
+    warped_deform_pred_3d_np = image.warp_deform_3d(
         source, pixel_anchors, pixel_weights, graph_nodes, rotations_pred, translations_pred
     )
 

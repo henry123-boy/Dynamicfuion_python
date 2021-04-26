@@ -8,14 +8,13 @@
 # Copyright 2021 Gregory Kramida
 # ==================================================================================================
 
+import open3d as o3d
 import sys
 import os
 import numpy as np
 from dq3d import quat, dualquat
-from dq3d import op
 import options
-
-import utils.utils as utils
+import graph
 
 from pipeline.numba_cuda.compute_voxel_anchors import cuda_compute_voxel_center_anchors
 
@@ -23,20 +22,23 @@ PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-    with open(os.path.join(options.experiments_dir, "voxel_centers_000200_red_shorts.np"), 'rb') as file:
+    with open(os.path.join(options.output_directory, "voxel_centers_000200_red_shorts.np"), 'rb') as file:
         voxel_centers = np.load(file)
 
-    # TODO: these graph nodes are all too far away (due to some voxel volume / camera frustum offset, maybe??
-    #  see if you can generate a local graph instead using the TSDF / extraction / sampling technique
-    graph_nodes = utils.load_graph_nodes(
-        os.path.join(options.dataset_base_dir,
-                     "val/seq014/graph_nodes/5db1b1dcfce4e1021deb83dc_shorts_000200_000400_geodesic_0.05.bin"))
+    # TODO: is the original pre-generated graph radically different due to some camera frustum offset during generation?
+    # graph_nodes = utils.load_graph_nodes(
+    #     os.path.join(options.dataset_base_dir,
+    #                  "val/seq014/graph_nodes/5db1b1dcfce4e1021deb83dc_shorts_000200_000400_geodesic_0.05.bin"))
+
+    mesh200: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000200_red_shorts.ply")
+    graph200 = graph.build_deformation_graph_from_mesh(mesh200, node_coverage=options.node_coverage)
+    graph_nodes = graph200.nodes
 
     # Load graph transformation
-    with open(os.path.join(options.experiments_dir, "red_shorts_shorts_000200_000400_rotations.np"), 'rb') as file:
+    with open(os.path.join(options.output_directory, "red_shorts_shorts_000200_000400_rotations.np"), 'rb') as file:
         rotations = np.load(file)
 
-    with open(os.path.join(options.experiments_dir, "red_shorts_shorts_000200_000400_translations.np"), 'rb') as file:
+    with open(os.path.join(options.output_directory, "red_shorts_shorts_000200_000400_translations.np"), 'rb') as file:
         translations = np.load(file)
 
     node_transformations_dual_quaternions = np.array([dualquat(quat(rotation), translation) for rotation, translation in
@@ -44,10 +46,18 @@ def main():
 
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    print(graph_nodes.shape)
+    print(voxel_centers[0])
+    print(np.linalg.norm(graph_nodes - voxel_centers[0], axis=1).min())
 
-    voxel_center_weights, voxel_center_anchors = cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes,
+    voxel_center_anchors, voxel_center_weights = cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes,
                                                                                    camera_rotation, camera_translation,
                                                                                    options.node_coverage)
+
+    print("Anchors:")
+    print(voxel_center_anchors)
+    print("Weights:")
+    print(voxel_center_weights)
 
     return PROGRAM_EXIT_SUCCESS
 

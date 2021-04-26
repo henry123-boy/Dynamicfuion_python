@@ -6,14 +6,11 @@ import numpy as np
 from tqdm import tqdm
 import argparse
 
-from utils import image_proc
+from utils import image
 from model.model import DeformNet
-from model import dataset
+from data import dataset
 
-import utils.utils as utils
-import utils.viz_utils as viz_utils
-import utils.nnutils as nnutils
-import utils.line_mesh as line_mesh_utils
+import utils.viz.image as utils
 
 import options as opt
 
@@ -35,7 +32,7 @@ def main():
     # Model checkpoint to use
     saved_model      = opt.saved_model
     # Dataset dir
-    dataset_base_dir = opt.dataset_base_dir
+    dataset_base_dir = opt.dataset_base_directory
 
     # Image dimensiones to which we crop the input images, such that they are divisible by 64
     image_height = opt.image_height
@@ -59,7 +56,7 @@ def main():
         labels = json.loads(f.read())
 
     # Output dir
-    output_dir = os.path.join(opt.experiments_dir, "models", opt.model_name)
+    output_dir = os.path.join(opt.experiments_directory, "models", opt.model_name)
     output_dir = f"{output_dir}/evaluation/{split}"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -103,16 +100,16 @@ def main():
 
     for label in tqdm(labels):
 
-        src_color_image_path     = os.path.join(opt.dataset_base_dir, label["source_color"])
-        src_depth_image_path     = os.path.join(opt.dataset_base_dir, label["source_depth"])
-        tgt_color_image_path     = os.path.join(opt.dataset_base_dir, label["target_color"])
-        tgt_depth_image_path     = os.path.join(opt.dataset_base_dir, label["target_depth"])
-        graph_nodes_path         = os.path.join(opt.dataset_base_dir, label["graph_nodes"])
-        graph_edges_path         = os.path.join(opt.dataset_base_dir, label["graph_edges"])
-        graph_edges_weights_path = os.path.join(opt.dataset_base_dir, label["graph_edges_weights"])
-        graph_clusters_path      = os.path.join(opt.dataset_base_dir, label["graph_clusters"])
-        pixel_anchors_path       = os.path.join(opt.dataset_base_dir, label["pixel_anchors"])
-        pixel_weights_path       = os.path.join(opt.dataset_base_dir, label["pixel_weights"])
+        src_color_image_path     = os.path.join(opt.dataset_base_directory, label["source_color"])
+        src_depth_image_path     = os.path.join(opt.dataset_base_directory, label["source_depth"])
+        tgt_color_image_path     = os.path.join(opt.dataset_base_directory, label["target_color"])
+        tgt_depth_image_path     = os.path.join(opt.dataset_base_directory, label["target_depth"])
+        graph_nodes_path         = os.path.join(opt.dataset_base_directory, label["graph_nodes"])
+        graph_edges_path         = os.path.join(opt.dataset_base_directory, label["graph_edges"])
+        graph_edges_weights_path = os.path.join(opt.dataset_base_directory, label["graph_edges_weights"])
+        graph_clusters_path      = os.path.join(opt.dataset_base_directory, label["graph_clusters"])
+        pixel_anchors_path       = os.path.join(opt.dataset_base_directory, label["pixel_anchors"])
+        pixel_weights_path       = os.path.join(opt.dataset_base_directory, label["pixel_weights"])
         
         intrinsics = label["intrinsics"] 
 
@@ -140,7 +137,7 @@ def main():
         num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
         # Update intrinsics to reflect the crops
-        fx, fy, cx, cy = image_proc.modify_intrinsics_due_to_cropping(
+        fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
             intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'], 
             image_height, image_width, original_h=cropper.h, original_w=cropper.w
         )
@@ -182,7 +179,7 @@ def main():
         node_translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
 
         # Warp source points with predicted graph deformation
-        warped_source_points = image_proc.warp_deform_3d(
+        warped_source_points = image.warp_deform_3d(
             source, pixel_anchors, pixel_weights, graph_nodes, node_rotations_pred, node_translations_pred
         )
 

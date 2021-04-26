@@ -1,16 +1,10 @@
 # The code in the this file creates a class to run deformnet using torch
 import os
-import sys
 import torch
-import numpy as np
-
 
 # Modules (make sure modules are visible in sys.path)
 from model.model import DeformNet
 
-
-import utils.utils as utils
-import utils.nnutils as nnutils
 import options as opt
 
 class Deformnet_runner():

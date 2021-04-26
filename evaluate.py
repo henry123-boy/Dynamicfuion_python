@@ -1,18 +1,14 @@
 import os
 import json
 
-import torch
 import numpy as np
 from tqdm import tqdm
 import argparse
 
 from model.loss import EPE_3D_eval
-from model import dataset
+from data import dataset
 
-import utils.utils as utils
-import utils.visualization.flow_visualization as viz_utils
-import utils.nnutils as nnutils
-import utils.visualization.line_mesh as line_mesh_utils
+import utils.viz.image as utils
 import options as opt
 
 
@@ -30,8 +26,8 @@ def main():
 
     split = args.split
 
-    dataset_base_dir = opt.dataset_base_dir
-    experiments_dir  = opt.experiments_dir
+    dataset_base_dir = opt.dataset_base_directory
+    experiments_dir  = opt.experiments_directory
     model_name       = opt.model_name
     gn_max_depth     = opt.gn_max_depth
     
