@@ -1,11 +1,21 @@
 import os
+import hashlib
 
 #####################################################################################################################
 # DATA OPTIONS
 #####################################################################################################################
 # dataset_base_dir    = "/cluster/lothlann/data/nonrigid/public/"
 # dataset_base_dir    = "/mnt/slurm_cluster/lothlann/data/nonrigid/hidden/"
-dataset_base_directory = "/mnt/Data/Reconstruction/real_data/deepdeform"
+# add your mac address & directory to your base dir below
+from utils.network import get_mac_address
+
+# to add your own root DeepDeform data directory, run the sha256 cypher on your MAC address and add the hash &
+# local directory as a key/value pair to the dict below
+dataset_base_by_mac_address_hash = {
+    "79ea07bc9c4bc9cff4f84e17d4d90a636aefcfb7d0e935423eff27993e96c684": "/mnt/Data/Reconstruction/real_data/deepdeform"
+}
+
+dataset_base_directory = dataset_base_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
 workspace = "."
 experiments_directory = os.path.join(workspace, "experiments")
 output_directory = os.path.join(workspace, "output")

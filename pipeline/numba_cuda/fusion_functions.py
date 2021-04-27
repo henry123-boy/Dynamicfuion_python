@@ -110,8 +110,6 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
     if voxel_depth_frame_z < 0:
         return
 
-    node_coverage_squared = node_coverage ** 2
-
     num_nodes = graph_nodes.shape[0]
     distance_array = cuda.local.array(shape=GRAPH_K, dtype=numba.types.float32)
     index_array = cuda.local.array(shape=GRAPH_K, dtype=numba.types.int32)
@@ -123,9 +121,9 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
     max_at_index = 0
     for node_index in range(num_nodes):
         new_distance = euclidean_distance(voxel_x, voxel_y, voxel_z,
-                                                 graph_nodes[node_index, 0],
-                                                 graph_nodes[node_index, 1],
-                                                 graph_nodes[node_index, 2])
+                                          graph_nodes[node_index, 0],
+                                          graph_nodes[node_index, 1],
+                                          graph_nodes[node_index, 2])
         if new_distance < distance_array[max_at_index]:
             distance_array[max_at_index] = new_distance
             index_array[max_at_index] = node_index
@@ -144,7 +142,7 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
         index = index_array[i_anchor]
         if distance > 2 * node_coverage:
             continue
-        weight = math.exp(-distance**2 / (2 * node_coverage * node_coverage))
+        weight = math.exp(-distance ** 2 / (2 * node_coverage * node_coverage))
         weight_sum += weight
         anchor_count += 1
 
@@ -173,3 +171,128 @@ def cuda_compute_voxel_center_anchors(voxel_centers: np.ndarray, graph_nodes: np
                                                                               graph_nodes, camera_rotation, camera_translation, node_coverage)
     cuda.synchronize()
     return voxel_center_anchors, voxel_center_weights
+
+
+@cuda.jit()
+def cuda_depth_warp_integrate_kernel(depth_image, depth_intrinsics, camera_rotation, camera_translation, cell_size, tsdf_volume,
+                                     trunc_dist, voxel_anchors, voxel_weights, node_positions, node_rotations, node_translations,
+                                     offset, normal_map, mask):
+    workload_x, workload_y = cuda.grid(2)
+
+    fx, fy, cx, cy = depth_intrinsics[0, 0], depth_intrinsics[1, 1], depth_intrinsics[0, 2], depth_intrinsics[1, 2]
+
+    depth_image_height, depth_image_width = depth_image.shape[:2]
+    volume_size_x, volume_size_y, volume_size_z = tsdf_volume.shape[:3]
+    if workload_x >= volume_size_x or workload_y >= volume_size_y:
+        return
+
+    for z in range(volume_size_z):
+        voxel_x = (workload_x + 0.5) * cell_size[0] + offset[0]
+        voxel_y = (workload_y + 0.5) * cell_size[1] + offset[1]
+        voxel_z = (z + 0.5) * cell_size[2] + offset[2]
+
+        voxel_depth_frame_x = camera_rotation[0, 0] * voxel_x + \
+                              camera_rotation[0, 1] * voxel_y + camera_rotation[0, 2] * voxel_z + camera_translation[0]
+        voxel_depth_frame_y = camera_rotation[1, 0] * voxel_x + \
+                              camera_rotation[1, 1] * voxel_y + camera_rotation[1, 2] * voxel_z + camera_translation[1]
+        voxel_depth_frame_z = camera_rotation[2, 0] * voxel_x + \
+                              camera_rotation[2, 1] * voxel_y + camera_rotation[2, 2] * voxel_z + camera_translation[2]
+
+        point_is_valid = True
+        invalid_count = 0
+        for i in range(GRAPH_K):
+            if voxel_anchors[workload_x, workload_y, z, i] == -1:
+                invalid_count += 1
+            if invalid_count > 1:
+                point_is_valid = False
+                break
+
+        if not point_is_valid:
+            continue
+        else:
+            deformed_pos_x = 0.0
+            deformed_pos_y = 0.0
+            deformed_pos_z = 0.0
+            for i in range(GRAPH_K):
+                if voxel_anchors[workload_x, workload_y, z, i] != -1:
+                    new_x, new_y, new_z = warp_point_with_nodes(node_positions[voxel_anchors[workload_x, workload_y, z, i]],
+                                                                node_rotations[voxel_anchors[workload_x, workload_y, z, i]],
+                                                                node_translations[voxel_anchors[workload_x, workload_y, z, i]],
+                                                                voxel_depth_frame_x, voxel_depth_frame_y, voxel_depth_frame_z)
+                    deformed_pos_x += voxel_weights[workload_x, workload_y, z, i] * new_x
+                    deformed_pos_y += voxel_weights[workload_x, workload_y, z, i] * new_y
+                    deformed_pos_z += voxel_weights[workload_x, workload_y, z, i] * new_z
+
+        if deformed_pos_z <= 0:
+            continue
+
+        du = int(round(fx * (deformed_pos_x / deformed_pos_z) + cx))
+        dv = int(round(fy * (deformed_pos_y / deformed_pos_z) + cy))
+        if 0 < du < depth_image_width and 0 < dv < depth_image_height:
+            depth = depth_image[dv, du] / 1000.
+            psdf = depth - deformed_pos_z
+
+            view_direction_x, view_direction_y, view_direction_z = normalize(deformed_pos_x, deformed_pos_y, deformed_pos_z)
+            view_direction_x, view_direction_y, view_direction_z = -view_direction_x, -view_direction_y, -view_direction_z
+            dn_x, dn_y, dn_z = normal_map[dv, du, 0], normal_map[dv, du, 1], normal_map[dv, du, 2]
+            cosine = dot(dn_x, dn_y, dn_z, view_direction_x, view_direction_y, view_direction_z)
+
+            if depth > 0:
+                mask[dv, du] = cosine
+            if depth > 0 and psdf > -trunc_dist and cosine > 0.5:
+                tsdf = min(1., psdf / trunc_dist)
+                tsdf_prev, weight_prev = tsdf_volume[workload_x,
+                                                     workload_y, z][0], tsdf_volume[workload_x, workload_y, z][1]
+                weight_new = 1
+                tsdf_new = (tsdf_prev * weight_prev +
+                            weight_new * tsdf) / (weight_prev + weight_new)
+                weight_new = min(weight_prev + weight_new, 255)
+                # cut off weight at 255 -- if weight can be mate a field bigger than byte, the upper cap should be a parameter
+                tsdf_volume[workload_x, workload_y, z][0], tsdf_volume[workload_x, workload_y, z][1] = tsdf_new, weight_new
+
+
+def cuda_depth_warp_integrate(depth_frame, depth_intrinsics, camera_rotation, camera_translation, cell_size, tsdf_volume, trunc_dist,
+                              voxel_anchors, voxel_weights, node_positions, node_rotations, node_translations, volume_offset, norma_map,
+                              mask=None):
+    cuda_block_size = (16, 16)
+    cuda_grid_size_x = math.ceil(voxel_anchors.shape[0] / cuda_block_size[0])
+    cuda_grid_size_y = math.ceil(voxel_anchors.shape[1] / cuda_block_size[1])
+    cuda_grid_size = (cuda_grid_size_x, cuda_grid_size_y)
+
+    # in depth_integration v2.py (BaldrLector), mask is currently set to None
+    if mask is None:
+        mask = np.zeros_like(depth_frame, dtype=np.float32)
+    else:
+        mask = np.copy(mask)
+    tsdf_volume = np.copy(tsdf_volume)
+
+    cuda_depth_warp_integrate_kernel[cuda_grid_size, cuda_block_size](depth_frame, depth_intrinsics, camera_rotation, camera_translation, cell_size,
+                                                                      tsdf_volume, trunc_dist,
+                                                                      voxel_anchors, voxel_weights, node_positions, node_rotations, node_translations,
+                                                                      volume_offset, norma_map, mask)
+    cuda.synchronize()
+    return tsdf_volume, mask
+
+
+def cuda_compute_psdf_voxel_centers(depth_image, camera_intrinsics, camera_rotation, camera_translation,
+                                    voxel_size, tsdf_volume, truncation_distance, voxel_anchors, voxel_weights,
+                                    node_positions, node_rotations, node_translations, volume_offset, norma_map,
+                                    mask=None):
+    cuda_block_size = (16, 16)
+    cuda_grid_size_x = math.ceil(voxel_anchors.shape[0] / cuda_block_size[0])
+    cuda_grid_size_y = math.ceil(voxel_anchors.shape[1] / cuda_block_size[1])
+    cuda_grid_size = (cuda_grid_size_x, cuda_grid_size_y)
+
+    # in depth_integration v2.py (BaldrLector), mask is currently set to None
+    if mask is None:
+        mask = np.zeros_like(depth_image, dtype=np.float32)
+    else:
+        mask = np.copy(mask)
+    tsdf_volume = np.copy(tsdf_volume)
+
+    cuda_depth_warp_integrate_kernel[cuda_grid_size, cuda_block_size](depth_image, camera_intrinsics, camera_rotation,
+                                                                      camera_translation, voxel_size, tsdf_volume, truncation_distance,
+                                                                      voxel_anchors, voxel_weights, node_positions, node_rotations,
+                                                                      node_translations, volume_offset, norma_map, mask)
+    cuda.synchronize()
+    return tsdf_volume, mask

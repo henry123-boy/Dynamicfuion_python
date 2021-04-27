@@ -333,6 +333,6 @@ def norm(x, y, z, ord):
 
 
 @cuda.jit(device=True)
-def normlize(x, y, z, ):
+def normalize(x, y, z):
     s = math.sqrt(x * x + y * y + z * z)
     return x / s, y / s, z / s

@@ -20,8 +20,8 @@ import options
 import options as opt
 import nnrt
 from pipeline import camera
-from data import dataset
-from utils import image
+from data import *
+from utils import image, voxel_grid
 from model.model import DeformNet
 from pipeline import graph
 
@@ -146,26 +146,7 @@ def main() -> None:
     extrinsics_numpy = np.eye(4)
     extrinsics_gpu = o3d.core.Tensor(extrinsics_numpy, o3d.core.Dtype.Float32, device)
 
-    #####################################################################################################
-    # === volume representation parameters ===
-    #####################################################################################################
-
-    voxel_size = 0.008  # voxel resolution in meters
-    sdf_trunc = 0.04  # truncation distance in meters
-    block_resolution = 16  # 16^3 voxel blocks
-    initial_block_count = 1000  # initially allocated number of voxel blocks
-
-    volume = o3d.t.geometry.TSDFVoxelGrid(
-        {
-            'tsdf': o3d.core.Dtype.Float32,
-            'weight': o3d.core.Dtype.UInt16,
-            'color': o3d.core.Dtype.UInt16
-        },
-        voxel_size=voxel_size,
-        sdf_trunc=sdf_trunc,
-        block_resolution=block_resolution,
-        block_count=initial_block_count,
-        device=device)
+    volume = voxel_grid.make_default_tsdf_voxel_grid(device)
 
     # __DEBUG
     previous_color_image = None
@@ -226,11 +207,11 @@ def main() -> None:
             pass
         elif frame_index == target_frame_index:
             # TODO: replace source with deformed isosurface render
-            source, _, cropper = dataset.DeformDataset.prepare_pytorch_input(
+            source, _, cropper = DeformDataset.prepare_pytorch_input(
                 first_color_image, first_depth_image, intrinsics_dict,
                 opt.image_height, opt.image_width
             )
-            target, _, _ = dataset.DeformDataset.prepare_pytorch_input(
+            target, _, _ = DeformDataset.prepare_pytorch_input(
                 color_image, depth_image, intrinsics_dict,
                 opt.image_height, opt.image_width,
                 cropper=cropper

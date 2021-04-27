@@ -8,8 +8,11 @@ import open3d as o3d
 import torch
 import numpy as np
 
+import settings.settings_tsdf as tsdf_settings
+
 import camera
 import options
+from utils.voxel_grid import make_default_tsdf_voxel_grid
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -52,26 +55,7 @@ def main():
     extrinsics_numpy = np.eye(4)
     extrinsics_open3d_gpu = o3d.core.Tensor(extrinsics_numpy, o3d.core.Dtype.Float32, device)
 
-    #####################################################################################################
-    # === open3d volume representation parameters ===
-    #####################################################################################################
-
-    voxel_size = 0.008  # voxel resolution in meters
-    sdf_trunc = 0.04  # truncation distance in meters
-    block_resolution = 16  # 16^3 voxel blocks
-    initial_block_count = 1000  # initially allocated number of voxel blocks
-
-    volume = o3d.t.geometry.TSDFVoxelGrid(
-        {
-            'tsdf': o3d.core.Dtype.Float32,
-            'weight': o3d.core.Dtype.UInt16,
-            'color': o3d.core.Dtype.UInt16
-        },
-        voxel_size=voxel_size,
-        sdf_trunc=sdf_trunc,
-        block_resolution=block_resolution,
-        block_count=initial_block_count,
-        device=device)
+    volume = make_default_tsdf_voxel_grid(device)
 
     #####################################################################################################
     # === load images, fuse into TSDF, extract & visualize mesh ===
