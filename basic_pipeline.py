@@ -5,7 +5,6 @@
 
 # stdlib
 import sys
-import enum
 
 # 3rd-party
 import open3d as o3d
@@ -13,7 +12,7 @@ import open3d as o3d
 # local
 import options as opt
 import nnrt
-from pipeline import camera
+from data import camera
 from data import *
 from utils import image, voxel_grid
 from model.model import DeformNet

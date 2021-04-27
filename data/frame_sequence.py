@@ -5,7 +5,7 @@ from enum import Enum
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
 
 
-class FrameSequenceDataset(GenericDataset, Sequence[SequenceFrameDataset]):
+class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]):
 
     def __init__(self, sequence_id: typing.Union[None, int] = None,
                  split: typing.Union[None, DataSplit] = None,

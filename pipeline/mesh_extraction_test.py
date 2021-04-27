@@ -5,12 +5,9 @@
 import os
 import sys
 import open3d as o3d
-import torch
 import numpy as np
 
-import settings.settings_tsdf as tsdf_settings
-
-import camera
+from data import camera
 import options
 from utils.voxel_grid import make_default_tsdf_voxel_grid
 

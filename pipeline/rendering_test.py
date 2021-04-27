@@ -18,7 +18,7 @@ from pytorch3d.renderer.lighting import PointLights
 from pytorch3d.structures.meshes import Meshes
 
 import options
-from pipeline import camera
+from data import camera
 
 PROGRAM_EXIT_SUCCESS = 0
 

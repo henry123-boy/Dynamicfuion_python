@@ -12,11 +12,10 @@ import os
 import sys
 import open3d as o3d
 import open3d.core as o3c
-import torch
 import numpy as np
 import options
 
-import camera
+from data import camera
 
 PROGRAM_EXIT_SUCCESS = 0
 

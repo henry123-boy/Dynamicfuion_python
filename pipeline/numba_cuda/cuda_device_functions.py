@@ -7,14 +7,14 @@ import cmath
 
 @cuda.jit(device=True)
 def euclidean_distance(x1, y1, z1, x2, y2, z2):
-    square_distance = (x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2
+    square_distance = (x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2
     distance = math.sqrt(square_distance)
     return distance
 
 
 @cuda.jit(device=True)
 def square_euclidean_distance(x1, y1, z1, x2, y2, z2):
-    square_distance = (x1 - x2)**2 + (y1 - y2)**2 + (z1 - z2)**2
+    square_distance = (x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2
     return square_distance
 
 
@@ -328,7 +328,7 @@ def dot(x, y, z, x_, y_, z_):
 
 
 @cuda.jit(device=True)
-def norm(x, y, z, ord):
+def norm(x, y, z):
     return math.sqrt(x * x + y * y + z * z)
 
 
@@ -336,3 +336,59 @@ def norm(x, y, z, ord):
 def normalize(x, y, z):
     s = math.sqrt(x * x + y * y + z * z)
     return x / s, y / s, z / s
+
+
+@cuda.jit(device=True)
+def norm_quaternion(quaternion):
+    return math.sqrt(quaternion[0] * quaternion[0] +
+                     quaternion[1] * quaternion[1] +
+                     quaternion[2] * quaternion[2] +
+                     quaternion[3] * quaternion[3])
+
+
+@cuda.jit(device=True)
+def square_norm_quaternion(quaternion):
+    return quaternion[0] * quaternion[0] + quaternion[1] * quaternion[1] + \
+           quaternion[2] * quaternion[2] + quaternion[3] * quaternion[3]
+
+
+@cuda.jit(device=True)
+def dot4vector(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
+
+
+@cuda.jit(device=True)
+def elementwise_mul_4vector(result, a, b):
+    result[0] = a[0] * b[0]
+    result[1] = a[1] * b[1]
+    result[2] = a[2] * b[2]
+    result[3] = a[3] * b[3]
+
+
+@cuda.jit(device=True)
+def elementwise_sub_4vector(result, a, b):
+    result[0] = a[0] - b[0]
+    result[1] = a[1] - b[1]
+    result[2] = a[2] - b[2]
+    result[3] = a[3] - b[3]
+
+
+@cuda.jit(device=True)
+def normalize_dual_quaternion(dual_quaternion):
+    real = dual_quaternion[:4]
+    dual = dual_quaternion[4:]
+    length = norm_quaternion(real)
+    squared_length = length * length
+
+    # make real part have unit length
+    for coeff_index in range(4):
+        real[coeff_index] = real[coeff_index] / length
+
+    # make dual part have unit length & orthogonal to real
+    for coeff_index in range(4):
+        dual[coeff_index] = dual[coeff_index] / length
+
+    dual_delta = dot4vector(real, dual) * squared_length
+    elementwise_mul_4vector(dual_delta, dual_delta, real)
+    elementwise_sub_4vector(dual, dual, dual_delta)
+    return dual_quaternion

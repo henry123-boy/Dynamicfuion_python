@@ -5,7 +5,7 @@ import open3d as o3d
 import torch
 import numpy as np
 
-from pipeline.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
+from data.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
 from utils import image
 from model import DeformNet
 

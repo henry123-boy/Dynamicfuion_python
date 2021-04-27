@@ -17,9 +17,9 @@ from dq3d import quat, dualquat
 import data.io as io
 import options
 import graph
-from data import StandaloneFramePreset, StandaloneFrameDataset
+from data import StandaloneFramePreset, StandaloneFrameDataset, camera
 
-from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_voxel_centers
+from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_voxel_centers, cuda_norm_dual_quat_test
 from utils.network import get_mac_address
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -59,11 +59,17 @@ def main():
     red_shorts_400_frame: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_400.value
 
     depth_image = np.array(o3d.io.read_image(red_shorts_400_frame.get_depth_image_path()))
+    intrinsic_matrix = np.loadtxt(red_shorts_400_frame.get_intrinsics_path())
+
+    # voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+    #                                              voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
+    #                                              node_transformations_dual_quaternions)
+
+    quaternion = np.array([1, 2, 3, 4, 5, 6, 7, 8])
 
 
-    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsics, camera_rotation, camera_translation,
-                                                 voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
-                                                 node_transformations_dual_quaternions)
+    cuda_norm_dual_quat_test(quaternion)
+    print(quaternion)
 
     return PROGRAM_EXIT_SUCCESS
 

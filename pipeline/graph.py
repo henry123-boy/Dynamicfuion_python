@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
 from utils.viz.primitive import make_z_aligned_image_plane
-from pipeline import camera
+from data import camera
 
 
 def knn_edges_column_to_lines(node_edges: np.ndarray, neighbor_index) -> np.ndarray:
