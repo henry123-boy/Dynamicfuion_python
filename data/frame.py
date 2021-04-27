@@ -35,7 +35,8 @@ def make_frame_file_name_mask(name: str, extension: str) -> str:
 
 
 class GenericDataset:
-    def __init__(self, sequence_id: int, split: DataSplit, base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
+    def __init__(self, sequence_id: typing.Union[None, int] = None, split: typing.Union[None, DataSplit] = None,
+                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None):
         """
         Define a single-frame dataset.
@@ -99,6 +100,9 @@ class GenericDataset:
                     break
 
         else:
+            if sequence_id is None or split is None:
+                raise ValueError(f"A dataset of type DatasetType.DEEP_DEFORM requires an integer sequence_id "
+                                 f"and split of type DataSplit. Got sequence id {str(sequence_id)} and split {str(split)}.")
             self._sequence_directory = os.path.join(self._base_data_directory, "{:s}/seq{:03d}".format(self.split.value, self.sequence_id))
             self._color_frame_directory = os.path.join(self._sequence_directory, "color")
             self._depth_frame_directory = os.path.join(self._sequence_directory, "depth")
@@ -132,20 +136,23 @@ class GenericDataset:
 
 class FrameDataset(metaclass=ABCMeta):
     @abstractmethod
-    def get_color_frame_path(self) -> str:
+    def get_color_image_path(self) -> str:
         pass
 
     @abstractmethod
-    def get_depth_frame_path(self) -> str:
+    def get_depth_image_path(self) -> str:
         pass
 
     @abstractmethod
-    def get_mask_frame_path(self) -> str:
+    def get_mask_image_path(self) -> str:
         pass
 
 
 class StandaloneFrameDataset(GenericDataset, FrameDataset):
-    def __init__(self, frame_index: int, sequence_id: int, split: DataSplit, base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
+    def __init__(self, frame_index: int,
+                 sequence_id: typing.Union[None, int] = None,
+                 split: typing.Union[None, DataSplit] = None,
+                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None):
         """
         Define a single-frame dataset.
@@ -161,13 +168,13 @@ class StandaloneFrameDataset(GenericDataset, FrameDataset):
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
         self.frame_index = frame_index
 
-    def get_color_frame_path(self) -> str:
+    def get_color_image_path(self) -> str:
         return self._color_image_filename_mask.format(self.frame_index)
 
-    def get_depth_frame_path(self) -> str:
+    def get_depth_image_path(self) -> str:
         return self._depth_image_filename_mask.format(self.frame_index)
 
-    def get_mask_frame_path(self) -> str:
+    def get_mask_image_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.frame_index)
         else:
@@ -177,18 +184,18 @@ class StandaloneFrameDataset(GenericDataset, FrameDataset):
 class SequenceFrameDataset(FrameDataset):
     def __init__(self, frame_index: int, color_frame_path: str, depth_frame_path: str, mask_frame_path: typing.Union[None, str] = None):
         self.frame_index = frame_index
-        self.color_frame_path = color_frame_path
-        self.depth_frame_path = depth_frame_path
-        self.mask_frame_path = mask_frame_path
+        self.color_image_path = color_frame_path
+        self.depth_image_path = depth_frame_path
+        self.mask_image_path = mask_frame_path
 
-    def get_color_frame_path(self) -> str:
-        return self.color_frame_path
+    def get_color_image_path(self) -> str:
+        return self.color_image_path
 
-    def get_depth_frame_path(self) -> str:
-        return self.depth_frame_path
+    def get_depth_image_path(self) -> str:
+        return self.depth_image_path
 
-    def get_mask_frame_path(self) -> str:
-        if self.mask_frame_path is not None:
-            return self.mask_frame_path
+    def get_mask_image_path(self) -> str:
+        if self.mask_image_path is not None:
+            return self.mask_image_path
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")

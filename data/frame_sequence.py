@@ -5,11 +5,16 @@ from enum import Enum
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
 
 
-class FrameSequenceDataset(GenericDataset, Sequence):
+class FrameSequenceDataset(GenericDataset, Sequence[SequenceFrameDataset]):
 
-    def __init__(self, sequence_id: int, split: DataSplit, start_frame_index: int = 0, frame_count: typing.Union[None, int] = None,
-                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM, has_masks: bool = False,
-                 segment_name: typing.Union[None, str] = None, custom_frame_directory: typing.Union[None, str] = None):
+    def __init__(self, sequence_id: typing.Union[None, int] = None,
+                 split: typing.Union[None, DataSplit] = None,
+                 start_frame_index: int = 0,
+                 frame_count: typing.Union[None, int] = None,
+                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
+                 has_masks: bool = False,
+                 segment_name: typing.Union[None, str] = None,
+                 custom_frame_directory: typing.Union[None, str] = None):
         """
         Define a frame pair dataset.
         :param start_frame_index: 0-based index of the start frame
@@ -67,6 +72,9 @@ class FrameSequenceDataset(GenericDataset, Sequence):
             frame = self.get_frame_at(self._next_frame_index)
             self._next_frame_index += 1
             return frame
+
+    def get_next_frame_index(self):
+        return self._next_frame_index
 
     def has_more_frames(self):
         return self._next_frame_index < self._end_before_index

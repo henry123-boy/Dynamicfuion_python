@@ -13,8 +13,11 @@ import sys
 import os
 import numpy as np
 from dq3d import quat, dualquat
+
+import data.io as io
 import options
 import graph
+from data import StandaloneFramePreset, StandaloneFrameDataset
 
 from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_voxel_centers
 from utils.network import get_mac_address
@@ -53,10 +56,14 @@ def main():
     voxel_center_anchors, voxel_center_weights = \
         cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes, camera_rotation, camera_translation, options.node_coverage)
 
-    voxel_psdf = cuda_compute_psdf_voxel_centers(voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
+    red_shorts_400_frame: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_400.value
+
+    depth_image = np.array(o3d.io.read_image(red_shorts_400_frame.get_depth_image_path()))
+
+
+    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsics, camera_rotation, camera_translation,
+                                                 voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
                                                  node_transformations_dual_quaternions)
-
-
 
     return PROGRAM_EXIT_SUCCESS
 

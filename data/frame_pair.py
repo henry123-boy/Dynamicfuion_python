@@ -6,9 +6,13 @@ from data.frame import GenericDataset, DatasetType, DataSplit
 
 class FramePairDataset(GenericDataset):
 
-    def __init__(self, source_frame_index: int, target_frame_index: int, sequence_id: int, split: DataSplit,
-                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM, has_masks: bool = False,
-                 segment_name: typing.Union[None, str] = None, custom_frame_directory: typing.Union[None, str] = None):
+    def __init__(self, source_frame_index: int, target_frame_index: int,
+                 sequence_id: typing.Union[None, int] = None,
+                 split: typing.Union[None, DataSplit] = None,
+                 base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
+                 has_masks: bool = False,
+                 segment_name: typing.Union[None, str] = None,
+                 custom_frame_directory: typing.Union[None, str] = None):
         """
         Define a frame pair dataset.
         :param source_frame_index: 0-based index of the source frame
@@ -40,25 +44,25 @@ class FramePairDataset(GenericDataset):
         self.target_frame_index = target_frame_index
         self.segment_name = segment_name
 
-    def get_source_color_frame_path(self) -> str:
+    def get_source_color_image_path(self) -> str:
         return self._color_image_filename_mask.format(self.source_frame_index)
 
-    def get_target_color_frame_path(self) -> str:
+    def get_target_color_image_path(self) -> str:
         return self._color_image_filename_mask.format(self.target_frame_index)
 
-    def get_source_depth_frame_path(self) -> str:
+    def get_source_depth_image_path(self) -> str:
         return self._depth_image_filename_mask.format(self.source_frame_index)
 
-    def get_target_depth_frame_path(self) -> str:
+    def get_target_depth_image_path(self) -> str:
         return self._depth_image_filename_mask.format(self.target_frame_index)
 
-    def get_source_mask_frame_path(self) -> str:
+    def get_source_mask_image_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.source_frame_index)
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")
 
-    def get_target_mask_frame_path(self) -> str:
+    def get_target_mask_image_path(self) -> str:
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.target_frame_index)
         else:

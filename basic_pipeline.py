@@ -4,25 +4,20 @@
 # Copyright 2021 Gregory Kramida
 
 # stdlib
-import os
 import sys
-import re
 import enum
-import typing
 
 # 3rd-party
-import numpy as np
 import open3d as o3d
-import torch
 
 # local
-import options
 import options as opt
 import nnrt
 from pipeline import camera
 from data import *
 from utils import image, voxel_grid
 from model.model import DeformNet
+from model.default import load_default_nnrt_model
 from pipeline import graph
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -51,11 +46,6 @@ def reset(visualizer: o3d.pybind.visualization.VisualizerWithKeyCallback) -> Non
     view_control.reset_camera_local_rotate()
 
 
-class DatasetPreset(enum.Enum):
-    MINION = 1
-    RED_SHORTS = 2
-
-
 def main() -> None:
     #####################################################################################################
     # Options
@@ -70,72 +60,21 @@ def main() -> None:
     print_intrinsics = False
 
     #####################################################################################################
-    # Load model
+    # === load model, configure device ===
     #####################################################################################################
 
-    saved_model = opt.saved_model
-
-    assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
-    pretrained_dict = torch.load(saved_model)
-
-    # Construct model
-    model = DeformNet().cuda()
-
-    if "chairs_things" in saved_model:
-        model.flow_net.load_state_dict(pretrained_dict)
-    else:
-        if opt.model_module_to_load == "full_model":
-            # Load completely model
-            model.load_state_dict(pretrained_dict)
-        elif opt.model_module_to_load == "only_flow_net":
-            # Load only optical flow part
-            model_dict = model.state_dict()
-            # 1. filter out unnecessary keys
-            pretrained_dict = {k: v for k, v in pretrained_dict.items() if "flow_net" in k}
-            # 2. overwrite entries in the existing state dict
-            model_dict.update(pretrained_dict)
-            # 3. load the new state dict
-            model.load_state_dict(model_dict)
-        else:
-            print(opt.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
-            exit()
-
-    model.eval()
-
-    #####################################################################################################
-    # === device configuration ===
-    #####################################################################################################
-
+    model: DeformNet = load_default_nnrt_model()
     device = o3d.core.Device('cuda:0')
 
     #####################################################################################################
-    # === dataset parameters ===
+    # === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
     #####################################################################################################
 
-    dataset_to_use = DatasetPreset.RED_SHORTS
+    frame_sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+    first_frame = frame_sequence.get_frame_at(0)
 
-    color_image_filename_mask = None
-    depth_image_filename_mask = None
-    depth_intrinsics_path = None
-    frame_count = 0
-
-    if dataset_to_use is DatasetPreset.MINION:
-        # == Minion dataset from VolumeDeform
-        frames_directory = "/mnt/Data/Reconstruction/real_data/minion/data/"
-        depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/minion/data/depthIntrinsics.txt"
-        color_image_filename_mask = frames_directory + "frame-{:06d}.color.png"
-        depth_image_filename_mask = frames_directory + "frame-{:06d}.depth.png"
-        frame_count = count_frames(frames_directory, re.compile(r'frame-\d{6}\.depth\.png'))
-    elif dataset_to_use is DatasetPreset.RED_SHORTS:
-        # == val/seq014 dataset from DeepDeform (red shorts)
-        frames_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/"
-        depth_intrinsics_path = "/mnt/Data/Reconstruction/real_data/deepdeform/v1_reduced/val/seq014/intrinsics.txt"
-        color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
-        depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
-        frame_count = count_frames(os.path.join(frames_directory, "depth"), re.compile(r'\d{6}\.png'))
-
-    first_depth_image_path = depth_image_filename_mask.format(0)
-    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, first_depth_image_path)
+    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_sequence.get_intrinsics_path(),
+                                                                                         first_frame.get_depth_image_path())
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
     intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
     if print_intrinsics:
@@ -153,28 +92,26 @@ def main() -> None:
     previous_depth_image = None
     first_color_image = None
     first_depth_image = None
-    target_frame_index = 40
+    target_frame_index = 39
 
     deformation_graph: typing.Union[graph.DeformationGraph, None] = None
 
-    for frame_index in range(0, frame_count):
+    for current_frame in frame_sequence:
         #####################################################################################################
         # grab images, transfer to GPU versions for Open3D
         #####################################################################################################
         if print_frame_info:
-            print("Processing frame:", frame_index)
-            print(depth_image_path)
-            print(color_image_path)
-        depth_image_path = depth_image_filename_mask.format(frame_index)
+            print("Processing frame:", current_frame.frame_index)
+            print(current_frame.color_image_path)
+            print(current_frame.depth_image_path)
 
-        depth_image_open3d_legacy = o3d.io.read_image(depth_image_path)
+        depth_image_open3d_legacy = o3d.io.read_image(current_frame.depth_image_path)
         depth_image = np.array(depth_image_open3d_legacy)
-        color_image_path = color_image_filename_mask.format(frame_index)
 
-        color_image_open3d_legacy = o3d.io.read_image(color_image_path)
+        color_image_open3d_legacy = o3d.io.read_image(current_frame.color_image_path)
         color_image = np.array(color_image_open3d_legacy)
 
-        if frame_index == 0:
+        if current_frame.frame_index == 0:
             first_color_image = color_image
             first_depth_image = depth_image
             depth_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
@@ -203,9 +140,9 @@ def main() -> None:
             #                                   up=[0, -1.0, 0],
             #                                   zoom=0.7)
         # else: # __DEBUG
-        elif frame_index < target_frame_index:
+        elif current_frame.frame_index < target_frame_index:
             pass
-        elif frame_index == target_frame_index:
+        elif current_frame.frame_index == target_frame_index:
             # TODO: replace source with deformed isosurface render
             source, _, cropper = DeformDataset.prepare_pytorch_input(
                 first_color_image, first_depth_image, intrinsics_dict,

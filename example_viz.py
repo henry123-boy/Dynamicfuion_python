@@ -91,10 +91,10 @@ def main():
     image_width = options.image_width
     max_boundary_distance = options.max_boundary_dist
 
-    src_color_image_path = frame_pair_dataset.get_source_color_frame_path()
-    src_depth_image_path = frame_pair_dataset.get_source_depth_frame_path()
-    tgt_color_image_path = frame_pair_dataset.get_target_color_frame_path()
-    tgt_depth_image_path = frame_pair_dataset.get_target_depth_frame_path()
+    src_color_image_path = frame_pair_dataset.get_source_color_image_path()
+    src_depth_image_path = frame_pair_dataset.get_source_depth_image_path()
+    tgt_color_image_path = frame_pair_dataset.get_target_color_image_path()
+    tgt_depth_image_path = frame_pair_dataset.get_target_depth_image_path()
 
     # Source color and depth
     source, _, cropper = DeformDataset.load_image(
