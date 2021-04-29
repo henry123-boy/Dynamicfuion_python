@@ -275,15 +275,17 @@ def cuda_depth_warp_integrate(depth_frame, intrinsics, camera_rotation, camera_t
 
 
 @cuda.jit()
-def cuda_compute_psdf_voxel_centers_kernel(
-        depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-        voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
-        node_transformation_dual_quaternions):
+def cuda_compute_psdf_voxel_centers_kernel(psdf,
+                                           depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                           voxel_centers, voxel_center_anchors, voxel_center_weights,
+                                           node_transformation_dual_quaternions):
     workload_index = cuda.grid(1)
     voxel_center_count = voxel_centers.shape[0]
 
     if workload_index >= voxel_center_count:
         return
+
+    psdf[workload_index] = math.nan
 
     voxel_center = voxel_centers[workload_index]
     voxel_x, voxel_y, voxel_z = voxel_center
@@ -309,64 +311,36 @@ def cuda_compute_psdf_voxel_centers_kernel(
         if invalid_count > 1:
             return
 
-    deformed_pos_x = 0.0
-    deformed_pos_y = 0.0
-    deformed_pos_z = 0.0
+    final_dual_quaternion = cuda.local.array(8, dtype=numba.types.float32)
+    linearly_blend_dual_quaternions(final_dual_quaternion, node_transformation_dual_quaternions, voxel_center_anchors,
+                                    voxel_center_weights, workload_index)
 
-    final_quaternion = np.zeros((8,))
+    voxel_point = cuda.local.array(3, dtype=numba.types.float32)
+    voxel_point[0], voxel_point[1], voxel_point[2] = voxel_depth_frame_x, voxel_depth_frame_y, voxel_depth_frame_z
+    temp1 = cuda.local.array(8, dtype=numba.types.float32)
+    temp2 = cuda.local.array(8, dtype=numba.types.float32)
+    temp3 = cuda.local.array(8, dtype=numba.types.float32)
 
-    for anchor_index in range(GRAPH_K):
-        voxel_center_anchor = voxel_center_anchors[workload_index, anchor_index]
-        if voxel_center_anchor != -1:
-            voxel_center_weight = voxel_center_weights[workload_index, anchor_index]
-            node_transformation_dual_quaternion = node_transformation_dual_quaternions[voxel_center_anchor]
-            final_quaternion += node_transformation_dual_quaternion * voxel_center_weight
+    # deform the voxel point
+    transform_point_by_dual_quaternion(voxel_point, final_dual_quaternion,
+                                       temp1, temp2, temp3, voxel_point)
 
-    # TODO
-    # deformed_pos_x += voxel_weights[workload_x, workload_y, z, anchor_index] * new_x
-    # deformed_pos_y += voxel_weights[workload_x, workload_y, z, anchor_index] * new_y
-    # deformed_pos_z += voxel_weights[workload_x, workload_y, z, anchor_index] * new_z
-    #
-    # if deformed_pos_z <= 0:
-    #     continue
-    #
-    # du = int(round(fx * (deformed_pos_x / deformed_pos_z) + cx))
-    # dv = int(round(fy * (deformed_pos_y / deformed_pos_z) + cy))
-    # if 0 < du < depth_image_width and 0 < dv < depth_image_height:
-    #     depth = depth_image[dv, du] / 1000.
-    #     psdf = depth - deformed_pos_z
-    #
-    #     view_direction_x, view_direction_y, view_direction_z = normalize(deformed_pos_x, deformed_pos_y, deformed_pos_z)
-    #     view_direction_x, view_direction_y, view_direction_z = -view_direction_x, -view_direction_y, -view_direction_z
-    #     dn_x, dn_y, dn_z = normal_map[dv, du, 0], normal_map[dv, du, 1], normal_map[dv, du, 2]
-    #     cosine = dot(dn_x, dn_y, dn_z, view_direction_x, view_direction_y, view_direction_z)
-    #
-    #     if depth > 0:
-    #         mask[dv, du] = cosine
-    #     if depth > 0 and psdf > -trunc_dist and cosine > 0.5:
-    #         tsdf = min(1., psdf / trunc_dist)
-    #         tsdf_prev, weight_prev = tsdf_volume[workload_x,
-    #                                              workload_y, z][0], tsdf_volume[workload_x, workload_y, z][1]
-    #         weight_new = 1
-    #         tsdf_new = (tsdf_prev * weight_prev +
-    #                     weight_new * tsdf) / (weight_prev + weight_new)
-    #         weight_new = min(weight_prev + weight_new, 255)
-    #         # cut off weight at 255 -- if weight can be mate a field bigger than byte, the upper cap should be a parameter
-    #         tsdf_volume[workload_x, workload_y, z][0], tsdf_volume[workload_x, workload_y, z][1] = tsdf_new, weight_new
+    deformed_point_x, deformed_point_y, deformed_point_z = voxel_center
+    if deformed_point_z <= 0:
+        return
 
+    du = int(round(fx * (deformed_point_x / deformed_point_z) + cx))
+    dv = int(round(fy * (deformed_point_y / deformed_point_z) + cy))
 
-@cuda.jit()
-def cuda_norm_dual_quat_test_kernel(quaternion):
-    quaternion = normalize_dual_quaternion(quaternion)
-
-
-def cuda_norm_dual_quat_test(quaternion):
-    cuda_norm_dual_quat_test_kernel[(1,), (1,)](quaternion)
+    depth_image_height, depth_image_width = depth_image.shape[:2]
+    if 0 < du < depth_image_width and 0 < dv < depth_image_height:
+        depth = depth_image[dv, du] / 1000.
+        psdf[workload_index] = depth - deformed_point_z
 
 
 def cuda_compute_psdf_voxel_centers(
         depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-        voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
+        voxel_centers, voxel_center_anchors, voxel_center_weights,
         node_transformations_dual_quaternions
 
         # Old argument list:
@@ -376,15 +350,15 @@ def cuda_compute_psdf_voxel_centers(
         # mask=None
 ):
     voxel_center_count = voxel_centers.shape[0]
-    voxel_center_anchors = -np.ones(shape=(voxel_center_count, 4), dtype=np.int32)
-    voxel_center_weights = np.zeros_like(voxel_center_anchors, dtype=np.float32)
+    psdf = np.ndarray(shape=voxel_center_count, dtype=np.float32)
     cuda_block_size = (256,)
     cuda_grid_size = (math.ceil(voxel_center_count / cuda_block_size[0]),)
 
     cuda_compute_psdf_voxel_centers_kernel[cuda_grid_size, cuda_block_size](
+        psdf,
         depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-        voxel_centers, graph_nodes, voxel_center_anchors, voxel_center_weights,
+        voxel_centers, voxel_center_anchors, voxel_center_weights,
         node_transformations_dual_quaternions)
     cuda.synchronize()
 
-    return None
+    return psdf

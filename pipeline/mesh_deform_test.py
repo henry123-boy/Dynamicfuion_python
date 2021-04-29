@@ -15,7 +15,7 @@ import sys
 import open3d as o3d
 import numpy as np
 import options
-from data.dataset import StaticCenterCrop, DeformDataset
+from data import StaticCenterCrop, DeformDataset
 from dq3d import quat, dualquat
 from dq3d import op
 

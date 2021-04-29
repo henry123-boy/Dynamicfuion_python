@@ -352,25 +352,90 @@ def square_norm_quaternion(quaternion):
            quaternion[2] * quaternion[2] + quaternion[3] * quaternion[3]
 
 
+# region ================= vec3 =================================
+
+
 @cuda.jit(device=True)
-def dot4vector(a, b):
+def vec3_cross(vec3_out, vec3_1, vec3_2):
+    vec3_out[0] = vec3_1[1] * vec3_2[2] - vec3_1[2] * vec3_2[1]
+    vec3_out[1] = vec3_1[2] * vec3_2[0] - vec3_1[0] * vec3_2[2]
+    vec3_out[2] = vec3_1[0] * vec3_2[1] - vec3_1[1] * vec3_2[0]
+
+
+@cuda.jit(device=True)
+def vec3_dot(vec3_1, vec3_2):
+    return vec3_1[0] * vec3_2[0] + vec3_1[1] * vec3_2[1] + vec3_1[2] * vec3_2[2]
+
+
+@cuda.jit(device=True)
+def vec3_elementwise_add(vec4_out, vec4_in):
+    vec4_out[0] = vec4_out[0] + vec4_in[0]
+    vec4_out[1] = vec4_out[1] + vec4_in[1]
+    vec4_out[2] = vec4_out[2] + vec4_in[2]
+
+
+@cuda.jit(device=True)
+def vec3_elementwise_add_factor(vec4_out, vec4_in, factor):
+    vec4_out[0] = vec4_out[0] + vec4_in[0] * factor
+    vec4_out[1] = vec4_out[1] + vec4_in[1] * factor
+    vec4_out[2] = vec4_out[2] + vec4_in[2] * factor
+
+
+# endregion
+# region ================= vec4 =================================
+
+@cuda.jit(device=True)
+def vec4_elementwise_sub_factor(vec4_out, vec4_in, factor):
+    vec4_out[0] = vec4_out[0] - vec4_in[0] * factor
+    vec4_out[1] = vec4_out[1] - vec4_in[1] * factor
+    vec4_out[2] = vec4_out[2] - vec4_in[2] * factor
+    vec4_out[3] = vec4_out[3] - vec4_in[3] * factor
+
+
+@cuda.jit(device=True)
+def vec4_dot(a, b):
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]
 
 
 @cuda.jit(device=True)
-def elementwise_mul_4vector(result, a, b):
-    result[0] = a[0] * b[0]
-    result[1] = a[1] * b[1]
-    result[2] = a[2] * b[2]
-    result[3] = a[3] * b[3]
+def vec4_elementwise_mul(vec4_out, vec4_1, vect4_2):
+    vec4_out[0] = vec4_1[0] * vect4_2[0]
+    vec4_out[1] = vec4_1[1] * vect4_2[1]
+    vec4_out[2] = vec4_1[2] * vect4_2[2]
+    vec4_out[3] = vec4_1[3] * vect4_2[3]
 
 
 @cuda.jit(device=True)
-def elementwise_sub_4vector(result, a, b):
-    result[0] = a[0] - b[0]
-    result[1] = a[1] - b[1]
-    result[2] = a[2] - b[2]
-    result[3] = a[3] - b[3]
+def vec4_elementwise_mul_vec4(vec4_out, vec4_1, vec4_2, factor):
+    vec4_out[0] = vec4_1[0] * vec4_2[0] * factor
+    vec4_out[1] = vec4_1[1] * vec4_2[1] * factor
+    vec4_out[2] = vec4_1[2] * vec4_2[2] * factor
+    vec4_out[3] = vec4_1[3] * vec4_2[3] * factor
+
+
+@cuda.jit(device=True)
+def vec4_elementwise_add(vec4_out, vec4_1, vec4_2):
+    vec4_out[0] = vec4_1[0] + vec4_2[0]
+    vec4_out[1] = vec4_1[1] + vec4_2[1]
+    vec4_out[2] = vec4_1[2] + vec4_2[2]
+    vec4_out[3] = vec4_1[3] + vec4_2[3]
+
+
+# endregion
+# region ================= vec =================================
+@cuda.jit(device=True)
+def vec_elementwise_add(result, a, b):
+    for i_element in range(result.shape[0]):
+        result[i_element] = a[i_element] + b[i_element]
+        result[i_element] = a[i_element] + b[i_element]
+        result[i_element] = a[i_element] + b[i_element]
+        result[i_element] = a[i_element] + b[i_element]
+
+
+@cuda.jit(device=True)
+def vec_mul_factor(vec_out, factor):
+    for i_element in range(vec_out.shape[0]):
+        vec_out[i_element] = vec_out[i_element] * factor
 
 
 @cuda.jit(device=True)
@@ -381,14 +446,125 @@ def normalize_dual_quaternion(dual_quaternion):
     squared_length = length * length
 
     # make real part have unit length
-    for coeff_index in range(4):
-        real[coeff_index] = real[coeff_index] / length
+    for i_real in range(4):
+        real[i_real] = real[i_real] / length
 
     # make dual part have unit length & orthogonal to real
-    for coeff_index in range(4):
-        dual[coeff_index] = dual[coeff_index] / length
+    for i_dual in range(4):
+        dual[i_dual] = dual[i_dual] / length
 
-    dual_delta = dot4vector(real, dual) * squared_length
-    elementwise_mul_4vector(dual_delta, dual_delta, real)
-    elementwise_sub_4vector(dual, dual, dual_delta)
-    return dual_quaternion
+    dual_delta = vec4_dot(real, dual) * squared_length
+    vec4_elementwise_sub_factor(dual, real, dual_delta)
+
+
+# endregion
+# region ================= dual_quaternions =================================
+@cuda.jit(device=True)
+def linearly_blend_dual_quaternions(final_dual_quaternion, dual_quaternions, anchors, weights, workload_index):
+    # initialize
+    for i_element in range(8):
+        final_dual_quaternion[i_element] = 0.0
+
+    # add up weighted coefficients
+    for i_anchor in range(anchors.shape[1]):
+        anchor = anchors[workload_index, i_anchor]
+        if anchor != -1:
+            weight = weights[workload_index, i_anchor]
+            dual_quaternion = dual_quaternions[anchor]
+            vec_mul_factor(dual_quaternion, weight)
+            vec_elementwise_add(final_dual_quaternion, final_dual_quaternion, dual_quaternion)
+
+    normalize_dual_quaternion(final_dual_quaternion)
+    return final_dual_quaternion
+
+
+@cuda.jit(device=True)
+def quaternion_product(q_out, q1, q2):
+    q_out[0] = -q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3] + q1[0] * q2[0]
+    q_out[1] = q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2] + q1[0] * q2[1]
+    q_out[2] = -q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1] + q1[0] * q2[2]
+    q_out[3] = q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0] + q1[0] * q2[3]
+
+
+@cuda.jit(device=True)
+def dual_quaternion_product(dq_out, dq1, dq2):
+    """
+    Compute product of two dual quaternions (https://github.com/neka-nat/dq3d/blob/master/dq3d/DualQuaternion.h)
+    Note that dq_out cannot be the same as dq1 or dq2
+    :param dq_out:
+    :param dq1:
+    :param dq2:
+    :return:
+    """
+    dq1_real = dq1[:4]
+    dq1_dual = dq1[4:]
+    dq2_real = dq2[:4]
+    dq2_dual = dq2[4:]
+    dq_out_real = dq_out[:4]
+    dq_out_dual = dq_out[4:]
+
+    quaternion_product(dq_out_dual, dq1_real, dq2_dual)
+    # use dq_out_real as temporary value holder for dq_out_dual
+    quaternion_product(dq_out_real, dq1_dual, dq2_real)
+    vec4_elementwise_add(dq_out_dual, dq_out_dual, dq_out_real)
+    quaternion_product(dq_out_real, dq1_real, dq2_real)
+
+
+@cuda.jit(device=True)
+def dual_quaternion_conjugate(dq_out, dq_in):
+    dq_out[0] = dq_in[0]
+    dq_out[1] = -dq_in[1]
+    dq_out[2] = -dq_in[2]
+    dq_out[3] = -dq_in[3]
+
+    dq_out[4] = dq_in[4]
+    dq_out[5] = -dq_in[5]
+    dq_out[6] = -dq_in[6]
+    dq_out[7] = -dq_in[7]
+
+
+@cuda.jit(device=True)
+def transform_point_by_dual_quaternion(point_out, dual_quaternion,
+                                       temp_dual_quaternion_1,
+                                       temp_dual_quaternion_2,
+                                       temp_dual_quaternion_3,
+                                       point):
+    temp_dual_quaternion_1[0] = 1.0
+    temp_dual_quaternion_1[1] = 0.0
+    temp_dual_quaternion_1[2] = 0.0
+    temp_dual_quaternion_1[3] = 0.0
+    temp_dual_quaternion_1[4] = 0.0
+
+    temp_dual_quaternion_1[5] = point[0]
+    temp_dual_quaternion_1[6] = point[1]
+    temp_dual_quaternion_1[7] = point[2]
+
+    dual_quaternion_product(temp_dual_quaternion_2, dual_quaternion, temp_dual_quaternion_1)
+    dual_quaternion_conjugate(temp_dual_quaternion_1, dual_quaternion)
+    dual_quaternion_product(temp_dual_quaternion_3, temp_dual_quaternion_2, temp_dual_quaternion_1)
+
+    point_out[0] = temp_dual_quaternion_3[5]
+    point_out[1] = temp_dual_quaternion_3[6]
+    point_out[2] = temp_dual_quaternion_3[7]
+
+    # translation
+    dq_real_w = dual_quaternion[0]
+    dq_real_vec = dual_quaternion[1:4]
+    dq_dual_w = dual_quaternion[4]
+    dq_dual_vec = dual_quaternion[5:]
+    cross_real_dual_vecs = temp_dual_quaternion_1[:3]
+    vec3_cross(cross_real_dual_vecs, dq_real_vec, dq_dual_vec)
+    added_vec = temp_dual_quaternion_2[:3]
+    added_vec[0] = dq_dual_vec[0] * dq_real_w
+    added_vec[1] = dq_dual_vec[1] * dq_real_w
+    added_vec[2] = dq_dual_vec[2] * dq_real_w
+
+    vec3_elementwise_add_factor(added_vec, dq_real_vec, -dq_dual_w)
+    vec3_elementwise_add(added_vec, cross_real_dual_vecs)
+    vec3_elementwise_add_factor(point_out, added_vec, 2.0)
+
+    # point_out[0] = cross_real_dual_vecs[0]
+    # point_out[1] = cross_real_dual_vecs[1]
+    # point_out[2] = cross_real_dual_vecs[2]
+
+# endregion

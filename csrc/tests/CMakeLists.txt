@@ -28,6 +28,7 @@ if (BUILD_CPP_TESTS)
     add_test(test_graph_proc test_graph_proc.cpp)
     add_test(test_index_conversions test_index_conversions.cpp)
     add_test(test_array_comparisons test_array_comparisons.cpp)
+    add_test(test_experiments test_experiments.cpp)
 
 
 endif ()

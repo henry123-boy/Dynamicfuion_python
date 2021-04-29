@@ -12,10 +12,14 @@ from utils.network import get_mac_address
 # to add your own root DeepDeform data directory, run the sha256 cypher on your MAC address and add the hash &
 # local directory as a key/value pair to the dict below
 dataset_base_by_mac_address_hash = {
-    "79ea07bc9c4bc9cff4f84e17d4d90a636aefcfb7d0e935423eff27993e96c684": "/mnt/Data/Reconstruction/real_data/deepdeform"
+    "744b5e4949aae373224e1d311163786b8236138f66a598b51cfb6335f97d8f06": "/mnt/Data/Reconstruction/real_data/deepdeform"
 }
-
-dataset_base_directory = dataset_base_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
+try:
+    dataset_base_directory = dataset_base_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
+except KeyError:
+    print(f"Please update the dataset_base_by_mac_address_hash above"
+          f" this line with {hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()} as key and "
+          f"the path to your DeepDeform dataset root as value.")
 workspace = "."
 experiments_directory = os.path.join(workspace, "experiments")
 output_directory = os.path.join(workspace, "output")
