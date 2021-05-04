@@ -4,7 +4,8 @@ from skimage import io
 import open3d as o3d
 
 from utils import image
-from utils.viz import image
+from data.io import load_flow
+from utils.viz import image as image_viz
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import get_vertex_erosion_mask as erode_mesh_c
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     mask_image = io.imread(mask_image_path)
 
     # Load scene flow image.
-    scene_flow_image = image.load_flow(scene_flow_path)
+    scene_flow_image = load_flow(scene_flow_path)
     scene_flow_image = np.moveaxis(scene_flow_image, 0, 2)
 
     #########################################################################
@@ -101,20 +102,11 @@ if __name__ == "__main__":
     vertex_pixels = np.zeros((0), dtype=np.int32)
     faces = np.zeros((0), dtype=np.int32)
 
-    print("flow shape", scene_flow_image.shape)
-
     compute_mesh_from_depth_and_flow_c(
         point_image, scene_flow_image,
         MAX_TRIANGLE_DISTANCE,
         vertices, vertex_flows, vertex_pixels, faces
     )
-
-    print(vertex_pixels.shape)
-    print(vertex_pixels)
-    print(vertex_pixels[:, 1].max())
-    print(vertex_pixels[:, 1].min())
-    print(vertex_pixels[:, 0].max())
-    print(vertex_pixels[:, 0].min())
 
     num_vertices = vertices.shape[0]
     num_faces = faces.shape[0]

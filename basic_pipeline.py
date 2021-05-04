@@ -165,7 +165,7 @@ def main() -> None:
             #  Some toy programs were this were implemented in pipeline/rendering_test.py and pipeline/skinning_3d_test.py
             valid_nodes_mask = np.ones((vertex_positions.shape[0], 1), dtype=bool)
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                deformation_graph.live_node_positions, source_point_image,
+                deformation_graph.nodes, source_point_image,
                 options.node_coverage)
 
             pixel_anchors = cropper(pixel_anchors)
@@ -178,11 +178,11 @@ def main() -> None:
             adjusted_intrinsics_numpy = np.array([fx, fy, cx, cy], dtype=np.float32)
 
             # TODO: not sure how this is used yet
-            num_nodes = np.array(deformation_graph.live_node_positions.shape[0], dtype=np.int64)
+            num_nodes = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
 
             source_cuda = torch.from_numpy(source).cuda().unsqueeze(0)
             target_cuda = torch.from_numpy(target).cuda().unsqueeze(0)
-            graph_nodes_cuda = torch.from_numpy(deformation_graph.live_node_positions).cuda().unsqueeze(0)
+            graph_nodes_cuda = torch.from_numpy(deformation_graph.nodes).cuda().unsqueeze(0)
             graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
             graph_edges_weights_cuda = torch.from_numpy(deformation_graph.edge_weights).cuda().unsqueeze(0)
             graph_clusters_cuda = torch.from_numpy(deformation_graph.clusters.reshape(-1, 1)).cuda().unsqueeze(0)
