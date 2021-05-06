@@ -106,3 +106,11 @@ def test_tsdf_value_extraction():
                                      [-1.0, -1.0, -1.0, -1.0, -1.0]], dtype=np.float32)
 
     assert np.allclose(values_np[4, :, :], expected_fifth_slice, atol=1e-6)
+
+
+def test_voxel_center_extraction():
+    volume = construct_test_volume1()
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
+
+    print(voxel_centers_np)

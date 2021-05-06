@@ -1,7 +1,5 @@
 # ==================================================================================================
 # A toy code example that tests extracting the TSDF voxel centers from a TSDF
-# Requires a custom build of Open3D found at https://github.com/Algomorph/Open3D/tree/extract-tsdf-voxel-centers
-# (branch extract-tsdf-voxel-centers)
 #
 # Please run script from repository root, i.e.:
 # python3 ./pipeline/extract_voxel_centers_test.py
@@ -19,8 +17,6 @@ import nnrt
 
 from data import camera
 from utils.voxel_grid import make_default_tsdf_voxel_grid
-
-
 
 PROGRAM_EXIT_SUCCESS = 0
 

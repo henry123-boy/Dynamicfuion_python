@@ -57,8 +57,7 @@ void ExtractValuesInExtent(
 		int64_t min_voxel_x, int64_t min_voxel_y, int64_t min_voxel_z,
 		int64_t max_voxel_x, int64_t max_voxel_y, int64_t max_voxel_z,
 		const core::Tensor& block_indices, const core::Tensor& nb_block_indices, const core::Tensor& nb_block_masks,
-		const core::Tensor& block_keys, const core::Tensor& block_values, core::Tensor& voxel_values, int64_t block_resolution,
-		float voxel_size) {
+		const core::Tensor& block_keys, const core::Tensor& block_values, core::Tensor& voxel_values, int64_t block_resolution) {
 
 	core::Device device = block_keys.GetDevice();
 
