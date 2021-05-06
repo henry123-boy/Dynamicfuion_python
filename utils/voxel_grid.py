@@ -3,7 +3,8 @@ import settings.settings_tsdf as tsdf_settings
 
 def make_default_tsdf_voxel_grid(device):
     import open3d as o3d
-    return o3d.t.geometry.TSDFVoxelGrid(
+    import nnrt
+    return nnrt.geometry.ExtendedTSDFVoxelGrid(
         {
             'tsdf': o3d.core.Dtype.Float32,
             'weight': o3d.core.Dtype.UInt16,

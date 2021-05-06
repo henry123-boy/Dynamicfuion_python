@@ -36,19 +36,22 @@ file(MAKE_DIRECTORY ${STUBS_PACKAGE_DST_DIR})
 
 # ==================== set up NNRT C++ library ============================
 
-set(HEADER_FILES
+set(NNRT_SOURCE_FILES
     cpu/graph_proc.h
     cpu/image_proc.h
-)
-
-set(SOURCE_FILES
+    utility/debugging.hpp
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
-)
+    geometry/ExtendedTSDFVoxelGrid.cpp
+    geometry/ExtendedTSDFVoxelGrid.h
+    geometry/kernel/ExtendedTSDFVoxelGrid.cpp
+    geometry/kernel/ExtendedTSDFVoxelGrid.h
+    geometry/kernel/ExtendedTSDFVoxelGridCPU.cpp
+    geometry/kernel/ExtendedTSDFVoxelGridCUDA.cu
+    geometry/kernel/ExtendedTSDFVoxelGridImpl.h)
 
 add_library(nnrt_cpp STATIC
-    ${HEADER_FILES}
-    ${SOURCE_FILES}
+    ${NNRT_SOURCE_FILES}
 )
 
 target_include_directories(nnrt_cpp PUBLIC
@@ -59,22 +62,18 @@ target_include_directories(nnrt_cpp PUBLIC
 
 nnrt_link_3rdparty_libraries(nnrt_cpp)
 nnrt_set_global_properties(nnrt_cpp)
+target_link_libraries(nnrt_cpp PUBLIC CUDA::toolkit)
 
 # ==================== set up NNRT Python binding library ============================
-
-set(PY_HEADER_FILES
-#    ${HEADER_FILES}
+set(PYBIND_SOURCE_FILES
+    pybind/nnrt_pybind.h
+    pybind/nnrt_pybind.cpp
+    pybind/geometry/geometry.cpp
+    pybind/geometry/geometry.h
 )
 
-set(PY_SOURCE_FILES
-    main.cpp
-
-#    ${SOURCE_FILES}
-)
-
-pybind11_add_module(nnrt main.cpp
-    ${PY_HEADER_FILES}
-    ${PY_SOURCE_FILES}
+pybind11_add_module(nnrt
+    ${PYBIND_SOURCE_FILES}
 )
 
 target_include_directories(nnrt PRIVATE
@@ -86,7 +85,7 @@ target_link_libraries(nnrt PUBLIC nnrt_cpp)
 
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env "Open3D_DIR=${Open3D_DIR}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR} 
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     DEPENDS nnrt

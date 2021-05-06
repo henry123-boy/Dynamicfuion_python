@@ -1,5 +1,8 @@
+#include "pybind/nnrt_pybind.h"
 #include "cpu/image_proc.h"
 #include "cpu/graph_proc.h"
+
+#include "pybind/geometry/geometry.h"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -13,6 +16,8 @@ int add(int i, int j) {
 
 // Definitions of all methods in the module.
 PYBIND11_MODULE(nnrt, m) {
+	nnrt::geometry::pybind_geometry(m);
+
 
 	m.def("compute_augmented_flow_from_rotation",
 	      &image_proc::compute_augmented_flow_from_rotation,

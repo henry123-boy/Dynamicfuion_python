@@ -1,6 +1,7 @@
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
+import nnrt
 from typing import Tuple
 
 
@@ -25,7 +26,7 @@ def construct_test_volume1():
     block_resolution = 8  # 8^3 voxel blocks
     initial_block_count = 128  # initially allocated number of voxel blocks
 
-    volume = o3d.t.geometry.TSDFVoxelGrid(
+    volume = nnrt.geometry.ExtendedTSDFVoxelGrid(
         {
             'tsdf': o3d.core.Dtype.Float32,
             'weight': o3d.core.Dtype.UInt16,
@@ -64,20 +65,44 @@ def construct_test_volume1():
 
 def test_tsdf_value_extraction():
     volume = construct_test_volume1()
-    values = volume.extract_values_in_extent(-0.020, -0.020, 0.03, 0.025, 0.025, 0.08)
-    np.set_printoptions(suppress=True)
-    print()
-    print(values.cpu().numpy())
-    # mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-    # o3d.visualization.draw_geometries([mesh],
-    #                                   front=[0, 0, -1],
-    #                                   lookat=[0, 0, 1.5],
-    #                                   up=[0, -1.0, 0],
-    #                                   zoom=0.7)
-    # verts = np.array(mesh.vertices)
-    # print(verts)
+    values = volume.extract_values_in_extent(-2, -2, 3, 3, 3, 8)
 
+    values_np = values.cpu().numpy()
 
-if __name__ == "__main__":
-    volume = construct_test_volume1()
-    values = volume.extract_values_in_extent(-0.020, -0.020, 0.03, 0.025, 0.025, 0.08)
+    expected_first_slice = np.array([[1, 1, 1],
+                                     [1, 1, 1],
+                                     [1, 1, 1]], dtype=np.float32)
+
+    # we take out the [1:4, 1:4] portion of the first & second slices because the border values
+    # will not be set (they are expected to be missed by rays projected from the camera)
+    assert np.allclose(values_np[0, 1:4, 1:4], expected_first_slice, atol=1e-6)
+
+    expected_second_slice = np.array([[0.5, 0.5, 0.5],
+                                      [0.5, 0.5, 0.5],
+                                      [0.5, 0.5, 0.5]], dtype=np.float32)
+
+    assert np.allclose(values_np[1, 1:4, 1:4], expected_second_slice, atol=1e-6)
+
+    expected_third_slice = np.array([[0.0, 0.0, 0.0, 0.0, 0.0],
+                                     [0.0, 0.0, 0.0, 0.0, 0.0],
+                                     [0.0, 0.0, 0.0, 0.0, 0.0],
+                                     [0.0, 0.0, 0.0, 0.0, 0.0],
+                                     [0.0, 0.0, 0.0, 0.0, 0.0]], dtype=np.float32)
+
+    assert np.allclose(values_np[2, :, :], expected_third_slice, atol=1e-6)
+
+    expected_fourth_slice = np.array([[-0.5, -0.5, -0.5, -0.5, -0.5],
+                                      [-0.5, -0.5, -0.5, -0.5, -0.5],
+                                      [-0.5, -0.5, -0.5, -0.5, -0.5],
+                                      [-0.5, -0.5, -0.5, -0.5, -0.5],
+                                      [-0.5, -0.5, -0.5, -0.5, -0.5]], dtype=np.float32)
+
+    assert np.allclose(values_np[3, :, :], expected_fourth_slice, atol=1e-6)
+
+    expected_fifth_slice = np.array([[-1.0, -1.0, -1.0, -1.0, -1.0],
+                                     [-1.0, -1.0, -1.0, -1.0, -1.0],
+                                     [-1.0, -1.0, -1.0, -1.0, -1.0],
+                                     [-1.0, -1.0, -1.0, -1.0, -1.0],
+                                     [-1.0, -1.0, -1.0, -1.0, -1.0]], dtype=np.float32)
+
+    assert np.allclose(values_np[4, :, :], expected_fifth_slice, atol=1e-6)
