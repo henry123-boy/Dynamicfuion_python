@@ -376,4 +376,12 @@ message(STATUS "Catch libraries: ${TEST}")
 
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS ${CATCH2_TARGET})
 
+# Python3
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+
+# Open3D
+find_package(Open3D REQUIRED)
+if(NOT WIN32)
+    list(APPEND Open3D_LIBRARIES dl)
+endif()
+list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS ${Open3D_LIBRARIES})

@@ -13,6 +13,7 @@ from utils.network import get_mac_address
 # local directory as a key/value pair to the dict below
 dataset_base_by_mac_address_hash = {
     "744b5e4949aae373224e1d311163786b8236138f66a598b51cfb6335f97d8f06": "/mnt/Data/Reconstruction/real_data/deepdeform",
+    "0b6245bb7ef5bbe74a2424d3beb677ad5b2122e44d8610ff09b23e25306ab0e9": "/mnt/Data/Reconstruction/real_data/deepdeform",
     "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414": "/mnt/Data/Datasets/deepdeform-limited"
 }
 try:
