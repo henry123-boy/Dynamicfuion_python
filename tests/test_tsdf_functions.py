@@ -1,8 +1,13 @@
+import math
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 import nnrt
+from dq3d import quat, dualquat
+
 from typing import Tuple
+
+from pipeline.numba_cuda.fusion_functions import cuda_compute_psdf_voxel_centers, cuda_compute_voxel_center_anchors
 
 
 def generate_xy_plane_depth_image(resolution: Tuple[int, int], depth: int) -> np.ndarray:
@@ -16,10 +21,25 @@ def generate_xy_plane_color_image(resolution: Tuple[int, int], value: Tuple[int,
     return image
 
 
-def construct_test_volume1():
-    # device = o3d.core.Device('cuda:0')
-    device = o3d.core.Device('cpu:0')
+def construct_intrinsic_matrix1_3x3():
+    intrinsics = np.eye(3, dtype=np.float32)
+    intrinsics[0, 0] = 100.0
+    intrinsics[1, 1] = 100.0
+    intrinsics[0, 2] = 50.0
+    intrinsics[1, 2] = 50.0
+    return intrinsics
 
+
+def construct_intrinsic_matrix1_4x4():
+    intrinsics = np.eye(4, dtype=np.float32)
+    intrinsics[0, 0] = 100.0
+    intrinsics[1, 1] = 100.0
+    intrinsics[0, 2] = 50.0
+    intrinsics[1, 2] = 50.0
+    return intrinsics
+
+
+def construct_test_volume1(device=o3d.core.Device('cpu:0')):
     # initialize volume
     voxel_size = 0.01  # 1 cm voxel size
     sdf_truncation_distance = 0.02  # truncation distance = 2cm
@@ -50,11 +70,7 @@ def construct_test_volume1():
     color_image_gpu = o3d.t.geometry.Image(o3c.Tensor(color_image, device=device))
 
     # set up matrix parameters
-    intrinsics = np.eye(3, dtype=np.float32)
-    intrinsics[0, 0] = 100.0
-    intrinsics[1, 1] = 100.0
-    intrinsics[0, 2] = 50.0
-    intrinsics[1, 2] = 50.0
+    intrinsics = construct_intrinsic_matrix1_3x3()
     intrinsics_open3d_gpu = o3c.Tensor(intrinsics, device=device)
     extrinsics_open3d_gpu = o3c.Tensor(np.eye(4, dtype=np.float32), device=device)
 
@@ -113,4 +129,110 @@ def test_voxel_center_extraction():
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
 
-    print(voxel_centers_np)
+    assert voxel_centers_np.shape == (2048, 3)
+    extent_min = voxel_centers_np.min(axis=0)
+    extent_max = voxel_centers_np.max(axis=0)
+    assert np.allclose(extent_min, [-0.08, -0.08, 0.0])
+    assert np.allclose(extent_max, [0.07, 0.07, 0.07])
+
+
+def test_compute_voxel_center_anchors():
+    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
+    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    nodes = np.array([[0.0, 0.0, 0.05],
+                      [0.02, 0.0, 0.05]],
+                     dtype=np.float32)
+
+    volume = construct_test_volume1()
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
+
+    node_coverage = 0.05
+    voxel_center_anchors, voxel_center_weights = \
+        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
+
+    # voxel in the center of the plane is at 0, 0, 0.05,
+    # which should coincide with the first and only node
+    # voxel index is (0, 0, 5)
+    # voxel is, presumably, in block 3
+    # voxel's index in block 0 is 5 * (8*8) = 320
+    # each block holds 512 voxels
+
+    center_plane_voxel_index = 512 + 512 + 512 + 320
+
+    def get_weight(nc, distance):
+        return math.exp(-distance ** 2 / (2 * nc * nc))
+
+    w0 = get_weight(node_coverage, 0.0)
+    w1 = get_weight(node_coverage, 0.02)  # 2-nd node is 2 cm away to the right
+    expected_weights_center = np.array([[w0 / (w0 + w1), w1 / (w0 + w1), 0.0, 0.0]])
+    expected_weights_x_plus_two = np.array([w1 / (w0 + w1), w0 / (w0 + w1), 0.0, 0.0])
+
+    assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
+    assert np.allclose(voxel_center_anchors[center_plane_voxel_index], [0, 1, -1, -1])
+    assert np.allclose(voxel_center_weights[center_plane_voxel_index], expected_weights_center)
+
+    voxel_x_plus_two_index = center_plane_voxel_index + 2
+    voxel_y_plus_two_index = center_plane_voxel_index + 16
+    voxel_z_plus_two_index = center_plane_voxel_index + 128
+
+    assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_z_plus_two_index], [0.00, 0.00, 0.07])
+
+    assert np.allclose(voxel_center_anchors[voxel_x_plus_two_index], [0, 1, -1, -1])
+    assert np.allclose(voxel_center_anchors[voxel_y_plus_two_index], [0, 1, -1, -1])
+    assert np.allclose(voxel_center_anchors[voxel_z_plus_two_index], [0, 1, -1, -1])
+
+    assert np.allclose(voxel_center_weights[voxel_x_plus_two_index], expected_weights_x_plus_two)
+    dist0 = 0.02
+    dist1 = np.linalg.norm(voxel_centers_np[voxel_y_plus_two_index] - nodes[1])
+    w0 = get_weight(node_coverage, dist0)
+    w1 = get_weight(node_coverage, dist1)
+
+    expected_weights_remaining_pts = np.array([[w0 / (w0 + w1), w1 / (w0 + w1), 0.0, 0.0]])
+    assert np.allclose(voxel_center_weights[voxel_y_plus_two_index], expected_weights_remaining_pts)
+    assert np.allclose(voxel_center_weights[voxel_z_plus_two_index], expected_weights_remaining_pts)
+
+
+def test_compute_psdf_voxel_centers():
+    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
+    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    nodes = np.array([[0.0, 0.0, 0.05],
+                      [0.02, 0.0, 0.05]],
+                     dtype=np.float32)
+
+    volume = construct_test_volume1()
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
+
+    node_coverage = 0.05
+    voxel_center_anchors, voxel_center_weights = \
+        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
+
+    # no motion at all for this case
+    node_dual_quaternions = [dualquat(quat.identity()), dualquat(quat.identity())]
+    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
+
+    depth = 50  # mm
+    image_width = 100
+    image_height = 100
+    image_resolution = (image_width, image_height)
+    depth_image = generate_xy_plane_depth_image(image_resolution, depth)
+
+    intrinsic_matrix = construct_intrinsic_matrix1_4x4()
+
+    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                 node_dual_quaternions)
+    # voxel in the center of the plane is at 0, 0, 0.05,
+    # which should coincide with the first and only node
+    # voxel index is (0, 0, 5)
+    # voxel is, presumably, in block 3
+    # voxel's index in block 0 is 5 * (8*8) = 320
+    # each block holds 512 voxels
+
+    center_plane_voxel_index = 512 + 512 + 512 + 320
+
+    print(voxel_psdf[center_plane_voxel_index])
+
