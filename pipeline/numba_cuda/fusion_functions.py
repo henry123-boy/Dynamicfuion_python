@@ -278,12 +278,13 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
                                            voxel_centers, voxel_center_anchors, voxel_center_weights,
                                            node_transformation_dual_quaternions):
     workload_index = cuda.grid(1)
+
     voxel_center_count = voxel_centers.shape[0]
 
     if workload_index >= voxel_center_count:
         return
 
-    psdf[workload_index] = math.nan
+    psdf[workload_index] = -2.0
 
     voxel_center = voxel_centers[workload_index]
     voxel_x, voxel_y, voxel_z = voxel_center
@@ -303,6 +304,7 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
                           camera_rotation[2, 1] * voxel_y + camera_rotation[2, 2] * voxel_z + camera_translation[2]
 
     invalid_count = 0
+
     for anchor_index in range(GRAPH_K):
         if voxel_center_anchors[workload_index, anchor_index] == -1:
             invalid_count += 1
@@ -324,6 +326,7 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
                                        temp1, temp2, temp3, voxel_point)
 
     deformed_point_x, deformed_point_y, deformed_point_z = voxel_center
+
     if deformed_point_z <= 0:
         return
 
@@ -331,6 +334,7 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
     dv = int(round(fy * (deformed_point_y / deformed_point_z) + cy))
 
     depth_image_height, depth_image_width = depth_image.shape[:2]
+
     if 0 < du < depth_image_width and 0 < dv < depth_image_height:
         depth = depth_image[dv, du] / 1000.
         psdf[workload_index] = depth - deformed_point_z

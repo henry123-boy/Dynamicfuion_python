@@ -1,4 +1,6 @@
 import math
+
+import cv2
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -168,6 +170,7 @@ def test_compute_voxel_center_anchors():
     expected_weights_center = np.array([[w0 / (w0 + w1), w1 / (w0 + w1), 0.0, 0.0]])
     expected_weights_x_plus_two = np.array([w1 / (w0 + w1), w0 / (w0 + w1), 0.0, 0.0])
 
+    # the voxel at center_plane_voxel_index should coincide with the location of the first node
     assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
     assert np.allclose(voxel_center_anchors[center_plane_voxel_index], [0, 1, -1, -1])
     assert np.allclose(voxel_center_weights[center_plane_voxel_index], expected_weights_center)
@@ -195,11 +198,16 @@ def test_compute_voxel_center_anchors():
     assert np.allclose(voxel_center_weights[voxel_z_plus_two_index], expected_weights_remaining_pts)
 
 
-def test_compute_psdf_voxel_centers():
+def test_compute_psdf_voxel_centers_static():
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
+    # Make it five.
     nodes = np.array([[0.0, 0.0, 0.05],
-                      [0.02, 0.0, 0.05]],
+                      [0.02, 0.0, 0.05],
+                      [-0.02, 0.0, 0.05],
+                      [0.00, 0.02, 0.05],
+                      [0.00, -0.02, 0.05]],
                      dtype=np.float32)
 
     volume = construct_test_volume1()
@@ -211,7 +219,7 @@ def test_compute_psdf_voxel_centers():
         cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
 
     # no motion at all for this case
-    node_dual_quaternions = [dualquat(quat.identity()), dualquat(quat.identity())]
+    node_dual_quaternions = [dualquat(quat.identity())] * len(nodes)
     node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
 
     depth = 50  # mm
@@ -233,6 +241,163 @@ def test_compute_psdf_voxel_centers():
     # each block holds 512 voxels
 
     center_plane_voxel_index = 512 + 512 + 512 + 320
+    # the voxel at center_plane_voxel_index should coincide with the location of the first node
+    assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
+    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
+    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
 
-    print(voxel_psdf[center_plane_voxel_index])
+    voxel_x_plus_two_index = center_plane_voxel_index + 2
+    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
+    voxel_z_plus_one_index = center_plane_voxel_index + 64
 
+    assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_z_plus_one_index], [0.00, 0.00, 0.06])
+
+    assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
+    assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
+    # 0.01 distance beyond the surface should yield a projective signed
+    # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
+    assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
+
+
+def test_compute_psdf_voxel_centers_static():
+    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
+    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
+    # Make it five.
+    nodes = np.array([[0.0, 0.0, 0.05],
+                      [0.02, 0.0, 0.05],
+                      [-0.02, 0.0, 0.05],
+                      [0.00, 0.02, 0.05],
+                      [0.00, -0.02, 0.05]],
+                     dtype=np.float32)
+
+    volume = construct_test_volume1()
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
+
+    node_coverage = 0.05
+    voxel_center_anchors, voxel_center_weights = \
+        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
+
+    # no motion at all for this case
+    node_dual_quaternions = [dualquat(quat.identity())] * len(nodes)
+    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
+
+    depth = 50  # mm
+    image_width = 100
+    image_height = 100
+    image_resolution = (image_width, image_height)
+    depth_image = generate_xy_plane_depth_image(image_resolution, depth)
+
+    intrinsic_matrix = construct_intrinsic_matrix1_4x4()
+
+    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                 node_dual_quaternions)
+    # voxel in the center of the plane is at 0, 0, 0.05,
+    # which should coincide with the first and only node
+    # voxel index is (0, 0, 5)
+    # voxel is, presumably, in block 3
+    # voxel's index in block 0 is 5 * (8*8) = 320
+    # each block holds 512 voxels
+
+    center_plane_voxel_index = 512 + 512 + 512 + 320
+    # the voxel at center_plane_voxel_index should coincide with the location of the first node
+    assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
+    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
+    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
+
+    voxel_x_plus_two_index = center_plane_voxel_index + 2
+    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
+    voxel_z_plus_one_index = center_plane_voxel_index + 64
+
+    assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_z_plus_one_index], [0.00, 0.00, 0.06])
+
+    assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
+    assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
+    # 0.01 distance beyond the surface should yield a projective signed
+    # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
+    assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
+
+
+def test_compute_psdf_voxel_centers_simple_motion():
+    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
+    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
+    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
+    # Make it five.
+    nodes = np.array([[0.0, 0.0, 0.05],
+                      [0.02, 0.0, 0.05],
+                      [-0.02, 0.0, 0.05],
+                      [0.00, 0.02, 0.05],
+                      [0.00, -0.02, 0.05]],
+                     dtype=np.float32)
+
+    volume = construct_test_volume1()
+    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
+    voxel_centers_np = voxel_centers.cpu().numpy()
+
+    node_coverage = 0.05
+    voxel_center_anchors, voxel_center_weights = \
+        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
+
+    # the first node moves 1 cm along the negative z axis (towards the camera).
+    node_dual_quaternions = [dualquat(quat.identity(), quat(1.0, 0.0, 0.0, -0.01))] + [dualquat(quat.identity())] * len(nodes)
+    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
+
+    depth = 50  # mm
+    image_width = 100
+    image_height = 100
+    image_resolution = (image_width, image_height)
+    depth_image = generate_xy_plane_depth_image(image_resolution, depth)
+
+    # let's imagine that the central surface point is 1 cm closer to the camera as well, so we alter the depth
+    # to 40 mm there. Make the motion cease at the other four nodes, e.g. their depth should remain at 50.
+    # We can make a radial "pinch" in the center of the depth image.
+    # For our predefined camera, 1 px = 0.005 m, and the nodes are around the 0.002 m radius,
+    # which puts our pixel radius at 0.002 / 0.0005 = 40 px
+    pinch_diameter = 40
+    pinch_radius = pinch_diameter // 2
+    pinch_height = 10
+    y_coordinates = np.linspace(-1, 1, pinch_diameter)[None, :] * pinch_height
+    x_coordinates = np.linspace(-1, 1, pinch_diameter)[:, None] * pinch_height
+    delta = -pinch_height + np.sqrt(x_coordinates ** 2 + y_coordinates ** 2)
+    half_image_width = image_width // 2
+    half_image_height = image_height // 2
+    depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
+    half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
+
+    # intrinsic_matrix = construct_intrinsic_matrix1_4x4()
+    #
+    # voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+    #                                              voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+    #                                              node_dual_quaternions)
+    # # voxel in the center of the plane is at 0, 0, 0.05,
+    # # which should coincide with the first and only node
+    # # voxel index is (0, 0, 5)
+    # # voxel is, presumably, in block 3
+    # # voxel's index in block 0 is 5 * (8*8) = 320
+    # # each block holds 512 voxels
+    #
+    # center_plane_voxel_index = 512 + 512 + 512 + 320
+    # # the voxel at center_plane_voxel_index should coincide with the location of the first node
+    # assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
+    # assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
+    # assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
+    #
+    # voxel_x_plus_two_index = center_plane_voxel_index + 2
+    # voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
+    # voxel_z_plus_one_index = center_plane_voxel_index + 64
+    #
+    # assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
+    # assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
+    # assert np.allclose(voxel_centers_np[voxel_z_plus_one_index], [0.00, 0.00, 0.06])
+    #
+    # assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
+    # assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
+    # # 0.01 distance beyond the surface should yield a projective signed
+    # # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
+    # assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
