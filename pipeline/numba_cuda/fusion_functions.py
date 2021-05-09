@@ -325,7 +325,7 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
     transform_point_by_dual_quaternion(voxel_point, final_dual_quaternion,
                                        temp1, temp2, temp3, voxel_point)
 
-    deformed_point_x, deformed_point_y, deformed_point_z = voxel_center
+    deformed_point_x, deformed_point_y, deformed_point_z = voxel_point
 
     if deformed_point_z <= 0:
         return

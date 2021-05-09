@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 import nnrt
-from dq3d import quat, dualquat
+from dq3d import quat, dualquat, op
 
 from typing import Tuple
 
@@ -307,7 +307,6 @@ def test_compute_psdf_voxel_centers_static():
     # the voxel at center_plane_voxel_index should coincide with the location of the first node
     assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
     assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
 
     voxel_x_plus_two_index = center_plane_voxel_index + 2
     voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
@@ -345,8 +344,8 @@ def test_compute_psdf_voxel_centers_simple_motion():
         cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
 
     # the first node moves 1 cm along the negative z axis (towards the camera).
-    node_dual_quaternions = [dualquat(quat.identity(), quat(1.0, 0.0, 0.0, -0.01))] + [dualquat(quat.identity())] * len(nodes)
-    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
+    node_dual_quaternions_dq3d = [dualquat(quat.identity(), quat(1.0, 0.0, 0.0, -0.005))] + [dualquat(quat.identity())] * (len(nodes) - 1)
+    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions_dq3d])
 
     depth = 50  # mm
     image_width = 100
@@ -367,37 +366,59 @@ def test_compute_psdf_voxel_centers_simple_motion():
     delta = -pinch_height + np.sqrt(x_coordinates ** 2 + y_coordinates ** 2)
     half_image_width = image_width // 2
     half_image_height = image_height // 2
+    # @formatter:off
     depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
-    half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
+                half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
+    # @formatter:on
 
-    # intrinsic_matrix = construct_intrinsic_matrix1_4x4()
-    #
-    # voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-    #                                              voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-    #                                              node_dual_quaternions)
-    # # voxel in the center of the plane is at 0, 0, 0.05,
-    # # which should coincide with the first and only node
-    # # voxel index is (0, 0, 5)
-    # # voxel is, presumably, in block 3
-    # # voxel's index in block 0 is 5 * (8*8) = 320
-    # # each block holds 512 voxels
-    #
-    # center_plane_voxel_index = 512 + 512 + 512 + 320
-    # # the voxel at center_plane_voxel_index should coincide with the location of the first node
-    # assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
-    # assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-    # assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-    #
-    # voxel_x_plus_two_index = center_plane_voxel_index + 2
-    # voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
-    # voxel_z_plus_one_index = center_plane_voxel_index + 64
-    #
-    # assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
-    # assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
-    # assert np.allclose(voxel_centers_np[voxel_z_plus_one_index], [0.00, 0.00, 0.06])
-    #
-    # assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
-    # assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
-    # # 0.01 distance beyond the surface should yield a projective signed
-    # # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
-    # assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
+    intrinsic_matrix = construct_intrinsic_matrix1_4x4()
+
+    print()
+    print(node_dual_quaternions[0])
+
+    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                 node_dual_quaternions)
+
+    print(node_dual_quaternions[0])
+
+    # voxel in the center of the plane is at 0, 0, 0.05,
+    # which should coincide with the first and only node
+    # voxel index is (0, 0, 5)
+    # voxel is, presumably, in block 3
+    # voxel's index in block 0 is 5 * (8*8) = 320
+    # each block holds 512 voxels
+
+    center_plane_voxel_index = 512 + 512 + 512 + 320
+    # the voxel at center_plane_voxel_index should coincide with the location of the first node
+    assert np.allclose(voxel_centers_np[center_plane_voxel_index], nodes[0])
+    blended_dual_quaternion = op.dlb(voxel_center_weights[center_plane_voxel_index], node_dual_quaternions_dq3d)
+    expected_deformed_z = blended_dual_quaternion.transform_point(nodes[0])[2]
+    expected_depth = depth_image[50, 50] / 1000.
+    expected_psdf = expected_depth - expected_deformed_z
+    assert math.isclose(voxel_psdf[center_plane_voxel_index], expected_psdf, abs_tol=1e-8)
+
+    voxel_x_plus_two_index = center_plane_voxel_index + 2
+    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
+    voxel_z_plus_one_index = center_plane_voxel_index + 64
+
+    indices = [voxel_x_plus_two_index, voxel_y_plus_two_index, voxel_z_plus_one_index]
+
+    assert np.allclose(voxel_centers_np[voxel_x_plus_two_index], [0.02, 0.00, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_y_plus_two_index], [0.00, 0.02, 0.05])
+    assert np.allclose(voxel_centers_np[voxel_z_plus_one_index], [0.00, 0.00, 0.06])
+
+    blended_dual_quaternions = [op.dlb(voxel_center_weights[index], node_dual_quaternions_dq3d) for index in indices]
+    points = [voxel_centers_np[index] for index in indices]
+
+    deformed_points = [dq.transform_point(p) for dq, p in zip(blended_dual_quaternions, points)]
+    psdfs = [voxel_psdf[index] for index in indices]
+    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
+    for i_point in range(len(indices)):
+        deformed_point_x, deformed_point_y, deformed_point_z = deformed_points[i_point]
+        du = int(round(fx * (deformed_point_x / deformed_point_z) + cx))
+        dv = int(round(fy * (deformed_point_y / deformed_point_z) + cy))
+        depth = depth_image[dv, du] / 1000.
+        expected_psdf = depth - deformed_point_z
+        psdf = psdfs[i_point]
+        assert math.isclose(psdf, expected_psdf, abs_tol=1e-8)

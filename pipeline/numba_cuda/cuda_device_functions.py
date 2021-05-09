@@ -384,6 +384,7 @@ def vec3_elementwise_add_factor(vec4_out, vec4_in, factor):
 # endregion
 # region ================= vec4 =================================
 
+
 @cuda.jit(device=True)
 def vec4_elementwise_sub_factor(vec4_out, vec4_in, factor):
     vec4_out[0] = vec4_out[0] - vec4_in[0] * factor
@@ -406,7 +407,7 @@ def vec4_elementwise_mul(vec4_out, vec4_1, vect4_2):
 
 
 @cuda.jit(device=True)
-def vec4_elementwise_mul_vec4(vec4_out, vec4_1, vec4_2, factor):
+def vec4_elementwise_mul_factor(vec4_out, vec4_1, vec4_2, factor):
     vec4_out[0] = vec4_1[0] * vec4_2[0] * factor
     vec4_out[1] = vec4_1[1] * vec4_2[1] * factor
     vec4_out[2] = vec4_1[2] * vec4_2[2] * factor
@@ -424,11 +425,14 @@ def vec4_elementwise_add(vec4_out, vec4_1, vec4_2):
 # endregion
 # region ================= vec =================================
 @cuda.jit(device=True)
+def vec_elementwise_add_factor(vec_out, vec_in, factor):
+    for i_element in range(vec_out.shape[0]):
+        vec_out[i_element] = vec_out[i_element] + vec_in[i_element] * factor
+
+
+@cuda.jit(device=True)
 def vec_elementwise_add(result, a, b):
     for i_element in range(result.shape[0]):
-        result[i_element] = a[i_element] + b[i_element]
-        result[i_element] = a[i_element] + b[i_element]
-        result[i_element] = a[i_element] + b[i_element]
         result[i_element] = a[i_element] + b[i_element]
 
 
@@ -471,8 +475,7 @@ def linearly_blend_dual_quaternions(final_dual_quaternion, dual_quaternions, anc
         if anchor != -1:
             weight = weights[workload_index, i_anchor]
             dual_quaternion = dual_quaternions[anchor]
-            vec_mul_factor(dual_quaternion, weight)
-            vec_elementwise_add(final_dual_quaternion, final_dual_quaternion, dual_quaternion)
+            vec_elementwise_add_factor(final_dual_quaternion, dual_quaternion, weight)
 
     normalize_dual_quaternion(final_dual_quaternion)
     return final_dual_quaternion
