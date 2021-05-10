@@ -33,6 +33,8 @@ class FramePairDataset(GenericDataset):
             # assumes add_in_graph_data.py script has already been successfully run on the sequence.
             # also assumes standard folder structure for DeepDeform & DeepDeformGraph datasets.
             graph_edges_dir = os.path.join(self.get_sequence_directory(), "graph_edges")
+            # TODO: make flexible-enough to load even when graph data is not available and signify this by storing some
+            #  value in a field
             parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
             if segment_name is None:
                 segment_name = parts[1]

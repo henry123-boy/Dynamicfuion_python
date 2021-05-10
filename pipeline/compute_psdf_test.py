@@ -19,7 +19,7 @@ import options
 import graph
 from data import StandaloneFramePreset, StandaloneFrameDataset, camera
 
-from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_voxel_centers
+from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
 from utils.network import get_mac_address
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -61,9 +61,9 @@ def main():
     depth_image = np.array(o3d.io.read_image(red_shorts_400_frame.get_depth_image_path()))
     intrinsic_matrix = np.loadtxt(red_shorts_400_frame.get_intrinsics_path())
 
-    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                 voxel_centers, voxel_center_anchors, voxel_center_weights,
-                                                 node_transformations_dual_quaternions)
+    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                        voxel_centers, voxel_center_anchors, voxel_center_weights,
+                                                        node_transformations_dual_quaternions)
 
     voxel_psdf_non_nan = voxel_psdf[np.logical_not(np.isnan(voxel_psdf))]
     np.set_printoptions(suppress=True)

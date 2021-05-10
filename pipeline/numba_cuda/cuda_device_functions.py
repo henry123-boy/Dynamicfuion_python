@@ -315,9 +315,9 @@ def tsdf_gradient_corrected_smaple(ref_volume, data_volume, volume_gradient, x, 
 
 @cuda.jit(device=True)
 def cross(x, y, z, x_, y_, z_):
-    new_x = y_ * z - y * z_
-    new_y = x_ * z - x * z_
-    new_z = x * y_ - x_ * y
+    new_x = y * z_ - z * y_
+    new_y = z * x_ - x * z_
+    new_z = x * y_ - y * x_
     return new_x, new_y, new_z
 
 
@@ -423,7 +423,7 @@ def vec4_elementwise_add(vec4_out, vec4_1, vec4_2):
 
 
 # endregion
-# region ================= vec =================================
+# region ================= vec (arbitrary length) =================================
 @cuda.jit(device=True)
 def vec_elementwise_add_factor(vec_out, vec_in, factor):
     for i_element in range(vec_out.shape[0]):
@@ -565,9 +565,5 @@ def transform_point_by_dual_quaternion(point_out, dual_quaternion,
     vec3_elementwise_add_factor(added_vec, dq_real_vec, -dq_dual_w)
     vec3_elementwise_add(added_vec, cross_real_dual_vecs)
     vec3_elementwise_add_factor(point_out, added_vec, 2.0)
-
-    # point_out[0] = cross_real_dual_vecs[0]
-    # point_out[1] = cross_real_dual_vecs[1]
-    # point_out[2] = cross_real_dual_vecs[2]
 
 # endregion

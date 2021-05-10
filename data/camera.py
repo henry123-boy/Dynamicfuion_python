@@ -41,6 +41,7 @@ def extract_intrinsic_projection_parameters(intrinsics: o3d.camera.PinholeCamera
 
 def load_open3d_intrinsics_from_text_4x4_matrix_and_image(path_matrix: str, path_image: str) -> o3d.camera.PinholeCameraIntrinsic:
     intrinsic_matrix = np.loadtxt(path_matrix)
+    print(path_image)
     fx = intrinsic_matrix[0, 0]
     fy = intrinsic_matrix[1, 1]
     cx = intrinsic_matrix[0, 2]

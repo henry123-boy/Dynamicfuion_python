@@ -1,15 +1,19 @@
 import math
+from typing import Tuple
 
-import cv2
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
-import nnrt
 from dq3d import quat, dualquat, op
+from sklearn.preprocessing import normalize
 
-from typing import Tuple
+import nnrt
 
-from pipeline.numba_cuda.fusion_functions import cuda_compute_psdf_voxel_centers, cuda_compute_voxel_center_anchors
+import data.camera
+from data import StandaloneFrameDataset
+from data.presets import StandaloneFramePreset
+from pipeline.numba_cuda.fusion_functions import cuda_compute_psdf_warped_voxel_centers, cuda_compute_voxel_center_anchors
+from pipeline.numba_cuda.mesh_processing import cuda_compute_normal
 
 
 def generate_xy_plane_depth_image(resolution: Tuple[int, int], depth: int) -> np.ndarray:
@@ -230,9 +234,9 @@ def test_compute_psdf_voxel_centers_static():
 
     intrinsic_matrix = construct_intrinsic_matrix1_4x4()
 
-    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                 node_dual_quaternions)
+    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                        node_dual_quaternions)
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
     # voxel index is (0, 0, 5)
@@ -293,9 +297,9 @@ def test_compute_psdf_voxel_centers_static():
 
     intrinsic_matrix = construct_intrinsic_matrix1_4x4()
 
-    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                 node_dual_quaternions)
+    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                        node_dual_quaternions)
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
     # voxel index is (0, 0, 5)
@@ -373,14 +377,9 @@ def test_compute_psdf_voxel_centers_simple_motion():
 
     intrinsic_matrix = construct_intrinsic_matrix1_4x4()
 
-    print()
-    print(node_dual_quaternions[0])
-
-    voxel_psdf = cuda_compute_psdf_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                 voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                 node_dual_quaternions)
-
-    print(node_dual_quaternions[0])
+    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
+                                                        node_dual_quaternions)
 
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
@@ -422,3 +421,30 @@ def test_compute_psdf_voxel_centers_simple_motion():
         expected_psdf = depth - deformed_point_z
         psdf = psdfs[i_point]
         assert math.isclose(psdf, expected_psdf, abs_tol=1e-8)
+
+
+def test_compute_normals():
+    frame_data: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_200.value
+    depth_image = np.array(o3d.io.read_image(frame_data.get_depth_image_path()))
+    intrinsics: o3d.camera.PinholeCameraIntrinsic = \
+        data.camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_data.get_intrinsics_path(),
+                                                                          frame_data.get_depth_image_path())
+    intrinsic_matrix = np.array(intrinsics.intrinsic_matrix)
+    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
+
+    point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
+    dv = ((point_image[2:, :] - point_image[:-2, :])[:, 1:-1]).reshape(-1, 3)
+    du = ((point_image[:, 2:] - point_image[:, :-2])[1:-1, :]).reshape(-1, 3)
+    expected_normals = normalize(np.cross(du, dv), axis=1)
+    expected_normals[expected_normals[:, 2] > 0] = -expected_normals[expected_normals[:, 2] > 0]
+    expected_normals = expected_normals.reshape(478, 638, -1)
+
+    mask_y = np.logical_or(depth_image[2:, :] == 0, depth_image[:-2, :] == 0)[:, 1:-1]
+    mask_x = np.logical_or(depth_image[:, 2:] == 0, depth_image[:, :-2] == 0)[1:-1, :]
+    mask = np.logical_or(mask_x, mask_y)
+
+    expected_normals[mask] = 0
+
+    normals = cuda_compute_normal(point_image)[1:479, 1:639]
+
+    assert np.allclose(expected_normals, normals, atol=1e-7)

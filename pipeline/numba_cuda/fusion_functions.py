@@ -273,10 +273,10 @@ def cuda_depth_warp_integrate(depth_frame, intrinsics, camera_rotation, camera_t
 
 
 @cuda.jit()
-def cuda_compute_psdf_voxel_centers_kernel(psdf,
-                                           depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                           voxel_centers, voxel_center_anchors, voxel_center_weights,
-                                           node_transformation_dual_quaternions):
+def cuda_compute_psdf_warped_voxel_centers_kernel(psdf,
+                                                  depth_image, intrinsic_matrix, camera_rotation, camera_translation,
+                                                  voxel_centers, voxel_center_anchors, voxel_center_weights,
+                                                  node_transformation_dual_quaternions):
     workload_index = cuda.grid(1)
 
     voxel_center_count = voxel_centers.shape[0]
@@ -340,7 +340,7 @@ def cuda_compute_psdf_voxel_centers_kernel(psdf,
         psdf[workload_index] = depth - deformed_point_z
 
 
-def cuda_compute_psdf_voxel_centers(
+def cuda_compute_psdf_warped_voxel_centers(
         depth_image, intrinsic_matrix, camera_rotation, camera_translation,
         voxel_centers, voxel_center_anchors, voxel_center_weights,
         node_transformations_dual_quaternions
@@ -356,7 +356,7 @@ def cuda_compute_psdf_voxel_centers(
     cuda_block_size = (256,)
     cuda_grid_size = (math.ceil(voxel_center_count / cuda_block_size[0]),)
 
-    cuda_compute_psdf_voxel_centers_kernel[cuda_grid_size, cuda_block_size](
+    cuda_compute_psdf_warped_voxel_centers_kernel[cuda_grid_size, cuda_block_size](
         psdf,
         depth_image, intrinsic_matrix, camera_rotation, camera_translation,
         voxel_centers, voxel_center_anchors, voxel_center_weights,
