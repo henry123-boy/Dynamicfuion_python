@@ -25,6 +25,10 @@ public:
 	/// Extract all indexed voxel centers.
 	open3d::core::Tensor ExtractVoxelCenters();
 
+	/// Extract all TSDF values in the same order as the voxel centers in the output
+	/// of the ExtractVoxelCenters function
+	open3d::core::Tensor ExtractTSDFValuesAndWeights();
+
 	/// Extract all SDF values in the specified spatial extent
 	/// All undefined SDF values will be kept as -2.0
 	open3d::core::Tensor ExtractValuesInExtent(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z);

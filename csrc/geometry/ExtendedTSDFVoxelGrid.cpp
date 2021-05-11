@@ -42,6 +42,25 @@ core::Tensor ExtendedTSDFVoxelGrid::ExtractVoxelCenters() {
 	return voxel_centers;
 }
 
+
+open3d::core::Tensor ExtendedTSDFVoxelGrid::ExtractTSDFValuesAndWeights() {
+	// Query active blocks and their nearest neighbors to handle boundary cases.
+	core::Tensor active_addrs;
+	block_hashmap_->GetActiveIndices(active_addrs);
+	core::Tensor active_nb_addrs, active_nb_masks;
+	std::tie(active_nb_addrs, active_nb_masks) =
+			BufferRadiusNeighbors(active_addrs);
+
+	core::Tensor voxel_values;
+	kernel::tsdf::ExtractTSDFValuesAndWeights(
+			active_addrs.To(core::Dtype::Int64),
+			active_nb_addrs.To(core::Dtype::Int64), active_nb_masks,
+			block_hashmap_->GetValueTensor(),
+			voxel_values, block_resolution_);
+
+	return voxel_values;
+}
+
 open3d::core::Tensor ExtendedTSDFVoxelGrid::ExtractValuesInExtent(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z) {
 	// Query active blocks and their nearest neighbors to handle boundary cases.
 	core::Tensor active_addrs;
@@ -70,6 +89,7 @@ open3d::core::Tensor ExtendedTSDFVoxelGrid::ExtractValuesInExtent(int min_x, int
 
 	return voxel_values;
 }
+
 
 } // namespace geometry
 } // namespace nnrt

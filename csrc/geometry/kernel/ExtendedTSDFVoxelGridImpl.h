@@ -115,6 +115,96 @@ void ExtractVoxelCentersCPU
 	);
 }
 
+#if defined(__CUDACC__)
+void ExtractTSDFValuesAndWeightsCUDA
+#else
+
+void ExtractTSDFValuesAndWeightsCPU
+#endif
+		(const core::Tensor& indices,
+		 const core::Tensor& nb_indices,
+		 const core::Tensor& nb_masks,
+		 const core::Tensor& block_values,
+		 core::Tensor& voxel_values,
+		 int64_t block_resolution) {
+
+	int64_t resolution3 =
+			block_resolution * block_resolution * block_resolution;
+
+	// Shape / transform indexers, no data involved
+	NDArrayIndexer voxel_indexer(
+			{block_resolution, block_resolution, block_resolution});
+
+	// Output
+#if defined(__CUDACC__)
+	core::CUDACachedMemoryManager::ReleaseCache();
+#endif
+
+	int n_blocks = static_cast<int>(indices.GetLength());
+
+
+	int64_t n_voxels = n_blocks * resolution3;
+	// each voxel output will need a TSDF value and a weight value: n_voxels x 2
+	voxel_values = core::Tensor::Zeros({n_voxels, 2}, core::Dtype::Float32,
+	                                   block_values.GetDevice());
+
+	// Real data indexers
+	NDArrayIndexer voxel_values_indexer(voxel_values, 1);
+	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
+	NDArrayIndexer nb_block_masks_indexer(nb_masks, 2);
+	NDArrayIndexer nb_block_indices_indexer(nb_indices, 2);
+
+
+#if defined(__CUDACC__)
+	core::kernel::CUDALauncher launcher;
+#else
+	core::kernel::CPULauncher launcher;
+#endif
+
+	//  Go through voxels
+//@formatter:off
+	DISPATCH_BYTESIZE_TO_VOXEL(
+			voxel_block_buffer_indexer.ElementByteSize(),
+			[&]() {
+	launcher.LaunchGeneralKernel(
+			n_voxels, [=] OPEN3D_DEVICE(int64_t workload_idx) {
+				auto GetVoxelAt =
+						[&] OPEN3D_DEVICE(int xo, int yo, int zo, int curr_block_idx) -> voxel_t* {
+							return DeviceGetVoxelAt<voxel_t>(
+									xo, yo, zo, curr_block_idx,
+											static_cast<int>(resolution3),
+											nb_block_masks_indexer,
+											nb_block_indices_indexer,
+											voxel_block_buffer_indexer);
+						};
+//@formatter:on
+
+				// Natural index (0, N) ->
+				//                        (workload_block_idx, voxel_index_in_block)
+				int64_t workload_block_idx = workload_idx / resolution3;
+				int64_t voxel_index_in_block = workload_idx % resolution3;
+
+
+
+				// voxel_idx -> (x_voxel, y_voxel, z_voxel)
+				int64_t x_voxel, y_voxel, z_voxel;
+				voxel_indexer.WorkloadToCoord(voxel_index_in_block,
+				                              &x_voxel, &y_voxel, &z_voxel);
+
+				auto voxel = GetVoxelAt(x_voxel, y_voxel, z_voxel,
+				                        workload_block_idx);
+
+				auto voxel_value_pointer = voxel_values_indexer.GetDataPtrFromCoord<float>(workload_idx);
+
+				voxel_value_pointer[0] = voxel->GetTSDF();
+				voxel_value_pointer[1] = static_cast<float>(voxel->GetWeight());
+
+			} // end lambda
+				);
+			}
+	);
+}
+
 
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
 void ExtractValuesInExtentCUDA(

@@ -48,7 +48,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/ExtendedTSDFVoxelGrid.h
     geometry/kernel/ExtendedTSDFVoxelGridCPU.cpp
     geometry/kernel/ExtendedTSDFVoxelGridCUDA.cu
-    geometry/kernel/ExtendedTSDFVoxelGridImpl.h)
+    geometry/kernel/ExtendedTSDFVoxelGridImpl.h
+    geometry/DualQuaternion.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -83,12 +84,23 @@ target_include_directories(nnrt PRIVATE
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
 
+include(ProcessorCount)
+set(N_PROCESSORS 1)
+ProcessorCount(N)
+if(NOT N LESS 2)
+    math(EXPR N_PROCESSORS "${N} - 1")
+endif()
+
+set(Open3D_DIRECTIVE)
+if(Open3D_DIR)
+    set(Open3D_DIRECTIVE "Open3D_DIR=${Open3D_DIR}")
+endif()
+
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${CMAKE_COMMAND} -E env "Open3D_DIR=${Open3D_DIR}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR} 
+    COMMAND ${CMAKE_COMMAND} -E env "${Open3D_DIRECTIVE} CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR}
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS nnrt
 )
 
 # Use `make install-pip-package` to install pip wheel package to the current

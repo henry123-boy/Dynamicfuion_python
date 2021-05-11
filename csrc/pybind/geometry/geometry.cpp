@@ -90,6 +90,7 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 	// =============================== CUSTOM METHODS =======================================================
 
 	extended_tsdf_voxel_grid.def("extract_voxel_centers", &ExtendedTSDFVoxelGrid::ExtractVoxelCenters);
+	extended_tsdf_voxel_grid.def("extract_tsdf_values_and_weights", &ExtendedTSDFVoxelGrid::ExtractTSDFValuesAndWeights);
 	extended_tsdf_voxel_grid.def("extract_values_in_extent", &ExtendedTSDFVoxelGrid::ExtractValuesInExtent,
 	                   "min_x"_a, "min_y"_a, "min_z"_a,
 	                   "max_x"_a, "max_y"_a, "max_z"_a);

@@ -52,6 +52,34 @@ void ExtractVoxelCenters(const open3d::core::Tensor& block_indices, const open3d
 
 }
 
+void ExtractTSDFValuesAndWeights(const open3d::core::Tensor& block_indices,
+                                 const open3d::core::Tensor& nb_block_indices,
+                                 const open3d::core::Tensor& nb_block_masks,
+                                 const open3d::core::Tensor& block_values,
+                                 open3d::core::Tensor& voxel_values,
+                                 int64_t block_resolution){
+	core::Device device = block_values.GetDevice();
+
+	core::Device::DeviceType device_type = device.GetType();
+	if (device_type == core::Device::DeviceType::CPU) {
+		ExtractTSDFValuesAndWeightsCPU(block_indices,
+		                               nb_block_indices, nb_block_masks,
+		                               block_values, voxel_values,
+		                               block_resolution);
+	} else if (device_type == core::Device::DeviceType::CUDA) {
+#ifdef BUILD_CUDA_MODULE
+		ExtractTSDFValuesAndWeightsCUDA(block_indices,
+		                                nb_block_indices, nb_block_masks,
+		                                block_values, voxel_values,
+		                                block_resolution);
+#else
+		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+	} else {
+		utility::LogError("Unimplemented device");
+	}
+}
+
 
 void ExtractValuesInExtent(
 		int64_t min_voxel_x, int64_t min_voxel_y, int64_t min_voxel_z,
