@@ -81,8 +81,7 @@ def main() -> None:
 
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
-    extrinsics_numpy = np.eye(4)
-    extrinsics_gpu = o3d.core.Tensor(extrinsics_numpy, o3d.core.Dtype.Float32, device)
+    extrinsics_gpu = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
 
     volume = voxel_grid.make_default_tsdf_voxel_grid(device)
 

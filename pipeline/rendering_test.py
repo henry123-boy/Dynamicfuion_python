@@ -51,7 +51,9 @@ def main():
     # with -1 instead of 1 in positions (2,3) and (3,2). See https://pytorch3d.org/docs/cameras#perspectivecameras-orthographiccameras and
     # https://pytorch3d.readthedocs.io/en/latest/modules/renderer/cameras.html#pytorch3d.renderer.cameras.PerspectiveCameras.get_projection_transform
     # to get formula for K, adjust with principal_point & image_size values from currently used constructor call.
-    camera_rotation = np.array([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
+    camera_rotation = np.array([[[-1, 0, 0],
+                                 [0, -1, 0],
+                                 [0, 0, 1]]], dtype=np.float32)
 
     lights = PointLights(device=torch_device, location=[[0.0, 0.0, -3.0]])
 

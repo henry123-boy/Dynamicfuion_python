@@ -42,14 +42,14 @@ set(NNRT_SOURCE_FILES
     utility/debugging.hpp
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
-    geometry/ExtendedTSDFVoxelGrid.cpp
-    geometry/ExtendedTSDFVoxelGrid.h
-    geometry/kernel/ExtendedTSDFVoxelGrid.cpp
-    geometry/kernel/ExtendedTSDFVoxelGrid.h
-    geometry/kernel/ExtendedTSDFVoxelGridCPU.cpp
-    geometry/kernel/ExtendedTSDFVoxelGridCUDA.cu
-    geometry/kernel/ExtendedTSDFVoxelGridImpl.h
-    geometry/DualQuaternion.h)
+    geometry/WarpableTSDFVoxelGrid.cpp
+    geometry/WarpableTSDFVoxelGrid.h
+    geometry/kernel/WarpableTSDFVoxelGrid.cpp
+    geometry/kernel/WarpableTSDFVoxelGrid.h
+    geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
+    geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
+    geometry/kernel/WarpableTSDFVoxelGridImpl.h
+    geometry/DualQuaternion.h geometry/kernel/WarpableTSDFVoxel.hpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

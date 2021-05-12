@@ -16,7 +16,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Console.h>
 
-#include "geometry/kernel/ExtendedTSDFVoxelGrid.h"
+#include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 
 using namespace open3d;
 

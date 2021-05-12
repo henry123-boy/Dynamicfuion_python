@@ -13,7 +13,6 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-
-#include "geometry/kernel/ExtendedTSDFVoxelGrid.h"
-#include "open3d/core/kernel/CPULauncher.h"
-#include "geometry/kernel/ExtendedTSDFVoxelGridImpl.h"
+#include "geometry/kernel/WarpableTSDFVoxelGrid.h"
+#include "open3d/core/kernel/CUDALauncher.cuh"
+#include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"

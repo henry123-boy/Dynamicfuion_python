@@ -18,7 +18,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/t/geometry/kernel/TSDFVoxel.h>
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
-#include "ExtendedTSDFVoxelGrid.h"
+#include "WarpableTSDFVoxelGrid.h"
 
 
 using namespace open3d;
