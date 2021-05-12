@@ -18,29 +18,36 @@
 #include <atomic>
 
 #include <open3d/core/Dispatch.h>
+#include <open3d/core/CUDAUtils.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/t/geometry/kernel/GeometryMacros.h>
 #include <open3d/t/geometry/kernel/TSDFVoxel.h>
 
 using namespace open3d::t::geometry::kernel::tsdf;
 
-#define DISPATCH_BYTESIZE_TO_VOXEL(BYTESIZE, ...)            \
-    [&] {                                                    \
-        if (BYTESIZE == sizeof(WarpableColoredVoxel32f)) {   \
-            using voxel_t = ColoredVoxel32f;                 \
-            return __VA_ARGS__();                            \
-        } else if (BYTESIZE == sizeof(WarpableColoredVoxel16i)) {    \
-            using voxel_t = ColoredVoxel16i;                 \
-            return __VA_ARGS__();                            \
-        } else if (BYTESIZE == sizeof(WarpableVoxel32f)) {   \
-            using voxel_t = Voxel32f;                        \
-            return __VA_ARGS__();                            \
-        } else if (BYTESIZE == sizeof(WarpableAnchoredVoxel32f)) {   \
-            using voxel_t = Voxel32f;                        \
-            return __VA_ARGS__();                            \
-        } else {                                             \
-            utility::LogError("Unsupported voxel bytesize"); \
-        }                                                    \
+#define DISPATCH_BYTESIZE_TO_VOXEL(BYTESIZE, ...)                                \
+    [&] {                                                                        \
+        if (BYTESIZE == sizeof(WarpableColoredVoxel32f)) {                       \
+            using voxel_t = ColoredVoxel32f;                                     \
+            return __VA_ARGS__();                                                \
+        } else if (BYTESIZE == sizeof(WarpableColoredVoxel16i)) {                \
+            using voxel_t = ColoredVoxel16i;                                     \
+            return __VA_ARGS__();                                                \
+        } else if (BYTESIZE == sizeof(WarpableVoxel32f)) {                       \
+            using voxel_t = Voxel32f;                                            \
+            return __VA_ARGS__();                                                \
+        } else if (BYTESIZE == sizeof(WarpableAnchoredVoxel32f<4>)) {            \
+            using voxel_t = WarpableAnchoredVoxel32f<4>;                         \
+            return __VA_ARGS__();                                                \
+        } else if (BYTESIZE == sizeof(WarpableAnchoredColoredVoxel16i<4>)) {     \
+            using voxel_t = WarpableAnchoredVoxel32f<4>;                         \
+            return __VA_ARGS__();                                                \
+        } else if (BYTESIZE == sizeof(WarpableAnchoredColoredVoxel32f<4>)) {     \
+            using voxel_t = WarpableAnchoredVoxel32f<4>;                         \
+            return __VA_ARGS__();                                                \
+        } else {                                                                 \
+            utility::LogError("Unsupported voxel bytesize");                     \
+        }                                                                        \
     }()
 
 namespace nnrt {
@@ -54,7 +61,7 @@ namespace tsdf {
 struct WarpableVoxel32f : public struct Voxel32f{
 	static bool HasAnchors() { return false; }
 	static bool HasColor() { return Voxel32f::HasColor(); }
-	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights, int anchor_count){}
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){}
 };
 
 /// 12-byte voxel structure.
@@ -65,7 +72,7 @@ struct WarpableVoxel32f : public struct Voxel32f{
 struct WarpableColoredVoxel16i : public struct ColoredVoxel16i{
 	static bool HasAnchors() { return false; }
 	static bool HasColor() { return ColoredVoxel16i::HasColor(); }
-	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights, int anchor_count){}
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){}
 };
 
 /// 20-byte voxel structure.
@@ -73,14 +80,52 @@ struct WarpableColoredVoxel16i : public struct ColoredVoxel16i{
 struct WarpableColoredVoxel32f : public struct ColoredVoxel32f{
 	static bool HasAnchors() { return false; }
 	static bool HasColor() { return ColoredVoxel32f::HasColor(); }
-	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights, int anchor_count){}
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){}
 };
 
 template<int anchor_count>
 struct WarpableAnchoredVoxel32f : public struct Voxel32f{
-	static bool HasAnchors() { return false; }
+	uint16_t anchor_indexes[anchor_count];
+	float anchor_weights[anchor_count];
+
+	static bool HasAnchors() { return true; }
 	static bool HasColor() { return Voxel32f::HasColor(); }
-	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights, int anchor_count){}
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){
+		for(int i_anchor = 0; i_anchor < anchor_count; i_anchor++){
+			this->anchor_indexes[i_anchor = anchor_indices[i_anchor];
+			this->anchor_weights[i_anchor] = anchor_weights[i_anchor];
+		}
+	}
+};
+
+template<int anchor_count>
+struct WarpableAnchoredColoredVoxel16i : public struct ColoredVoxel16i{
+	uint16_t anchor_indexes[anchor_count];
+	float anchor_weights[anchor_count];
+
+	static bool HasAnchors() { return false; }
+	static bool HasColor() { return ColoredVoxel32f::HasColor(); }
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){
+		for(int i_anchor = 0; i_anchor < anchor_count; i_anchor++){
+			this->anchor_indexes[i_anchor = anchor_indices[i_anchor];
+			this->anchor_weights[i_anchor] = anchor_weights[i_anchor];
+		}
+	}
+};
+
+template<int anchor_count>
+struct WarpableAnchoredColoredVoxel32f : public struct ColoredVoxel32f{
+	uint16_t anchor_indexes[anchor_count];
+	float anchor_weights[anchor_count];
+
+	static bool HasAnchors() { return false; }
+	static bool HasColor() { return ColoredVoxel32f::HasColor(); }
+	OPEN3D_HOST_DEVICE void UpdateAnchors(int* anchor_indices, float* anchor_weights){
+		for(int i_anchor = 0; i_anchor < anchor_count; i_anchor++){
+			this->anchor_indexes[i_anchor = anchor_indices[i_anchor];
+			this->anchor_weights[i_anchor] = anchor_weights[i_anchor];
+		}
+	}
 };
 
 

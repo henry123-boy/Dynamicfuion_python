@@ -69,6 +69,12 @@ WarpableTSDFVoxelGrid::WarpableTSDFVoxelGrid(
 				"[WarpableTSDFVoxelGrid] unexpected combination of attributes: "
 				"expected either both anchor_weights and anchors to be defined "
 	            "in the voxel structure or none.");
+	} else if (has_anchors && anchor_count != 4){
+		utility::LogWarning(
+				"[WarpableTSDFVoxelGrid] unexpected anchor_count value, please "
+				"add corresponding template instantiations to "
+				"DISPATCH_BYTESIZE_TO_VOXEL in "
+				"geometry/kernel/Voxel.h for dispatching.");
 	}
 	block_hashmap_.reset();
 	block_hashmap_ = std::make_shared<core::Hashmap>(
