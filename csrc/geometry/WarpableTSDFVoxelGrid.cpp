@@ -26,77 +26,13 @@ using namespace open3d::t::geometry;
 namespace nnrt {
 namespace geometry {
 
-
-WarpableTSDFVoxelGrid::WarpableTSDFVoxelGrid(
-		std::unordered_map<std::string, core::Dtype> attr_dtype_map,
-		float voxel_size,
-		float sdf_trunc,
-		int64_t block_resolution,
-		int64_t block_count,
-		int64_t anchor_count,
-		const core::Device &device,
-		const core::HashmapBackend &backend)
-		: TSDFVoxelGrid(std::move(attr_dtype_map), voxel_size, sdf_trunc, block_resolution, block_count, device, backend),
-		  anchor_node_count_(anchor_count){
-	int64_t total_bytes = block_hashmap_->GetValueBytesize() / (block_resolution_ * block_resolution_ * block_resolution_);
-	bool has_anchors = false;
-	if (attr_dtype_map_.count("anchor_indices") != 0) {
-		has_anchors = true;
-		core::Dtype dtype = attr_dtype_map_.at("anchor_indices");
-		if (dtype != core::Dtype::UInt16) {
-			utility::LogWarning(
-					"[WarpableTSDFVoxelGrid] unexpected anchor_indices dtype, please "
-					"implement your own Voxel structure in "
-					"geometry/kernel/Voxel.h for "
-					"dispatching.");
-		}
-		total_bytes += dtype.ByteSize() * anchor_count;
-	}
-	bool has_anchor_weights = false;
-	if (attr_dtype_map_.count("anchor_weights") != 0) {
-		has_anchor_weights = true;
-		core::Dtype dtype = attr_dtype_map_.at("anchor_weights");
-		if (dtype != core::Dtype::Float32) {
-			utility::LogWarning(
-					"[WarpableTSDFVoxelGrid] unexpected anchor_weights dtype, please "
-					"implement your own Voxel structure in "
-					"geometry/kernel/Voxel.h for dispatching.");
-		}
-		total_bytes += dtype.ByteSize() * anchor_count;
-	}
-	if ((has_anchors && !has_anchor_weights) || (has_anchor_weights && !has_anchors)){
-		utility::LogError(
-				"[WarpableTSDFVoxelGrid] unexpected combination of attributes: "
-				"expected either both anchor_weights and anchors to be defined "
-	            "in the voxel structure or none.");
-	} else if (has_anchors && anchor_count != 4){
-		utility::LogWarning(
-				"[WarpableTSDFVoxelGrid] unexpected anchor_count value, please "
-				"add corresponding template instantiations to "
-				"DISPATCH_BYTESIZE_TO_VOXEL in "
-				"geometry/kernel/Voxel.h for dispatching.");
-	}
-	block_hashmap_.reset();
-	block_hashmap_ = std::make_shared<core::Hashmap>(
-			block_count_, core::Dtype::Int32, core::Dtype::UInt8,
-			core::SizeVector{3},
-			core::SizeVector{block_resolution_, block_resolution_,
-			                 block_resolution_, total_bytes},
-			device, backend);
-}
-
 core::Tensor WarpableTSDFVoxelGrid::ExtractVoxelCenters() {
-	// Query active blocks and their nearest neighbors to handle boundary cases.
-	core::Tensor active_addrs;
-	block_hashmap_->GetActiveIndices(active_addrs);
-	core::Tensor active_nb_addrs, active_nb_masks;
-	std::tie(active_nb_addrs, active_nb_masks) =
-			BufferRadiusNeighbors(active_addrs);
+	core::Tensor active_block_indices;
+	block_hashmap_->GetActiveIndices(active_block_indices);
 
 	core::Tensor voxel_centers;
 	kernel::tsdf::ExtractVoxelCenters(
-			active_addrs.To(core::Dtype::Int64),
-			active_nb_addrs.To(core::Dtype::Int64), active_nb_masks,
+			active_block_indices.To(core::Dtype::Int64),
 			block_hashmap_->GetKeyTensor(), block_hashmap_->GetValueTensor(),
 			voxel_centers, block_resolution_, voxel_size_);
 
@@ -106,46 +42,29 @@ core::Tensor WarpableTSDFVoxelGrid::ExtractVoxelCenters() {
 
 open3d::core::Tensor WarpableTSDFVoxelGrid::ExtractTSDFValuesAndWeights() {
 	// Query active blocks and their nearest neighbors to handle boundary cases.
-	core::Tensor active_addrs;
-	block_hashmap_->GetActiveIndices(active_addrs);
-	core::Tensor active_nb_addrs, active_nb_masks;
-	std::tie(active_nb_addrs, active_nb_masks) =
-			BufferRadiusNeighbors(active_addrs);
+	core::Tensor active_block_indices;
+	block_hashmap_->GetActiveIndices(active_block_indices);
 
 	core::Tensor voxel_values;
 	kernel::tsdf::ExtractTSDFValuesAndWeights(
-			active_addrs.To(core::Dtype::Int64),
-			active_nb_addrs.To(core::Dtype::Int64), active_nb_masks,
+			active_block_indices.To(core::Dtype::Int64),
 			block_hashmap_->GetValueTensor(),
 			voxel_values, block_resolution_);
 
 	return voxel_values;
 }
 
-open3d::core::Tensor WarpableTSDFVoxelGrid::ExtractValuesInExtent(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z) {
+open3d::core::Tensor WarpableTSDFVoxelGrid::ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z,
+                                                                  int max_voxel_x, int max_voxel_y, int max_voxel_z) {
 	// Query active blocks and their nearest neighbors to handle boundary cases.
-	core::Tensor active_addrs;
-	block_hashmap_->GetActiveIndices(active_addrs);
-	core::Tensor active_nb_addrs, active_nb_masks;
-	std::tie(active_nb_addrs, active_nb_masks) =
-			BufferRadiusNeighbors(active_addrs);
-
-
-	int64_t min_voxel_x = min_x;
-	int64_t min_voxel_y = min_y;
-	int64_t min_voxel_z = min_z;
-	int64_t max_voxel_x = max_x;
-	int64_t max_voxel_y = max_y;
-	int64_t max_voxel_z = max_z;
-
+	core::Tensor active_block_indices;
+	block_hashmap_->GetActiveIndices(active_block_indices);
 
 	core::Tensor voxel_values;
 	kernel::tsdf::ExtractValuesInExtent(
 			min_voxel_x, min_voxel_y, min_voxel_z,
 			max_voxel_x, max_voxel_y, max_voxel_z,
-			active_addrs.To(core::Dtype::Int64),
-			active_nb_addrs.To(core::Dtype::Int64), active_nb_masks,
-			block_hashmap_->GetKeyTensor(), block_hashmap_->GetValueTensor(),
+			active_block_indices.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_hashmap_->GetValueTensor(),
 			voxel_values, block_resolution_);
 
 	return voxel_values;
@@ -157,17 +76,67 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
                                        const core::Tensor& depth_normals, const core::Tensor& intrinsics,
                                        const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
                                        const core::Tensor& node_dual_quaternion_transformations,
-                                       float node_coverage, float depth_scale, float depth_max) {
-	throw std::logic_error("ExtendedTSDFVoxelGrid::FuseWarped Function not yet implemented.");
+                                       float node_coverage, int anchor_count, float depth_scale, float depth_max) {
+
+	// note the difference from TSDFVoxelGrid::Integrate:
+	// IntegrateWarped assumes that all of the relevant hash blocks have already been activated.
+
+	if (depth.IsEmpty()) {
+		utility::LogError(
+				"[TSDFVoxelGrid] input depth is empty for integration.");
+	}
+
+	core::Tensor depth_tensor = depth.AsTensor().Contiguous();
+	core::Tensor color_tensor;
+
+	if (color.IsEmpty()) {
+		utility::LogDebug(
+				"[TSDFIntegrateWarped] color image is empty, perform depth "
+				"integration only.");
+	} else if (color.GetRows() == depth.GetRows() &&
+	           color.GetCols() == depth.GetCols() && color.GetChannels() == 3) {
+		if (attr_dtype_map_.count("color") != 0) {
+			color_tensor =
+					color.AsTensor().To(core::Dtype::Float32).Contiguous();
+		} else {
+			utility::LogWarning(
+					"[TSDFIntegrateWarped] color image is ignored since voxels do "
+					"not contain colors.");
+		}
+	} else {
+		utility::LogWarning(
+				"[TSDFIntegrateWarped] color image is ignored for the incompatible "
+				"shape.");
+	}
+
+	// Query active blocks and their nearest neighbors to handle boundary cases.
+	core::Tensor active_block_addresses;
+	block_hashmap_->GetActiveIndices(active_block_addresses);
+
+	core::Tensor block_values = block_hashmap_->GetValueTensor();
+
+	core::Tensor cos_voxel_ray_to_normal;
+	kernel::tsdf::IntegrateWarped(
+			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
+			cos_voxel_ray_to_normal, block_resolution_, voxel_size_,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
+			node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max
+	);
+
+	return cos_voxel_ray_to_normal;
 }
 
 open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
                                                             const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
                                                             const core::Tensor& node_dual_quaternion_transformations, float node_coverage,
-                                                            float depth_scale, float depth_max) {
+                                                            int anchor_count, float depth_scale, float depth_max) {
 	Image empty_color;
 	return IntegrateWarped(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_dual_quaternion_transformations,
-	                node_coverage, depth_scale, depth_max);
+	                       node_coverage, anchor_count, depth_scale, depth_max);
+}
+
+void WarpableTSDFVoxelGrid::ActivateBlocksForWarpNodes(const core::Tensor& new_warp_graph_nodes, float node_coverage) {
+	utility::LogError("[WarpableTSDFVoxelGrid::ActivateBlocksForWarpNodes] Not yet implemented!");
 }
 
 

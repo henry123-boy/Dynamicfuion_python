@@ -50,13 +50,11 @@ def construct_test_volume1(device=o3d.core.Device('cpu:0')):
     block_resolution = 8  # 8^3 voxel blocks
     initial_block_count = 128  # initially allocated number of voxel blocks
 
-    volume = nnrt.geometry.ExtendedTSDFVoxelGrid(
+    volume = nnrt.geometry.WarpableTSDFVoxelGrid(
         {
             'tsdf': o3d.core.Dtype.Float32,
             'weight': o3d.core.Dtype.UInt16,
-            'color': o3d.core.Dtype.UInt16,
-            'anchors': o3d.core.Dtype.Int32,
-            'weights': o3d.core.Dtype.Float32
+            'color': o3d.core.Dtype.UInt16
         },
         voxel_size=voxel_size,
         sdf_trunc=sdf_truncation_distance,
@@ -266,63 +264,6 @@ def test_compute_psdf_voxel_centers_static():
     assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
 
 
-def test_compute_psdf_voxel_centers_static():
-    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
-    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
-    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
-    # Make it five.
-    nodes = np.array([[0.0, 0.0, 0.05],
-                      [0.02, 0.0, 0.05],
-                      [-0.02, 0.0, 0.05],
-                      [0.00, 0.02, 0.05],
-                      [0.00, -0.02, 0.05]],
-                     dtype=np.float32)
-
-    volume = construct_test_volume1()
-    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
-    voxel_centers_np = voxel_centers.cpu().numpy()
-
-    node_coverage = 0.05
-    voxel_center_anchors, voxel_center_weights = \
-        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
-
-    # no motion at all for this case
-    node_dual_quaternions = [dualquat(quat.identity())] * len(nodes)
-    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
-
-    depth = 50  # mm
-    image_width = 100
-    image_height = 100
-    image_resolution = (image_width, image_height)
-    depth_image = generate_xy_plane_depth_image(image_resolution, depth)
-
-    intrinsic_matrix = construct_intrinsic_matrix1_4x4()
-
-    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                        node_dual_quaternions)
-    # voxel in the center of the plane is at 0, 0, 0.05,
-    # which should coincide with the first and only node
-    # voxel index is (0, 0, 5)
-    # voxel is, presumably, in block 3
-    # voxel's index in block 0 is 5 * (8*8) = 320
-    # each block holds 512 voxels
-
-    center_plane_voxel_index = 512 + 512 + 512 + 320
-    # the voxel at center_plane_voxel_index should coincide with the location of the first node
-    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-
-    voxel_x_plus_two_index = center_plane_voxel_index + 2
-    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
-    voxel_z_plus_one_index = center_plane_voxel_index + 64
-
-    assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
-    assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
-    # 0.01 distance beyond the surface should yield a projective signed
-    # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
-    assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
-
-
 def test_compute_psdf_voxel_centers_simple_motion():
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
@@ -421,8 +362,8 @@ def test_extract_tsdf_values_and_weights():
     center_plane_voxel_index = 512 + 512 + 512 + 320
 
     assert np.allclose(voxel_tsdf_and_weights_np[center_plane_voxel_index], [0.0, 1.0], atol=1e-6)
-    # check empty voxel
-    assert np.allclose(voxel_tsdf_and_weights_np[0], [0.0, 0.0])
+    # test "empty" voxel
+    assert np.allclose(voxel_tsdf_and_weights_np[0], [0.0, 0.0], atol=1e-6)
     voxel_x_plus_two_index = center_plane_voxel_index + 2
     voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
     voxel_z_plus_one_index = center_plane_voxel_index + 64
@@ -585,7 +526,7 @@ def test_update_voxel_values_simple_motion():
     half_image_height = image_height // 2
     # @formatter:off
     depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
-    half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
+                half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
     # @formatter:on
 
     # ---- compute normals ----
@@ -605,10 +546,12 @@ def test_update_voxel_values_simple_motion():
     intrinsic_matrix_o3d = o3c.Tensor(intrinsic_matrix, device=device)
     extrinsic_matrix_o3d = o3c.Tensor.eye(4, device=device)
     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, device=device)
+    nodes_o3d = o3c.Tensor(nodes)
+
     cos_voxel_ray_to_normal = volume.integrate_warped(
-        depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
-        node_dual_quaternions_o3d, voxel_center_anchors, voxel_center_weights,
-        node_dual_quaternions)
+        depth_image_o3d, normals_o3d, intrinsic_matrix_o3d,
+        extrinsic_matrix_o3d, nodes_o3d, node_dual_quaternions_o3d,
+        node_coverage, 1000.0, 3.0)
 
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
@@ -652,3 +595,7 @@ def test_update_voxel_values_simple_motion():
 
     for index in indices_to_test:
         check_voxel_at(index)
+
+if __name__ == "__main__":
+    volume = construct_test_volume1()
+    values = volume.extract_values_in_extent(-2, -2, 3, 3, 3, 8)

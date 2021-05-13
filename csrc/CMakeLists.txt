@@ -49,7 +49,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
-    geometry/DualQuaternion.h geometry/kernel/WarpableTSDFVoxel.hpp)
+    geometry/DualQuaternion.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
