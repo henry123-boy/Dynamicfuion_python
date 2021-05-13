@@ -25,18 +25,7 @@ class WarpableTSDFVoxelGrid : public open3d::t::geometry::TSDFVoxelGrid {
 
 public:
 	using TSDFVoxelGrid::TSDFVoxelGrid;
-	WarpableTSDFVoxelGrid(std::unordered_map<std::string, open3d::core::Dtype> attr_dtype_map =
-			{{"tsdf",   open3d::core::Dtype::Float32},
-			 {"weight", open3d::core::Dtype::UInt16},
-			 {"color",  open3d::core::Dtype::UInt16}},
-	                      float voxel_size = 3.0 / 512.0, /* in meter */
-	                      float sdf_trunc = 0.04,         /*  in meter  */
-	                      int64_t block_resolution = 16, /*  block Tensor resolution  */
-	                      int64_t block_count = 1000,
-	                      int64_t anchor_count = 4,
-	                      const open3d::core::Device& device = open3d::core::Device("CPU:0"),
-	                      const open3d::core::HashmapBackend& backend =
-	                      open3d::core::HashmapBackend::Default);
+
 /// Extract all indexed voxel centers.
 	open3d::core::Tensor ExtractVoxelCenters();
 
@@ -46,9 +35,11 @@ public:
 
 	/// Extract all SDF values in the specified spatial extent
 	/// All undefined SDF values will be kept as -2.0
-	open3d::core::Tensor ExtractValuesInExtent(int min_x, int min_y, int min_z, int max_x, int max_y, int max_z);
+	open3d::core::Tensor ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z, int max_voxel_x, int max_voxel_y, int max_voxel_z);
 
-	//__DEBUG
+	// TODO implement
+	void ActivateBlocksForWarpNodes(const open3d::core::Tensor& new_warp_graph_nodes, float node_coverage);
+
 	open3d::core::Tensor IntegrateWarped(const open3d::t::geometry::Image& depth,
 	                                     const open3d::core::Tensor& depth_normals,
 	                                     const open3d::core::Tensor& intrinsics,
@@ -56,9 +47,9 @@ public:
 	                                     const open3d::core::Tensor& warp_graph_nodes,
 	                                     const open3d::core::Tensor& node_dual_quaternion_transformations,
 	                                     float node_coverage,
-	                                     float depth_scale,
-	                                     float depth_max);
-
+	                                     int anchor_count = 4,
+	                                     float depth_scale = 1000.0f,
+	                                     float depth_max = 3.0f);
 
 	open3d::core::Tensor IntegrateWarped(const open3d::t::geometry::Image& depth,
 	                                     const open3d::t::geometry::Image& color,
@@ -71,11 +62,11 @@ public:
 			//  a good CPU<-->CUDA implementation of MemoryBlock<CUDA-compatible-type>
 			                             const open3d::core::Tensor& node_dual_quaternion_transformations,
 			                             float node_coverage,
-			                             float depth_scale,
-			                             float depth_max);
+			                             int anchor_count = 4,
+			                             float depth_scale = 1000.0f,
+			                             float depth_max = 3.0f);
 
 protected:
-	int64_t anchor_node_count_;
 	using TSDFVoxelGrid::voxel_size_;
 	using TSDFVoxelGrid::sdf_trunc_;
 	using TSDFVoxelGrid::block_resolution_;

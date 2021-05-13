@@ -25,8 +25,6 @@ namespace tsdf {
 
 // region ============================ device-routing (top-level) ==========================
 void ExtractVoxelCenters(const open3d::core::Tensor& block_indices,
-                         const open3d::core::Tensor& nb_block_indices,
-                         const open3d::core::Tensor& nb_block_masks,
                          const open3d::core::Tensor& block_keys,
                          const open3d::core::Tensor& block_values,
                          open3d::core::Tensor& voxel_centers,
@@ -34,8 +32,6 @@ void ExtractVoxelCenters(const open3d::core::Tensor& block_indices,
                          float voxel_size);
 
 void ExtractTSDFValuesAndWeights(const open3d::core::Tensor& block_indices,
-                                 const open3d::core::Tensor& nb_block_indices,
-                                 const open3d::core::Tensor& nb_block_masks,
                                  const open3d::core::Tensor& block_values,
                                  open3d::core::Tensor& voxel_values,
                                  int64_t block_resolution);
@@ -43,25 +39,27 @@ void ExtractTSDFValuesAndWeights(const open3d::core::Tensor& block_indices,
 void ExtractValuesInExtent(int64_t min_voxel_x, int64_t min_voxel_y, int64_t min_voxel_z,
                            int64_t max_voxel_x, int64_t max_voxel_y, int64_t max_voxel_z,
                            const open3d::core::Tensor& block_indices,
-                           const open3d::core::Tensor& nb_block_indices,
-                           const open3d::core::Tensor& nb_block_masks,
                            const open3d::core::Tensor& block_keys,
                            const open3d::core::Tensor& block_values,
                            open3d::core::Tensor& voxel_values,
                            int64_t block_resolution);
+
+void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+                     const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                     const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_dual_quaternion_transformations,
+                     float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
 // endregion
 // region =============================== CPU ======================================
 void ExtractVoxelCentersCPU(const open3d::core::Tensor& block_indices,
-                            const open3d::core::Tensor& nb_block_indices,
-                            const open3d::core::Tensor& nb_block_masks,
                             const open3d::core::Tensor& block_keys,
                             const open3d::core::Tensor& block_values,
                             open3d::core::Tensor& voxel_centers,
                             int64_t block_resolution, float voxel_size);
 
 void ExtractTSDFValuesAndWeightsCPU(const open3d::core::Tensor& block_indices,
-                                    const open3d::core::Tensor& nb_block_indices,
-                                    const open3d::core::Tensor& nb_block_masks,
                                     const open3d::core::Tensor& block_values,
                                     open3d::core::Tensor& voxel_values,
                                     int64_t block_resolution);
@@ -69,8 +67,6 @@ void ExtractTSDFValuesAndWeightsCPU(const open3d::core::Tensor& block_indices,
 void ExtractValuesInExtentCPU(int64_t min_x, int64_t min_y, int64_t min_z,
                               int64_t max_x, int64_t max_y, int64_t max_z,
                               const open3d::core::Tensor& block_indices,
-                              const open3d::core::Tensor& nb_block_indices,
-                              const open3d::core::Tensor& nb_block_masks,
                               const open3d::core::Tensor& block_keys,
                               const open3d::core::Tensor& block_values,
                               open3d::core::Tensor& voxel_values,
@@ -79,8 +75,6 @@ void ExtractValuesInExtentCPU(int64_t min_x, int64_t min_y, int64_t min_z,
 // region =============================== CUDA ======================================
 #ifdef BUILD_CUDA_MODULE
 void ExtractVoxelCentersCUDA(const open3d::core::Tensor& block_indices,
-                             const open3d::core::Tensor& nb_block_indices,
-                             const open3d::core::Tensor& nb_block_masks,
                              const open3d::core::Tensor& block_keys,
                              const open3d::core::Tensor& block_values,
                              open3d::core::Tensor& voxel_centers,
@@ -88,8 +82,6 @@ void ExtractVoxelCentersCUDA(const open3d::core::Tensor& block_indices,
                              float voxel_size);
 
 void ExtractTSDFValuesAndWeightsCUDA(const open3d::core::Tensor& block_indices,
-                                     const open3d::core::Tensor& nb_block_indices,
-                                     const open3d::core::Tensor& nb_block_masks,
                                      const open3d::core::Tensor& block_values,
                                      open3d::core::Tensor& voxel_values,
                                      int64_t block_resolution);
@@ -97,14 +89,14 @@ void ExtractTSDFValuesAndWeightsCUDA(const open3d::core::Tensor& block_indices,
 void ExtractValuesInExtentCUDA(int64_t min_x, int64_t min_y, int64_t min_z,
                                int64_t max_x, int64_t max_y, int64_t max_z,
                                const open3d::core::Tensor& block_indices,
-                               const open3d::core::Tensor& nb_block_indices,
-                               const open3d::core::Tensor& nb_block_masks,
                                const open3d::core::Tensor& block_keys,
                                const open3d::core::Tensor& block_values,
                                open3d::core::Tensor& voxel_values,
                                int64_t block_resolution);
 #endif
 // endregion
+
+
 
 } // namespace tsdf
 } // namespace kernel
