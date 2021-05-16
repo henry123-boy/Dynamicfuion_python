@@ -13,7 +13,8 @@ from utils.network import get_mac_address
 # local directory as a key/value pair to the dict below
 dataset_base_by_mac_address_hash = {
     "1121160f73049dc62efd5cd3ae58daec06185e2d330e680caa46e7f66504f2bf": "/mnt/Data/Reconstruction/real_data/deepdeform",
-    "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414": "/mnt/Data/Datasets/deepdeform-limited"
+    "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414": "/mnt/Data/Datasets/deepdeform-limited",
+    "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c": "/mnt/Data/Datasets/deepdeform"
 }
 try:
     dataset_base_directory = dataset_base_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
