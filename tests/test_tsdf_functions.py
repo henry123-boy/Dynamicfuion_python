@@ -374,6 +374,7 @@ def test_extract_tsdf_values_and_weights():
 
 
 def test_update_voxel_center_values_simple_motion():
+    print_ground_truth = False
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
     # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
@@ -461,7 +462,7 @@ def test_update_voxel_center_values_simple_motion():
 
     def check_voxel_at(index):
         blended_dual_quaternion = op.dlb(voxel_center_weights[index], node_dual_quaternions_dq3d)
-        expected_point = blended_dual_quaternion.transform_point(nodes[0])
+        expected_point = blended_dual_quaternion.transform_point(voxel_centers_np[index])
         expected_u, expected_v = project(expected_point, intrinsic_matrix)
         expected_depth = depth_image[expected_u, expected_v] / 1000.
 
@@ -477,14 +478,20 @@ def test_update_voxel_center_values_simple_motion():
             weight_new = 1
             tsdf_new = (tsdf_prev * weight_prev + weight_new * tsdf) / (weight_prev + weight_new)
             weight_new = min(weight_prev + weight_new, 255)
+            if print_ground_truth:
+                print(expected_u, expected_v, cosine, tsdf_new, weight_new, sep=", ")
             assert np.allclose(voxel_tsdf_and_weights_np[index], [tsdf_new, weight_new], atol=1e-7)
+        elif print_ground_truth:
+            print(expected_u, expected_v, cosine, 0.0, 0.0, sep=", ")
 
+    if print_ground_truth:
+        print()  # output in tests often gets messed-up mildly on the first line without the newline
     for index in indices_to_test:
         check_voxel_at(index)
 
 
 def test_update_voxel_values_simple_motion():
-    device = o3c.Device.CPU
+    device = o3c.Device('cpu:0')
 
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
@@ -526,7 +533,7 @@ def test_update_voxel_values_simple_motion():
     half_image_height = image_height // 2
     # @formatter:off
     depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
-                half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
+    half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
     # @formatter:on
 
     # ---- compute normals ----
@@ -542,20 +549,25 @@ def test_update_voxel_values_simple_motion():
     # voxel_center_anchors, voxel_center_weights = \
     #     cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
     depth_image_o3d = o3d.t.geometry.Image.from_legacy_image(o3d.geometry.Image(depth_image), device=device)
-    normals_o3d = o3c.Tensor(normals, device=device)
-    intrinsic_matrix_o3d = o3c.Tensor(intrinsic_matrix, device=device)
-    extrinsic_matrix_o3d = o3c.Tensor.eye(4, device=device)
-    node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, device=device)
-    nodes_o3d = o3c.Tensor(nodes)
+    normals_o3d = o3c.Tensor(normals, dtype=o3c.Dtype.Float32, device=device)
+    intrinsic_matrix_o3d = o3c.Tensor(intrinsic_matrix, dtype=o3c.Dtype.Float32, device=device)
+    extrinsic_matrix_o3d = o3c.Tensor.eye(4, dtype=o3c.Dtype.Float32, device=device)
+    node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
+    nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32)
 
     cos_voxel_ray_to_normal = volume.integrate_warped(
-        depth_image_o3d, normals_o3d, intrinsic_matrix_o3d,
-        extrinsic_matrix_o3d, nodes_o3d, node_dual_quaternions_o3d,
-        node_coverage, 1000.0, 3.0)
+        depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
+        nodes_o3d, node_dual_quaternions_o3d, node_coverage,
+        anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+
+    cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
+
+    voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
+    voxel_tsdf_and_weights_np = voxel_tsdf_and_weights.cpu().numpy()
 
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
-    # voxel index is (0, 0, 5)
+    # voxel global position is (0, 0, 5) (in voxels)
     # voxel is, presumably, in block 3
     # voxel's index in block 0 is 5 * (8*8) = 320
     # each block holds 512 voxels
@@ -568,34 +580,22 @@ def test_update_voxel_values_simple_motion():
                        center_plane_voxel_index + 16,
                        center_plane_voxel_index + 64]
 
-    def project(point, projection_matrix):
-        uv_prime = projection_matrix.dot(point)
-        uv = uv_prime / uv_prime[2]
-        return int(round(uv[0])), int(round(uv[1]))
+    # generated using the above function.
+    # Note: if anything about the reference implementation changes, these values need to be re-computed.
+    # each array row contains:
+    # u, v, cosine, tsdf, weight
+    ground_truth_data = np.array([
+        [50, 50, 0.4970065653324127, 0.0, 0.0],
+        [71, 50, 0.9784621335214618, 0.06499883711342021, 2.0],
+        [50, 71, 0.9784621335214618, 0.06499883711342021, 2.0],
+        [50, 92, 0.9215041958391356, 0.06362117264804237, 2.0],
+        [50, 50, 0.4970065653324127, 0.0, 0.0]
+    ])
 
-    def check_voxel_at(index):
-        blended_dual_quaternion = op.dlb(voxel_center_weights[index], node_dual_quaternions_dq3d)
-        expected_point = blended_dual_quaternion.transform_point(nodes[0])
-        expected_u, expected_v = project(expected_point, intrinsic_matrix)
-        expected_depth = depth_image[expected_u, expected_v] / 1000.
+    def check_voxel_at(index, ground_truth):
+        assert math.isclose(cos_voxel_ray_to_normal[int(ground_truth[0]), int(ground_truth[1])], ground_truth[2], abs_tol=1e-7)
+        if ground_truth[2] > 0.5:
+            assert np.allclose(voxel_tsdf_and_weights_np[index], ground_truth[3:])
 
-        view_direction = -(expected_point / np.linalg.norm(expected_point))
-        normals_center = normals[expected_u, expected_v]
-        cosine = view_direction.dot(normals_center)
-        if expected_depth > 0:
-            assert math.isclose(cos_voxel_ray_to_normal[expected_u, expected_v], cosine, abs_tol=1e-7)
-        expected_psdf = expected_depth - expected_point[2]
-        if expected_depth > 0 and expected_psdf > -truncation_distance and cosine > 0.5:
-            tsdf = min(1., expected_psdf / truncation_distance)
-            tsdf_prev, weight_prev = voxel_tsdf_and_weights_np_originals[index]
-            weight_new = 1
-            tsdf_new = (tsdf_prev * weight_prev + weight_new * tsdf) / (weight_prev + weight_new)
-            weight_new = min(weight_prev + weight_new, 255)
-            assert np.allclose(voxel_tsdf_and_weights_np[index], [tsdf_new, weight_new], atol=1e-7)
-
-    for index in indices_to_test:
-        check_voxel_at(index)
-
-if __name__ == "__main__":
-    volume = construct_test_volume1()
-    values = volume.extract_values_in_extent(-2, -2, 3, 3, 3, 8)
+    for index, ground_truth in zip(indices_to_test, ground_truth_data):
+        check_voxel_at(index, ground_truth)

@@ -86,7 +86,7 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 				"[TSDFVoxelGrid] input depth is empty for integration.");
 	}
 
-	core::Tensor depth_tensor = depth.AsTensor().Contiguous();
+	core::Tensor depth_tensor = depth.AsTensor().To(core::Dtype::Float32).Contiguous();
 	core::Tensor color_tensor;
 
 	if (color.IsEmpty()) {
@@ -96,8 +96,7 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 	} else if (color.GetRows() == depth.GetRows() &&
 	           color.GetCols() == depth.GetCols() && color.GetChannels() == 3) {
 		if (attr_dtype_map_.count("color") != 0) {
-			color_tensor =
-					color.AsTensor().To(core::Dtype::Float32).Contiguous();
+			color_tensor = color.AsTensor().To(core::Dtype::Float32).Contiguous();
 		} else {
 			utility::LogWarning(
 					"[TSDFIntegrateWarped] color image is ignored since voxels do "
@@ -115,10 +114,13 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 
 	core::Tensor block_values = block_hashmap_->GetValueTensor();
 
+
+
 	core::Tensor cos_voxel_ray_to_normal;
+
 	kernel::tsdf::IntegrateWarped(
 			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
-			cos_voxel_ray_to_normal, block_resolution_, voxel_size_,
+			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
 			node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max
 	);

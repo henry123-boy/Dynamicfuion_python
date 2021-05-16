@@ -152,6 +152,7 @@ def cuda_compute_voxel_center_anchors_kernel(voxel_centers, voxel_center_anchors
     if weight_sum > 0:
         for i_anchor in range(GRAPH_K):
             voxel_center_weights[workload_index, i_anchor] /= weight_sum
+
     elif anchor_count > 0:
         for i_anchor in range(GRAPH_K):
             voxel_center_weights[workload_index, i_anchor] = 1 / anchor_count
@@ -277,14 +278,10 @@ def cuda_warp_and_project_voxel_centers(intrinsic_matrix, camera_rotation, camer
                                         voxel_centers, voxel_center_anchors, voxel_center_weights,
                                         node_transformation_dual_quaternions, workload_index):
     voxel_center = voxel_centers[workload_index]
-    voxel_x, voxel_y, voxel_z = voxel_center
+    voxel_x, voxel_y, voxel_z = voxel_center  # in meters
 
+    # transform voxel from world to camera coordinates
     voxel_camera_z = camera_rotation[2, 0] * voxel_x + camera_rotation[2, 1] * voxel_y + camera_rotation[2, 2] * voxel_z + camera_translation[2]
-    if voxel_camera_z < 0:
-        return -1, -1, math.nan, math.nan, math.nan
-
-    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
-
     voxel_camera_x = camera_rotation[0, 0] * voxel_x + camera_rotation[0, 1] * voxel_y + camera_rotation[0, 2] * voxel_z + camera_translation[0]
     voxel_camera_y = camera_rotation[1, 0] * voxel_x + camera_rotation[1, 1] * voxel_y + camera_rotation[1, 2] * voxel_z + camera_translation[1]
 
@@ -315,8 +312,11 @@ def cuda_warp_and_project_voxel_centers(intrinsic_matrix, camera_rotation, camer
     if warped_voxel_z <= 0:
         return -1, -1, math.nan, math.nan, math.nan
 
+    # project
+    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
     du = int32(round(fx * (warped_voxel_x / warped_voxel_z) + cx))
     dv = int32(round(fy * (warped_voxel_y / warped_voxel_z) + cy))
+
     return du, dv, warped_voxel_x, warped_voxel_y, warped_voxel_z
 
 
@@ -389,7 +389,6 @@ def cuda_update_warped_voxel_center_tsdf_and_weights_kernel(weights_and_tsdf, co
 
     depth_image_height, depth_image_width = depth_image.shape[:2]
 
-    weights_and_tsdf[workload_index] = du, dv
     if 0 < du < depth_image_width and 0 < dv < depth_image_height:
         depth = depth_image[dv, du] / 1000.
         psdf = depth - warped_voxel_z
@@ -397,6 +396,7 @@ def cuda_update_warped_voxel_center_tsdf_and_weights_kernel(weights_and_tsdf, co
         view_direction_x, view_direction_y, view_direction_z = normalize(warped_voxel_x, warped_voxel_y, warped_voxel_z)
         view_direction_x, view_direction_y, view_direction_z = -view_direction_x, -view_direction_y, -view_direction_z
         dn_x, dn_y, dn_z = normals[dv, du, 0], normals[dv, du, 1], normals[dv, du, 2]
+
         cosine = dot(dn_x, dn_y, dn_z, view_direction_x, view_direction_y, view_direction_z)
 
         cos_voxel_ray_to_normal[dv, du] = depth
