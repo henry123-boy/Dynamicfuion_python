@@ -97,11 +97,9 @@ if(Open3D_DIR)
     set(Open3D_DIRECTIVE "Open3D_DIR=${Open3D_DIR}")
 endif()
 
-# TODO:  CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS}
-
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${CMAKE_COMMAND} -E env "${Open3D_DIRECTIVE}" ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR}
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
