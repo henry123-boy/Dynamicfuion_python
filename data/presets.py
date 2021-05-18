@@ -20,6 +20,8 @@ class StandaloneFramePreset(Enum):
 class FrameSequencePreset(Enum):
     RED_SHORTS_40 = FrameSequenceDataset(14, DataSplit.VALIDATION, frame_count=40, has_masks=False)
     RED_SHORTS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=False)
+    BERLIN_50 = FrameSequenceDataset(70, DataSplit.TRAIN, frame_count=50, has_masks=False)
+    BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False)
 # TODO: fix loading of custom sequences
 #    MINION = FrameSequenceDataset(base_dataset_type=DatasetType.CUSTOM,
 #                                  custom_frame_directory="/mnt/Data/Reconstruction/real_data/minion/data")

@@ -30,7 +30,7 @@ def main():
     data_split = "val"
     sequence_index = 14
     frames_directory = os.path.join(options.dataset_base_directory, f"{data_split}/seq{sequence_index:03d}/")
-    frame_index = 200
+    frame_index = 000
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
     color_image_path = color_image_filename_mask.format(frame_index)
     depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
@@ -89,8 +89,7 @@ def main():
                                       lookat=[0, 0, 1.5],
                                       up=[0, -1.0, 0],
                                       zoom=0.7)
-
-    o3d.io.write_triangle_mesh("../output/mesh_{:06d}_red_shorts.ply".format(frame_index), mesh)
+    o3d.io.write_triangle_mesh(os.path.join(options.output_directory, f"mesh_{frame_index:06d}_red_shorts.ply"), mesh)
 
     return PROGRAM_EXIT_SUCCESS
 
