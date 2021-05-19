@@ -546,8 +546,6 @@ def test_update_voxel_values_simple_motion():
     # ---- compute updates ----
     truncation_distance = 0.02  # same value as in construct_test_volume1
     node_coverage = 0.05
-    # voxel_center_anchors, voxel_center_weights = \
-    #     cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
     depth_image_o3d = o3d.t.geometry.Image.from_legacy_image(o3d.geometry.Image(depth_image), device=device)
     normals_o3d = o3c.Tensor(normals, dtype=o3c.Dtype.Float32, device=device)
     intrinsic_matrix_o3d = o3c.Tensor(intrinsic_matrix, dtype=o3c.Dtype.Float32, device=device)

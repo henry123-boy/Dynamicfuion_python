@@ -8,12 +8,15 @@ import sys
 
 # 3rd-party
 import open3d as o3d
+import open3d.core as o3c
+from dq3d import dualquat, quat
 
 # local
 import options as opt
 import nnrt
 from data import camera
 from data import *
+from pipeline.numba_cuda.preprocessing import cuda_compute_normal
 from pipeline.renderer import Renderer
 from utils import image, voxel_grid
 from model.model import DeformNet
@@ -82,8 +85,8 @@ def main() -> int:
     if print_intrinsics:
         camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
-    intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
-    extrinsics_gpu = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
+    intrinsics_open3d_cuda = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
+    extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
     # endregion
     #####################################################################################################
     # region === initialize data structures ===
@@ -91,7 +94,7 @@ def main() -> int:
 
     volume = voxel_grid.make_default_tsdf_voxel_grid(device)
     deformation_graph: typing.Union[graph.DeformationGraph, None] = None
-    renderer = Renderer(input_image_size, device, intrinsics_open3d_gpu)
+    renderer = Renderer(input_image_size, device, intrinsics_open3d_cuda)
 
     for current_frame in sequence:
         #####################################################################################################
@@ -111,10 +114,7 @@ def main() -> int:
         color_image_open3d = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
 
         if current_frame.frame_index == 0:
-            first_color_image = color_image_np
-            first_depth_image = depth_image_np
-
-            volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_gpu, extrinsics_gpu, 1000.0, 3.0)
+            volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, 1000.0, 3.0)
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
             mesh.compute_vertex_normals()
 
@@ -136,10 +136,15 @@ def main() -> int:
                 opt.image_height, opt.image_width,
                 cropper=cropper
             )
+            # TODO: the back-projection is repeated here -- it already is done in DeformDataset.prepare_pytorch_input,
+            #  but then the cropping is applied. The back-projection can be done just once in order to optimize this,
+            #  then the rest of the ops in prepare_pytorch_input applied to it.
+            point_image = nnrt.backproject_depth_ushort(depth_image_np, fx, fy, cx, cy, 1000.0)
+            normals = cuda_compute_normal(point_image)
+            normals_o3d = o3c.Tensor(normals, dtype=o3c.Dtype.Float32, device=device)
 
-            mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-            mesh.compute_vertex_normals()
-
+            # TODO: again, this is re-done in `source, _, cropper = DeformDataset.prepare_pytorch_input(`
+            #  can be optimized
             source_point_image = nnrt.backproject_depth_ushort(rendered_depth, fx, fy, cx, cy, options.depth_scale)
             vertex_positions = np.array(mesh.vertices)
 
@@ -157,8 +162,7 @@ def main() -> int:
             )
             adjusted_intrinsics_numpy = np.array([fx, fy, cx, cy], dtype=np.float32)
 
-            # TODO: not sure how this is used yet
-            num_nodes = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
+            node_count = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
 
             source_cuda = torch.from_numpy(source).cuda().unsqueeze(0)
             target_cuda = torch.from_numpy(target).cuda().unsqueeze(0)
@@ -170,7 +174,7 @@ def main() -> int:
             pixel_weights_cuda = torch.from_numpy(pixel_weights).cuda().unsqueeze(0)
             intrinsics_cuda = torch.from_numpy(adjusted_intrinsics_numpy).cuda().unsqueeze(0)
 
-            num_nodes_cuda = torch.from_numpy(num_nodes).cuda().unsqueeze(0)
+            num_nodes_cuda = torch.from_numpy(node_count).cuda().unsqueeze(0)
 
             with torch.no_grad():
                 model_data = model(
@@ -182,16 +186,30 @@ def main() -> int:
                 )
 
             # Get some of the results
-            rotations_pred = model_data["node_rotations"].view(num_nodes, 3, 3).cpu().numpy()
-            translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
+            rotations_pred = model_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
+            translations_pred = model_data["node_translations"].view(node_count, 3).cpu().numpy()
 
-            # TODO: use rotations_pred and translations_pred to update graph!
+            # use the resulting frame transformation predictions to update the global, cumulative node transformations
+            for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
+                node_frame_transform = dualquat(quat(rotation), translation)
+                deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
 
+            # TODO: not sure what the mask is used for
             mask_pred = model_data["mask_pred"]
             assert mask_pred is not None, "Make sure use_mask=True in options.py"
             mask_pred = mask_pred.view(-1, opt.image_height, opt.image_width).cpu().numpy()
 
-            # TODO: fuse data into the TSDF (check last method in tests/test_tsdf_functions.py) !
+            # prepare data for Open3D integration
+            node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations])
+            node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
+            nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32)
+
+            cos_voxel_ray_to_normal = volume.integrate_warped(
+                depth_image_open3d, color_image_open3d, normals_o3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda,
+                nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
+                anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+
+            # TODO: not sure how the cos_voxel_ray_to_normal can be useful. Check BaldrLector's NeuralTracking fork code.
 
     return PROGRAM_EXIT_SUCCESS
 
