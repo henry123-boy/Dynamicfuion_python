@@ -122,6 +122,7 @@ def main() -> int:
             deformation_graph = graph.build_deformation_graph_from_mesh(mesh, options.node_coverage)
         else:
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+            # TODO: perform topological graph update
             warped_mesh = deformation_graph.warp_mesh(mesh, options.node_coverage)
 
             rendered_depth, rendered_color = renderer.render_mesh(warped_mesh, depth_scale=options.depth_scale)
@@ -189,6 +190,8 @@ def main() -> int:
             mask_pred = model_data["mask_pred"]
             assert mask_pred is not None, "Make sure use_mask=True in options.py"
             mask_pred = mask_pred.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+
+            # TODO: fuse data into the TSDF (check last method in tests/test_tsdf_functions.py) !
 
     return PROGRAM_EXIT_SUCCESS
 
