@@ -117,12 +117,18 @@ class DeformDataset(Dataset):
         return self.labels[index]
 
     @staticmethod
-    def prepare_pytorch_input(color_image, depth_image, intrinsics, input_height, input_width, cropper=None,
-                              max_boundary_dist=0.1, compute_boundary_mask=False):
+    def prepare_pytorch_input(color_image: np.ndarray, depth_or_point_image: np.ndarray,
+                              intrinsics: dict, input_height: int, input_width: int, cropper=None,
+                              max_boundary_dist: float = 0.1, compute_boundary_mask: bool = False):
         # Backproject depth image.
-        depth_image = image_utils.backproject_depth(depth_image, intrinsics["fx"], intrinsics["fy"], intrinsics["cx"], intrinsics["cy"])  # (3, h, w)
-        depth_image = depth_image.astype(np.float32)
-        depth_image = np.moveaxis(depth_image, 0, -1)
+        if len(depth_or_point_image.shape) == 2:
+            depth_or_point_image = image_utils.backproject_depth(depth_or_point_image,
+                                                                 intrinsics["fx"], intrinsics["fy"],
+                                                                 intrinsics["cx"], intrinsics["cy"])  # (h, w, 3)
+            point_image = depth_or_point_image.astype(np.float32)
+        else:
+            assert len(depth_or_point_image.shape) == 3 and depth_or_point_image.shape[2] == 3
+            point_image = depth_or_point_image
 
         image_size = color_image.shape[:2]
 
@@ -131,7 +137,7 @@ class DeformDataset(Dataset):
             cropper = StaticCenterCrop(image_size, (input_height, input_width))
 
         color_image = cropper(color_image)
-        depth_image = cropper(depth_image)
+        point_image = cropper(point_image)
 
         # Construct the final image by converting uint RGB to float RGB
         # and stitching RGB+XYZ in the first axis.
@@ -140,13 +146,13 @@ class DeformDataset(Dataset):
         image[:3, :, :] = np.moveaxis(color_image, -1, 0) / 255.0  # (3, h, w)
 
         assert np.max(image[:3, :, :]) <= 1.0, np.max(image[:3, :, :])
-        image[3:, :, :] = np.moveaxis(depth_image, -1, 0)  # (3, h, w)
+        image[3:, :, :] = np.moveaxis(point_image, -1, 0)  # (3, h, w)
 
         if not compute_boundary_mask:
             return image, None, cropper
         else:
             assert max_boundary_dist
-            boundary_mask = image_utils.compute_boundary_mask(depth_image, max_boundary_dist)
+            boundary_mask = image_utils.compute_boundary_mask(depth_or_point_image, max_boundary_dist)
             return image, boundary_mask, cropper
 
     @staticmethod

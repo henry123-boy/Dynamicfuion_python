@@ -88,7 +88,7 @@ def create_graph_data_using_depth(depth_image_path,max_triangle_distance=0.05,er
     depth_image = depth_image * mask_image
 
     # Backproject depth images into 3D.
-    point_image = image.backproject_depth(depth_image, fx, fy, cx, cy, normalizer=DEPTH_NORMALIZER)
+    point_image = image.backproject_depth(depth_image, fx, fy, cx, cy, depth_scale=DEPTH_NORMALIZER)
     point_image = point_image.astype(np.float32)
     # Convert depth image into mesh, using pixelwise connectivity.
     # We also compute flow values, and invalidate any vertex with non-finite

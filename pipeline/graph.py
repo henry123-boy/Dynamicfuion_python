@@ -103,7 +103,7 @@ class DeformationGraph:
         i_vertex = 0
         deformed_vertices = np.zeros_like(vertices)
         for vertex in vertices:
-            vertex_anchor_quaternions = self.transformations[vertex_anchors[i_vertex]]
+            vertex_anchor_quaternions = [self.transformations[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
             vertex_anchor_weights = vertex_weights[i_vertex]
             deformed_vertices[i_vertex] = op.dlb(vertex_anchor_weights, vertex_anchor_quaternions).transform_point(vertex)
             i_vertex += 1

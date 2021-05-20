@@ -330,18 +330,17 @@ def backproject_depth_py(depth_image, fx, fy, cx, cy, normalizer=1000.0):
     return point_image
 
 
-def backproject_depth(depth_image, fx, fy, cx, cy, normalizer=1000.0):
+def backproject_depth(depth_image, fx, fy, cx, cy, depth_scale=1000.0):
     assert len(depth_image.shape) == 2
     width = depth_image.shape[1]
     height = depth_image.shape[0]
 
     if depth_image.dtype == np.float32:
-        point_image = np.zeros((3, height, width), dtype=np.float32)
+        point_image = np.zeros((height, width, 3), dtype=np.float32)
         backproject_depth_float_c(depth_image, point_image, fx, fy, cx, cy)
     else:
         point_image = np.zeros((height, width, 3), dtype=np.float32)
-        backproject_depth_ushort_c(depth_image, point_image, fx, fy, cx, cy, normalizer)
-        point_image = np.moveaxis(point_image, -1, 0)
+        backproject_depth_ushort_c(depth_image, point_image, fx, fy, cx, cy, depth_scale)
     return point_image
 
 

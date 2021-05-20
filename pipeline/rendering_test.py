@@ -31,7 +31,7 @@ def main():
     torch_device = torch.device("cuda:0")
 
     vertices_numpy = np.array(mesh.vertices, dtype=np.float32)
-    vertex_colors_numpy = np.ascontiguousarray(np.fliplr(np.array(mesh.vertex_colors, dtype=np.float32)))
+    vertex_colors_numpy = np.fliplr(np.array(mesh.vertex_colors, dtype=np.float32)).copy()
     faces_numpy = np.array(mesh.triangles, dtype=np.int64)
 
     vertices_torch = torch.from_numpy(vertices_numpy).cuda().unsqueeze(0)
