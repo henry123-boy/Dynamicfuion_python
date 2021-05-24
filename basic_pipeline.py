@@ -12,12 +12,11 @@ import open3d.core as o3c
 from dq3d import dualquat, quat
 
 # local
-import options as opt
 import nnrt
 from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
-from pipeline.renderer import Renderer
+from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
 from utils import image, voxel_grid
 from model.model import DeformNet
 from model.default import load_default_nnrt_model
@@ -96,7 +95,7 @@ def main() -> int:
 
     volume = voxel_grid.make_default_tsdf_voxel_grid(device)
     deformation_graph: typing.Union[DeformationGraph, None] = None
-    renderer = Renderer(input_image_size, device, intrinsics_open3d_cuda)
+    renderer = PyTorch3DRenderer(input_image_size, device, intrinsics_open3d_cuda)
 
     for current_frame in sequence:
         #####################################################################################################
@@ -123,6 +122,8 @@ def main() -> int:
             # === Construct initial deformation graph
             deformation_graph = build_deformation_graph_from_mesh(mesh, options.node_coverage)
         else:
+            # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via dlpack for rendering).
+            #  Conversion to legacy mesh can be delegated to before visualization, and only if visualizate_meshes is set to True.
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
             if visualize_meshes:
                 o3d.visualization.draw_geometries([mesh],

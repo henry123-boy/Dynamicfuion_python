@@ -2,7 +2,7 @@ import sys
 import cv2
 import numpy as np
 import torch
-import torch.utils
+import torch.utils.dlpack as torch_dlpack
 import os
 import typing
 
@@ -15,11 +15,13 @@ from pytorch3d.renderer.lighting import PointLights
 from pytorch3d.structures.meshes import Meshes
 
 
-def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matrix: np.ndarray) -> torch.Tensor:
+def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matrix: np.ndarray,
+                              torch_device: torch.device) -> torch.Tensor:
     """
     Makes an intrinsic matrix in NDC (normalized device coordinates) coordinate system
     :param image_size: size of the output image, (height, width)
     :param intrinsic_matrix: 3x3 or 4x4 projection matrix of the camera
+    :param torch_device: device on which to initialize the intrinsic matrix
     :return:
     """
 
@@ -40,11 +42,11 @@ def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matr
     ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
                                           [0.0, fy, py, 0.0],
                                           [0.0, 0.0, 0.0, -1.0],
-                                          [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32)
+                                          [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32, device=torch_device)
     return ndc_intrinsic_matrix
 
 
-class Renderer:
+class PyTorch3DRenderer:
     def __init__(self, image_size: typing.Tuple[int, int], device: o3c.Device, intrinsic_matrix: o3c.Tensor):
         """
         Construct a renderer to render to the specified size using the specified device and projective camera intrinsics.
@@ -52,17 +54,17 @@ class Renderer:
         :param device: the device to use for rendering
         :param intrinsic_matrix: a 3x3 or 4x4 intrinsics tensor
         """
-        if device.DeviceType is o3c.Device.CUDA:
+        if device.get_type() == o3c.Device.DeviceType.CUDA:
             self.torch_device = torch.device("cuda:0")
         else:
             self.torch_device = torch.device("cpu:0")
         self.lights = PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
                                   specular_color=((0.0, 0.0, 0.0),), device=self.torch_device, location=[[0.0, 0.0, -3.0]])
 
-        self.K = make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy())
+        self.K = make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
         self.cameras: PerspectiveCameras \
             = PerspectiveCameras(device=self.torch_device,
-                                 R=(torch.eye(3, dtype=torch.float32)).unsqueeze(0),
+                                 R=(torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0),
                                  T=torch.zeros((1, 3), dtype=torch.float32, device=self.torch_device),
                                  K=self.K)
 
@@ -106,11 +108,11 @@ class Renderer:
 
         meshes_torch3d = Meshes(vertices_torch, faces_torch, textures)
 
-        extrinsics_torch: torch.Tensor = torch.utils.dlpack.from_dlpack(extrinsics.to_dlpack())
-        camera_rotation = (extrinsics_torch[:3, :3]).unsqueeze(0)
-        camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3)).unsqueeze(0)
-
         if extrinsics is not None:
+            extrinsics_torch: torch.Tensor = torch_dlpack.from_dlpack(extrinsics.to_dlpack())
+            camera_rotation = (extrinsics_torch[:3, :3]).unsqueeze(0)
+            camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3)).unsqueeze(0)
+
             # when given extrinsics, reconstruct the camera
             self.cameras: PerspectiveCameras \
                 = PerspectiveCameras(device=self.torch_device,
