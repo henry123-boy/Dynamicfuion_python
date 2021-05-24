@@ -124,6 +124,8 @@ def main() -> int:
         else:
             # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via dlpack for rendering).
             #  Conversion to legacy mesh can be delegated to before visualization, and only if visualizate_meshes is set to True.
+            #  The first setp is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
+            #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
             if visualize_meshes:
                 o3d.visualization.draw_geometries([mesh],

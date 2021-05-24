@@ -130,7 +130,7 @@ class PyTorch3DRenderer:
                 )
             )
         fragments = self.rasterizer.forward(meshes_torch3d)
-        rendered_depth = fragments.zbuf.cpu().numpy().reshape(480, 640, 1)
+        rendered_depth = fragments.zbuf.cpu().numpy().reshape(480, 640)
         rendered_depth[rendered_depth == -1.0] = 0.0
         rendered_depth *= depth_scale
 

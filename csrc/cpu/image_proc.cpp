@@ -363,18 +363,18 @@ void extend3(py::array_t<bool>& in, py::array_t<bool>& out) {
 }
 
 void backproject_depth_ushort(py::array_t<unsigned short>& image_in, py::array_t<float>& point_image_out,
-                              float fx, float fy, float cx, float cy, float normalizer) {
+                              const float fx, const float fy, const float cx, const float cy, const float normalizer) {
 	assert(image_in.ndim() == 2);
 	assert(point_image_out.ndim() == 3);
 
-	int width = image_in.shape(1);
-	int height = image_in.shape(0);
+	const int width = image_in.shape(1);
+	const int height = image_in.shape(0);
 
 	assert(point_image_out.shape(0) == height);
 	assert(point_image_out.shape(1) == width);
 	assert(point_image_out.shape(2) == 3);
 
-#pragma omp parallel for
+#pragma omp parallel for default(none) shared(image_in, point_image_out) firstprivate(height, width, fx, fy, cx, cy, normalizer)
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float depth = float(*image_in.data(y, x)) / normalizer;
@@ -410,7 +410,7 @@ void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& p
 	assert(point_image_out.shape(1) == height);
 	assert(point_image_out.shape(2) == width);
 
-#pragma omp parallel for
+#pragma omp parallel for default(none) shared(image_in, point_image_out) firstprivate(height, width, fx, fy, cx, cy)
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			float depth = *image_in.data(y, x);
@@ -420,9 +420,9 @@ void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& p
 				float pos_y = depth * (static_cast<float>(y) - cy) / fy;
 				float pos_z = depth;
 
-				*point_image_out.mutable_data(0, y, x) = pos_x;
-				*point_image_out.mutable_data(1, y, x) = pos_y;
-				*point_image_out.mutable_data(2, y, x) = pos_z;
+				*point_image_out.mutable_data(y, x, 0) = pos_x;
+				*point_image_out.mutable_data(y, x, 1) = pos_y;
+				*point_image_out.mutable_data(y, x, 2) = pos_z;
 			}
 		}
 	}

@@ -98,6 +98,8 @@ class DeformationGraph:
         return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
     def warp_mesh(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
+        # TODO: provide an equivalent routine for o3d.t.geometry.TriangleMesh on CUDA, so that we don't have to convert
+        #  to legacy mesh at all
         vertices = np.array(mesh.vertices)
         vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(self.nodes, vertices, node_coverage)
         i_vertex = 0
@@ -109,8 +111,8 @@ class DeformationGraph:
             i_vertex += 1
 
         mesh_warped = o3d.geometry.TriangleMesh(o3d.cuda.pybind.utility.Vector3dVector(deformed_vertices), mesh.triangles)
+        mesh_warped.vertex_colors = mesh.vertex_colors
         return mesh_warped
-
 
 
 def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
@@ -155,7 +157,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
                                      depth_image.shape[0] // downsampling_factor,
                                      2.0, 0.05, 3.0)
     clusters = find_knn_graph_connected_components(knn_edges=edges)
-    return DeformationGraph(node_positions, edges, np.array([1]*len(edges)),  clusters)
+    return DeformationGraph(node_positions, edges, np.array([1] * len(edges)), clusters)
 
 
 def draw_deformation_graph(deformation_graph: DeformationGraph,
