@@ -10,6 +10,7 @@ import sys
 import open3d as o3d
 import open3d.core as o3c
 from dq3d import dualquat, quat
+from pynvml import *
 
 # local
 import nnrt
@@ -49,7 +50,18 @@ def reset(visualizer: o3d.pybind.visualization.VisualizerWithKeyCallback) -> Non
     view_control.reset_camera_local_rotate()
 
 
+# __DEBUG
+def print_cuda_memory_info():
+    device_handle = nvmlDeviceGetHandleByIndex(0)
+    info = nvmlDeviceGetMemoryInfo(device_handle)
+    print(f'total    : {info.total}')
+    print(f'free     : {info.free}')
+    print(f'used     : {info.used}')
+
+
 def main() -> int:
+    # __DEBUG
+    nvmlInit()
     #####################################################################################################
     # region ==== options ====
     #####################################################################################################
