@@ -4,8 +4,10 @@ import os
 import sys
 import open3d as o3d
 import numpy as np
+import re
 
 from data import camera
+from data.presets import StandaloneFramePreset, StandaloneFrameDataset
 import options
 from utils.voxel_grid import make_default_tsdf_voxel_grid
 
@@ -26,24 +28,25 @@ def main():
 
     device = o3d.core.Device('cuda:0')
 
-    # === compile image paths ===
-    data_split = "val"
-    sequence_index = 14
-    frames_directory = os.path.join(options.dataset_base_directory, f"{data_split}/seq{sequence_index:03d}/")
-    frame_index = 000
-    color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
-    color_image_path = color_image_filename_mask.format(frame_index)
-    depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
-    depth_image_path = depth_image_filename_mask.format(frame_index)
+    # === dataset ===
+    preset: StandaloneFramePreset = StandaloneFramePreset.BERLIN_0
+    # preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_0
 
-    mask_image_folder = frames_directory + "mask"
-    if segment is None:
-        segment = os.path.splitext(os.listdir(mask_image_folder)[0])[0].split('_')[1]
-    mask_image_path = os.path.join(mask_image_folder, "{:06d}_{:s}.png".format(frame_index, segment))
+    dataset: StandaloneFrameDataset = preset.value
+    dataset_name = preset.name
+    # remove digit from end & make lowercase
+    match = re.search(r'\w+(_\d+)', dataset_name)
+    if match is not None:
+        dataset_name = dataset_name[:-len(match.group(1))]
+    dataset_name = dataset_name.lower()
+
+    depth_image_path = dataset.get_depth_image_path()
+    color_image_path = dataset.get_color_image_path()
+    mask_image_path = dataset.get_mask_image_path()
 
     # === handle intrinsics ===
 
-    depth_intrinsics_path = os.path.join(options.dataset_base_directory, frames_directory, "intrinsics.txt")
+    depth_intrinsics_path = dataset.get_intrinsics_path()
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -89,7 +92,7 @@ def main():
                                       lookat=[0, 0, 1.5],
                                       up=[0, -1.0, 0],
                                       zoom=0.7)
-    o3d.io.write_triangle_mesh(os.path.join(options.output_directory, f"mesh_{frame_index:06d}_red_shorts.ply"), mesh)
+    o3d.io.write_triangle_mesh(os.path.join(options.output_directory, f"mesh_{dataset.frame_index:06d}_{dataset_name}.ply"), mesh)
 
     return PROGRAM_EXIT_SUCCESS
 

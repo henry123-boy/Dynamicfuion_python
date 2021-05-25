@@ -111,6 +111,9 @@ void ExtractVoxelCentersCPU
 				voxel_center_pointer[2] = static_cast<float>(z_block * block_resolution + z_voxel) * voxel_size;
 			}
 	);
+#if defined(__CUDACC__)
+	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 }
 
 #if defined(__CUDACC__)
@@ -188,6 +191,9 @@ void ExtractTSDFValuesAndWeightsCPU
 				);
 			}
 	);
+#if defined(__CUDACC__)
+	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 }
 
 
@@ -297,6 +303,9 @@ void ExtractValuesInExtentCPU(
 				);
 			}
 	);
+#if defined(__CUDACC__)
+	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 }
 
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
@@ -553,6 +562,9 @@ void IntegrateWarpedCPU(
 				); // end LaunchGeneralKernel call
 			} // end lambda
 	); // end DISPATCH_BYTESIZE_TO_VOXEL macro call
+#if defined(__CUDACC__)
+	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 }
 
 

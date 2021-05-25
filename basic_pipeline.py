@@ -68,7 +68,7 @@ def main() -> int:
 
     # We will overwrite the default value in options.py / settings.py
     options.use_mask = True
-    options.gn_max_nodes = 1500
+    options.gn_max_nodes = 3000
 
     # internal verbosity options
     print_frame_info = True
@@ -117,10 +117,15 @@ def main() -> int:
             print("Processing frame:", current_frame.frame_index)
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
+        #__DEBUG
+        print_cuda_memory_info()
 
         depth_image_open3d_legacy = o3d.io.read_image(current_frame.depth_image_path)
         depth_image_np = np.array(depth_image_open3d_legacy)
-        depth_image_open3d = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
+        # __DEBUG (limit the number of nodes)
+        depth_image_np[depth_image_np > 2400] = 0
+        depth_image_open3d = o3d.t.geometry.Image(o3c.Tensor(depth_image_np, device=device))
+        # depth_image_open3d = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
 
         color_image_open3d_legacy = o3d.io.read_image(current_frame.color_image_path)
         color_image_np = np.array(color_image_open3d_legacy)
@@ -241,6 +246,7 @@ def main() -> int:
                 depth_image_open3d, color_image_open3d, target_normal_map_o3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+
             # endregion
             #####################################################################################################
             # TODO: not sure how the cos_voxel_ray_to_normal can be useful. Check BaldrLector's NeuralTracking fork code.
