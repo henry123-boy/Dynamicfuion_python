@@ -4,6 +4,7 @@ from typing import Tuple
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
+import pytest
 from dq3d import quat, dualquat, op
 
 import nnrt
@@ -43,7 +44,7 @@ def construct_intrinsic_matrix1_4x4():
     return intrinsics
 
 
-def construct_test_volume1(device=o3d.core.Device('cpu:0')):
+def construct_test_volume1(device=o3d.core.Device('cuda:0')):
     # initialize volume
     voxel_size = 0.01  # 1 cm voxel size
     sdf_truncation_distance = 0.02  # truncation distance = 2cm
@@ -83,8 +84,9 @@ def construct_test_volume1(device=o3d.core.Device('cpu:0')):
     return volume
 
 
-def test_tsdf_value_extraction():
-    volume = construct_test_volume1()
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_tsdf_value_extraction(device):
+    volume = construct_test_volume1(device)
     values = volume.extract_values_in_extent(-2, -2, 3, 3, 3, 8)
 
     values_np = values.cpu().numpy()
@@ -128,8 +130,9 @@ def test_tsdf_value_extraction():
     assert np.allclose(values_np[4, :, :], expected_fifth_slice, atol=1e-6)
 
 
-def test_voxel_center_extraction():
-    volume = construct_test_volume1()
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_voxel_center_extraction(device):
+    volume = construct_test_volume1(device)
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
 
@@ -151,14 +154,15 @@ def test_voxel_center_extraction():
     assert np.allclose(voxel_centers_np[voxel_z_plus_two_index], [0.00, 0.00, 0.07])
 
 
-def test_compute_voxel_center_anchors():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_compute_voxel_center_anchors(device):
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
     nodes = np.array([[0.0, 0.0, 0.05],
                       [0.02, 0.0, 0.05]],
                      dtype=np.float32)
 
-    volume = construct_test_volume1()
+    volume = construct_test_volume1(device)
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
 
@@ -207,7 +211,8 @@ def test_compute_voxel_center_anchors():
     assert np.allclose(voxel_center_weights[voxel_z_plus_two_index], expected_weights_remaining_pts)
 
 
-def test_compute_psdf_voxel_centers_static():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_compute_psdf_voxel_centers_static(device):
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
     # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
@@ -219,7 +224,7 @@ def test_compute_psdf_voxel_centers_static():
                       [0.00, -0.02, 0.05]],
                      dtype=np.float32)
 
-    volume = construct_test_volume1()
+    volume = construct_test_volume1(device)
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
 
@@ -264,7 +269,8 @@ def test_compute_psdf_voxel_centers_static():
     assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
 
 
-def test_compute_psdf_voxel_centers_simple_motion():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_compute_psdf_voxel_centers_simple_motion(device):
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
     # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
@@ -276,7 +282,7 @@ def test_compute_psdf_voxel_centers_simple_motion():
                       [0.00, -0.02, 0.05]],
                      dtype=np.float32)
 
-    volume = construct_test_volume1()
+    volume = construct_test_volume1(device)
     voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
     voxel_centers_np = voxel_centers.cpu().numpy()
 
@@ -354,8 +360,9 @@ def test_compute_psdf_voxel_centers_simple_motion():
         assert math.isclose(psdf, expected_psdf, abs_tol=1e-8)
 
 
-def test_extract_tsdf_values_and_weights():
-    volume = construct_test_volume1()
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_extract_tsdf_values_and_weights(device):
+    volume = construct_test_volume1(device)
     voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
     voxel_tsdf_and_weights_np = voxel_tsdf_and_weights.cpu().numpy()
 
@@ -373,7 +380,8 @@ def test_extract_tsdf_values_and_weights():
     assert np.allclose(voxel_tsdf_and_weights_np[voxel_z_plus_one_index], [-0.5, 1.0], atol=1e-6)
 
 
-def test_update_voxel_center_values_simple_motion():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_update_voxel_center_values_simple_motion(device):
     print_ground_truth = False
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
@@ -490,7 +498,8 @@ def test_update_voxel_center_values_simple_motion():
         check_voxel_at(index)
 
 
-def test_update_voxel_values_simple_motion():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_update_voxel_values_simple_motion(device):
     device = o3c.Device('cpu:0')
 
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))

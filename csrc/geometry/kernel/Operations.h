@@ -21,7 +21,7 @@ namespace nnrt{
 namespace geometry{
 namespace kernel{
 template<typename T>
-CPU_OR_CUDA T squared_euclidean_distance_3D(T point_a_x, T point_a_y, T point_a_z, T point_b_x, T point_b_y, T point_b_z){
+NNRT_CPU_OR_CUDA_DEVICE T squared_euclidean_distance_3D(T point_a_x, T point_a_y, T point_a_z, T point_b_x, T point_b_y, T point_b_z){
 	T dist_x = point_b_x - point_a_x;
 	T dist_y = point_b_y - point_a_y;
 	T dist_z = point_b_z - point_a_z;

@@ -246,7 +246,6 @@ def main() -> int:
                 depth_image_open3d, color_image_open3d, target_normal_map_o3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
-
             # endregion
             #####################################################################################################
             # TODO: not sure how the cos_voxel_ray_to_normal can be useful. Check BaldrLector's NeuralTracking fork code.

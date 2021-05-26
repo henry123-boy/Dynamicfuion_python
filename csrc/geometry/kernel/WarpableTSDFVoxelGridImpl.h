@@ -308,10 +308,41 @@ void ExtractValuesInExtentCPU(
 #endif
 }
 
+template<typename TLambdaRetrieveNode>
+NNRT_CPU_OR_CUDA_DEVICE
+void FindKNNAnchorsBruteForce(int* anchor_indices, float* squared_distances, const int anchor_count,
+							  const int n_nodes, const Eigen::Vector3f& voxel_global_metric,
+							  TLambdaRetrieveNode&& retrieve_node){
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		squared_distances[i_anchor] = INFINITY;
+	}
+	int max_at_index = 0;
+	float max_squared_distance = INFINITY;
+	for (int i_node = 0; i_node < n_nodes; i_node++) {
+		Eigen::Vector3f node = retrieve_node(i_node);
+		float squared_distance = (node - voxel_global_metric).squaredNorm();
+
+		if (squared_distance < max_squared_distance) {
+			squared_distances[max_at_index] = squared_distance;
+			anchor_indices[max_at_index] = i_node;
+
+			//update the maximum distance within current anchor nodes
+			max_at_index = 0;
+			max_squared_distance = squared_distances[max_at_index];
+			for (int i_anchor = 1; i_anchor < anchor_count; i_anchor++) {
+				if (squared_distances[i_anchor] > max_squared_distance) {
+					max_at_index = i_anchor;
+					max_squared_distance = squared_distances[i_anchor];
+				}
+			}
+		}
+	}
+}
+
+
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
 void IntegrateWarpedCUDA(
 #else
-
 void IntegrateWarpedCPU(
 #endif
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
@@ -413,32 +444,14 @@ void IntegrateWarpedCPU(
 				// region ===================== FIND ANCHOR POINTS ================================
 				int anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				float* squared_distances = anchor_weights;
-				for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-					anchor_weights[i_anchor] = INFINITY;
-				}
-				int max_at_index = 0;
-
-				// find anchor_count nearest node indices and record these as anchors
-				for (int64_t i_node = 0; i_node < n_nodes; i_node++) {
-					auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
-					Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-					float squared_distance = (node - voxel_global_metric).squaredNorm();
-
-					if (squared_distance < squared_distances[max_at_index]) {
-						squared_distances[max_at_index] = squared_distance;
-						anchor_indices[max_at_index] = i_node;
-
-						// update the maximum distance for current anchors
-						float max_distance = squared_distances[0];
-						for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-							if (squared_distances[i_anchor] > max_distance) {
-								max_at_index = i_anchor;
-								max_distance = squared_distances[i_anchor];
-							}
-						}
-					}
-				}
+				FindKNNAnchorsBruteForce(anchor_indices, anchor_weights, anchor_count,
+				                         n_nodes, voxel_global_metric,
+				                         [&node_indexer](const int i_node) {
+					                         auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
+					                         Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
+					                         return node;
+				                         }
+				);
 				// endregion
 				// region ===================== COMPUTE ANCHOR WEIGHTS ================================
 				float weight_sum = 0.0;
@@ -515,9 +528,6 @@ void IntegrateWarpedCPU(
 				// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
 				auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtrFromCoord<voxel_t>(
 						x_voxel_local, y_voxel_local, z_voxel_local, block_index);
-				if (!depth_indexer.InBoundary(u_precise, v_precise)) {
-					return;
-				}
 
 				auto u_rounded = static_cast<int64_t>(roundf(u_precise));
 				auto v_rounded = static_cast<int64_t>(roundf(v_precise));

@@ -16,7 +16,7 @@
 #pragma once
 
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
-# define CPU_OR_CUDA __device__
+# define NNRT_CPU_OR_CUDA_DEVICE __device__
 #else
-# define CPU_OR_CUDA
+# define NNRT_CPU_OR_CUDA_DEVICE
 #endif
