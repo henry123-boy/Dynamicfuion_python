@@ -7,6 +7,7 @@
 import sys
 
 # 3rd-party
+import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 from dq3d import dualquat, quat
@@ -50,7 +51,6 @@ def reset(visualizer: o3d.pybind.visualization.VisualizerWithKeyCallback) -> Non
     view_control.reset_camera_local_rotate()
 
 
-# __DEBUG
 def print_cuda_memory_info():
     device_handle = nvmlDeviceGetHandleByIndex(0)
     info = nvmlDeviceGetMemoryInfo(device_handle)
@@ -60,8 +60,7 @@ def print_cuda_memory_info():
 
 
 def main() -> int:
-    # __DEBUG
-    nvmlInit()
+
     #####################################################################################################
     # region ==== options ====
     #####################################################################################################
@@ -74,6 +73,10 @@ def main() -> int:
     print_frame_info = True
     print_intrinsics = False
     visualize_meshes = False
+    print_gpu_memory_info = False
+
+    if print_gpu_memory_info:
+        nvmlInit()
 
     # TODO: should be part of dataset!
     input_image_size = (480, 640)
@@ -117,8 +120,8 @@ def main() -> int:
             print("Processing frame:", current_frame.frame_index)
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
-        #__DEBUG
-        print_cuda_memory_info()
+        if print_gpu_memory_info:
+            print_cuda_memory_info()
 
         depth_image_open3d_legacy = o3d.io.read_image(current_frame.depth_image_path)
         depth_image_np = np.array(depth_image_open3d_legacy)
@@ -240,10 +243,11 @@ def main() -> int:
             # prepare data for Open3D integration
             node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations])
             node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-            nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32)
+            nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
             cos_voxel_ray_to_normal = volume.integrate_warped(
-                depth_image_open3d, color_image_open3d, target_normal_map_o3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda,
+                depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
             # endregion
