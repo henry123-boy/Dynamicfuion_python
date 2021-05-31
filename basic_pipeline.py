@@ -24,6 +24,7 @@ from model.model import DeformNet
 from model.default import load_default_nnrt_model
 from pipeline.graph import DeformationGraph, build_deformation_graph_from_mesh
 import options
+from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
 
 PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAIL = 1
@@ -60,7 +61,6 @@ def print_cuda_memory_info():
 
 
 def main() -> int:
-
     #####################################################################################################
     # region ==== options ====
     #####################################################################################################
@@ -72,7 +72,18 @@ def main() -> int:
     # internal verbosity options
     print_frame_info = True
     print_intrinsics = False
-    visualize_meshes = False
+    visualize_meshes = True
+    record_visualization_to_disk = True
+
+    # set up mesh recorder
+    mesh_video_recorder = None
+    if record_visualization_to_disk:
+        mesh_video_recorder = FusionVisualizationRecorder(
+            output_video_path=os.path.join(options.output_directory, "mesh_visualization.mkv"),
+            front=[0, 0, -1], lookat=[0, 0, 1.5],
+            up=[0, -1.0, 0], zoom=0.7
+        )
+
     print_gpu_memory_info = False
 
     if print_gpu_memory_info:
@@ -148,11 +159,14 @@ def main() -> int:
             #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
             if visualize_meshes:
-                o3d.visualization.draw_geometries([mesh],
-                                                  front=[0, 0, -1],
-                                                  lookat=[0, 0, 1.5],
-                                                  up=[0, -1.0, 0],
-                                                  zoom=0.7)
+                if record_visualization_to_disk:
+                    mesh_video_recorder.capture_frame([mesh])
+                else:
+                    o3d.visualization.draw_geometries([mesh],
+                                                      front=[0, 0, -1],
+                                                      lookat=[0, 0, 1.5],
+                                                      up=[0, -1.0, 0],
+                                                      zoom=0.7)
             # TODO: perform topological graph update
             warped_mesh = deformation_graph.warp_mesh(mesh, options.node_coverage)
 
@@ -252,7 +266,12 @@ def main() -> int:
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
             # endregion
             #####################################################################################################
-            # TODO: not sure how the cos_voxel_ray_to_normal can be useful. Check BaldrLector's NeuralTracking fork code.
+            # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
+            #  Check BaldrLector's NeuralTracking fork code.
+
+            # TODO: fix this bug -- why does the iteration not respect len(sequence)??!
+            if current_frame.frame_index == len(sequence) - 1:
+                break
 
     return PROGRAM_EXIT_SUCCESS
 
