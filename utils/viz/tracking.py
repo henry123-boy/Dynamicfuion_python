@@ -19,9 +19,9 @@ def visualize_tracking(
         rotations_pred: np.ndarray,
         translations_pred: np.ndarray,
         mask_pred: np.ndarray,
-        valid_source_points: torch.Tensor,
-        valid_correspondences: torch.Tensor,
-        target_matches: torch.Tensor):
+        valid_source_points: np.ndarray,
+        valid_correspondences: np.ndarray,
+        target_matches: np.ndarray):
     # Some params for coloring the predicted correspondence confidences
     weight_threshold = 0.3
     weight_scale = 1

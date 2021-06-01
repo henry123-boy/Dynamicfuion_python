@@ -7,6 +7,7 @@
 import sys
 
 # 3rd-party
+import cv2
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -20,7 +21,10 @@ from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
 from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
-from utils import image, voxel_grid
+import utils.image
+import utils.voxel_grid
+import utils.viz.tracking as tracking_viz
+
 from model.model import DeformNet
 from model.default import load_default_nnrt_model
 from pipeline.graph import DeformationGraph, build_deformation_graph_from_mesh
@@ -70,11 +74,18 @@ def main() -> int:
     options.use_mask = True
     options.gn_max_nodes = 3000
 
-    # internal verbosity options
+    # **** TELEMETRY *****
+
+    # verbosity options
     print_frame_info = True
     print_intrinsics = False
+
+    # visualization options
     visualize_meshes = True
     visualize_warped_mesh = True
+    visualize_tracking = True
+
+    # logging options
     record_visualization_to_disk = False
 
     # set up mesh recorder
@@ -91,7 +102,7 @@ def main() -> int:
     if print_gpu_memory_info:
         nvmlInit()
 
-    # TODO: should be part of dataset!
+    # TODO: should be part of dataset class tree!
     input_image_size = (480, 640)
     # endregion
     #####################################################################################################
@@ -121,7 +132,7 @@ def main() -> int:
     # region === initialize data structures ===
     #####################################################################################################
 
-    volume = voxel_grid.make_default_tsdf_voxel_grid(device)
+    volume = utils.voxel_grid.make_default_tsdf_voxel_grid(device)
     deformation_graph: typing.Union[DeformationGraph, None] = None
     renderer = PyTorch3DRenderer(input_image_size, device, intrinsics_open3d_cuda)
 
@@ -185,6 +196,8 @@ def main() -> int:
             # region ===== prepare source point cloud & RGB image ====
             #####################################################################################################
             source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=1.0)
+            # flip channels, i.e. RGB<-->BGR
+            source_color = cv2.cvtColor(source_color, cv2.COLOR_RGB2BGR)
             source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy, depth_scale=1.0)  # (h, w, 3)
 
             source_rgbxyz, _, cropper = DeformDataset.prepare_pytorch_input(
@@ -215,7 +228,7 @@ def main() -> int:
             #####################################################################################################
             # region === adjust intrinsic / projection parameters due to cropping ====
             #####################################################################################################
-            fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
+            fx, fy, cx, cy = utils.image.modify_intrinsics_due_to_cropping(
                 intrinsics_dict['fx'], intrinsics_dict['fy'], intrinsics_dict['cx'], intrinsics_dict['cy'],
                 options.image_height, options.image_width, original_h=cropper.h, original_w=cropper.w
             )
@@ -251,26 +264,35 @@ def main() -> int:
             # Get some of the results
             rotations_pred = model_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
             translations_pred = model_data["node_translations"].view(node_count, 3).cpu().numpy()
+
+            if visualize_tracking:
+                # TODO: not sure what the mask prediction can be useful for except in visualization so far...
+                mask_pred = model_data["mask_pred"]
+                assert mask_pred is not None, "Make sure use_mask=True in options.py"
+                mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
+                # Compute mask gt for mask baseline
+                _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
+                    = model_data["correspondence_info"]
+
+                target_matches = target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
+                valid_source_points = valid_source_points.view(-1, options.image_height, options.image_width).cpu().numpy()
+                valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
+
+                tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
+                                                deformation_graph.nodes, deformation_graph.edges,
+                                                rotations_pred, translations_pred, mask_pred,
+                                                valid_source_points, valid_correspondences, target_matches)
+
             # endregion
             #####################################################################################################
             # region === fuse model ====
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-
                 node_frame_transform = dualquat(quat(rotation), translation)
-
                 # __DEBUG
-                print("Node transform:", i_node, scipy_rot.from_matrix(rotation).as_euler("xyz", degrees=True), translation, node_frame_transform)
-                # __DEBUG
-                # deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
-
-                deformation_graph.transformations[i_node] = node_frame_transform
-
-            # TODO: not sure what the mask is used for, see example_viz.py again (where it comes from)
-            mask_pred = model_data["mask_pred"]
-            assert mask_pred is not None, "Make sure use_mask=True in options.py"
-            mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
+                # print("Node transform:", i_node, scipy_rot.from_matrix(rotation).as_euler("xyz", degrees=True), translation, node_frame_transform)
+                deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
 
             # prepare data for Open3D integration
             node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations])

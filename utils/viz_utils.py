@@ -6,6 +6,10 @@ import numpy as np
 
 import utils.viz.line_mesh as line_mesh_utils
 
+
+# TODO: Get rid of this monster-God-file! Use separate imports from utils.viz instead. The functions mostly still have
+#  the same names & signatures.
+
 def get_pcd(rgbd_image):
     #####################################################################################################
     # Prepare data
@@ -22,21 +26,21 @@ def get_pcd(rgbd_image):
     return rgbd_pcd
 
 
-def create_open3d_graph(graph_nodes,graph_edges):
+def create_open3d_graph(graph_nodes, graph_edges):
     # Transform to OpenGL coords
     graph_nodes = transform_pointcloud_to_opengl_coords(graph_nodes)
 
-    size = np.linalg.norm(np.max(graph_nodes)-np.min(graph_nodes))
+    size = np.linalg.norm(np.max(graph_nodes) - np.min(graph_nodes))
     # print(size)
     # Graph nodes
     rendered_graph_nodes = []
     for node in graph_nodes:
-        mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.001*size)
+        mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.001 * size)
         mesh_sphere.compute_vertex_normals()
         mesh_sphere.paint_uniform_color([1.0, 0.0, 0.0])
         mesh_sphere.translate(node)
         rendered_graph_nodes.append(mesh_sphere)
-    
+
     # Merge all different sphere meshes
     rendered_graph_nodes = merge_meshes(rendered_graph_nodes)
 
@@ -46,43 +50,42 @@ def create_open3d_graph(graph_nodes,graph_edges):
         for neighbor_id in edges:
             if neighbor_id == -1:
                 break
-            edges_pairs.append([node_id, neighbor_id])    
+            edges_pairs.append([node_id, neighbor_id])
 
     colors = [[0.2, 1.0, 0.2] for i in range(len(edges_pairs))]
-    line_mesh = line_mesh_utils.LineMesh(graph_nodes, edges_pairs, colors, radius=0.0003*size)
+    line_mesh = line_mesh_utils.LineMesh(graph_nodes, edges_pairs, colors, radius=0.0003 * size)
     line_mesh_geoms = line_mesh.cylinder_segments
 
     # Merge all different line meshes
     line_mesh_geoms = merge_meshes(line_mesh_geoms)
 
-
     # Combined nodes & edges
     rendered_graph = [rendered_graph_nodes, line_mesh_geoms]
     return rendered_graph
 
-def create_matches_lines(match_mask,high_color,low_color,source_pcd,target_matches,mask_pred_flat,weight_thr,weight_scale):
 
-    match_source_points_corresp  = np.asarray(source_pcd.points)[match_mask]
+def create_matches_lines(match_mask, high_color, low_color, source_pcd, target_matches, mask_pred_flat, weight_thr, weight_scale):
+    match_source_points_corresp = np.asarray(source_pcd.points)[match_mask]
     match_target_matches_corresp = target_matches[match_mask]
-    match_mask_pred              = mask_pred_flat[match_mask]
+    match_mask_pred = mask_pred_flat[match_mask]
     # number of match matches
     n_match_matches = match_source_points_corresp.shape[0]
-    
+
     # Subsample if too many lines
     N = 2000
     subsample = N < n_match_matches
     if subsample:
         sampled_idxs = np.random.permutation(n_match_matches)[:N]
-        match_source_points_corresp  = match_source_points_corresp[sampled_idxs]
+        match_source_points_corresp = match_source_points_corresp[sampled_idxs]
         match_target_matches_corresp = match_target_matches_corresp[sampled_idxs]
-        match_mask_pred              = match_mask_pred[sampled_idxs]
+        match_mask_pred = match_mask_pred[sampled_idxs]
         n_match_matches = N
     # both match_source and match_target points together into one vector
     match_matches_points = np.concatenate([match_source_points_corresp, match_target_matches_corresp], axis=0)
     match_matches_lines = [[i, i + n_match_matches] for i in range(0, n_match_matches, 1)]
 
     # --> Create match (unweighted) lines 
-    match_matches_colors = [[201/255, 177/255, 14/255] for i in range(len(match_matches_lines))]
+    match_matches_colors = [[201 / 255, 177 / 255, 14 / 255] for i in range(len(match_matches_lines))]
     match_matches_set = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(match_matches_points),
         lines=o3d.utility.Vector2iVector(match_matches_lines),
@@ -105,8 +108,7 @@ def create_matches_lines(match_mask,high_color,low_color,source_pcd,target_match
     )
     match_weighted_matches_set.colors = o3d.utility.Vector3dVector(match_weighted_matches_colors)
 
-    return match_matches_set,match_weighted_matches_set
-
+    return match_matches_set, match_weighted_matches_set
 
 
 def transform_pointcloud_to_opengl_coords(points_cv):
@@ -114,8 +116,8 @@ def transform_pointcloud_to_opengl_coords(points_cv):
 
     T_opengl_cv = np.array(
         [[1.0, 0.0, 0.0],
-        [0.0, -1.0, 0.0],
-        [0.0, 0.0, -1.0]]
+         [0.0, -1.0, 0.0],
+         [0.0, 0.0, -1.0]]
     )
 
     # apply 180deg rotation around 'x' axis to transform the mesh into OpenGL coordinates
@@ -140,22 +142,22 @@ class CustomDrawGeometryWithKeyCallback():
 
         self.rotating = False
         self.stop_rotating = False
-        
-        self.source_pcd = geometry_dict["source_pcd"] 
-        self.source_obj = geometry_dict["source_obj"] 
-        self.target_pcd = geometry_dict["target_pcd"] 
-        self.graph      = geometry_dict["graph"] 
+
+        self.source_pcd = geometry_dict["source_pcd"]
+        self.source_obj = geometry_dict["source_obj"]
+        self.target_pcd = geometry_dict["target_pcd"]
+        self.graph = geometry_dict["graph"]
 
         # align source to target
         self.valid_source_points_cached = alignment_dict["valid_source_points"]
         self.valid_source_colors_cached = copy.deepcopy(self.source_obj.colors)
-        self.line_segments_unit_cached  = alignment_dict["line_segments_unit"]
-        self.line_lengths_cached        = alignment_dict["line_lengths"]
+        self.line_segments_unit_cached = alignment_dict["line_segments_unit"]
+        self.line_lengths_cached = alignment_dict["line_lengths"]
 
-        self.good_matches_set          = corresp_set["good_matches_set"]
+        self.good_matches_set = corresp_set["good_matches_set"]
         self.good_weighted_matches_set = corresp_set["good_weighted_matches_set"]
-        self.bad_matches_set           = corresp_set["bad_matches_set"]
-        self.bad_weighted_matches_set  = corresp_set["bad_weighted_matches_set"]
+        self.bad_matches_set = corresp_set["bad_matches_set"]
+        self.bad_weighted_matches_set = corresp_set["bad_weighted_matches_set"]
 
         # correspondences lines
         self.corresp_set = corresp_set
@@ -179,7 +181,7 @@ class CustomDrawGeometryWithKeyCallback():
             if ref == "target":
                 vis.remove_geometry(self.source_obj)
                 self.added_source_obj = False
-            
+
             self.added_both = False
 
     def get_name_of_object_to_record(self):
@@ -196,10 +198,10 @@ class CustomDrawGeometryWithKeyCallback():
                 return "source_pcd"
             if self.added_source_obj:
                 return "source_obj"
-                
+
         if self.added_target_pcd:
             return "target_pcd"
-    
+
     def custom_draw_geometry_with_key_callback(self):
 
         def toggle_graph(vis):
@@ -217,7 +219,7 @@ class CustomDrawGeometryWithKeyCallback():
                 for g in self.graph:
                     vis.add_geometry(g)
                 self.added_graph = True
-            
+
             ctr = vis.get_view_control()
             ctr.convert_from_pinhole_camera_parameters(param)
 
@@ -229,7 +231,7 @@ class CustomDrawGeometryWithKeyCallback():
             if self.added_both:
                 print("-- will not toggle obj. First, press either S or T, for source or target pcd")
                 return False
-            
+
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
 
             # Add source obj
@@ -254,7 +256,7 @@ class CustomDrawGeometryWithKeyCallback():
             print("::view_source")
 
             self.clear_for(vis, "source")
-            
+
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
 
             if not self.added_source_pcd:
@@ -276,7 +278,7 @@ class CustomDrawGeometryWithKeyCallback():
             print("::view_target")
 
             self.clear_for(vis, "target")
-            
+
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
 
             if not self.added_target_pcd:
@@ -284,7 +286,7 @@ class CustomDrawGeometryWithKeyCallback():
                 self.added_target_pcd = True
 
             self.remove_both_pcd_and_object(vis, "source")
-            
+
             ctr = vis.get_view_control()
             ctr.convert_from_pinhole_camera_parameters(param)
 
@@ -292,9 +294,9 @@ class CustomDrawGeometryWithKeyCallback():
 
         def view_both(vis):
             print("::view_both")
-            
+
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
-            
+
             if self.added_source_pcd:
                 vis.add_geometry(self.source_obj)
                 vis.remove_geometry(self.source_pcd)
@@ -336,7 +338,7 @@ class CustomDrawGeometryWithKeyCallback():
             ctr.rotate(0.4, 0.0)
             vis.poll_events()
             vis.update_renderer()
-            
+
             return False
 
         def rotate_slightly_left_and_right(vis):
@@ -347,7 +349,7 @@ class CustomDrawGeometryWithKeyCallback():
 
             if self.added_both and not self.aligned:
                 moves = ['lo', 'lo', 'pitch_f', 'pitch_b', 'ri', 'ro']
-                totals = [(2094/4)/2, (2094/4)/2, 2094/4, 2094/4, 2094/4, 2094/4]
+                totals = [(2094 / 4) / 2, (2094 / 4) / 2, 2094 / 4, 2094 / 4, 2094 / 4, 2094 / 4]
                 abs_speed = 5.0
                 abs_zoom = 0.15
                 abs_pitch = 5.0
@@ -366,14 +368,14 @@ class CustomDrawGeometryWithKeyCallback():
                     h_speed = abs_speed
                 elif move == 'r' or move == 'ro' or move == 'ri':
                     h_speed = -abs_speed
-                
+
                 if move == 'lo':
                     zoom_speed = abs_zoom
                 elif move == 'ro':
                     zoom_speed = abs_zoom / 4.0
                 elif move == 'li' or move == 'ri':
                     zoom_speed = -abs_zoom
-                    
+
                 for _ in iters_to_move[move_idx]:
                     ctr = vis.get_view_control()
 
@@ -382,10 +384,10 @@ class CustomDrawGeometryWithKeyCallback():
 
                     if move == "pitch_f":
                         ctr.rotate(0.0, abs_pitch)
-                        ctr.scale(-zoom_speed/2.0)
+                        ctr.scale(-zoom_speed / 2.0)
                     elif move == "pitch_b":
                         ctr.rotate(0.0, -abs_pitch)
-                        ctr.scale(zoom_speed/2.0)
+                        ctr.scale(zoom_speed / 2.0)
                     else:
                         ctr.rotate(h_speed, 0.0)
                         if move == 'lo' or move == 'ro' or move == 'li' or move == 'ri':
@@ -413,7 +415,7 @@ class CustomDrawGeometryWithKeyCallback():
             ctr.rotate(0.4, 0.0)
             vis.poll_events()
             vis.update_renderer()
-            
+
             return False
 
         def align(vis):
@@ -421,7 +423,7 @@ class CustomDrawGeometryWithKeyCallback():
                 return False
 
             moves = ['lo', 'li', 'ro']
-            totals = [(2094/4)/2, (2094/4), 2094/4 + (2094/4)/2]
+            totals = [(2094 / 4) / 2, (2094 / 4), 2094 / 4 + (2094 / 4) / 2]
             abs_speed = 5.0
             abs_zoom = 0.15
             abs_pitch = 5.0
@@ -440,14 +442,14 @@ class CustomDrawGeometryWithKeyCallback():
                     h_speed = abs_speed
                 elif move == 'r' or move == 'ro' or move == 'ri':
                     h_speed = -abs_speed
-                
+
                 if move == 'lo':
                     zoom_speed = abs_zoom
                 elif move == 'ro':
-                    zoom_speed = abs_zoom/50.0
+                    zoom_speed = abs_zoom / 50.0
                 elif move == 'li' or move == 'ri':
-                    zoom_speed = -abs_zoom/5.0
-                    
+                    zoom_speed = -abs_zoom / 5.0
+
                 for _ in iters_to_move[move_idx]:
                     ctr = vis.get_view_control()
 
@@ -456,15 +458,15 @@ class CustomDrawGeometryWithKeyCallback():
 
                     if move == "pitch_f":
                         ctr.rotate(0.0, abs_pitch)
-                        ctr.scale(-zoom_speed/2.0)
+                        ctr.scale(-zoom_speed / 2.0)
                     elif move == "pitch_b":
                         ctr.rotate(0.0, -abs_pitch)
-                        ctr.scale(zoom_speed/2.0)
+                        ctr.scale(zoom_speed / 2.0)
                     else:
                         ctr.rotate(h_speed, 0.0)
                         if move == 'lo' or move == 'ro' or move == 'li' or move == 'ri':
                             ctr.scale(zoom_speed)
-                    
+
                     vis.poll_events()
                     vis.update_renderer()
 
@@ -474,9 +476,10 @@ class CustomDrawGeometryWithKeyCallback():
 
                     if move_idx == 0:
                         n_iter = 125
-                        for align_iter in range(n_iter+1):
+                        for align_iter in range(n_iter + 1):
                             p = float(align_iter) / n_iter
-                            self.source_obj.points = o3d.utility.Vector3dVector( self.valid_source_points_cached + self.line_segments_unit_cached * self.line_lengths_cached * p )
+                            self.source_obj.points = o3d.utility.Vector3dVector(
+                                self.valid_source_points_cached + self.line_segments_unit_cached * self.line_lengths_cached * p)
                             vis.update_geometry(self.source_obj)
                             vis.poll_events()
                             vis.update_renderer()
@@ -492,7 +495,7 @@ class CustomDrawGeometryWithKeyCallback():
                 return False
 
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
-            
+
             if self.added_corresp:
                 vis.remove_geometry(self.good_matches_set)
                 vis.remove_geometry(self.bad_matches_set)

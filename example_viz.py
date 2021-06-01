@@ -15,8 +15,6 @@ import options
 from data import FramePairDataset, FramePairPreset, DeformDataset
 
 
-
-
 # TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
 #  (See https://refactoring.guru/smells/long-parameter-list for reasons, downsides, and refactoring solutions)
 #  Through better OO design and refactoring, these should be grouped into objects, replaced with internal
@@ -165,9 +163,8 @@ def main():
     mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
 
     # Compute mask gt for mask baseline
-    _, source_points, valid_source_points, target_matches, \
-    valid_target_matches, valid_correspondences, _, \
-    _ = model_data["correspondence_info"]
+    _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
+        = model_data["correspondence_info"]
 
     target_matches = target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
     valid_source_points = valid_source_points.view(-1, options.image_height, options.image_width).cpu().numpy()
