@@ -25,6 +25,8 @@ PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
+    use_direct_matrix_solution = True
+
     mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(os.path.join(options.output_directory, "mesh_000000_red_shorts.ply"))
     depth_intrinsics_path = os.path.join(options.dataset_base_directory, "val/seq014/intrinsics.txt")
 
@@ -43,12 +45,17 @@ def main():
 
     camera_translation = torch.zeros((1, 3), dtype=torch.float32, device=torch_device)
 
-    camera_rotation = torch.eye(3, dtype=torch.float32, device=torch_device).unsqueeze(0)
+    if use_direct_matrix_solution:
+        # TODO: see next TODO, after that bug is fixed, restore the true rotation identity
+        # camera_rotation = torch.eye(3, dtype=torch.float32, device=torch_device).unsqueeze(0)
+        camera_rotation = np.array([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
+    else:
+        camera_rotation = np.array([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
 
     lights = PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
                          specular_color=((0.0, 0.0, 0.0),), device=torch_device, location=[[0.0, 0.0, -3.0]])
 
-    # region ===== COMPUTE CAMERA MATRIX =====
+    # region ===== CAMERA SETUP =====
     fx_screen, fy_screen, px_screen, py_screen = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(depth_intrinsics_path)
 
     image_width = 640
@@ -56,21 +63,37 @@ def main():
     half_image_width = image_width // 2
     half_image_height = image_height // 2
 
-    fx = fx_screen / half_image_height
-    fy = fy_screen / half_image_height
-    px = - (px_screen - half_image_width) / half_image_height
-    py = - (py_screen - half_image_height) / half_image_height
-    K = torch.tensor([[[fx, 0.0, px, 0.0],
-                       [0.0, fy, py, 0.0],
-                       [0.0, 0.0, 0.0, -1.0],
-                       [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32)
-    # endregion
+    if use_direct_matrix_solution:
+        fx = fx_screen / half_image_height
+        fy = fy_screen / half_image_height
+        px = - (px_screen - half_image_width) / half_image_height
+        py = - (py_screen - half_image_height) / half_image_height
+        # TODO: report PyTorch3D bug that forces us to use the other K
+        # K = torch.tensor([[[fx, 0.0, px, 0.0],
+        #                    [0.0, fy, py, 0.0],
+        #                    [0.0, 0.0, 0.0, -1.0],
+        #                    [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32)
+        K = torch.tensor([[[fx, 0.0, px, 0.0],
+                           [0.0, fy, py, 0.0],
+                           [0.0, 0.0, 0.0, 1.0],
+                           [0.0, 0.0, 1.0, 0.0]]], dtype=torch.float32)
+        cameras: pytorch3d.renderer.cameras.PerspectiveCameras \
+            = PerspectiveCameras(device=torch_device,
+                                 R=camera_rotation,
+                                 T=camera_translation,
+                                 K=K)
+        print(cameras.get_projection_transform().get_matrix())
+    else:
+        cameras: pytorch3d.renderer.cameras.PerspectiveCameras \
+            = PerspectiveCameras(device=torch_device,
+                                 R=camera_rotation,
+                                 T=camera_translation,
+                                 focal_length=[(fx_screen, fy_screen)],
+                                 principal_point=[(px_screen - (half_image_width - half_image_height), py_screen)],
+                                 image_size=[(image_height, image_height)])
+        print(cameras.get_projection_transform().get_matrix())
 
-    cameras: pytorch3d.renderer.cameras.PerspectiveCameras \
-        = PerspectiveCameras(device=torch_device,
-                             R=camera_rotation,
-                             T=camera_translation,
-                             K=K)
+    # endregion
 
     rasterization_settings = RasterizationSettings(image_size=(480, 640),
                                                    cull_backfaces=True,

@@ -17,7 +17,7 @@ PROGRAM_EXIT_SUCCESS = 0
 def main():
     # Options
 
-    use_mask = True
+    use_mask = False
     segment = None
 
     #####################################################################################################
@@ -29,8 +29,8 @@ def main():
     device = o3d.core.Device('cuda:0')
 
     # === dataset ===
-    preset: StandaloneFramePreset = StandaloneFramePreset.BERLIN_0
-    # preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_0
+    # preset: StandaloneFramePreset = StandaloneFramePreset.BERLIN_0
+    preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_0
 
     dataset: StandaloneFrameDataset = preset.value
     dataset_name = preset.name

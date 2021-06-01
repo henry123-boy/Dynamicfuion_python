@@ -38,11 +38,16 @@ def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matr
     fy = fy_screen / half_image_height
     px = -(px_screen - half_image_width) / half_image_height
     py = -(py_screen - half_image_height) / half_image_height
-
+    # TODO due to what looks like a PyTorch3D bug, we have to use the 1.0 values here, not the below commented code
+    #  values, and then use the non-identity rotation matrix...
     ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
                                           [0.0, fy, py, 0.0],
-                                          [0.0, 0.0, 0.0, -1.0],
-                                          [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32, device=torch_device)
+                                          [0.0, 0.0, 0.0, 1.0],
+                                          [0.0, 0.0, 1.0, 0.0]]], dtype=torch.float32, device=torch_device)
+    # ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
+    #                                       [0.0, fy, py, 0.0],
+    #                                       [0.0, 0.0, 0.0, -1.0],
+    #                                       [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32, device=torch_device)
     return ndc_intrinsic_matrix
 
 
@@ -62,9 +67,12 @@ class PyTorch3DRenderer:
                                   specular_color=((0.0, 0.0, 0.0),), device=self.torch_device, location=[[0.0, 0.0, -3.0]])
 
         self.K = make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
+        # FIXME (see comments in pipeline/subprocedure_examples/pytorch3d_rendering_test.py)
+        # camera_rotation = (torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0)
+        camera_rotation = np.array([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
         self.cameras: PerspectiveCameras \
             = PerspectiveCameras(device=self.torch_device,
-                                 R=(torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0),
+                                 R=camera_rotation,
                                  T=torch.zeros((1, 3), dtype=torch.float32, device=self.torch_device),
                                  K=self.K)
 
