@@ -1,9 +1,9 @@
 import settings.settings_tsdf as tsdf_settings
+import open3d as o3d
+import nnrt
 
 
-def make_default_tsdf_voxel_grid(device):
-    import open3d as o3d
-    import nnrt
+def make_default_tsdf_voxel_grid(device: o3d.core.Device) -> nnrt.geometry.WarpableTSDFVoxelGrid:
     return nnrt.geometry.WarpableTSDFVoxelGrid(
         {
             'tsdf': o3d.core.Dtype.Float32,

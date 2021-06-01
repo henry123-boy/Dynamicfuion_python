@@ -1,7 +1,7 @@
 from enum import Enum
 from data.frame import StandaloneFrameDataset, DatasetType, DataSplit
 from data.frame_pair import FramePairDataset
-from data.frame_sequence import FrameSequenceDataset
+from data.frame_sequence import FrameSequenceDataset, StaticFrameSequenceDataset
 
 
 class FramePairPreset(Enum):
@@ -24,7 +24,16 @@ class FrameSequencePreset(Enum):
     RED_SHORTS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=False)
     BERLIN_50 = FrameSequenceDataset(70, DataSplit.TRAIN, frame_count=50, has_masks=False)
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False)
-    BERLIN_STATIC = FrameSequenceDataset(340, DataSplit.TRAIN, has_masks=False)
-# TODO: fix loading of custom sequences
-#    MINION = FrameSequenceDataset(base_dataset_type=DatasetType.CUSTOM,
-#                                  custom_frame_directory="/mnt/Data/Reconstruction/real_data/minion/data")
+    BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False)
+    # The BERLIN_OFFSET sequences can be generated from the BERLIN_0 sequence using scripts such as
+    # pipeline/data_generation/animate_berlin_x_offset.py
+    #
+    # BERLIN_OFFSET_X = FrameSequenceDataset(
+    #     base_dataset_type=DatasetType.CUSTOM,
+    #     custom_frame_directory="/home/algomorph/Workbench/NeuralTracking/output/berlin_x_offset_sequence")
+    # This sequence is part of VolumeDeform data
+    # BERLIN_OFFSET_XY = FrameSequenceDataset(
+    #     base_dataset_type=DatasetType.CUSTOM,
+    #     custom_frame_directory="/home/algomorph/Workbench/NeuralTracking/output/berlin_xy_offset_sequence")
+    # MINION = FrameSequenceDataset(base_dataset_type=DatasetType.CUSTOM,
+    #                               custom_frame_directory="/mnt/Data/Reconstruction/real_data/minion/data")

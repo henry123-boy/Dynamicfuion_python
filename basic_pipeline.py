@@ -69,6 +69,7 @@ class VisualizationMode(Enum):
     WARPED_MESH = 1
     POINT_CLOUD_TRACKING = 2
 
+
 def main() -> int:
     #####################################################################################################
     # region ==== options ====
@@ -117,9 +118,10 @@ def main() -> int:
     # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
     #####################################################################################################
 
-    #sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
-    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
-    #sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
+    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
     first_frame = sequence.get_frame_at(0)
 
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(sequence.get_intrinsics_path(),
@@ -163,9 +165,8 @@ def main() -> int:
         color_image_open3d = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
         # endregion
         if current_frame.frame_index == 0:
-            volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, 1000.0, 3.0)
+            volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, options.depth_scale, 3.0)
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-            mesh.compute_vertex_normals()
 
             # === Construct initial deformation graph
             deformation_graph = build_deformation_graph_from_mesh(mesh, options.node_coverage)
@@ -293,6 +294,10 @@ def main() -> int:
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
+                # __DEBUG
+                # translation = [0.01, 0.01, 0.0]
+                rotation = scipy_rot.identity().as_matrix()
+
                 node_frame_transform = dualquat(quat(rotation), translation)
                 # __DEBUG
                 print("Node transform:", i_node, scipy_rot.from_matrix(rotation).as_euler("xyz", degrees=True), translation)

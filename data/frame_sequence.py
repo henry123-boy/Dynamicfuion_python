@@ -32,6 +32,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         """
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
         self.graph_filename = None
+
         if self._base_dataset_type is not DatasetType.CUSTOM:
             # assumes add_in_graph_data.py script has already been successfully run on the sequence.
             # also assumes standard folder structure for DeepDeform & DeepDeformGraph datasets.
@@ -94,3 +95,11 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         """Get a list item"""
         return self.get_frame_at(index)
 
+
+class StaticFrameSequenceDataset(FrameSequenceDataset):
+    def get_frame_at(self, index) -> SequenceFrameDataset:
+        mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(0)
+        return SequenceFrameDataset(index,
+                                    self._color_image_filename_mask.format(0),
+                                    self._depth_image_filename_mask.format(0),
+                                    mask_image_path)

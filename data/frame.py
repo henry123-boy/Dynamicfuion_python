@@ -3,6 +3,10 @@ import typing
 import os
 import re
 
+import cv2
+import numpy as np
+import open3d as o3d
+
 import options
 from abc import ABC, abstractmethod, ABCMeta
 
@@ -30,7 +34,7 @@ def make_frame_file_name_mask(name: str, extension: str) -> str:
     """
     search_result = re.search(r"\d+", name)
     span = search_result.span()
-    name_mask = name[:span[0]] + "{:0" + str(span[1] - span[0]) + "d}" + extension
+    name_mask = name[:span[0]] + "{:0" + str(span[1] - span[0]) + "d}" + name[span[1]:] + extension
     return name_mask
 
 
@@ -77,27 +81,70 @@ class GenericDataset:
             depth_frame_found = False
             mask_frame_found = False
             intrinsics_file_found = False
+            self._color_image_filename_mask = None
+            self._depth_image_filename_mask = None
+            self._mask_image_filename_mask = None
+
+            def looks_like_color_image(_name: str, _extension: str) -> bool:
+                return _extension in [".png", ".jpg", ".jpeg"] and ("color" in _name or "rgb" in _name)
+
+            def looks_like_depth_image(_name: str, _extension: str) -> bool:
+                return _extension == ".png" and "depth" in _name
+
+            def looks_like_mask_image(_name: str, _extension: str) -> bool:
+                return _extension == ".png" and "mask" in _name
+
             for filename in filenames:
                 parts = os.path.splitext(filename)
                 name = parts[0]
                 extension = parts[1]
-                if not color_frame_found and extension in [".png", ".jpg", ".jpeg"] and ("color" in name or "rgb" in name):
+                if not color_frame_found and looks_like_color_image(name, extension):
                     color_frame_found = True
                     name_mask = make_frame_file_name_mask(name, extension)
                     self._color_image_filename_mask = os.path.join(self._base_data_directory, name_mask)
-                elif not depth_frame_found and extension == ".png" and "depth" in name:
+                elif not depth_frame_found and looks_like_depth_image(name, extension):
                     depth_frame_found = True
                     name_mask = make_frame_file_name_mask(name, extension)
                     self._depth_image_filename_mask = os.path.join(self._base_data_directory, name_mask)
-                elif not mask_frame_found and has_masks and extension == ".png" and "mask" in name:
+                elif not mask_frame_found and has_masks and looks_like_mask_image(name, extension):
                     mask_frame_found = True
                     name_mask = make_frame_file_name_mask(name, extension)
                     self._mask_image_filename_mask = os.path.join(self._base_data_directory, name_mask)
                 elif not intrinsics_file_found and extension == ".txt" and "ntrinsics" in name:
                     intrinsics_file_found = True
                     self._intrinsics_file_path = os.path.join(self._base_data_directory, filename)
-                else:
-                    break
+
+            def search_subfolders_for_image_data(potential_subfolders: typing.List[str], expected_extensions: typing.List[str]) -> typing.Union[None, str]:
+                four_digit_pattern = re.compile(r"\d{4}")
+                for subfolder in potential_subfolders:
+                    potential_directory = os.path.join(self._base_data_directory, subfolder)
+                    if os.path.isdir(potential_directory):
+                        _filenames = os.listdir(potential_directory)
+                        for _filename in _filenames:
+                            _parts = os.path.splitext(_filename)
+                            _name = _parts[0]
+                            _extension = _parts[1]
+                            if _extension in expected_extensions and re.match(four_digit_pattern, _name) is not None:
+                                _name_mask = make_frame_file_name_mask(_name, _extension)
+                                return os.path.join(potential_directory, _name_mask)
+
+            if self._depth_image_filename_mask is None:
+                potential_depth_subfolders = ["depth", "depth_images", "depth_frames"]
+                self._depth_image_filename_mask = search_subfolders_for_image_data(potential_depth_subfolders, [".png"])
+                if self._depth_image_filename_mask is None:
+                    raise ValueError(f"Could not find any depth frame data in {self._base_data_directory}")
+
+            if self._color_image_filename_mask is None:
+                potential_color_subfolders = ["color", "color_images", "color_frames"]
+                self._color_image_filename_mask = search_subfolders_for_image_data(potential_color_subfolders, [".jpg", ".png"])
+                if self._color_image_filename_mask is None:
+                    raise ValueError(f"Could not find any color frame data in {self._base_data_directory}")
+
+            if has_masks and self._mask_image_filename_mask is None:
+                potential_mask_subfolders = ["mask", "masks", "mask_images", "omask"]
+                self._mask_image_filename_mask = search_subfolders_for_image_data(potential_mask_subfolders, [".png"])
+                if self._mask_image_filename_mask is None:
+                    raise ValueError(f"Could not find any mask frame data in {self._base_data_directory}")
 
         else:
             if sequence_id is None or split is None:
@@ -147,8 +194,26 @@ class FrameDataset(metaclass=ABCMeta):
     def get_mask_image_path(self) -> str:
         pass
 
+    def load_color_image_numpy(self) -> np.ndarray:
+        return cv2.imread(self.get_color_image_path(), cv2.IMREAD_UNCHANGED)
 
-class StandaloneFrameDataset(GenericDataset, FrameDataset):
+    def load_depth_image_numpy(self) -> np.ndarray:
+        return cv2.imread(self.get_depth_image_path(), cv2.IMREAD_UNCHANGED)
+
+    def load_mask_image_numpy(self) -> np.ndarray:
+        return cv2.imread(self.get_mask_image_path(), cv2.IMREAD_UNCHANGED)
+
+    def load_color_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
+        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_color_image_path()), device=device)
+
+    def load_depth_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
+        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_depth_image_path()), device=device)
+
+    def load_mask_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
+        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_mask_image_path()), device=device)
+
+
+class StandaloneFrameDataset(FrameDataset, GenericDataset):
     def __init__(self, frame_index: int,
                  sequence_id: typing.Union[None, int] = None,
                  split: typing.Union[None, DataSplit] = None,
@@ -165,7 +230,7 @@ class StandaloneFrameDataset(GenericDataset, FrameDataset):
          DatasetType.CUSTOM requires custom_frame_folder to be set up
         :param has_masks: whether the dataset has or doesn't have masks.
         """
-        super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
+        super(StandaloneFrameDataset, self).__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
         self.frame_index = frame_index
 
     def get_color_image_path(self) -> str:
