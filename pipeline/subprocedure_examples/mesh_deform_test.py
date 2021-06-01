@@ -40,10 +40,6 @@ def main():
     graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
         DeformDataset.load_graph_data(sequence_directory, graph_filename, False, cropper)
 
-    # Compute vertex anchors & weights
-    vertices = np.array(mesh200.vertices)
-    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, options.node_coverage)
-
     # Load graph transformation
     with open("output/red_shorts_shorts_000200_000400_rotations.np", 'rb') as file:
         rotations = np.load(file)
@@ -62,6 +58,10 @@ def main():
             weight_one_hot_vector[i_node] = 1.0
             print("dual quaternions: ", node, "-->", op.dlb(weight_one_hot_vector, node_transformations_dual_quaternions).transform_point(node))
             i_node += 1
+
+    # Compute vertex anchors & weights
+    vertices = np.array(mesh200.vertices)
+    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, options.node_coverage)
 
     i_vertex = 0
     deformed_vertices = np.zeros_like(vertices)

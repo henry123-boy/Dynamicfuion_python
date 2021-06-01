@@ -257,9 +257,7 @@ def main() -> int:
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-
                 node_frame_transform = dualquat(quat(rotation), translation)
-
                 # __DEBUG
                 print("Node transform:", i_node, scipy_rot.from_matrix(rotation).as_euler("xyz", degrees=True), translation, node_frame_transform)
                 # __DEBUG

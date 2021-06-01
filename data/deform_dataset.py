@@ -1,5 +1,7 @@
 import os
 import json
+import typing
+
 from torch.utils.data import Dataset
 import torch
 import numpy as np
@@ -119,7 +121,8 @@ class DeformDataset(Dataset):
     @staticmethod
     def prepare_pytorch_input(color_image: np.ndarray, depth_or_point_image: np.ndarray,
                               intrinsics: dict, input_height: int, input_width: int, cropper=None,
-                              max_boundary_dist: float = 0.1, compute_boundary_mask: bool = False):
+                              max_boundary_dist: float = 0.1, compute_boundary_mask: bool = False) \
+            -> typing.Tuple[np.ndarray, typing.Union[np.ndarray, None], StaticCenterCrop]:
         # Backproject depth image.
         if len(depth_or_point_image.shape) == 2:
             depth_or_point_image = image_utils.backproject_depth(depth_or_point_image,
@@ -141,19 +144,19 @@ class DeformDataset(Dataset):
 
         # Construct the final image by converting uint RGB to float RGB
         # and stitching RGB+XYZ in the first axis.
-        image = np.zeros((6, input_height, input_width), dtype=np.float32)
+        image_rgbxyz = np.zeros((6, input_height, input_width), dtype=np.float32)
 
-        image[:3, :, :] = np.moveaxis(color_image, -1, 0) / 255.0  # (3, h, w)
+        image_rgbxyz[:3, :, :] = np.moveaxis(color_image, -1, 0) / 255.0  # (3, h, w)
 
-        assert np.max(image[:3, :, :]) <= 1.0, np.max(image[:3, :, :])
-        image[3:, :, :] = np.moveaxis(point_image, -1, 0)  # (3, h, w)
+        assert np.max(image_rgbxyz[:3, :, :]) <= 1.0, np.max(image_rgbxyz[:3, :, :])
+        image_rgbxyz[3:, :, :] = np.moveaxis(point_image, -1, 0)  # (3, h, w)
 
         if not compute_boundary_mask:
-            return image, None, cropper
+            return image_rgbxyz, None, cropper
         else:
             assert max_boundary_dist
             boundary_mask = image_utils.compute_boundary_mask(depth_or_point_image, max_boundary_dist)
-            return image, boundary_mask, cropper
+            return image_rgbxyz, boundary_mask, cropper
 
     @staticmethod
     def load_image(
