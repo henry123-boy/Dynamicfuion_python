@@ -13,7 +13,7 @@ import open3d as o3d
 import open3d.core as o3c
 from dq3d import dualquat, quat
 from pynvml import *
-from scipy.spatial.transform.rotation import Rotation as scipy_rot
+from scipy.spatial.transform.rotation import Rotation
 
 # local
 import nnrt
@@ -120,7 +120,7 @@ def main() -> int:
 
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
-    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
+    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
     first_frame = sequence.get_frame_at(0)
 
@@ -293,14 +293,20 @@ def main() -> int:
             # region === fuse model ====
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
+            # __DEBUG
+            rotation_center = np.array([0.0855289, -0.03289237, 2.79831315], dtype=np.float32)
+            increment_rotation = Rotation.from_euler("z", 2.0, degrees=True)
+
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
                 # __DEBUG
-                # translation = [0.01, 0.01, 0.0]
-                rotation = scipy_rot.identity().as_matrix()
+                rotation = increment_rotation.as_matrix()
+                previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
+                new_node_position = rotation_center + rotation.dot(previous_node_position - rotation_center)
+                translation = new_node_position - new_node_position
 
                 node_frame_transform = dualquat(quat(rotation), translation)
                 # __DEBUG
-                print("Node transform:", i_node, scipy_rot.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
+                print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
                 deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
 
             # prepare data for Open3D integration

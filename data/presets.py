@@ -25,7 +25,7 @@ class FrameSequencePreset(Enum):
     BERLIN_50 = FrameSequenceDataset(70, DataSplit.TRAIN, frame_count=50, has_masks=False)
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False)
     BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False)
-    # The BERLIN_OFFSET sequences can be generated from the BERLIN_0 sequence using scripts such as
+    # The BERLIN_OFFSET and BERLIN_ROTATION sequences can be generated from the BERLIN_0 sequence using scripts such as
     # pipeline/data_generation/animate_berlin_x_offset.py
     #
     # BERLIN_OFFSET_X = FrameSequenceDataset(
@@ -35,5 +35,8 @@ class FrameSequencePreset(Enum):
     # BERLIN_OFFSET_XY = FrameSequenceDataset(
     #     base_dataset_type=DatasetType.CUSTOM,
     #     custom_frame_directory="/home/algomorph/Workbench/NeuralTracking/output/berlin_xy_offset_sequence")
+    # BERLIN_ROTATION_Z = FrameSequenceDataset(
+    #     base_dataset_type=DatasetType.CUSTOM,
+    #     custom_frame_directory="/home/algomorph/Workbench/NeuralTracking/output/berlin_z_rotation_sequence")
     # MINION = FrameSequenceDataset(base_dataset_type=DatasetType.CUSTOM,
     #                               custom_frame_directory="/mnt/Data/Reconstruction/real_data/minion/data")
