@@ -16,14 +16,29 @@ class SourceImageMode(Enum):
     RENDERD_WITH_PREVIOUS_IMAGE_OVERLAY = 2
 
 
-# We will overwrite the default value in options.py / settings.py
-options.use_mask = True
-options.gn_max_nodes = 3000
+class MotionBlendingMode(Enum):
+    QUATERNIONS = 0
+    MATRICES = 1
 
+
+# **** BEHAVIOR *****
+
+# Preprocessing
 # TODO: the below settings should be part of dataset class tree!
 far_clip_distance = 2400  # mm, non-positive value for no clipping
 input_image_size = (480, 640)
 mask_clip_lower_threshold = 150
+
+# Tracking
+source_image_mode: SourceImageMode = SourceImageMode.REUSE_DATASET
+# We will overwrite the default value in options.py / settings.py
+options.use_mask = True
+options.gn_max_nodes = 3000
+
+# Integration
+anchor_node_count = 4  # also used for initial graph generation
+motion_blending_mode = MotionBlendingMode.MATRICES
+
 
 # **** TELEMETRY *****
 
@@ -39,6 +54,8 @@ visualization_mode: VisualizationMode = VisualizationMode.WARPED_MESH
 # logging options
 record_visualization_to_disk = False
 
+# **** DATASET *****
+
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
@@ -49,6 +66,3 @@ record_visualization_to_disk = False
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40_SOD_MASKS.value
 sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-
-anchor_node_count = 4
-source_image_mode: SourceImageMode = SourceImageMode.REUSE_DATASET

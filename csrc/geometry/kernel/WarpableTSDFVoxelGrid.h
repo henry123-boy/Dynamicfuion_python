@@ -50,6 +50,13 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
                      const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_dual_quaternion_transformations,
                      float node_coverage, int anchor_count, float depth_scale, float depth_max);
 
+void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+                     const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                     const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                     float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
 // endregion
 // region =============================== CPU ======================================
 void ExtractVoxelCentersCPU(const open3d::core::Tensor& block_indices,
@@ -78,6 +85,13 @@ void IntegrateWarpedCPU(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
                         const open3d::core::Tensor& node_dual_quaternion_transformations,
                         float node_coverage, int anchor_count, float depth_scale, float depth_max);
+void IntegrateWarpedMatCPU(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+                        const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                        float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
 // endregion
 // region =============================== CUDA ======================================
 #ifdef BUILD_CUDA_MODULE
@@ -108,6 +122,13 @@ void IntegrateWarpedCUDA(const open3d::core::Tensor& indices, const open3d::core
                          const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
                          const open3d::core::Tensor& node_dual_quaternion_transformations,
                          float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
+void IntegrateWarpedMatCUDA(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+                        const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                        float node_coverage, int anchor_count, float depth_scale, float depth_max);
 #endif
 // endregion
 

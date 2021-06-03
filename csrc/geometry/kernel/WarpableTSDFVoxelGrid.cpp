@@ -139,6 +139,42 @@ void IntegrateWarped(const open3d::core::Tensor& indices, const open3d::core::Te
 	}
 }
 
+void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
+                        core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
+                        const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                        const core::Tensor& node_rotations, const core::Tensor& node_translations, float node_coverage, int anchor_count,
+                        float depth_scale, float depth_max) {
+	core::Device device = block_keys.GetDevice();
+
+	core::Device::DeviceType device_type = device.GetType();
+
+	static const core::Device host("CPU:0");
+	core::Tensor intrinsics_d =
+			intrinsics.To(host, core::Dtype::Float64).Contiguous();
+	core::Tensor extrinsics_d =
+			extrinsics.To(host, core::Dtype::Float64).Contiguous();
+
+	if (device_type == core::Device::DeviceType::CPU) {
+		IntegrateWarpedMatCPU(block_indices, block_keys, block_values,
+		                   cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                   depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                      node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
+	} else if (device_type == core::Device::DeviceType::CUDA) {
+#ifdef BUILD_CUDA_MODULE
+		IntegrateWarpedMatCUDA(block_indices, block_keys, block_values,
+		                    cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                    depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                       node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
+#else
+		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+	} else {
+		utility::LogError("Unimplemented device");
+	}
+
+}
+
 
 } // namespace tsdf
 } // namespace kernel

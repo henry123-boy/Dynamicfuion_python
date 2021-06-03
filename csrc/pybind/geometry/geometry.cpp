@@ -99,16 +99,26 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 	warpable_tsdf_voxel_grid.def("extract_values_in_extent", &WarpableTSDFVoxelGrid::ExtractValuesInExtent,
 	                             "min_x"_a, "min_y"_a, "min_z"_a,
 	                             "max_x"_a, "max_y"_a, "max_z"_a);
-	warpable_tsdf_voxel_grid.def("integrate_warped", py::overload_cast<const Image&, const Image&,
+	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const Image&, const Image&,
 							  const core::Tensor&, const core::Tensor&,const core::Tensor&,const core::Tensor&,const core::Tensor&,
 							  float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarped),
 	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
 	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
-	warpable_tsdf_voxel_grid.def("integrate_warped", py::overload_cast<const Image&, const core::Tensor&,
+	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const Image&, const core::Tensor&,
 			                             const core::Tensor&,const core::Tensor&,const core::Tensor&,const core::Tensor&,
 			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarped),
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
 	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const Image&, const core::Tensor&,
+			                             const core::Tensor&,const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
+			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
+	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const core::Tensor&,
+			                             const core::Tensor&,const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
+			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
+	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
 	// endregion
 
 

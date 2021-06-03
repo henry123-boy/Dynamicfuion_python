@@ -335,17 +335,18 @@ def main() -> int:
                 # rotation = Rotation.identity().as_matrix()
                 # translation = [0.01, 0.01, 0]
 
-                node_frame_transform = dualquat(quat(rotation), translation)
+                node_frame_transform_dq = dualquat(quat(rotation), translation)
+                node_frame_transform_mat = np.concatenate((np.concatenate((rotation, translation.reshape(-1, 1)), axis=1),
+                                                           [[0.0, 0.0, 0.0, 1.0]]), axis=0)
 
                 # __DEBUG
                 # print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
                 # print("Node previous / new position:", i_node, previous_node_position, new_position)
 
-                deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
+                deformation_graph.transformations_dq[i_node] = deformation_graph.transformations_dq[i_node] * node_frame_transform_dq
+                deformation_graph.transformations_mat[i_node] = node_frame_transform_mat.dot(deformation_graph.transformations_mat[i_node])
 
             # prepare data for Open3D integration
-            node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations])
-            node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
             nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
             if po.print_voxel_fusion_statistics:
@@ -353,11 +354,27 @@ def main() -> int:
                 voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
                 voxels_modified_earlier_indices = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == current_frame.frame_index)[0]
 
-            cos_voxel_ray_to_normal = volume.integrate_warped(
-                depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                intrinsics_open3d_cuda, extrinsics_open3d_cuda,
-                nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
-                anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
+            if po.motion_blending_mode == po.MotionBlendingMode.QUATERNIONS:
+                # prepare data for Open3D integration
+                node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations_dq])
+                node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
+                cos_voxel_ray_to_normal = volume.integrate_warped_dq(
+                    depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                    intrinsics_open3d_cuda, extrinsics_open3d_cuda,
+                    nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
+                    anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
+            elif po.motion_blending_mode == po.MotionBlendingMode.MATRICES:
+                node_rotations = np.array([transform[:3, :3] for transform in deformation_graph.transformations_mat])
+                node_rotations_o3d = o3c.Tensor(node_rotations, dtype=o3c.Dtype.Float32, device=device)
+                node_translations = np.array([transform[3, :3].flatten() for transform in deformation_graph.transformations_mat])
+                node_translations_o3d = o3c.Tensor(node_translations, dtype=o3c.Dtype.Float32, device=device)
+                cos_voxel_ray_to_normal = volume.integrate_warped_mat(
+                    depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                    intrinsics_open3d_cuda, extrinsics_open3d_cuda,
+                    nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
+                    anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
+            else:
+                raise ValueError("Unsupported motion blending mode")
 
             if po.print_voxel_fusion_statistics:
                 voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()

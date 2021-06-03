@@ -89,7 +89,8 @@ class DeformationGraph:
         self.edges = edges
         self.edge_weights = edge_weights
         self.clusters = clusters
-        self.transformations = [dualquat(quat.identity())] * len(self.nodes)
+        self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
+        self.transformations_mat = np.array([np.eye(4, dtype=np.float32)] * len(self.nodes))
 
     def get_extent_canonical(self):
         return self.nodes.max(axis=0), self.nodes.min(axis=0)
@@ -105,7 +106,7 @@ class DeformationGraph:
         i_vertex = 0
         deformed_vertices = np.zeros_like(vertices)
         for vertex in vertices:
-            vertex_anchor_quaternions = [self.transformations[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
+            vertex_anchor_quaternions = [self.transformations_dq[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
             vertex_anchor_weights = vertex_weights[i_vertex]
             deformed_vertices[i_vertex] = op.dlb(vertex_anchor_weights, vertex_anchor_quaternions).transform_point(vertex)
             i_vertex += 1

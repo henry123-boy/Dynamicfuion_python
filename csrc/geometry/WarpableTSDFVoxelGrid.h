@@ -37,8 +37,6 @@ public:
 	/// All undefined SDF values will be kept as -2.0
 	open3d::core::Tensor ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z, int max_voxel_x, int max_voxel_y, int max_voxel_z);
 
-	// TODO implement
-	void ActivateBlocksForWarpNodes(const open3d::core::Tensor& new_warp_graph_nodes, float node_coverage);
 
 	open3d::core::Tensor IntegrateWarped(const open3d::t::geometry::Image& depth,
 	                                     const open3d::core::Tensor& depth_normals,
@@ -65,6 +63,32 @@ public:
 			                             int anchor_count = 4,
 			                             float depth_scale = 1000.0f,
 			                             float depth_max = 3.0f);
+
+	open3d::core::Tensor IntegrateWarpedMat(const open3d::t::geometry::Image& depth,
+	                                        const open3d::t::geometry::Image& color,
+	                                        const open3d::core::Tensor& depth_normals,
+	                                        const open3d::core::Tensor& intrinsics,
+	                                        const open3d::core::Tensor& extrinsics,
+	                                        const open3d::core::Tensor& warp_graph_nodes,
+	                                        const open3d::core::Tensor& node_rotations,
+	                                        const open3d::core::Tensor& node_translations,
+	                                        float node_coverage,
+	                                        int anchor_count = 4,
+	                                        float depth_scale = 1000.0f,
+	                                        float depth_max = 3.0f);
+
+	open3d::core::Tensor IntegrateWarpedMat(const open3d::t::geometry::Image& depth,
+	                                        const open3d::core::Tensor& depth_normals,
+	                                        const open3d::core::Tensor& intrinsics,
+	                                        const open3d::core::Tensor& extrinsics,
+	                                        const open3d::core::Tensor& warp_graph_nodes,
+	                                        const open3d::core::Tensor& node_rotations,
+	                                        const open3d::core::Tensor& node_translations,
+	                                        float node_coverage,
+	                                        int anchor_count = 4,
+	                                        float depth_scale = 1000.0f,
+	                                        float depth_max = 3.0f);
+
 
 protected:
 	using TSDFVoxelGrid::voxel_size_;
