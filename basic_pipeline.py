@@ -19,6 +19,8 @@ from scipy.spatial.transform.rotation import Rotation
 
 # local
 import nnrt
+
+import options
 from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
@@ -31,7 +33,6 @@ from model.default import load_default_nnrt_model
 from pipeline.graph import DeformationGraph, build_deformation_graph_from_mesh
 import pipeline.pipeline_options as po
 from pipeline.pipeline_options import VisualizationMode
-import options
 from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -90,16 +91,7 @@ def main() -> int:
     #####################################################################################################
     # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
     #####################################################################################################
-
-    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_X.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40_SOD_MASKS.value
+    sequence: FrameSequenceDataset = po.sequence
     first_frame = sequence.get_frame_at(0)
 
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(sequence.get_intrinsics_path(),
@@ -161,53 +153,64 @@ def main() -> int:
         # endregion
         if current_frame.frame_index == 0:
             volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, options.depth_scale, 3.0)
-            mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+            canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
             # === Construct initial deformation graph
-            deformation_graph = build_deformation_graph_from_mesh(mesh, options.node_coverage, erosion_iteration_count=1)
+            deformation_graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
+                                                                  erosion_iteration_count=1,
+                                                                  neighbor_count=po.anchor_node_count)
         else:
             # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via dlpack for rendering).
-            #  Conversion to legacy mesh can be delegated to before visualization, and only if visualizate_meshes is set to True.
-            #  The first setp is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
+            #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of these meshes
+            #  The first step is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
             #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
-            mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-            if po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH:
-                if po.record_visualization_to_disk:
-                    mesh_video_recorder.capture_frame([mesh])
-                else:
-                    o3d.visualization.draw_geometries([mesh],
-                                                      front=[0, 0, -1],
-                                                      lookat=[0, 0, 1.5],
-                                                      up=[0, -1.0, 0],
-                                                      zoom=0.7)
+            canonical_mesh = None
+            if po.source_image_mode != po.SourceImageMode.REUSE_DATASET or \
+                    (po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH or
+                     po.visualization_mode == po.VisualizationMode.WARPED_MESH):
+                canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+                if po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH:
+                    if po.record_visualization_to_disk:
+                        mesh_video_recorder.capture_frame([canonical_mesh])
+                    else:
+                        o3d.visualization.draw_geometries([canonical_mesh],
+                                                          front=[0, 0, -1],
+                                                          lookat=[0, 0, 1.5],
+                                                          up=[0, -1.0, 0],
+                                                          zoom=0.7)
+            warped_mesh = None
             # TODO: perform topological graph update
-            warped_mesh = deformation_graph.warp_mesh(mesh, options.node_coverage)
-            if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
-                if po.record_visualization_to_disk:
-                    mesh_video_recorder.capture_frame([warped_mesh])
-                else:
-                    o3d.visualization.draw_geometries([warped_mesh],
-                                                      front=[0, 0, -1],
-                                                      lookat=[0, 0, 1.5],
-                                                      up=[0, -1.0, 0],
-                                                      zoom=0.7)
+            if po.source_image_mode != po.SourceImageMode.REUSE_DATASET or \
+                    po.visualization_mode == po.VisualizationMode.WARPED_MESH:
+                warped_mesh = deformation_graph.warp_mesh(canonical_mesh, options.node_coverage)
+                if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
+                    if po.record_visualization_to_disk:
+                        mesh_video_recorder.capture_frame([warped_mesh])
+                    else:
+                        o3d.visualization.draw_geometries([warped_mesh],
+                                                          front=[0, 0, -1],
+                                                          lookat=[0, 0, 1.5],
+                                                          up=[0, -1.0, 0],
+                                                          zoom=0.7)
 
             #####################################################################################################
             # region ===== prepare source point cloud & RGB image ====
             #####################################################################################################
-            source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=1.0)
+            if po.source_image_mode == po.SourceImageMode.REUSE_DATASET:
+                source_depth = previous_depth_image_np
+                source_color = previous_color_image_np
+            else:
+                source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=options.depth_scale)
+                source_depth = source_depth.astype(np.uint16)
 
-            # flip channels, i.e. RGB<-->BGR
-            source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
+                # flip channels, i.e. RGB<-->BGR
+                source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
+                if po.source_image_mode == po.SourceImageMode.RENDERD_WITH_PREVIOUS_IMAGE_OVERLAY:
+                    # re-use pixel data from previous frame
+                    source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
+                    source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
 
-            # re-use pixel data from previous frame
-            source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
-            source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
-
-            # __DEBUG
-            # cv2.imwrite(os.path.join("output/test", f"{current_frame.frame_index:06d}.png"), cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB))
-
-            source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy, depth_scale=1.0)  # (h, w, 3)
+            source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy, depth_scale=options.depth_scale)  # (h, w, 3)
 
             source_rgbxyz, _, cropper = DeformDataset.prepare_pytorch_input(
                 source_color, source_point_image, intrinsics_dict,
@@ -354,7 +357,7 @@ def main() -> int:
                 depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                 intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
-                anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+                anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
 
             if po.print_voxel_fusion_statistics:
                 voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()

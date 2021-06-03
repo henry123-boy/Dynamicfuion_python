@@ -26,7 +26,7 @@
 #include <Eigen/Geometry>
 
 #define MAX_ANCHOR_COUNT 8
-#define MINIMUM_VALID_ANCHOR_COUNT 1
+#define MINIMUM_VALID_ANCHOR_COUNT 3
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;
