@@ -5,18 +5,18 @@ from data import FrameSequenceDataset, FrameSequencePreset
 
 class VisualizationMode(Enum):
     NONE = 0
-    CANONCIAL_MESH = 1
+    CANONICAL_MESH = 1
     WARPED_MESH = 2
     POINT_CLOUD_TRACKING = 3
 
 
 class SourceImageMode(Enum):
-    REUSE_DATASET = 0
+    REUSE_PREVIOUS_FRAME = 0
     RENDERED_ONLY = 1
-    RENDERD_WITH_PREVIOUS_IMAGE_OVERLAY = 2
+    RENDERED_WITH_PREVIOUS_FRAME_OVERLAY = 2
 
 
-class MotionBlendingMode(Enum):
+class TransformationMode(Enum):
     QUATERNIONS = 0
     MATRICES = 1
 
@@ -30,14 +30,14 @@ input_image_size = (480, 640)
 mask_clip_lower_threshold = 150
 
 # Tracking
-source_image_mode: SourceImageMode = SourceImageMode.REUSE_DATASET
+source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 # We will overwrite the default value in options.py / settings.py
 options.use_mask = True
 options.gn_max_nodes = 3000
 
 # Integration
 anchor_node_count = 4  # also used for initial graph generation
-motion_blending_mode = MotionBlendingMode.MATRICES
+transformation_mode = TransformationMode.MATRICES
 
 
 # **** TELEMETRY *****
@@ -46,7 +46,7 @@ motion_blending_mode = MotionBlendingMode.MATRICES
 print_frame_info = True
 print_intrinsics = False
 print_gpu_memory_info = False
-print_voxel_fusion_statistics = False
+print_voxel_fusion_statistics = True
 
 # visualization options
 visualization_mode: VisualizationMode = VisualizationMode.WARPED_MESH

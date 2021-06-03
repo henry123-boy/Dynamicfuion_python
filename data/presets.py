@@ -32,7 +32,7 @@ class FrameSequencePreset(Enum):
     #    python3 u2net_test.py -m /mnt/Data/Checkpoints/u2net/u2net.pth
     #       -i /mnt/Data/Datasets/deepdeform/train/seq070/color/
     #       -o /mnt/Data/Datasets/deepdeform/train/seq070/sod
-    BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=1, has_masks=True, masks_subfolder="sod")
+    BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True, masks_subfolder="sod")
     RED_SHORTS_40_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, frame_count=40, has_masks=True, masks_subfolder="sod")
     BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False)
     # The BERLIN OFFSET, ROTATION, SCALE, ETC. sequences can be generated from the BERLIN_0 sequence using scripts

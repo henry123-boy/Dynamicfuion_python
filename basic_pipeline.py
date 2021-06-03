@@ -116,7 +116,8 @@ def main() -> int:
     previous_color_image_np: typing.Union[None, np.ndarray] = None
     previous_mask_image_np: typing.Union[None, np.ndarray] = None
 
-    for current_frame in sequence:
+    while sequence.has_more_frames():
+        current_frame = sequence.get_next_frame()
         #####################################################################################################
         # region ===== grab images, mask / clip if necessary, transfer to GPU versions for Open3D ===========
         #####################################################################################################
@@ -151,25 +152,25 @@ def main() -> int:
         color_image_open3d = o3d.t.geometry.Image(o3c.Tensor(color_image_np, device=device))
 
         # endregion
-        if current_frame.frame_index == 0:
+        if current_frame.frame_index == sequence.start_frame_index:
             volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, options.depth_scale, 3.0)
             canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
             # === Construct initial deformation graph
             deformation_graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
-                                                                  erosion_iteration_count=1,
-                                                                  neighbor_count=po.anchor_node_count)
+                                                                  erosion_iteration_count=10,
+                                                                  neighbor_count=8)
         else:
             # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via dlpack for rendering).
             #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of these meshes
             #  The first step is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
             #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
             canonical_mesh = None
-            if po.source_image_mode != po.SourceImageMode.REUSE_DATASET or \
-                    (po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH or
+            if po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
+                    (po.visualization_mode == po.VisualizationMode.CANONICAL_MESH or
                      po.visualization_mode == po.VisualizationMode.WARPED_MESH):
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-                if po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH:
+                if po.visualization_mode == po.VisualizationMode.CANONICAL_MESH:
                     if po.record_visualization_to_disk:
                         mesh_video_recorder.capture_frame([canonical_mesh])
                     else:
@@ -180,9 +181,12 @@ def main() -> int:
                                                           zoom=0.7)
             warped_mesh = None
             # TODO: perform topological graph update
-            if po.source_image_mode != po.SourceImageMode.REUSE_DATASET or \
+            if po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
                     po.visualization_mode == po.VisualizationMode.WARPED_MESH:
-                warped_mesh = deformation_graph.warp_mesh(canonical_mesh, options.node_coverage)
+                if po.transformation_mode == po.TransformationMode.QUATERNIONS:
+                    warped_mesh = deformation_graph.warp_mesh_dq(canonical_mesh, options.node_coverage)
+                else:
+                    warped_mesh = deformation_graph.warp_mesh_mat(canonical_mesh, options.node_coverage)
                 if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
                     if po.record_visualization_to_disk:
                         mesh_video_recorder.capture_frame([warped_mesh])
@@ -196,7 +200,7 @@ def main() -> int:
             #####################################################################################################
             # region ===== prepare source point cloud & RGB image ====
             #####################################################################################################
-            if po.source_image_mode == po.SourceImageMode.REUSE_DATASET:
+            if po.source_image_mode == po.SourceImageMode.REUSE_PREVIOUS_FRAME:
                 source_depth = previous_depth_image_np
                 source_color = previous_color_image_np
             else:
@@ -205,7 +209,7 @@ def main() -> int:
 
                 # flip channels, i.e. RGB<-->BGR
                 source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
-                if po.source_image_mode == po.SourceImageMode.RENDERD_WITH_PREVIOUS_IMAGE_OVERLAY:
+                if po.source_image_mode == po.SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
                     # re-use pixel data from previous frame
                     source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
                     source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
@@ -252,7 +256,11 @@ def main() -> int:
             node_count = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
             source_cuda = torch.from_numpy(source_rgbxyz).cuda().unsqueeze(0)
             target_cuda = torch.from_numpy(target_rgbxyz).cuda().unsqueeze(0)
-            graph_nodes_cuda = torch.from_numpy(deformation_graph.nodes).cuda().unsqueeze(0)
+            if po.transformation_mode == po.TransformationMode.QUATERNIONS:
+                warped_nodes = deformation_graph.get_warped_nodes_dq()
+            else:
+                warped_nodes = deformation_graph.get_warped_nodes_mat()
+            graph_nodes_cuda = torch.from_numpy(warped_nodes).cuda().unsqueeze(0)
             graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
             graph_edges_weights_cuda = torch.from_numpy(deformation_graph.edge_weights).cuda().unsqueeze(0)
             graph_clusters_cuda = torch.from_numpy(deformation_graph.clusters.reshape(-1, 1)).cuda().unsqueeze(0)
@@ -291,7 +299,7 @@ def main() -> int:
                 valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
 
                 tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
-                                                deformation_graph.nodes, deformation_graph.edges,
+                                                warped_nodes, deformation_graph.edges,
                                                 rotations_pred, translations_pred, mask_pred,
                                                 valid_source_points, valid_correspondences, target_matches)
 
@@ -340,21 +348,24 @@ def main() -> int:
                                                            [[0.0, 0.0, 0.0, 1.0]]), axis=0)
 
                 # __DEBUG
-                # print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
+                print("Node transform:", i_node, warped_nodes[i_node], deformation_graph.nodes[i_node],
+                      Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
                 # print("Node previous / new position:", i_node, previous_node_position, new_position)
 
                 deformation_graph.transformations_dq[i_node] = deformation_graph.transformations_dq[i_node] * node_frame_transform_dq
-                deformation_graph.transformations_mat[i_node] = node_frame_transform_mat.dot(deformation_graph.transformations_mat[i_node])
+                deformation_graph.rotations_mat[i_node] = rotation.dot(deformation_graph.rotations_mat[i_node])
+                deformation_graph.translations_vec[i_node] += translation
 
             # prepare data for Open3D integration
             nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
             if po.print_voxel_fusion_statistics:
+                expected_max_weight_previous = current_frame.frame_index - sequence.start_frame_index
                 voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
                 voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
-                voxels_modified_earlier_indices = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == current_frame.frame_index)[0]
+                voxels_modified_earlier_indices = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == expected_max_weight_previous)[0]
 
-            if po.motion_blending_mode == po.MotionBlendingMode.QUATERNIONS:
+            if po.transformation_mode == po.TransformationMode.QUATERNIONS:
                 # prepare data for Open3D integration
                 node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations_dq])
                 node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
@@ -363,11 +374,9 @@ def main() -> int:
                     intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                     nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                     anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
-            elif po.motion_blending_mode == po.MotionBlendingMode.MATRICES:
-                node_rotations = np.array([transform[:3, :3] for transform in deformation_graph.transformations_mat])
-                node_rotations_o3d = o3c.Tensor(node_rotations, dtype=o3c.Dtype.Float32, device=device)
-                node_translations = np.array([transform[3, :3].flatten() for transform in deformation_graph.transformations_mat])
-                node_translations_o3d = o3c.Tensor(node_translations, dtype=o3c.Dtype.Float32, device=device)
+            elif po.transformation_mode == po.TransformationMode.MATRICES:
+                node_rotations_o3d = o3c.Tensor(deformation_graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
+                node_translations_o3d = o3c.Tensor(deformation_graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
                 cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                     depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                     intrinsics_open3d_cuda, extrinsics_open3d_cuda,
@@ -380,9 +389,10 @@ def main() -> int:
                 voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
                 voxel_tsdf_and_weights_np_modified = voxel_tsdf_and_weights.cpu().numpy()
                 voxels_fused_count_previous = len(voxels_modified_earlier_indices)
-                voxels_fused_count_current = (voxel_tsdf_and_weights_np_modified[:, 1] == current_frame.frame_index).sum()
+                expected_max_weight = current_frame.frame_index - sequence.start_frame_index + 1
+                voxels_fused_count_current = (voxel_tsdf_and_weights_np_modified[:, 1] == expected_max_weight).sum()
                 voxels_fused_repeatedly_count = (voxel_tsdf_and_weights_np_modified[voxels_modified_earlier_indices][:, 1]
-                                                 == current_frame.frame_index + 1).sum()
+                                                 == expected_max_weight).sum()
 
                 print(f"voxels fused in previous frame with weight {current_frame.frame_index}:", voxels_fused_count_previous)
                 print(f"voxels fused in current frame with weight {current_frame.frame_index + 1}:", voxels_fused_count_current)
@@ -398,9 +408,10 @@ def main() -> int:
         previous_color_image_np = color_image_np
         previous_depth_image_np = depth_image_np
         previous_mask_image_np = mask_image_np
-        # TODO: fix this bug -- why does the iteration not respect len(sequence)??!
-        if current_frame.frame_index == len(sequence) - 1:
-            break
+        # TODO: fix regular for-loop iteration for sequences: why does the iteration not respect len(sequence)??! how to
+        #  make it start from start_frame_index, not 0, every time?
+        # if current_frame.frame_index == len(sequence) - 1:
+        #    break
 
     return PROGRAM_EXIT_SUCCESS
 

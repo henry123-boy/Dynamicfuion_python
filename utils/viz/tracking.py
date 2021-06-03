@@ -9,6 +9,42 @@ import utils.viz.line_mesh as line_mesh_utils
 import utils.viz.example_viewer as viewer
 
 
+def draw_node_graph(graph_nodes, graph_edges):
+
+
+    # Graph canonical_node_positions
+    rendered_graph_nodes = []
+    for node in graph_nodes:
+        mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
+        mesh_sphere.compute_vertex_normals()
+        mesh_sphere.paint_uniform_color([1.0, 0.0, 0.0])
+        mesh_sphere.translate(node)
+        rendered_graph_nodes.append(mesh_sphere)
+
+    # Merge all different sphere meshes
+    rendered_graph_nodes = utils.mesh.merge_meshes(rendered_graph_nodes)
+
+    # Graph edges
+    edges_pairs = []
+    for node_id, edges in enumerate(graph_edges):
+        for neighbor_id in edges:
+            if neighbor_id == -1:
+                break
+            edges_pairs.append([node_id, neighbor_id])
+
+    colors = [[0.2, 1.0, 0.2] for i in range(len(edges_pairs))]
+    line_mesh = line_mesh_utils.LineMesh(graph_nodes, edges_pairs, colors, radius=0.003)
+    line_mesh_geoms = line_mesh.cylinder_segments
+
+    # Merge all different line meshes
+    line_mesh_geoms = utils.mesh.merge_meshes(line_mesh_geoms)
+
+    # o3d.visualization.draw_geometries([rendered_graph_nodes, line_mesh_geoms, source_object_pcd])
+
+    # Combined canonical_node_positions & edges
+    rendered_graph = [rendered_graph_nodes, line_mesh_geoms]
+    return rendered_graph
+
 def visualize_tracking(
         source_rgbxyz: np.ndarray,
         target_rgbxyz: np.ndarray,
@@ -98,37 +134,9 @@ def visualize_tracking(
     graph_nodes = utils.viz.transform_pointcloud_to_opengl_coords(graph_nodes)
     deformed_graph_nodes = utils.viz.transform_pointcloud_to_opengl_coords(deformed_graph_nodes)
 
-    # Graph canonical_node_positions
-    rendered_graph_nodes = []
-    for node in graph_nodes:
-        mesh_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
-        mesh_sphere.compute_vertex_normals()
-        mesh_sphere.paint_uniform_color([1.0, 0.0, 0.0])
-        mesh_sphere.translate(node)
-        rendered_graph_nodes.append(mesh_sphere)
+    source_graph = draw_node_graph(graph_nodes, graph_edges)
+    target_graph = draw_node_graph(deformed_graph_nodes, graph_edges)
 
-    # Merge all different sphere meshes
-    rendered_graph_nodes = utils.mesh.merge_meshes(rendered_graph_nodes)
-
-    # Graph edges
-    edges_pairs = []
-    for node_id, edges in enumerate(graph_edges):
-        for neighbor_id in edges:
-            if neighbor_id == -1:
-                break
-            edges_pairs.append([node_id, neighbor_id])
-
-    colors = [[0.2, 1.0, 0.2] for i in range(len(edges_pairs))]
-    line_mesh = line_mesh_utils.LineMesh(graph_nodes, edges_pairs, colors, radius=0.003)
-    line_mesh_geoms = line_mesh.cylinder_segments
-
-    # Merge all different line meshes
-    line_mesh_geoms = utils.mesh.merge_meshes(line_mesh_geoms)
-
-    # o3d.visualization.draw_geometries([rendered_graph_nodes, line_mesh_geoms, source_object_pcd])
-
-    # Combined canonical_node_positions & edges
-    rendered_graph = [rendered_graph_nodes, line_mesh_geoms]
     # endregion
     ####################################
     # Mask
@@ -252,7 +260,8 @@ def visualize_tracking(
         "source_pcd": source_pcd,
         "source_obj": source_object_pcd,
         "target_pcd": target_pcd,
-        "graph": rendered_graph
+        "source_graph": source_graph,
+        "target_graph": target_graph
         # "deformed_graph":    rendered_deformed_graph
     }
 

@@ -8,7 +8,8 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         self.added_source_pcd = True
         self.added_source_obj = False
         self.added_target_pcd = False
-        self.added_graph = False
+        self.added_source_graph = False
+        self.added_target_graph = False
 
         self.added_both = False
 
@@ -23,7 +24,8 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         self.source_pcd = geometry_dict["source_pcd"]
         self.source_obj = geometry_dict["source_obj"]
         self.target_pcd = geometry_dict["target_pcd"]
-        self.graph      = geometry_dict["graph"]
+        self.source_graph      = geometry_dict["source_graph"]
+        self.target_graph      = geometry_dict["target_graph"]
 
         # align source to target
         self.valid_source_points_cached = alignment_dict["valid_source_points"]
@@ -48,6 +50,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
             if self.added_source_obj:
                 vis.remove_geometry(self.source_obj)
                 self.added_source_obj = False
+
         elif ref == "target":
             if self.added_target_pcd:
                 vis.remove_geometry(self.target_pcd)
@@ -65,7 +68,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         if self.added_both:
             return "both"
 
-        if self.added_graph:
+        if self.added_source_graph:
             if self.added_source_pcd:
                 return "source_pcd_with_graph"
             if self.added_source_obj:
@@ -81,21 +84,40 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
     def custom_draw_geometry_with_key_callback(self):
 
-        def toggle_graph(vis):
-            if self.graph is None:
-                print("You didn't pass me a graph!")
+        def toggle_source_graph(vis):
+            if self.source_graph is None:
+                print("You didn't pass me a source graph!")
                 return False
 
             param = vis.get_view_control().convert_to_pinhole_camera_parameters()
 
-            if self.added_graph:
-                for g in self.graph:
+            if self.added_source_graph:
+                for g in self.source_graph:
                     vis.remove_geometry(g)
-                self.added_graph = False
+                self.added_source_graph = False
             else:
-                for g in self.graph:
+                for g in self.source_graph:
                     vis.add_geometry(g)
-                self.added_graph = True
+                self.added_source_graph = True
+            ctr = vis.get_view_control()
+            ctr.convert_from_pinhole_camera_parameters(param)
+            return False
+
+        def toggle_target_graph(vis):
+            if self.target_graph is None:
+                print("You didn't pass me a target graph!")
+                return False
+
+            param = vis.get_view_control().convert_to_pinhole_camera_parameters()
+
+            if self.added_target_graph:
+                for g in self.target_graph:
+                    vis.remove_geometry(g)
+                self.added_target_graph = False
+            else:
+                for g in self.target_graph:
+                    vis.add_geometry(g)
+                self.added_target_graph = True
 
             ctr = vis.get_view_control()
             ctr.convert_from_pinhole_camera_parameters(param)
@@ -428,7 +450,8 @@ class CustomDrawGeometryWithKeyCallbackViewer():
                 vis.update_renderer()
 
         key_to_callback = {}
-        key_to_callback[ord("G")] = toggle_graph
+        key_to_callback[ord("G")] = toggle_source_graph
+        key_to_callback[ord("D")] = toggle_target_graph
         key_to_callback[ord("S")] = view_source
         key_to_callback[ord("T")] = view_target
         key_to_callback[ord("O")] = toggle_obj
