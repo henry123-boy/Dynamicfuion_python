@@ -42,7 +42,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             if segment_name is None:
                 segment_name = parts[1]
             if has_masks:
-                self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
+                mask_filename_mask_with_segment = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
+                if os.path.isfile(mask_filename_mask_with_segment.format(0)):
+                    self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
         self.segment_name = segment_name
         self.start_frame_index = start_frame_index
 

@@ -5,10 +5,12 @@
 
 # stdlib
 import sys
+import typing
 from enum import Enum
 
 # 3rd-party
 import cv2
+import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 from dq3d import dualquat, quat
@@ -27,6 +29,8 @@ import utils.viz.tracking as tracking_viz
 from model.model import DeformNet
 from model.default import load_default_nnrt_model
 from pipeline.graph import DeformationGraph, build_deformation_graph_from_mesh
+import pipeline.pipeline_options as po
+from pipeline.pipeline_options import VisualizationMode
 import options
 from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
 
@@ -64,50 +68,19 @@ def print_cuda_memory_info():
     print(f'used     : {info.used}')
 
 
-class VisualizationMode(Enum):
-    NONE = 0
-    CANONCIAL_MESH = 1
-    WARPED_MESH = 2
-    POINT_CLOUD_TRACKING = 3
-
-
 def main() -> int:
-    #####################################################################################################
-    # region ==== options ====
-    #####################################################################################################
-
-    # We will overwrite the default value in options.py / settings.py
-    options.use_mask = True
-    options.gn_max_nodes = 3000
-
-    # **** TELEMETRY *****
-
-    # verbosity options
-    print_frame_info = True
-    print_intrinsics = False
-    print_gpu_memory_info = False
-
-    # visualization options
-    visualization_mode: VisualizationMode = VisualizationMode.POINT_CLOUD_TRACKING
-
-    # logging options
-    record_visualization_to_disk = False
-
     # set up mesh recorder
     mesh_video_recorder = None
-    if record_visualization_to_disk:
+    if po.record_visualization_to_disk:
         mesh_video_recorder = FusionVisualizationRecorder(
             output_video_path=os.path.join(options.output_directory, "mesh_visualization.mkv"),
             front=[0, 0, -1], lookat=[0, 0, 1.5],
             up=[0, -1.0, 0], zoom=0.7
         )
 
-    if print_gpu_memory_info:
+    if po.print_gpu_memory_info:
         nvmlInit()
 
-    # TODO: should be part of dataset class tree!
-    input_image_size = (480, 640)
-    # endregion
     #####################################################################################################
     # region === load model, configure device ===
     #####################################################################################################
@@ -118,21 +91,22 @@ def main() -> int:
     # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
     #####################################################################################################
 
-    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
+    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_X.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
-    sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40_SOD_MASKS.value
     first_frame = sequence.get_frame_at(0)
 
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(sequence.get_intrinsics_path(),
                                                                                          first_frame.get_depth_image_path())
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
     intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
-    if print_intrinsics:
+    if po.print_intrinsics:
         camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
     intrinsics_open3d_cuda = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
@@ -144,29 +118,46 @@ def main() -> int:
 
     volume = utils.voxel_grid.make_default_tsdf_voxel_grid(device)
     deformation_graph: typing.Union[DeformationGraph, None] = None
-    renderer = PyTorch3DRenderer(input_image_size, device, intrinsics_open3d_cuda)
+    renderer = PyTorch3DRenderer(po.input_image_size, device, intrinsics_open3d_cuda)
+
+    previous_depth_image_np: typing.Union[None, np.ndarray] = None
+    previous_color_image_np: typing.Union[None, np.ndarray] = None
+    previous_mask_image_np: typing.Union[None, np.ndarray] = None
 
     for current_frame in sequence:
         #####################################################################################################
-        # region ===== grab images, transfer to GPU versions for Open3D ====
+        # region ===== grab images, mask / clip if necessary, transfer to GPU versions for Open3D ===========
         #####################################################################################################
-        if print_frame_info:
+        if po.print_frame_info:
             print("Processing frame:", current_frame.frame_index)
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
-        if print_gpu_memory_info:
+        if po.print_gpu_memory_info:
             print_cuda_memory_info()
 
         depth_image_open3d_legacy = o3d.io.read_image(current_frame.depth_image_path)
         depth_image_np = np.array(depth_image_open3d_legacy)
-        # __DEBUG (limit the number of nodes)
-        depth_image_np[depth_image_np > 2400] = 0
-        depth_image_open3d = o3d.t.geometry.Image(o3c.Tensor(depth_image_np, device=device))
-        # depth_image_open3d = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
 
         color_image_open3d_legacy = o3d.io.read_image(current_frame.color_image_path)
         color_image_np = np.array(color_image_open3d_legacy)
-        color_image_open3d = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
+
+        # limit the number of nodes & clusters by cutting at depth
+        if po.far_clip_distance > 0:
+            color_image_np[depth_image_np > po.far_clip_distance] = 0
+            depth_image_np[depth_image_np > po.far_clip_distance] = 0
+
+        # limit the number of nodes & clusters by masking out a segment
+        if sequence.has_masks():
+            mask_image_open3d_legacy = o3d.io.read_image(current_frame.mask_image_path)
+            mask_image_np = np.array(mask_image_open3d_legacy)
+            color_image_np[mask_image_np < po.mask_clip_lower_threshold] = 0
+            depth_image_np[mask_image_np < po.mask_clip_lower_threshold] = 0
+
+        mask_image_np = depth_image_np != 0
+
+        depth_image_open3d = o3d.t.geometry.Image(o3c.Tensor(depth_image_np, device=device))
+        color_image_open3d = o3d.t.geometry.Image(o3c.Tensor(color_image_np, device=device))
+
         # endregion
         if current_frame.frame_index == 0:
             volume.integrate(depth_image_open3d, color_image_open3d, intrinsics_open3d_cuda, extrinsics_open3d_cuda, options.depth_scale, 3.0)
@@ -180,8 +171,8 @@ def main() -> int:
             #  The first setp is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
             #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
-            if visualization_mode == VisualizationMode.CANONCIAL_MESH:
-                if record_visualization_to_disk:
+            if po.visualization_mode == po.VisualizationMode.CANONCIAL_MESH:
+                if po.record_visualization_to_disk:
                     mesh_video_recorder.capture_frame([mesh])
                 else:
                     o3d.visualization.draw_geometries([mesh],
@@ -191,8 +182,8 @@ def main() -> int:
                                                       zoom=0.7)
             # TODO: perform topological graph update
             warped_mesh = deformation_graph.warp_mesh(mesh, options.node_coverage)
-            if visualization_mode == VisualizationMode.WARPED_MESH:
-                if record_visualization_to_disk:
+            if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
+                if po.record_visualization_to_disk:
                     mesh_video_recorder.capture_frame([warped_mesh])
                 else:
                     o3d.visualization.draw_geometries([warped_mesh],
@@ -205,8 +196,17 @@ def main() -> int:
             # region ===== prepare source point cloud & RGB image ====
             #####################################################################################################
             source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=1.0)
+
             # flip channels, i.e. RGB<-->BGR
-            source_color = cv2.cvtColor(source_color, cv2.COLOR_RGB2BGR)
+            source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
+
+            # re-use pixel data from previous frame
+            source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
+            source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
+
+            # __DEBUG
+            # cv2.imwrite(os.path.join("output/test", f"{current_frame.frame_index:06d}.png"), cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB))
+
             source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy, depth_scale=1.0)  # (h, w, 3)
 
             source_rgbxyz, _, cropper = DeformDataset.prepare_pytorch_input(
@@ -274,7 +274,7 @@ def main() -> int:
             rotations_pred = model_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
             translations_pred = model_data["node_translations"].view(node_count, 3).cpu().numpy()
 
-            if visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
+            if po.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
                 # TODO: not sure what the mask prediction can be useful for except in visualization so far...
                 mask_pred = model_data["mask_pred"]
                 assert mask_pred is not None, "Make sure use_mask=True in options.py"
@@ -333,9 +333,11 @@ def main() -> int:
                 # translation = [0.01, 0.01, 0]
 
                 node_frame_transform = dualquat(quat(rotation), translation)
+
                 # __DEBUG
                 # print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
                 # print("Node previous / new position:", i_node, previous_node_position, new_position)
+
                 deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
 
             # prepare data for Open3D integration
@@ -343,10 +345,10 @@ def main() -> int:
             node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
             nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
-            # __DEBUG
-            voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
-            voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
-            modified_voxel_positions = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == 1)[0]
+            if po.print_voxel_fusion_statistics:
+                voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
+                voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
+                voxels_modified_earlier_indices = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == current_frame.frame_index)[0]
 
             cos_voxel_ray_to_normal = volume.integrate_warped(
                 depth_image_open3d, color_image_open3d, target_normal_map_o3d,
@@ -354,16 +356,17 @@ def main() -> int:
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
 
-            # __DEBUG
-            voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
-            voxel_tsdf_and_weights_np_modified = voxel_tsdf_and_weights.cpu().numpy()
-            voxels_fused_count_frame0 = len(modified_voxel_positions)
-            voxels_fused_count_frame1 = (voxel_tsdf_and_weights_np_modified[:, 1] == 1).sum()
-            voxels_fused_repeatedly_count = (voxel_tsdf_and_weights_np_modified[modified_voxel_positions][:, 1] == 2).sum()
+            if po.print_voxel_fusion_statistics:
+                voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
+                voxel_tsdf_and_weights_np_modified = voxel_tsdf_and_weights.cpu().numpy()
+                voxels_fused_count_previous = len(voxels_modified_earlier_indices)
+                voxels_fused_count_current = (voxel_tsdf_and_weights_np_modified[:, 1] == current_frame.frame_index).sum()
+                voxels_fused_repeatedly_count = (voxel_tsdf_and_weights_np_modified[voxels_modified_earlier_indices][:, 1]
+                                                 == current_frame.frame_index + 1).sum()
 
-            print(voxels_fused_count_frame0)
-            print(voxels_fused_count_frame1)
-            print(voxels_fused_repeatedly_count)
+                print(f"voxels fused in previous frame with weight {current_frame.frame_index}:", voxels_fused_count_previous)
+                print(f"voxels fused in current frame with weight {current_frame.frame_index + 1}:", voxels_fused_count_current)
+                print("voxels fused repeatedly (for sure) in the current and previous frame: ", voxels_fused_repeatedly_count)
 
             # __DEBUG if we don't want to proceed to frame 2 yet
             # break
@@ -372,10 +375,12 @@ def main() -> int:
             #####################################################################################################
             # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
             #  Check BaldrLector's NeuralTracking fork code.
-
-            # TODO: fix this bug -- why does the iteration not respect len(sequence)??!
-            if current_frame.frame_index == len(sequence) - 1:
-                break
+        previous_color_image_np = color_image_np
+        previous_depth_image_np = depth_image_np
+        previous_mask_image_np = mask_image_np
+        # TODO: fix this bug -- why does the iteration not respect len(sequence)??!
+        if current_frame.frame_index == len(sequence) - 1:
+            break
 
     return PROGRAM_EXIT_SUCCESS
 

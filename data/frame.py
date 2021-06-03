@@ -185,6 +185,9 @@ class GenericDataset:
     def get_mask_frame_directory(self) -> str:
         return self._mask_frame_directory
 
+    def has_masks(self) -> bool:
+        return self._mask_image_filename_mask is not None
+
     def get_intrinsics_path(self) -> str:
         return self._intrinsics_file_path
 
