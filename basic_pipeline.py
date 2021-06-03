@@ -65,9 +65,10 @@ def print_cuda_memory_info():
 
 
 class VisualizationMode(Enum):
-    CANONCIAL_MESH = 0
-    WARPED_MESH = 1
-    POINT_CLOUD_TRACKING = 2
+    NONE = 0
+    CANONCIAL_MESH = 1
+    WARPED_MESH = 2
+    POINT_CLOUD_TRACKING = 3
 
 
 def main() -> int:
@@ -84,6 +85,7 @@ def main() -> int:
     # verbosity options
     print_frame_info = True
     print_intrinsics = False
+    print_gpu_memory_info = False
 
     # visualization options
     visualization_mode: VisualizationMode = VisualizationMode.POINT_CLOUD_TRACKING
@@ -99,8 +101,6 @@ def main() -> int:
             front=[0, 0, -1], lookat=[0, 0, 1.5],
             up=[0, -1.0, 0], zoom=0.7
         )
-
-    print_gpu_memory_info = False
 
     if print_gpu_memory_info:
         nvmlInit()
@@ -120,8 +120,12 @@ def main() -> int:
 
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
     # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
-    sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
-    # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_X.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
+    # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
+    sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
     first_frame = sequence.get_frame_at(0)
 
     intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(sequence.get_intrinsics_path(),
@@ -169,7 +173,7 @@ def main() -> int:
             mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
             # === Construct initial deformation graph
-            deformation_graph = build_deformation_graph_from_mesh(mesh, options.node_coverage)
+            deformation_graph = build_deformation_graph_from_mesh(mesh, options.node_coverage, erosion_iteration_count=1)
         else:
             # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via dlpack for rendering).
             #  Conversion to legacy mesh can be delegated to before visualization, and only if visualizate_meshes is set to True.
@@ -293,20 +297,45 @@ def main() -> int:
             # region === fuse model ====
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
+
             # __DEBUG
-            rotation_center = np.array([0.0855289, -0.03289237, 2.79831315], dtype=np.float32)
+            # prep for berlin_z_rotation & berlin_y_stretch scenarios
+            vertex_center = np.array([0.0855289, -0.03289237, 2.79831315], dtype=np.float32)
             increment_rotation = Rotation.from_euler("z", 2.0, degrees=True)
+            scale_increment = 0.1
 
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
                 # __DEBUG
-                rotation = increment_rotation.as_matrix()
-                previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
-                new_node_position = rotation_center + rotation.dot(previous_node_position - rotation_center)
-                translation = new_node_position - new_node_position
+                # berlin_y_stretch scenario
+                # rotation = Rotation.identity().as_matrix()
+                # original_node_position = deformation_graph.nodes[i_node]
+                # previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
+                # new_position = (original_node_position - vertex_center)
+                # new_position[1] *= (1.0 + current_frame.frame_index * scale_increment)
+                # new_position += vertex_center
+                # translation = new_position - previous_node_position
+
+                # __DEBUG
+                # berlin_z_rotation scenario
+                # rotation = increment_rotation.as_matrix()
+                # previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
+                # new_node_position = vertex_center + rotation.dot(previous_node_position - vertex_center)
+                # translation = new_node_position - previous_node_position
+
+                # __DEBUG
+                # berlin_x_offset scenario
+                # rotation = Rotation.identity().as_matrix()
+                # translation = [0.01, 0, 0]
+
+                # __DEBUG
+                # berlin_xy_offset scenario
+                # rotation = Rotation.identity().as_matrix()
+                # translation = [0.01, 0.01, 0]
 
                 node_frame_transform = dualquat(quat(rotation), translation)
                 # __DEBUG
-                print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
+                # print("Node transform:", i_node, Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
+                # print("Node previous / new position:", i_node, previous_node_position, new_position)
                 deformation_graph.transformations[i_node] = deformation_graph.transformations[i_node] * node_frame_transform
 
             # prepare data for Open3D integration
@@ -314,11 +343,31 @@ def main() -> int:
             node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
             nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
+            # __DEBUG
+            voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
+            voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
+            modified_voxel_positions = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == 1)[0]
+
             cos_voxel_ray_to_normal = volume.integrate_warped(
                 depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                 intrinsics_open3d_cuda, extrinsics_open3d_cuda,
                 nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                 anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+
+            # __DEBUG
+            voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
+            voxel_tsdf_and_weights_np_modified = voxel_tsdf_and_weights.cpu().numpy()
+            voxels_fused_count_frame0 = len(modified_voxel_positions)
+            voxels_fused_count_frame1 = (voxel_tsdf_and_weights_np_modified[:, 1] == 1).sum()
+            voxels_fused_repeatedly_count = (voxel_tsdf_and_weights_np_modified[modified_voxel_positions][:, 1] == 2).sum()
+
+            print(voxels_fused_count_frame0)
+            print(voxels_fused_count_frame1)
+            print(voxels_fused_repeatedly_count)
+
+            # __DEBUG if we don't want to proceed to frame 2 yet
+            # break
+
             # endregion
             #####################################################################################################
             # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.

@@ -41,7 +41,8 @@ def make_frame_file_name_mask(name: str, extension: str) -> str:
 class GenericDataset:
     def __init__(self, sequence_id: typing.Union[None, int] = None, split: typing.Union[None, DataSplit] = None,
                  base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
-                 has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None):
+                 has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None,
+                 masks_subfolder: typing.Union[None, str] = None):
         """
         Define a single-frame dataset.
         :param sequence_id: 0-based index of the sequence
@@ -114,7 +115,8 @@ class GenericDataset:
                     intrinsics_file_found = True
                     self._intrinsics_file_path = os.path.join(self._base_data_directory, filename)
 
-            def search_subfolders_for_image_data(potential_subfolders: typing.List[str], expected_extensions: typing.List[str]) -> typing.Union[None, str]:
+            def search_subfolders_for_image_data(potential_subfolders: typing.List[str], expected_extensions: typing.List[str]) -> typing.Union[
+                None, str]:
                 four_digit_pattern = re.compile(r"\d{4}")
                 for subfolder in potential_subfolders:
                     potential_directory = os.path.join(self._base_data_directory, subfolder)
@@ -141,7 +143,10 @@ class GenericDataset:
                     raise ValueError(f"Could not find any color frame data in {self._base_data_directory}")
 
             if has_masks and self._mask_image_filename_mask is None:
-                potential_mask_subfolders = ["mask", "masks", "mask_images", "omask"]
+                if masks_subfolder is None:
+                    potential_mask_subfolders = ["mask", "masks", "mask_images", "omask"]
+                else:
+                    potential_mask_subfolders = [masks_subfolder]
                 self._mask_image_filename_mask = search_subfolders_for_image_data(potential_mask_subfolders, [".png"])
                 if self._mask_image_filename_mask is None:
                     raise ValueError(f"Could not find any mask frame data in {self._base_data_directory}")
@@ -156,7 +161,10 @@ class GenericDataset:
             self._color_image_filename_mask = os.path.join(self._color_frame_directory, "{:06d}.jpg")
             self._depth_image_filename_mask = os.path.join(self._depth_frame_directory, "{:06d}.png")
             if has_masks:
-                self._mask_frame_directory = os.path.join(self._sequence_directory, "mask")
+                if masks_subfolder is None:
+                    self._mask_frame_directory = os.path.join(self._sequence_directory, "mask")
+                else:
+                    self._mask_frame_directory = os.path.join(self._sequence_directory, masks_subfolder)
                 first_filename = os.listdir(self._mask_frame_directory)[0]
                 parts = os.path.splitext(first_filename)
                 name = parts[0]
@@ -218,7 +226,8 @@ class StandaloneFrameDataset(FrameDataset, GenericDataset):
                  sequence_id: typing.Union[None, int] = None,
                  split: typing.Union[None, DataSplit] = None,
                  base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
-                 has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None):
+                 has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None,
+                 masks_subfolder: typing.Union[None, str] = None):
         """
         Define a single-frame dataset.
         :param frame_index: 0-based index of the frame
@@ -230,7 +239,8 @@ class StandaloneFrameDataset(FrameDataset, GenericDataset):
          DatasetType.CUSTOM requires custom_frame_folder to be set up
         :param has_masks: whether the dataset has or doesn't have masks.
         """
-        super(StandaloneFrameDataset, self).__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
+        super(StandaloneFrameDataset, self).__init__(sequence_id, split, base_dataset_type, has_masks,
+                                                     custom_frame_directory, masks_subfolder)
         self.frame_index = frame_index
 
     def get_color_image_path(self) -> str:

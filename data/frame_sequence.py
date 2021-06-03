@@ -14,7 +14,8 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
                  base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False,
                  segment_name: typing.Union[None, str] = None,
-                 custom_frame_directory: typing.Union[None, str] = None):
+                 custom_frame_directory: typing.Union[None, str] = None,
+                 masks_subfolder: typing.Union[None, str] = None):
         """
         Define a frame pair dataset.
         :param start_frame_index: 0-based index of the start frame
@@ -30,7 +31,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         :param segment_name: specify segment name if graph is available for more than one segment in the dataset (e.g. Shirt0)
         (not necessary if there is only one segment)
         """
-        super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory)
+        super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder)
         self.graph_filename = None
 
         if self._base_dataset_type is not DatasetType.CUSTOM:
