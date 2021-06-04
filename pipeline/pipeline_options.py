@@ -31,7 +31,7 @@ options.gn_max_nodes = 3000
 
 # Integration
 anchor_node_count = 4  # also used for initial graph generation
-transformation_mode = TransformationMode.MATRICES
+transformation_mode = TransformationMode.QUATERNIONS
 
 
 # **** TELEMETRY *****

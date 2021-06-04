@@ -311,8 +311,9 @@ def main() -> int:
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
 
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-
-                node_frame_transform_dq = dualquat(quat(rotation), translation)
+                node_position = deformation_graph.nodes[i_node]
+                translation_global = translation + node_position - rotation.dot(node_position)
+                node_frame_transform_dq = dualquat(quat(rotation), translation_global)
 
                 deformation_graph.transformations_dq[i_node] = deformation_graph.transformations_dq[i_node] * node_frame_transform_dq
                 deformation_graph.rotations_mat[i_node] = rotation.dot(deformation_graph.rotations_mat[i_node])

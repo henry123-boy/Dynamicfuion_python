@@ -79,7 +79,7 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
                                        float node_coverage, int anchor_count, float depth_scale, float depth_max) {
 
 	// note the difference from TSDFVoxelGrid::Integrate:
-	// IntegrateWarped assumes that all of the relevant hash blocks have already been activated.
+	// IntegrateWarpedDQ assumes that all of the relevant hash blocks have already been activated.
 
 	if (depth.IsEmpty()) {
 		utility::LogError(
@@ -117,7 +117,7 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 
 	core::Tensor cos_voxel_ray_to_normal;
 
-	kernel::tsdf::IntegrateWarped(
+	kernel::tsdf::IntegrateWarpedDQ(
 			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
 			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
@@ -142,7 +142,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
                                                                const core::Tensor& node_rotations, const core::Tensor& node_translations,
                                                                float node_coverage, int anchor_count, float depth_scale, float depth_max) {
 	// note the difference from TSDFVoxelGrid::Integrate:
-	// IntegrateWarped assumes that all of the relevant hash blocks have already been activated.
+	// IntegrateWarpedDQ assumes that all of the relevant hash blocks have already been activated.
 
 	if (depth.IsEmpty()) {
 		utility::LogError(
