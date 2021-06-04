@@ -73,6 +73,8 @@ def main() -> int:
     # set up mesh recorder
     mesh_video_recorder = None
     if po.record_visualization_to_disk:
+        # TODO fix recording, it currently doesn't seem to work. Perhaps use something other than Open3D for rendering,
+        #  e.g. PyTorch3D, and ffmpeg-python for recording instead of OpenCV
         mesh_video_recorder = FusionVisualizationRecorder(
             output_video_path=os.path.join(options.output_directory, "mesh_visualization.mkv"),
             front=[0, 0, -1], lookat=[0, 0, 1.5],
@@ -309,48 +311,9 @@ def main() -> int:
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
 
-            # __DEBUG
-            # prep for berlin_z_rotation & berlin_y_stretch scenarios
-            vertex_center = np.array([0.0855289, -0.03289237, 2.79831315], dtype=np.float32)
-            increment_rotation = Rotation.from_euler("z", 2.0, degrees=True)
-            scale_increment = 0.1
-
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-                # __DEBUG
-                # berlin_y_stretch scenario
-                # rotation = Rotation.identity().as_matrix()
-                # original_node_position = deformation_graph.nodes[i_node]
-                # previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
-                # new_position = (original_node_position - vertex_center)
-                # new_position[1] *= (1.0 + current_frame.frame_index * scale_increment)
-                # new_position += vertex_center
-                # translation = new_position - previous_node_position
-
-                # __DEBUG
-                # berlin_z_rotation scenario
-                # rotation = increment_rotation.as_matrix()
-                # previous_node_position = deformation_graph.transformations[i_node].transform_point(deformation_graph.nodes[i_node])
-                # new_node_position = vertex_center + rotation.dot(previous_node_position - vertex_center)
-                # translation = new_node_position - previous_node_position
-
-                # __DEBUG
-                # berlin_x_offset scenario
-                # rotation = Rotation.identity().as_matrix()
-                # translation = [0.01, 0, 0]
-
-                # __DEBUG
-                # berlin_xy_offset scenario
-                # rotation = Rotation.identity().as_matrix()
-                # translation = [0.01, 0.01, 0]
 
                 node_frame_transform_dq = dualquat(quat(rotation), translation)
-                node_frame_transform_mat = np.concatenate((np.concatenate((rotation, translation.reshape(-1, 1)), axis=1),
-                                                           [[0.0, 0.0, 0.0, 1.0]]), axis=0)
-
-                # __DEBUG
-                print("Node transform:", i_node, warped_nodes[i_node], deformation_graph.nodes[i_node],
-                      Rotation.from_matrix(rotation).as_euler("xyz", degrees=True), translation)
-                # print("Node previous / new position:", i_node, previous_node_position, new_position)
 
                 deformation_graph.transformations_dq[i_node] = deformation_graph.transformations_dq[i_node] * node_frame_transform_dq
                 deformation_graph.rotations_mat[i_node] = rotation.dot(deformation_graph.rotations_mat[i_node])
@@ -408,10 +371,6 @@ def main() -> int:
         previous_color_image_np = color_image_np
         previous_depth_image_np = depth_image_np
         previous_mask_image_np = mask_image_np
-        # TODO: fix regular for-loop iteration for sequences: why does the iteration not respect len(sequence)??! how to
-        #  make it start from start_frame_index, not 0, every time?
-        # if current_frame.frame_index == len(sequence) - 1:
-        #    break
 
     return PROGRAM_EXIT_SUCCESS
 

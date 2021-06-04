@@ -94,6 +94,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
                f"{self._sequence_directory:s}. From frame {self.start_frame_index}" \
                f" to frame {self._end_before_index - 1}. Next frame frame: {self._next_frame_index}>"
 
+    # TODO: fix regular for-loop iteration for sequences: why does the iteration not respect len(sequence)??! how to
+    #  make it start from start_frame_index, not 0, every time?
+
     def __getitem__(self, index):
         """Get a list item"""
         return self.get_frame_at(index)
