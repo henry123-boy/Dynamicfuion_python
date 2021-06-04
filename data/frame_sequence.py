@@ -1,5 +1,6 @@
 import typing
 import os
+import open3d as o3d
 from collections import Sequence
 from enum import Enum
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
@@ -15,7 +16,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
                  has_masks: bool = False,
                  segment_name: typing.Union[None, str] = None,
                  custom_frame_directory: typing.Union[None, str] = None,
-                 masks_subfolder: typing.Union[None, str] = None):
+                 masks_subfolder: typing.Union[None, str] = None,
+                 far_clipping_distance: float = 0.0,
+                 mask_lower_threshold: int = 250):
         """
         Define a frame pair dataset.
         :param start_frame_index: 0-based index of the start frame
@@ -24,14 +27,20 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         :param sequence_id: 0-based index of the sequence
         :param split: which data split to use
         :param base_dataset_type: determines the base directory of the dataset.
-        DatasetType.DEEP_DEFORM will use options.base_dataset_dir,
-        DatasetType.LOCAL will use "example_data" folder within the repo,
-        DatasetType.CUSTOM requires custom_frame_folder to be set up
+        DatasetType.DEEP_DEFORM will use options.base_dataset_dir and assume Deep Deform + graph data database structure,
+         DatasetType.LOCAL will use "example_data" folder within the repo and assume Deep Deform + graph data database structure,
+         DatasetType.CUSTOM requires custom_frame_folder to be set to the root of the sequence on disk.
         :param has_masks: whether the dataset has or doesn't have masks.
         :param segment_name: specify segment name if graph is available for more than one segment in the dataset (e.g. Shirt0)
         (not necessary if there is only one segment)
+        :param custom_frame_directory: Root of the sequence on disk for CUSTOM base_dataset_type
+        :param masks_subfolder: an optional subfolder where to look for masks ("masks" is the default assumed).
+        Used for any dataset type.
+        :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
+        Set to 0 or a negative value for no far clipping.
         """
-        super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder)
+        super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder,
+                         far_clipping_distance, mask_lower_threshold)
         self.graph_filename = None
 
         if self._base_dataset_type is not DatasetType.CUSTOM:
@@ -63,9 +72,13 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
         self._next_frame_index = self.start_frame_index
         self._end_before_index = self.start_frame_index + self.frame_count
+        first_frame_image = o3d.io.read_image(self._color_image_filename_mask.format(self.start_frame_index))
+        image_dims = first_frame_image.get_max_bound()  # array([ width, height])
+        self._resolution = (image_dims[1], image_dims[0])  # (height, width)
 
     def get_frame_at(self, index) -> SequenceFrameDataset:
         mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(index)
+
         return SequenceFrameDataset(index,
                                     self._color_image_filename_mask.format(index),
                                     self._depth_image_filename_mask.format(index),
@@ -85,6 +98,10 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
     def rewind(self):
         self._next_frame_index = self.start_frame_index
+
+    @property
+    def resolution(self):
+        return self._resolution
 
     def __len__(self):
         return self.frame_count

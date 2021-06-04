@@ -42,16 +42,22 @@ class GenericDataset:
     def __init__(self, sequence_id: typing.Union[None, int] = None, split: typing.Union[None, DataSplit] = None,
                  base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None,
-                 masks_subfolder: typing.Union[None, str] = None):
+                 masks_subfolder: typing.Union[None, str] = None, far_clipping_distance: float = 3.0,
+                 mask_lower_threshold: int = 250):
         """
-        Define a single-frame dataset.
-        :param sequence_id: 0-based index of the sequence
-        :param split: which data split to use
+        :param sequence_id: 0-based index of the sequence (for DEEP_DEFORM or LOCAL dataset type)
+        :param split: which data split to use (for DEEP_DEFORM or LOCAL dataset type)
         :param base_dataset_type: determines the base directory of the dataset.
-         DatasetType.DEEP_DEFORM will use options.base_dataset_dir,
-         DatasetType.LOCAL will use "example_data" folder within the repo,
-         DatasetType.CUSTOM requires custom_frame_folder to be set up
+         DatasetType.DEEP_DEFORM will use options.base_dataset_dir and assume Deep Deform + graph data database structure,
+         DatasetType.LOCAL will use "example_data" folder within the repo and assume Deep Deform + graph data database structure,
+         DatasetType.CUSTOM requires custom_frame_folder to be set to the root of the sequence on disk.
         :param has_masks: whether the dataset has or doesn't have masks.
+        :param custom_frame_directory: Root of the sequence on disk for CUSTOM base_dataset_type
+         Depth & color frames should be either at the root or in their respective subfolders.
+        :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
+        :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
+        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme values,
+        values below this threshold will be considered masked out.
         """
         self.sequence_id = sequence_id
         self.split = split
@@ -68,6 +74,8 @@ class GenericDataset:
 
         self._mask_image_filename_mask = None
         self._mask_frame_directory = None
+        self.far_clipping_distance = far_clipping_distance
+        self.mask_lower_threshold = mask_lower_threshold
 
         if base_dataset_type == DatasetType.CUSTOM:
             self._sequence_directory = self._base_data_directory
@@ -191,6 +199,10 @@ class GenericDataset:
     def get_intrinsics_path(self) -> str:
         return self._intrinsics_file_path
 
+    @property
+    def far_clipping_distance_mm(self) -> int:
+        return int(self.far_clipping_distance * 1000)
+
 
 class FrameDataset(metaclass=ABCMeta):
     @abstractmethod
@@ -230,20 +242,28 @@ class StandaloneFrameDataset(FrameDataset, GenericDataset):
                  split: typing.Union[None, DataSplit] = None,
                  base_dataset_type: DatasetType = DatasetType.DEEP_DEFORM,
                  has_masks: bool = False, custom_frame_directory: typing.Union[None, str] = None,
-                 masks_subfolder: typing.Union[None, str] = None):
+                 masks_subfolder: typing.Union[None, str] = None,
+                 far_clipping_distance: float = 3.0,
+                 mask_lower_threshold: int = 250):
         """
         Define a single-frame dataset.
-        :param frame_index: 0-based index of the frame
-        :param sequence_id: 0-based index of the sequence
-        :param split: which data split to use
+        :param sequence_id: 0-based index of the sequence (for DEEP_DEFORM or LOCAL dataset type)
+        :param split: which data split to use (for DEEP_DEFORM or LOCAL dataset type)
         :param base_dataset_type: determines the base directory of the dataset.
-         DatasetType.DEEP_DEFORM will use options.base_dataset_dir,
-         DatasetType.LOCAL will use "example_data" folder within the repo,
-         DatasetType.CUSTOM requires custom_frame_folder to be set up
+         DatasetType.DEEP_DEFORM will use options.base_dataset_dir and assume Deep Deform + graph data database structure,
+         DatasetType.LOCAL will use "example_data" folder within the repo and assume Deep Deform + graph data database structure,
+         DatasetType.CUSTOM requires custom_frame_folder to be set to the root of the sequence on disk.
         :param has_masks: whether the dataset has or doesn't have masks.
+        :param custom_frame_directory: Root of the sequence on disk for CUSTOM base_dataset_type
+         Depth & color frames should be either at the root or in their respective subfolders.
+        :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
+        :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
+        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme values,
+        values below this threshold will be considered masked out.
         """
         super(StandaloneFrameDataset, self).__init__(sequence_id, split, base_dataset_type, has_masks,
-                                                     custom_frame_directory, masks_subfolder)
+                                                     custom_frame_directory, masks_subfolder, far_clipping_distance,
+                                                     mask_lower_threshold)
         self.frame_index = frame_index
 
     def get_color_image_path(self) -> str:

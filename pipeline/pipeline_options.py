@@ -23,12 +23,6 @@ class TransformationMode(Enum):
 
 # **** BEHAVIOR *****
 
-# Preprocessing
-# TODO: the below settings should be part of dataset class tree!
-far_clip_distance = 2400  # mm, non-positive value for no clipping
-input_image_size = (480, 640)
-mask_clip_lower_threshold = 150
-
 # Tracking
 source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 # We will overwrite the default value in options.py / settings.py

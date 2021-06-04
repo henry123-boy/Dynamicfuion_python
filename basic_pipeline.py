@@ -9,7 +9,6 @@ import typing
 from enum import Enum
 
 # 3rd-party
-import cv2
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -112,7 +111,7 @@ def main() -> int:
 
     volume = utils.voxel_grid.make_default_tsdf_voxel_grid(device)
     deformation_graph: typing.Union[DeformationGraph, None] = None
-    renderer = PyTorch3DRenderer(po.input_image_size, device, intrinsics_open3d_cuda)
+    renderer = PyTorch3DRenderer(sequence.resolution, device, intrinsics_open3d_cuda)
 
     previous_depth_image_np: typing.Union[None, np.ndarray] = None
     previous_color_image_np: typing.Union[None, np.ndarray] = None
@@ -137,16 +136,16 @@ def main() -> int:
         color_image_np = np.array(color_image_open3d_legacy)
 
         # limit the number of nodes & clusters by cutting at depth
-        if po.far_clip_distance > 0:
-            color_image_np[depth_image_np > po.far_clip_distance] = 0
-            depth_image_np[depth_image_np > po.far_clip_distance] = 0
+        if sequence.far_clipping_distance_mm > 0:
+            color_image_np[depth_image_np > sequence.far_clipping_distance_mm] = 0
+            depth_image_np[depth_image_np > sequence.far_clipping_distance_mm] = 0
 
         # limit the number of nodes & clusters by masking out a segment
         if sequence.has_masks():
             mask_image_open3d_legacy = o3d.io.read_image(current_frame.mask_image_path)
             mask_image_np = np.array(mask_image_open3d_legacy)
-            color_image_np[mask_image_np < po.mask_clip_lower_threshold] = 0
-            depth_image_np[mask_image_np < po.mask_clip_lower_threshold] = 0
+            color_image_np[mask_image_np < sequence.mask_lower_threshold] = 0
+            depth_image_np[mask_image_np < sequence.mask_lower_threshold] = 0
 
         mask_image_np = depth_image_np != 0
 
