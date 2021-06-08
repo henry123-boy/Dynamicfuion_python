@@ -13,17 +13,20 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include <cmath>
+
+#include <Eigen/Geometry>
+
 #include <open3d/core/Tensor.h>
 #include <open3d/core/MemoryManager.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/t/geometry/kernel/TSDFVoxel.h>
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
-#include "Operations.h"
+#include "utility/PlatformIndependence.h"
 #include "WarpableTSDFVoxelGrid.h"
-#include <cmath>
-#include <geometry/DualQuaternion.h>
-#include <Eigen/Geometry>
+#include "geometry/DualQuaternion.h"
+
 
 #define MAX_ANCHOR_COUNT 8
 #define MINIMUM_VALID_ANCHOR_COUNT 3
@@ -341,7 +344,6 @@ void FindKNNAnchorsBruteForce(int* anchor_indices, float* squared_distances, con
 
 
 template<typename TApplyBlendWarp>
-NNRT_CPU_OR_CUDA_DEVICE
 void IntegrateWarped_Generic(
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
 		core::Tensor& cos_voxel_ray_to_normal,
@@ -380,7 +382,7 @@ void IntegrateWarped_Generic(
 	// Data structure indexers
 	NDArrayIndexer block_keys_indexer(block_keys, 1);
 	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
-	// Motion graph indexers
+	// Motion graph indexer
 	NDArrayIndexer node_indexer(warp_graph_nodes, 1);
 	// Image indexers
 	NDArrayIndexer depth_indexer(depth_tensor, 2);
@@ -411,7 +413,7 @@ void IntegrateWarped_Generic(
 			[&]() {
 				launcher.LaunchGeneralKernel(
 						n_voxels,
-						[=] OPEN3D_DEVICE(int64_t workload_idx) {
+						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
 				// region ===================== COMPUTE VOXEL COORDINATE ================================
 				// Natural index (0, N) ->
@@ -556,7 +558,6 @@ void IntegrateWarped_Generic(
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
 void IntegrateWarpedDQ_CUDA(
 #else
-
 void IntegrateWarpedDQ_CPU(
 #endif
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
@@ -574,7 +575,7 @@ void IntegrateWarpedDQ_CPU(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
 			[=] NNRT_CPU_OR_CUDA_DEVICE
-					(const Eigen::Vector3f& voxel_camera, const int* const anchor_indices, const float* const anchor_weights,
+					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
 					 const NDArrayIndexer& node_indexer) {
 				// *** linearly blend the anchor nodes' dual quaternions ***
 				float coefficients[8];
@@ -620,27 +621,28 @@ void IntegrateWarpedMatCPU(
 	NDArrayIndexer node_translation_indexer(node_translations, 1);
 
 	IntegrateWarped_Generic(
-			(block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-			 depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
-			 [=] NNRT_CPU_OR_CUDA_DEVICE
-					 (const Eigen::Vector3f& voxel_camera, const int* const anchor_indices, const float* const anchor_weights,
-					  const NDArrayIndexer& node_indexer) {
-				 Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
-				 for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-					 int anchor_node_index = anchor_indices[i_anchor];
-					 if (anchor_node_index != -1) {
-						 float anchor_weight = anchor_weights[i_anchor];
-						 auto node_rotation_data = node_rotation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						 auto node_translation_data = node_translation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						 Eigen::Matrix3f node_rotation(node_rotation_data);
-						 Eigen::Vector3f node_translation(node_translation_data);
-						 auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						 Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-						 warped_voxel += anchor_weight * (node + node_rotation * (voxel_camera - node) + node_translation);
-					 }
-				 }
-				 return warped_voxel;
-			 });
+			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
+			[=] NNRT_CPU_OR_CUDA_DEVICE
+					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
+					 const NDArrayIndexer& node_indexer) {
+				Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
+				for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+					int anchor_node_index = anchor_indices[i_anchor];
+					if (anchor_node_index != -1) {
+						float anchor_weight = anchor_weights[i_anchor];
+						auto node_rotation_data = node_rotation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+						auto node_translation_data = node_translation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+						Eigen::Matrix3f node_rotation(node_rotation_data);
+						Eigen::Vector3f node_translation(node_translation_data);
+						auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+						Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
+						warped_voxel += anchor_weight * (node + node_rotation * (voxel_camera - node) + node_translation);
+					}
+				}
+				return warped_voxel;
+			}
+	);
 }
 
 } // namespace tsdf

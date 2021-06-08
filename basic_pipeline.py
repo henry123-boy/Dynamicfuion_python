@@ -7,6 +7,8 @@
 import sys
 import typing
 from enum import Enum
+import cProfile
+import argparse
 
 # 3rd-party
 import numpy as np
@@ -358,4 +360,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    parser = argparse.ArgumentParser("Basic Fusion Pipeline based on Neural Non-Rigid Tracking + Fusion4D + Open3D spatial hashing")
+    parser.add_argument("--profile", action='store_true')
+    args = parser.parse_args()
+    if args.profile:
+        cProfile.run('main()')
+    else:
+        sys.exit(main())

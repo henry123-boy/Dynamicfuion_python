@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/14/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,19 +14,12 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-
-#include <utility/PlatformIndependence.h>
+#include <open3d/t/geometry/TriangleMesh.h>
 
 namespace nnrt{
-namespace geometry{
-namespace kernel{
-template<typename T>
-NNRT_CPU_OR_CUDA_DEVICE T squared_euclidean_distance_3D(T point_a_x, T point_a_y, T point_a_z, T point_b_x, T point_b_y, T point_b_z){
-	T dist_x = point_b_x - point_a_x;
-	T dist_y = point_b_y - point_a_y;
-	T dist_z = point_b_z - point_a_z;
-	return dist_x*dist_x + dist_y*dist_y + dist_z*dist_z;
-}
-} // namespace kernel
+namespace geometry {
+
+
+
 } // namespace geometry
 } // namespace nnrt

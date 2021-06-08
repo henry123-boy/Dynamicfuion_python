@@ -39,9 +39,10 @@ file(MAKE_DIRECTORY ${STUBS_PACKAGE_DST_DIR})
 set(NNRT_SOURCE_FILES
     cpu/graph_proc.h
     cpu/image_proc.h
-    utility/debugging.hpp
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
+    utility/debugging.hpp
+    utility/PlatformIndependence.h
     geometry/WarpableTSDFVoxelGrid.cpp
     geometry/WarpableTSDFVoxelGrid.h
     geometry/kernel/WarpableTSDFVoxelGrid.cpp
@@ -50,7 +51,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
     geometry/DualQuaternion.h
-    geometry/kernel/Operations.h utility/PlatformIndependence.h)
+    geometry/WarpTriangleMesh.h
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

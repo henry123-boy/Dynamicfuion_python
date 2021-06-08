@@ -24,6 +24,7 @@ class FrameSequencePreset(Enum):
     RED_SHORTS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=False, far_clipping_distance=1.2)
     BERLIN_50 = FrameSequenceDataset(70, DataSplit.TRAIN, frame_count=50, has_masks=False, far_clipping_distance=2.4)
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False, far_clipping_distance=2.4)
+    BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False, far_clipping_distance=2.4)
     # SOD == salient object detection
     # generate these masks like so:
     # 1. Check out https://github.com/xuebinqin/U-2-Net
@@ -32,11 +33,15 @@ class FrameSequencePreset(Enum):
     #    python3 u2net_test.py -m /mnt/Data/Checkpoints/u2net/u2net.pth
     #       -i /mnt/Data/Datasets/deepdeform/train/seq070/color/
     #       -o /mnt/Data/Datasets/deepdeform/train/seq070/sod
+
     BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True, masks_subfolder="sod",
                                             mask_lower_threshold=254, far_clipping_distance=2.4)
+    BERLIN_3_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, frame_count=3,
+                                              has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
+                                              far_clipping_distance=2.4)
     RED_SHORTS_40_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, frame_count=40, has_masks=True,
                                                    masks_subfolder="sod")
-    BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False, far_clipping_distance=2.4)
+
     # The BERLIN OFFSET, ROTATION, SCALE, ETC. sequences can be generated from the BERLIN_0 sequence using scripts
     # such as pipeline/data_generation/animate_berlin_x_offset.py
     # (comment these out if you get an error here)
