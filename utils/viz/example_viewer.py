@@ -20,23 +20,25 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
         self.rotating = False
         self.stop_rotating = False
+        self.axes_visible = False
 
         self.source_pcd = geometry_dict["source_pcd"]
         self.source_obj = geometry_dict["source_obj"]
         self.target_pcd = geometry_dict["target_pcd"]
-        self.source_graph      = geometry_dict["source_graph"]
-        self.target_graph      = geometry_dict["target_graph"]
+        self.source_graph = geometry_dict["source_graph"]
+        self.target_graph = geometry_dict["target_graph"]
+        self.mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.3, origin=[0, 0, 0])
 
         # align source to target
         self.valid_source_points_cached = alignment_dict["valid_source_points"]
         self.valid_source_colors_cached = copy.deepcopy(self.source_obj.colors)
-        self.line_segments_unit_cached  = alignment_dict["line_segments_unit"]
-        self.line_lengths_cached        = alignment_dict["line_lengths"]
+        self.line_segments_unit_cached = alignment_dict["line_segments_unit"]
+        self.line_lengths_cached = alignment_dict["line_lengths"]
 
-        self.good_matches_set          = corresp_set["good_matches_set"]
+        self.good_matches_set = corresp_set["good_matches_set"]
         self.good_weighted_matches_set = corresp_set["good_weighted_matches_set"]
-        self.bad_matches_set           = corresp_set["bad_matches_set"]
-        self.bad_weighted_matches_set  = corresp_set["bad_weighted_matches_set"]
+        self.bad_matches_set = corresp_set["bad_matches_set"]
+        self.bad_weighted_matches_set = corresp_set["bad_weighted_matches_set"]
 
         # correspondences lines
         self.corresp_set = corresp_set
@@ -151,6 +153,21 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
             return False
 
+        def toggle_axes(vis):
+            print("::toggle_axes")
+
+            param = vis.get_view_control().convert_to_pinhole_camera_parameters()
+            if self.axes_visible:
+                self.axes_visible = False
+                vis.remove_geometry(self.mesh_frame)
+            else:
+                self.axes_visible = True
+                vis.add_geometry(self.mesh_frame)
+            ctr = vis.get_view_control()
+            ctr.convert_from_pinhole_camera_parameters(param)
+
+            return False
+
         def view_source(vis):
             print("::view_source")
 
@@ -248,7 +265,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
             if self.added_both and not self.aligned:
                 moves = ['lo', 'lo', 'pitch_f', 'pitch_b', 'ri', 'ro']
-                totals = [(2094/4)/2, (2094/4)/2, 2094/4, 2094/4, 2094/4, 2094/4]
+                totals = [(2094 / 4) / 2, (2094 / 4) / 2, 2094 / 4, 2094 / 4, 2094 / 4, 2094 / 4]
                 abs_speed = 5.0
                 abs_zoom = 0.15
                 abs_pitch = 5.0
@@ -283,10 +300,10 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
                     if move == "pitch_f":
                         ctr.rotate(0.0, abs_pitch)
-                        ctr.scale(-zoom_speed/2.0)
+                        ctr.scale(-zoom_speed / 2.0)
                     elif move == "pitch_b":
                         ctr.rotate(0.0, -abs_pitch)
-                        ctr.scale(zoom_speed/2.0)
+                        ctr.scale(zoom_speed / 2.0)
                     else:
                         ctr.rotate(h_speed, 0.0)
                         if move == 'lo' or move == 'ro' or move == 'li' or move == 'ri':
@@ -322,7 +339,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
                 return False
 
             moves = ['lo', 'li', 'ro']
-            totals = [(2094/4)/2, (2094/4), 2094/4 + (2094/4)/2]
+            totals = [(2094 / 4) / 2, (2094 / 4), 2094 / 4 + (2094 / 4) / 2]
             abs_speed = 5.0
             abs_zoom = 0.15
             abs_pitch = 5.0
@@ -345,9 +362,9 @@ class CustomDrawGeometryWithKeyCallbackViewer():
                 if move == 'lo':
                     zoom_speed = abs_zoom
                 elif move == 'ro':
-                    zoom_speed = abs_zoom/50.0
+                    zoom_speed = abs_zoom / 50.0
                 elif move == 'li' or move == 'ri':
-                    zoom_speed = -abs_zoom/5.0
+                    zoom_speed = -abs_zoom / 5.0
 
                 for _ in iters_to_move[move_idx]:
                     ctr = vis.get_view_control()
@@ -357,10 +374,10 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
                     if move == "pitch_f":
                         ctr.rotate(0.0, abs_pitch)
-                        ctr.scale(-zoom_speed/2.0)
+                        ctr.scale(-zoom_speed / 2.0)
                     elif move == "pitch_b":
                         ctr.rotate(0.0, -abs_pitch)
-                        ctr.scale(zoom_speed/2.0)
+                        ctr.scale(zoom_speed / 2.0)
                     else:
                         ctr.rotate(h_speed, 0.0)
                         if move == 'lo' or move == 'ro' or move == 'li' or move == 'ri':
@@ -375,9 +392,10 @@ class CustomDrawGeometryWithKeyCallbackViewer():
 
                     if move_idx == 0:
                         n_iter = 125
-                        for align_iter in range(n_iter+1):
+                        for align_iter in range(n_iter + 1):
                             p = float(align_iter) / n_iter
-                            self.source_obj.points = o3d.utility.Vector3dVector( self.valid_source_points_cached + self.line_segments_unit_cached * self.line_lengths_cached * p )
+                            self.source_obj.points = o3d.utility.Vector3dVector(
+                                self.valid_source_points_cached + self.line_segments_unit_cached * self.line_lengths_cached * p)
                             vis.update_geometry(self.source_obj)
                             vis.poll_events()
                             vis.update_renderer()
@@ -462,5 +480,6 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         key_to_callback[ord(";")] = rotate_slightly_left_and_right
         key_to_callback[ord("A")] = align
         key_to_callback[ord("Z")] = reload_source_object
+        key_to_callback[ord("X")] = toggle_axes
 
         o3d.visualization.draw_geometries_with_key_callbacks([self.source_pcd], key_to_callback)

@@ -23,6 +23,7 @@ import options
 from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
+from pipeline.numpy_cpu.preprocessing import cpu_compute_normal
 from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
 import utils.image
 import utils.voxel_grid
@@ -232,7 +233,10 @@ def main() -> int:
                 options.image_height, options.image_width,
                 cropper=cropper
             )
-            target_normal_map = cuda_compute_normal(target_point_image)
+            if device.get_type() == o3c.Device.CUDA:
+                target_normal_map = cuda_compute_normal(target_point_image)
+            else:
+                target_normal_map = cpu_compute_normal(target_point_image)
             target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
@@ -245,11 +249,10 @@ def main() -> int:
             #####################################################################################################
             # region === adjust intrinsic / projection parameters due to cropping ====
             #####################################################################################################
-            fx, fy, cx, cy = utils.image.modify_intrinsics_due_to_cropping(
-                intrinsics_dict['fx'], intrinsics_dict['fy'], intrinsics_dict['cx'], intrinsics_dict['cy'],
-                options.image_height, options.image_width, original_h=cropper.h, original_w=cropper.w
+            fx_cropped, fy_cropped, cx_cropped, cy_cropped = utils.image.modify_intrinsics_due_to_cropping(
+                fx, fy, cx, cy, options.image_height, options.image_width, original_h=cropper.h, original_w=cropper.w
             )
-            cropped_intrinsics_numpy = np.array([fx, fy, cx, cy], dtype=np.float32)
+            cropped_intrinsics_numpy = np.array([fx_cropped, fy_cropped, cx_cropped, cy_cropped], dtype=np.float32)
             # endregion
             #####################################################################################################
             # region === prepare pytorch inputs for the depth prediction model ====
@@ -257,10 +260,7 @@ def main() -> int:
             node_count = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
             source_cuda = torch.from_numpy(source_rgbxyz).cuda().unsqueeze(0)
             target_cuda = torch.from_numpy(target_rgbxyz).cuda().unsqueeze(0)
-            if po.transformation_mode == po.TransformationMode.QUATERNIONS:
-                warped_nodes = deformation_graph.get_warped_nodes_dq()
-            else:
-                warped_nodes = deformation_graph.get_warped_nodes_mat()
+            warped_nodes = deformation_graph.get_warped_nodes()
             graph_nodes_cuda = torch.from_numpy(warped_nodes).cuda().unsqueeze(0)
             graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
             graph_edges_weights_cuda = torch.from_numpy(deformation_graph.edge_weights).cuda().unsqueeze(0)
@@ -304,6 +304,9 @@ def main() -> int:
                                                 rotations_pred, translations_pred, mask_pred,
                                                 valid_source_points, valid_correspondences, target_matches)
 
+
+
+
             # endregion
             #####################################################################################################
             # region === fuse model ====
@@ -312,21 +315,16 @@ def main() -> int:
 
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
                 node_position = deformation_graph.nodes[i_node]
-                translation_global = translation + node_position - rotation.dot(node_position)
-                node_frame_transform_dq = dualquat(quat(rotation), translation_global)
+                current_rotation = deformation_graph.rotations_mat[i_node] = \
+                    rotation.dot(deformation_graph.rotations_mat[i_node])
+                current_translation = deformation_graph.translations_vec[i_node] = \
+                    translation + deformation_graph.translations_vec[i_node]
 
-                deformation_graph.transformations_dq[i_node] = deformation_graph.transformations_dq[i_node] * node_frame_transform_dq
-                deformation_graph.rotations_mat[i_node] = rotation.dot(deformation_graph.rotations_mat[i_node])
-                deformation_graph.translations_vec[i_node] += translation
+                translation_global = node_position + current_translation - current_rotation.dot(node_position)
+                deformation_graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
 
             # prepare data for Open3D integration
             nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
-
-            if po.print_voxel_fusion_statistics:
-                expected_max_weight_previous = current_frame.frame_index - sequence.start_frame_index
-                voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
-                voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
-                voxels_modified_earlier_indices = np.where(voxel_tsdf_and_weights_np_originals[:, 1] == expected_max_weight_previous)[0]
 
             if po.transformation_mode == po.TransformationMode.QUATERNIONS:
                 # prepare data for Open3D integration
@@ -347,22 +345,6 @@ def main() -> int:
                     anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
             else:
                 raise ValueError("Unsupported motion blending mode")
-
-            if po.print_voxel_fusion_statistics:
-                voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
-                voxel_tsdf_and_weights_np_modified = voxel_tsdf_and_weights.cpu().numpy()
-                voxels_fused_count_previous = len(voxels_modified_earlier_indices)
-                expected_max_weight = current_frame.frame_index - sequence.start_frame_index + 1
-                voxels_fused_count_current = (voxel_tsdf_and_weights_np_modified[:, 1] == expected_max_weight).sum()
-                voxels_fused_repeatedly_count = (voxel_tsdf_and_weights_np_modified[voxels_modified_earlier_indices][:, 1]
-                                                 == expected_max_weight).sum()
-
-                print(f"voxels fused in previous frame with weight {current_frame.frame_index}:", voxels_fused_count_previous)
-                print(f"voxels fused in current frame with weight {current_frame.frame_index + 1}:", voxels_fused_count_current)
-                print("voxels fused repeatedly (for sure) in the current and previous frame: ", voxels_fused_repeatedly_count)
-
-            # __DEBUG if we don't want to proceed to frame 2 yet
-            # break
 
             # endregion
             #####################################################################################################

@@ -304,12 +304,12 @@ def warp_deform_3d(image, pixel_anchors, pixel_weights, node_positions, node_rot
 def modify_intrinsics_due_to_cropping(fx, fy, cx, cy, h, w, original_h=480, original_w=640):
     # Modify intrinsics
     delta_height = (h - original_h) / 2
-    cy += delta_height
+    cy_modified = cy + delta_height
 
     delta_width = (w / original_w) / 2
-    cx += delta_width
+    cx_modified = cx + delta_width
 
-    return fx, fy, cx, cy
+    return fx, fy, cx_modified, cy_modified
 
 
 def backproject_depth_py(depth_image, fx, fy, cx, cy, normalizer=1000.0):

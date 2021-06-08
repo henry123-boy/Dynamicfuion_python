@@ -10,8 +10,6 @@ import utils.viz.example_viewer as viewer
 
 
 def draw_node_graph(graph_nodes, graph_edges):
-
-
     # Graph canonical_node_positions
     rendered_graph_nodes = []
     for node in graph_nodes:
@@ -44,6 +42,7 @@ def draw_node_graph(graph_nodes, graph_edges):
     # Combined canonical_node_positions & edges
     rendered_graph = [rendered_graph_nodes, line_mesh_geoms]
     return rendered_graph
+
 
 def visualize_tracking(
         source_rgbxyz: np.ndarray,
@@ -262,7 +261,6 @@ def visualize_tracking(
         "target_pcd": target_pcd,
         "source_graph": source_graph,
         "target_graph": target_graph
-        # "deformed_graph":    rendered_deformed_graph
     }
 
     alignment_dict = {

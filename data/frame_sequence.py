@@ -74,7 +74,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         self._end_before_index = self.start_frame_index + self.frame_count
         first_frame_image = o3d.io.read_image(self._color_image_filename_mask.format(self.start_frame_index))
         image_dims = first_frame_image.get_max_bound()  # array([ width, height])
-        self._resolution = (image_dims[1], image_dims[0])  # (height, width)
+        self._resolution = (int(image_dims[1]), int(image_dims[0]))  # (height, width)
 
     def get_frame_at(self, index) -> SequenceFrameDataset:
         mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(index)

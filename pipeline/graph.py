@@ -91,15 +91,10 @@ class DeformationGraph:
         self.clusters = clusters
         self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
         self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
-        self.translations_vec = np.zeros((len(self.nodes), 3), dtype=np.float32)
+        self.translations_vec = np.zeros_like(self.nodes)
 
-    def get_warped_nodes_dq(self):
-        return np.array([transformation.translation() + node for node, transformation in
-                         zip(self.nodes, self.transformations_dq)], dtype=np.float32)
-
-    def get_warped_nodes_mat(self):
-        return np.array([node + translation for node, translation in
-                         zip(self.nodes, self.translations_vec)])
+    def get_warped_nodes(self):
+        return self.nodes + self.translations_vec
 
     def get_extent_canonical(self):
         return self.nodes.max(axis=0), self.nodes.min(axis=0)
