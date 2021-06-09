@@ -15,17 +15,35 @@
 //  ================================================================
 #pragma once
 
-#include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/core/Tensor.h>
+
+#include "utility/PlatformIndependence.h"
+#include "geometry/kernel/Defines.h"
 
 namespace nnrt {
 namespace geometry {
+namespace kernel {
+namespace graph {
 
-open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
-                                                      const open3d::core::Tensor& nodes,
-                                                      const open3d::core::Tensor& node_rotations,
-                                                      const open3d::core::Tensor& node_translations,
-                                                      int anchor_count,
-                                                      float node_coverage);
+void ComputeAnchorsAndWeightsEuclidean(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		float node_coverage);
 
+template<open3d::core::Device::DeviceType TDeviceType>
+void ComputeAnchorsAndWeightsEuclidean(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		float node_coverage);
+
+
+} // namespace graph
+} // namespace kernel
 } // namespace geometry
 } // namespace nnrt

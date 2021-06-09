@@ -15,17 +15,5 @@
 //  ================================================================
 #pragma once
 
-#include <open3d/t/geometry/TriangleMesh.h>
-
-namespace nnrt {
-namespace geometry {
-
-open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
-                                                      const open3d::core::Tensor& nodes,
-                                                      const open3d::core::Tensor& node_rotations,
-                                                      const open3d::core::Tensor& node_translations,
-                                                      int anchor_count,
-                                                      float node_coverage);
-
-} // namespace geometry
-} // namespace nnrt
+#define MAX_ANCHOR_COUNT 8
+#define MINIMUM_VALID_ANCHOR_COUNT 3

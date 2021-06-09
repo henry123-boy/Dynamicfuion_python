@@ -26,10 +26,8 @@
 #include "utility/PlatformIndependence.h"
 #include "WarpableTSDFVoxelGrid.h"
 #include "geometry/DualQuaternion.h"
-
-
-#define MAX_ANCHOR_COUNT 8
-#define MINIMUM_VALID_ANCHOR_COUNT 3
+#include "geometry/kernel/Defines.h"
+#include "geometry/kernel/GraphUtilitiesImpl.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;
@@ -311,39 +309,8 @@ void ExtractValuesInExtentCPU(
 #endif
 }
 
-template<typename TLambdaRetrieveNode>
-NNRT_CPU_OR_CUDA_DEVICE
-void FindKNNAnchorsBruteForce(int* anchor_indices, float* squared_distances, const int anchor_count,
-                              const int n_nodes, const Eigen::Vector3f& voxel_global_metric,
-                              TLambdaRetrieveNode&& retrieve_node) {
-	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-		squared_distances[i_anchor] = INFINITY;
-	}
-	int max_at_index = 0;
-	float max_squared_distance = INFINITY;
-	for (int i_node = 0; i_node < n_nodes; i_node++) {
-		Eigen::Vector3f node = retrieve_node(i_node);
-		float squared_distance = (node - voxel_global_metric).squaredNorm();
 
-		if (squared_distance < max_squared_distance) {
-			squared_distances[max_at_index] = squared_distance;
-			anchor_indices[max_at_index] = i_node;
-
-			//update the maximum distance within current anchor nodes
-			max_at_index = 0;
-			max_squared_distance = squared_distances[max_at_index];
-			for (int i_anchor = 1; i_anchor < anchor_count; i_anchor++) {
-				if (squared_distances[i_anchor] > max_squared_distance) {
-					max_at_index = i_anchor;
-					max_squared_distance = squared_distances[i_anchor];
-				}
-			}
-		}
-	}
-}
-
-
-template<typename TApplyBlendWarp>
+template<core::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
 void IntegrateWarped_Generic(
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
 		core::Tensor& cos_voxel_ray_to_normal,
@@ -373,7 +340,7 @@ void IntegrateWarped_Generic(
 #endif
 
 	int n_blocks = static_cast<int>(block_indices.GetLength());
-	int64_t n_nodes = warp_graph_nodes.GetLength();
+	int64_t node_count = warp_graph_nodes.GetLength();
 
 	int64_t n_voxels = n_blocks * block_resolution3;
 	// cosine value for each pixel
@@ -440,46 +407,12 @@ void IntegrateWarped_Generic(
 				                             z_block * block_resolution + z_voxel_local);
 				Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
 				// endregion
-				// region ===================== FIND ANCHOR POINTS ================================
-				int anchor_indices[MAX_ANCHOR_COUNT];
+				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
+				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				FindKNNAnchorsBruteForce(anchor_indices, anchor_weights, anchor_count,
-				                         n_nodes, voxel_global_metric,
-				                         [&node_indexer](const int i_node) {
-					                         auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
-					                         Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-					                         return node;
-				                         }
-				);
-				// endregion
-				// region ===================== COMPUTE ANCHOR WEIGHTS ================================
-				float weight_sum = 0.0;
-				int valid_anchor_count = 0;
-				for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-					float squared_distance = anchor_weights[i_anchor];
-					// note: equivalent to distance > 2 * node_coverage, avoids sqrtf
-					if (squared_distance > 4 * node_coverage_squared) {
-						anchor_indices[i_anchor] = -1;
-						continue;
-					}
-					float weight = expf(-squared_distance / (2 * node_coverage_squared));
-					weight_sum += weight;
-					anchor_weights[i_anchor] = weight;
-					valid_anchor_count++;
-				}
-				if (valid_anchor_count < MINIMUM_VALID_ANCHOR_COUNT) {
-					// TODO: verify
-					//  a minimum of 1 node for fusion recommended by Neural Non-Rigid Tracking authors (?)
+				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                       voxel_global_metric, node_indexer, node_coverage_squared)) {
 					return;
-				}
-				if (weight_sum > 0.0f) {
-					for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-						anchor_weights[i_anchor] /= weight_sum;
-					}
-				} else if (anchor_count > 0) {
-					for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-						anchor_weights[i_anchor] = 1.0f / anchor_count;
-					}
 				}
 				// endregion
 				// region ===================== CONVERT VOXEL TO CAMERA SPACE, WARP IT, AND PROJECT TO IMAGE ============================
@@ -555,11 +488,8 @@ void IntegrateWarped_Generic(
 #endif
 }
 
-#if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
-void IntegrateWarpedDQ_CUDA(
-#else
-void IntegrateWarpedDQ_CPU(
-#endif
+template<core::Device::DeviceType TDeviceType>
+void IntegrateWarpedDQ(
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
 		core::Tensor& cos_voxel_ray_to_normal,
 		int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
@@ -571,7 +501,7 @@ void IntegrateWarpedDQ_CPU(
 
 	NDArrayIndexer node_transform_indexer(node_dual_quaternion_transformations, 1);
 
-	IntegrateWarped_Generic(
+	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
 			[=] NNRT_CPU_OR_CUDA_DEVICE
@@ -604,11 +534,8 @@ void IntegrateWarpedDQ_CPU(
 }
 
 
-#if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
-void IntegrateWarpedMatCUDA(
-#else
-void IntegrateWarpedMatCPU(
-#endif
+template<core::Device::DeviceType TDeviceType>
+void IntegrateWarpedMat(
 		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
 		core::Tensor& cos_voxel_ray_to_normal,
 		int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
@@ -620,7 +547,7 @@ void IntegrateWarpedMatCPU(
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
 	NDArrayIndexer node_translation_indexer(node_translations, 1);
 
-	IntegrateWarped_Generic(
+	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
 			[=] NNRT_CPU_OR_CUDA_DEVICE

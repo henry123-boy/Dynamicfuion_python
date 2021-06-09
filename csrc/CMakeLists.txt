@@ -52,7 +52,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
     geometry/DualQuaternion.h
     geometry/WarpTriangleMesh.h
-    )
+    geometry/WarpTriangleMesh.cpp geometry/kernel/Graph.h geometry/kernel/Graph.cpp geometry/kernel/GraphCPU.cpp geometry/kernel/GraphCUDA.cu geometry/kernel/GraphImpl.h geometry/kernel/Defines.h geometry/kernel/GraphUtilitiesImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

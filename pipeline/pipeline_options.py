@@ -32,7 +32,7 @@ options.gn_max_nodes = 3000
 # Integration
 anchor_node_count = 4  # also used for initial graph generation
 # TODO setting to tune maximum invalid node count
-transformation_mode = TransformationMode.MATRICES
+transformation_mode = TransformationMode.QUATERNIONS
 
 
 # **** TELEMETRY *****
@@ -43,7 +43,7 @@ print_intrinsics = False
 print_gpu_memory_info = False
 
 # visualization options
-visualization_mode: VisualizationMode = VisualizationMode.NONE
+visualization_mode: VisualizationMode = VisualizationMode.WARPED_MESH
 
 # logging options
 record_visualization_to_disk = False
@@ -59,5 +59,5 @@ record_visualization_to_disk = False
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40_SOD_MASKS.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value
+sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value

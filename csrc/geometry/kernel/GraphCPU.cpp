@@ -13,19 +13,28 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+#include "geometry/kernel/Graph.h"
+#include "open3d/core/kernel/CPULauncher.h"
+#include "geometry/kernel/GraphImpl.h"
 
-#include <open3d/t/geometry/TriangleMesh.h>
+using namespace open3d;
 
 namespace nnrt {
 namespace geometry {
+namespace kernel {
+namespace graph {
 
-open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
-                                                      const open3d::core::Tensor& nodes,
-                                                      const open3d::core::Tensor& node_rotations,
-                                                      const open3d::core::Tensor& node_translations,
-                                                      int anchor_count,
-                                                      float node_coverage);
+template
+void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& nodes,
+		const int anchor_count,
+		const float node_coverage
+);
 
+} // namespace graph
+} // namespace kernel
 } // namespace geometry
 } // namespace nnrt

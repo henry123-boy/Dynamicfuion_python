@@ -121,16 +121,16 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& indices, const open3d::core::
 			extrinsics.To(host, core::Dtype::Float64).Contiguous();
 
 	if (device_type == core::Device::DeviceType::CPU) {
-		IntegrateWarpedDQ_CPU(indices, block_keys, block_values,
-		                      cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-		                      depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
-		                      node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);
+		IntegrateWarpedDQ<core::Device::DeviceType::CPU>(indices, block_keys, block_values,
+		                                                 cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                                                 depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                                                 node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);
 	} else if (device_type == core::Device::DeviceType::CUDA) {
 #ifdef BUILD_CUDA_MODULE
-		IntegrateWarpedDQ_CUDA(indices, block_keys, block_values,
-		                       cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-		                       depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
-		                       node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);
+		IntegrateWarpedDQ<core::Device::DeviceType::CPU>(indices, block_keys, block_values,
+		                                                 cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                                                 depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                                                 node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);
 #else
 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
@@ -156,16 +156,17 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 			extrinsics.To(host, core::Dtype::Float64).Contiguous();
 
 	if (device_type == core::Device::DeviceType::CPU) {
-		IntegrateWarpedMatCPU(block_indices, block_keys, block_values,
-		                   cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-		                   depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
-		                      node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
+
+		IntegrateWarpedMat<core::Device::DeviceType::CPU>(block_indices, block_keys, block_values,
+		                                                  cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                                                  depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                                                  node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
 	} else if (device_type == core::Device::DeviceType::CUDA) {
 #ifdef BUILD_CUDA_MODULE
-		IntegrateWarpedMatCUDA(block_indices, block_keys, block_values,
-		                    cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-		                    depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
-		                       node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
+		IntegrateWarpedMat<core::Device::DeviceType::CUDA>(block_indices, block_keys, block_values,
+		                                                   cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+		                                                   depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
+		                                                   node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max);
 #else
 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

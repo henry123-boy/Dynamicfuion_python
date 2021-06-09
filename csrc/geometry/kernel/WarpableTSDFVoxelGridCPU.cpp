@@ -17,3 +17,39 @@
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 #include "open3d/core/kernel/CPULauncher.h"
 #include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"
+
+
+using namespace open3d;
+
+namespace nnrt {
+namespace geometry {
+namespace kernel {
+namespace tsdf {
+
+template
+void IntegrateWarpedDQ<core::Device::DeviceType::CPU>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
+		const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
+		const open3d::core::Tensor& node_dual_quaternion_transformations,
+		float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
+template
+void IntegrateWarpedMat<core::Device::DeviceType::CPU>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
+		const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& node_translations,
+		float node_coverage, int anchor_count, float depth_scale, float depth_max);
+
+} // namespace tsdf
+} // namespace kernel
+} // namespace geometry
+} // namespace nnrt
