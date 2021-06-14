@@ -1,6 +1,7 @@
 import dq3d
 import numpy as np
 import open3d as o3d
+import open3d.core as o3c
 import nnrt
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
@@ -102,10 +103,7 @@ class DeformationGraph:
     def as_line_set_canonical(self):
         return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
-    def warp_mesh_mat(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
-        nnrt
-
-    def warp_mesh_mat_python(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
+    def warp_mesh_mat(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
         vertices = np.array(mesh.vertices)
         vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(self.nodes, vertices, node_coverage)
         i_vertex = 0
@@ -118,7 +116,7 @@ class DeformationGraph:
             deformed_vertex = np.zeros((3,), dtype=np.float32)
             for weight, rotation, translation, node in \
                     zip(vertex_anchor_weights, vertex_anchor_rotations, vertex_anchor_translations, vertex_anchor_nodes):
-                deformed_vertex += weight * (node + rotation.dot(vertex-node) + translation)
+                deformed_vertex += weight * (node + rotation.dot(vertex - node) + translation)
             deformed_vertices[i_vertex] = deformed_vertex
             i_vertex += 1
 
@@ -126,7 +124,7 @@ class DeformationGraph:
         mesh_warped.vertex_colors = mesh.vertex_colors
         return mesh_warped
 
-    def warp_mesh_dq_python(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
+    def warp_mesh_dq(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
         # TODO: provide an equivalent routine for o3d.t.geometry.TriangleMesh on CUDA, so that we don't have to convert
         #  to legacy mesh at all
         vertices = np.array(mesh.vertices)
@@ -142,6 +140,18 @@ class DeformationGraph:
         mesh_warped = o3d.geometry.TriangleMesh(o3d.cuda.pybind.utility.Vector3dVector(deformed_vertices), mesh.triangles)
         mesh_warped.vertex_colors = mesh.vertex_colors
         return mesh_warped
+
+
+class DeformationGraphOpen3D:
+    def __init__(self, canonical_node_positions: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
+                 clusters: o3c.Tensor):
+        self.nodes = canonical_node_positions
+        self.edges = edges
+        self.edge_weights = edge_weights
+        self.clusters = clusters
+        self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
+        self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
+        self.translations_vec = np.zeros_like(self.nodes)
 
 
 def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,

@@ -62,7 +62,9 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/GraphUtilitiesImpl.h
     geometry/kernel/Warp.h
     geometry/kernel/Warp.cpp
-    geometry/kernel/WarpCPU.cpp geometry/kernel/WarpCUDA.cu geometry/kernel/WarpImpl.h)
+    geometry/kernel/WarpCPU.cpp
+    geometry/kernel/WarpCUDA.cu
+    geometry/kernel/WarpImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
