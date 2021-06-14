@@ -102,9 +102,10 @@ class DeformationGraph:
     def as_line_set_canonical(self):
         return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
-    def warp_mesh_mat(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
-        # TODO: provide an equivalent routine for o3d.t.geometry.TriangleMesh on CUDA, so that we don't have to convert
-        #  to legacy mesh at all
+    def warp_mesh_mat(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
+        nnrt
+
+    def warp_mesh_mat_python(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
         vertices = np.array(mesh.vertices)
         vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(self.nodes, vertices, node_coverage)
         i_vertex = 0
@@ -125,7 +126,7 @@ class DeformationGraph:
         mesh_warped.vertex_colors = mesh.vertex_colors
         return mesh_warped
 
-    def warp_mesh_dq(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
+    def warp_mesh_dq_python(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
         # TODO: provide an equivalent routine for o3d.t.geometry.TriangleMesh on CUDA, so that we don't have to convert
         #  to legacy mesh at all
         vertices = np.array(mesh.vertices)

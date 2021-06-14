@@ -15,9 +15,13 @@
 //  ================================================================
 #pragma once
 
-#include "geometry/kernel/Warp.h"
-
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
+
+#include "geometry/kernel/Warp.h"
+#include "geometry/kernel/Defines.h"
+#include "geometry/kernel/GraphUtilitiesImpl.h"
+
+
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;
@@ -28,21 +32,20 @@ namespace kernel {
 namespace warp {
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void WarpPoints(core::Tensor& warped_points, const core::Tensor& anchors,
-                const core::Tensor& weights, const core::Tensor& points,
+void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
                 const core::Tensor& nodes, const core::Tensor& node_rotations,
-                const core::Tensor& node_translations){
+                const core::Tensor& node_translations,
+                const int anchor_count, const float node_coverage){
 
 	const int64_t point_count = points.GetLength();
 	const int64_t node_count = nodes.GetLength();
-	const int anchor_count = static_cast<int>(anchors.GetShape(1));
+
+	float node_coverage_squared = node_coverage * node_coverage;
 
 	// initialize output array
 	warped_points = core::Tensor::Zeros({point_count, 3}, core::Dtype::Float32, nodes.GetDevice());
 
 	//input indexers
-	NDArrayIndexer anchor_indexer(anchors, 1);
-	NDArrayIndexer weight_indexer(weights, 1);
 	NDArrayIndexer point_indexer(points, 1);
 	NDArrayIndexer node_indexer(nodes, 1);
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
@@ -64,8 +67,13 @@ void WarpPoints(core::Tensor& warped_points, const core::Tensor& anchors,
 			[=] OPEN3D_DEVICE(int64_t workload_idx){
 				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
-				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
-				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+
+				int32_t anchor_indices[MAX_ANCHOR_COUNT];
+				float anchor_weights[MAX_ANCHOR_COUNT];
+				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                       point, node_indexer, node_coverage_squared)) {
+					return;
+				}
 
 				auto warped_point_data = warped_point_indexer.template GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);

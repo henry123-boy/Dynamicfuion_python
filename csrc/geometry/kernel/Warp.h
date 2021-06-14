@@ -25,16 +25,14 @@ namespace geometry {
 namespace kernel {
 namespace warp {
 
-void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& anchors,
-                const open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
-                const open3d::core::Tensor& node_translations);
+                const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& anchors,
-                const open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
-                const open3d::core::Tensor& node_translations);
+                const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
 } // namespace warp
 } // namespace kernel

@@ -23,19 +23,19 @@ namespace kernel {
 namespace warp {
 
 
-void WarpPoints(open3d::core::Tensor& warped_vertices, const open3d::core::Tensor& anchors, const open3d::core::Tensor& weights,
+void WarpPoints(open3d::core::Tensor& warped_vertices,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
-                const open3d::core::Tensor& node_translations) {
+                const open3d::core::Tensor& node_translations, const int anchor_count, const float node_coverage) {
 	core::Device::DeviceType device_type = nodes.GetDevice().GetType();
 	switch (device_type) {
 		case core::Device::DeviceType::CPU:
 			WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, anchors, weights, points, nodes, node_rotations, node_translations);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 			break;
 		case core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
 			WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, anchors, weights, points, nodes, node_rotations, node_translations);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 #else
 			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

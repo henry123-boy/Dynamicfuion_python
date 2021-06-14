@@ -15,7 +15,10 @@
 //  ================================================================
 #pragma once
 
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+
 #include "geometry/kernel/Defines.h"
+
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;

@@ -68,11 +68,8 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 
 	if(input_mesh.HasVertices()){
 		const auto& vertices = input_mesh.GetVertices();
-		core::Tensor anchors, weights;
-		kernel::graph::ComputeAnchorsAndWeightsEuclidean(anchors, weights, vertices, nodes, anchor_count, node_coverage);
 		core::Tensor warped_vertices;
-		kernel::warp::WarpPoints(warped_vertices, anchors, weights, vertices, nodes, node_rotations, node_translations);
-
+		kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 	}
 
 

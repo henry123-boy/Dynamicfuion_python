@@ -188,9 +188,9 @@ def main() -> int:
             if po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
                     po.visualization_mode == po.VisualizationMode.WARPED_MESH:
                 if po.transformation_mode == po.TransformationMode.QUATERNIONS:
-                    warped_mesh = deformation_graph.warp_mesh_dq(canonical_mesh, options.node_coverage)
+                    warped_mesh = deformation_graph.warp_mesh_dq_python(canonical_mesh, options.node_coverage)
                 else:
-                    warped_mesh = deformation_graph.warp_mesh_mat(canonical_mesh, options.node_coverage)
+                    warped_mesh = deformation_graph.warp_mesh_mat_python(canonical_mesh, options.node_coverage)
                 if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
                     if po.record_visualization_to_disk:
                         mesh_video_recorder.capture_frame([warped_mesh])
