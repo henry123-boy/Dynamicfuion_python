@@ -28,7 +28,7 @@ template
 void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& anchors,
 		open3d::core::Tensor& weights,
-		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& points,
 		const open3d::core::Tensor& nodes,
 		const int anchor_count,
 		const float node_coverage

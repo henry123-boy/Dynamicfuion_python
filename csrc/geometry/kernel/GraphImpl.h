@@ -38,20 +38,20 @@ template<open3d::core::Device::DeviceType TDeviceType>
 void ComputeAnchorsAndWeightsEuclidean
 		(open3d::core::Tensor& anchors,
 		 open3d::core::Tensor& weights,
-		 const open3d::core::Tensor& vertices,
+		 const open3d::core::Tensor& points,
 		 const open3d::core::Tensor& nodes,
 		 const int anchor_count,
 		 const float node_coverage) {
 
 	float node_coverage_squared = node_coverage * node_coverage;
 
-	int64_t vertex_count = vertices.GetLength();
+	int64_t point_count = points.GetLength();
 	int64_t node_count = nodes.GetLength();
-	anchors = core::Tensor::Ones({vertex_count, anchor_count}, core::Dtype::Int16, nodes.GetDevice()) * -1;
-	weights = core::Tensor({vertex_count, anchor_count}, core::Dtype::Float32, nodes.GetDevice());
+	anchors = core::Tensor::Ones({point_count, anchor_count}, core::Dtype::Int32, nodes.GetDevice()) * -1;
+	weights = core::Tensor({point_count, anchor_count}, core::Dtype::Float32, nodes.GetDevice());
 
 	//input indexers
-	NDArrayIndexer vertex_indexer(vertices, 1);
+	NDArrayIndexer point_indexer(points, 1);
 	NDArrayIndexer node_indexer(nodes, 1);
 
 	//output indexers
@@ -67,16 +67,16 @@ void ComputeAnchorsAndWeightsEuclidean
 	core::kernel::CPULauncher launcher;
 #endif
 	launcher.LaunchGeneralKernel(
-			vertex_count,
+			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx){
-				auto vertex_data = vertex_indexer.GetDataPtrFromCoord<float>(workload_idx);
-				Eigen::Vector3f vertex(vertex_data[0], vertex_data[1], vertex_data[2]);
+				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
-				auto anchor_weights = anchor_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
 				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                       vertex, node_indexer, node_coverage_squared)) {
+				                                                       point, node_indexer, node_coverage_squared)) {
 					return;
 				}
 				// endregion

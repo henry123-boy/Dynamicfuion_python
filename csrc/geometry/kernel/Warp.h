@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -23,27 +23,20 @@
 namespace nnrt {
 namespace geometry {
 namespace kernel {
-namespace graph {
+namespace warp {
 
-void ComputeAnchorsAndWeightsEuclidean(
-		open3d::core::Tensor& anchors,
-		open3d::core::Tensor& weights,
-		const open3d::core::Tensor& points,
-		const open3d::core::Tensor& nodes,
-		int anchor_count,
-		float node_coverage);
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& anchors,
+                const open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ComputeAnchorsAndWeightsEuclidean(
-		open3d::core::Tensor& anchors,
-		open3d::core::Tensor& weights,
-		const open3d::core::Tensor& points,
-		const open3d::core::Tensor& nodes,
-		int anchor_count,
-		float node_coverage);
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& anchors,
+                const open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations);
 
-
-} // namespace graph
+} // namespace warp
 } // namespace kernel
 } // namespace geometry
 } // namespace nnrt

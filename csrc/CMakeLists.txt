@@ -43,6 +43,7 @@ set(NNRT_SOURCE_FILES
     cpu/image_proc.cpp
     utility/debugging.hpp
     utility/PlatformIndependence.h
+    geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
     geometry/WarpableTSDFVoxelGrid.h
     geometry/kernel/WarpableTSDFVoxelGrid.cpp
@@ -52,7 +53,16 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
     geometry/DualQuaternion.h
     geometry/WarpTriangleMesh.h
-    geometry/WarpTriangleMesh.cpp geometry/kernel/Graph.h geometry/kernel/Graph.cpp geometry/kernel/GraphCPU.cpp geometry/kernel/GraphCUDA.cu geometry/kernel/GraphImpl.h geometry/kernel/Defines.h geometry/kernel/GraphUtilitiesImpl.h)
+    geometry/WarpTriangleMesh.cpp
+    geometry/kernel/Graph.h
+    geometry/kernel/Graph.cpp
+    geometry/kernel/GraphCPU.cpp
+    geometry/kernel/GraphCUDA.cu
+    geometry/kernel/GraphImpl.h
+    geometry/kernel/GraphUtilitiesImpl.h
+    geometry/kernel/Warp.h
+    geometry/kernel/Warp.cpp
+    geometry/kernel/WarpCPU.cpp geometry/kernel/WarpCUDA.cu geometry/kernel/WarpImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -84,7 +84,7 @@ inline bool FindAnchorsAndWeightsForPoint(int32_t* anchor_indices, float* anchor
 	}
 	if (valid_anchor_count < MINIMUM_VALID_ANCHOR_COUNT) {
 		// TODO: verify
-		//  a minimum of 1 node for fusion recommended by Neural Non-Rigid Tracking authors (?)
+		//  a maximum of 1 invalid node for fusion recommended by Fusion4D authors (?)
 		return false;
 	}
 	if (weight_sum > 0.0f) {

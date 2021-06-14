@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,28 +13,26 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Graph.h"
+#include "geometry/kernel/Warp.h"
 #include "open3d/core/kernel/CPULauncher.h"
-#include "geometry/kernel/GraphImpl.h"
+#include "geometry/kernel/WarpImpl.h"
 
 using namespace open3d;
 
 namespace nnrt {
 namespace geometry {
 namespace kernel {
-namespace graph {
+namespace warp {
 
 template
-void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& anchors,
-		open3d::core::Tensor& weights,
-		const open3d::core::Tensor& points,
-		const open3d::core::Tensor& nodes,
-		const int anchor_count,
-		const float node_coverage
+void WarpPoints<open3d::core::Device::DeviceType::CPU>(
+		core::Tensor& warped_points, const core::Tensor& anchors,
+		const core::Tensor& weights, const core::Tensor& points,
+		const core::Tensor& nodes, const core::Tensor& node_rotations,
+		const core::Tensor& node_translations
 );
 
-} // namespace graph
+} // namespace warp
 } // namespace kernel
 } // namespace geometry
 } // namespace nnrt

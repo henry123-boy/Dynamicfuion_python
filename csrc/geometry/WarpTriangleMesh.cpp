@@ -15,6 +15,7 @@
 //  ================================================================
 #include "geometry/WarpTriangleMesh.h"
 #include "geometry/kernel/Graph.h"
+#include "geometry/kernel/Warp.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry;
@@ -66,8 +67,11 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 	}
 
 	if(input_mesh.HasVertices()){
+		const auto& vertices = input_mesh.GetVertices();
 		core::Tensor anchors, weights;
-		kernel::graph::ComputeAnchorsAndWeightsEuclidean(anchors, weights, input_mesh.GetVertices(), nodes, anchor_count, node_coverage);
+		kernel::graph::ComputeAnchorsAndWeightsEuclidean(anchors, weights, vertices, nodes, anchor_count, node_coverage);
+		core::Tensor warped_vertices;
+		kernel::warp::WarpPoints(warped_vertices, anchors, weights, vertices, nodes, node_rotations, node_translations);
 
 	}
 

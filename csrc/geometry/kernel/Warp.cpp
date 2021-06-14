@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,26 +13,29 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Graph.h"
+#include "geometry/kernel/Warp.h"
+
 using namespace open3d;
 
 namespace nnrt {
 namespace geometry {
 namespace kernel {
-namespace graph {
-void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, const int anchor_count, const float node_coverage) {
-	core::Device device = points.GetDevice();
-	core::Device::DeviceType device_type = device.GetType();
+namespace warp {
+
+
+void WarpPoints(open3d::core::Tensor& warped_vertices, const open3d::core::Tensor& anchors, const open3d::core::Tensor& weights,
+                const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations) {
+	core::Device::DeviceType device_type = nodes.GetDevice().GetType();
 	switch (device_type) {
 		case core::Device::DeviceType::CPU:
-			ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU>(
-					anchors, weights, points, nodes, anchor_count, node_coverage);
+			WarpPoints<core::Device::DeviceType::CPU>(
+					warped_vertices, anchors, weights, points, nodes, node_rotations, node_translations);
 			break;
 		case core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
-			ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA>(
-					anchors, weights, points, nodes, anchor_count, node_coverage);
+			WarpPoints<core::Device::DeviceType::CUDA>(
+					warped_vertices, anchors, weights, points, nodes, node_rotations, node_translations);
 #else
 			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
@@ -42,7 +45,9 @@ void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::co
 			break;
 	}
 }
-} // namespace graph
+
+
+} // namespace warp
 } // namespace kernel
 } // namespace geometry
 } // namespace nnrt
