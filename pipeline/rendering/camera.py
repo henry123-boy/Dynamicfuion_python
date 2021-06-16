@@ -202,13 +202,13 @@ def KRT_from_P(proj_mat, normalize_K=True):
 
 def MVP_from_P(proj_mat, width, height, near=0.1, far=10000):
     '''
-    Convert OpenCV camera calibration matrix to OpenGL projection and model view matrix
+    Convert OpenCV camera calibration matrix to OpenGL projection and alignment view matrix
     :param proj_mat: OpenCV camera projeciton matrix
     :param width: Image width
     :param height: Image height
     :param near: Z near value
     :param far: Z far value
-    :return: OpenGL projection matrix and model view matrix
+    :return: OpenGL projection matrix and alignment view matrix
     '''
     res = cv2.decomposeProjectionMatrix(proj_mat)
     K, Rot, camera_center_homog = res[0], res[1], res[2]

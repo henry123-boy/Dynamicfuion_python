@@ -127,7 +127,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& indices, const open3d::core::
 		                                                 node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);
 	} else if (device_type == core::Device::DeviceType::CUDA) {
 #ifdef BUILD_CUDA_MODULE
-		IntegrateWarpedDQ<core::Device::DeviceType::CPU>(indices, block_keys, block_values,
+		IntegrateWarpedDQ<core::Device::DeviceType::CUDA>(indices, block_keys, block_values,
 		                                                 cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 		                                                 depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
 		                                                 node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max);

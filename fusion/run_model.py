@@ -3,7 +3,7 @@ import os
 import torch
 
 # Modules (make sure modules are visible in sys.path)
-from model.model import DeformNet
+from alignment.deform_net import DeformNet
 
 import options as opt
 
@@ -21,7 +21,7 @@ class Deformnet_runner():
 		opt.use_mask = True
 		
 		#####################################################################################################
-		# Load model
+		# Load alignment
 		#####################################################################################################
 
 		saved_model = opt.saved_model
@@ -29,14 +29,14 @@ class Deformnet_runner():
 		assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
 		pretrained_dict = torch.load(saved_model)
 
-		# Construct model
+		# Construct alignment
 		self.model = DeformNet().cuda()
 
 		if "chairs_things" in saved_model:
 			self.model.flow_net.load_state_dict(pretrained_dict)
 		else:
 			if opt.model_module_to_load == "full_model":
-				# Load completely model            
+				# Load completely alignment
 				self.model.load_state_dict(pretrained_dict)
 			elif opt.model_module_to_load == "only_flow_net":
 				# Load only optical flow part

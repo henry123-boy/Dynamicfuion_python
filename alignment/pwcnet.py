@@ -5,7 +5,7 @@
 import torch
 import numpy as np
 
-from model.correlation import correlation  # the custom cost volume layer
+from alignment.correlation import correlation  # the custom cost volume layer
 
 backward_grid = {}
 backward_partial = {}

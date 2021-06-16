@@ -28,7 +28,7 @@ class FrameSequencePreset(Enum):
     # SOD == salient object detection
     # generate these masks like so:
     # 1. Check out https://github.com/xuebinqin/U-2-Net
-    # 2. Download the pretrained model (.pth file, see README in above repo)
+    # 2. Download the pretrained alignment (.pth file, see README in above repo)
     # 3. Run the saliency detector like so (condense into one line):
     #    python3 u2net_test.py -m /mnt/Data/Checkpoints/u2net/u2net.pth
     #       -i /mnt/Data/Datasets/deepdeform/train/seq070/color/

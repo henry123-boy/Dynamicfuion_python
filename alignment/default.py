@@ -1,6 +1,6 @@
 import os
 import torch
-from model.model import DeformNet
+from alignment.deform_net import DeformNet
 import options
 
 
@@ -10,14 +10,14 @@ def load_default_nnrt_model():
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
     pretrained_dict = torch.load(saved_model)
 
-    # Construct model
+    # Construct alignment
     model = DeformNet().cuda()
 
     if "chairs_things" in saved_model:
         model.flow_net.load_state_dict(pretrained_dict)
     else:
         if options.model_module_to_load == "full_model":
-            # Load completely model
+            # Load completely alignment
             model.load_state_dict(pretrained_dict)
         elif options.model_module_to_load == "only_flow_net":
             # Load only optical flow part

@@ -22,6 +22,7 @@ from scipy.spatial.transform.rotation import Rotation
 import nnrt
 
 import options
+from alignment.interface import run_non_rigid_alignment
 from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
@@ -30,9 +31,9 @@ from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
 import utils.image
 import utils.voxel_grid
 import utils.viz.tracking as tracking_viz
-from model.model import DeformNet
-from model.default import load_default_nnrt_model
-from pipeline.graph import DeformationGraph, build_deformation_graph_from_mesh
+from alignment.deform_net import DeformNet
+from alignment.default import load_default_nnrt_model
+from pipeline.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
 import pipeline.pipeline_options as po
 from pipeline.pipeline_options import VisualizationMode
 from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
@@ -87,9 +88,9 @@ def main() -> int:
         nvmlInit()
 
     #####################################################################################################
-    # region === load model, configure device ===
+    # region === load alignment, configure device ===
     #####################################################################################################
-    model: DeformNet = load_default_nnrt_model()
+    deform_net: DeformNet = load_default_nnrt_model()
     device = o3d.core.Device('cuda:0')
     # endregion
     #####################################################################################################
@@ -113,7 +114,7 @@ def main() -> int:
     #####################################################################################################
 
     volume = utils.voxel_grid.make_default_tsdf_voxel_grid(device)
-    deformation_graph: typing.Union[DeformationGraph, None] = None
+    graph: typing.Union[DeformationGraphNumpy, None] = None
     renderer = PyTorch3DRenderer(sequence.resolution, device, intrinsics_open3d_cuda)
 
     previous_depth_image_np: typing.Union[None, np.ndarray] = None
@@ -161,7 +162,7 @@ def main() -> int:
             canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
             # === Construct initial deformation graph
-            deformation_graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
+            graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
                                                                   erosion_iteration_count=10,
                                                                   neighbor_count=8)
         else:
@@ -188,9 +189,9 @@ def main() -> int:
             if po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
                     po.visualization_mode == po.VisualizationMode.WARPED_MESH:
                 if po.transformation_mode == po.TransformationMode.QUATERNIONS:
-                    warped_mesh = deformation_graph.warp_mesh_dq(canonical_mesh, options.node_coverage)
+                    warped_mesh = graph.warp_mesh_dq(canonical_mesh, options.node_coverage)
                 else:
-                    warped_mesh = deformation_graph.warp_mesh_mat(canonical_mesh, options.node_coverage)
+                    warped_mesh = graph.warp_mesh_mat(canonical_mesh, options.node_coverage)
                 if po.visualization_mode == po.VisualizationMode.WARPED_MESH:
                     if po.record_visualization_to_disk:
                         mesh_video_recorder.capture_frame([warped_mesh])
@@ -242,7 +243,7 @@ def main() -> int:
             target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
             pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                deformation_graph.nodes, source_point_image,
+                graph.nodes, source_point_image,
                 options.node_coverage)
 
             pixel_anchors = cropper(pixel_anchors)
@@ -256,81 +257,58 @@ def main() -> int:
             )
             cropped_intrinsics_numpy = np.array([fx_cropped, fy_cropped, cx_cropped, cy_cropped], dtype=np.float32)
             # endregion
-            #####################################################################################################
-            # region === prepare pytorch inputs for the depth prediction model ====
-            #####################################################################################################
-            node_count = np.array(deformation_graph.nodes.shape[0], dtype=np.int64)
-            source_cuda = torch.from_numpy(source_rgbxyz).cuda().unsqueeze(0)
-            target_cuda = torch.from_numpy(target_rgbxyz).cuda().unsqueeze(0)
-            warped_nodes = deformation_graph.get_warped_nodes()
-            graph_nodes_cuda = torch.from_numpy(warped_nodes).cuda().unsqueeze(0)
-            graph_edges_cuda = torch.from_numpy(deformation_graph.edges).cuda().unsqueeze(0)
-            graph_edges_weights_cuda = torch.from_numpy(deformation_graph.edge_weights).cuda().unsqueeze(0)
-            graph_clusters_cuda = torch.from_numpy(deformation_graph.clusters.reshape(-1, 1)).cuda().unsqueeze(0)
-            pixel_anchors_cuda = torch.from_numpy(pixel_anchors).cuda().unsqueeze(0)
-            pixel_weights_cuda = torch.from_numpy(pixel_weights).cuda().unsqueeze(0)
-            intrinsics_cuda = torch.from_numpy(cropped_intrinsics_numpy).cuda().unsqueeze(0)
-            num_nodes_cuda = torch.from_numpy(node_count).cuda().unsqueeze(0)
-            # endregion
+
             #####################################################################################################
             # region === run the motion prediction & optimization ====
             #####################################################################################################
-            with torch.no_grad():
-                model_data = model(
-                    source_cuda, target_cuda,
-                    graph_nodes_cuda, graph_edges_cuda, graph_edges_weights_cuda, graph_clusters_cuda,
-                    pixel_anchors_cuda, pixel_weights_cuda,
-                    num_nodes_cuda, intrinsics_cuda,
-                    evaluate=True, split="test"
-                )
+
+            deform_net_data = run_non_rigid_alignment(deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
+                                                      pixel_weights, graph, cropped_intrinsics_numpy, device)
 
             # Get some of the results
-            rotations_pred = model_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
-            translations_pred = model_data["node_translations"].view(node_count, 3).cpu().numpy()
+            node_count = len(graph.nodes)
+            rotations_pred = deform_net_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
+            translations_pred = deform_net_data["node_translations"].view(node_count, 3).cpu().numpy()
 
             if po.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
                 # TODO: not sure what the mask prediction can be useful for except in visualization so far...
-                mask_pred = model_data["mask_pred"]
+                mask_pred = deform_net_data["mask_pred"]
                 assert mask_pred is not None, "Make sure use_mask=True in options.py"
                 mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
                 # Compute mask gt for mask baseline
                 _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
-                    = model_data["correspondence_info"]
+                    = deform_net_data["correspondence_info"]
 
                 target_matches = target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
                 valid_source_points = valid_source_points.view(-1, options.image_height, options.image_width).cpu().numpy()
                 valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
 
                 tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
-                                                warped_nodes, deformation_graph.edges,
+                                                warped_nodes, graph.edges,
                                                 rotations_pred, translations_pred, mask_pred,
                                                 valid_source_points, valid_correspondences, target_matches)
-
-
-
-
             # endregion
             #####################################################################################################
-            # region === fuse model ====
+            # region === fuse alignment ====
             #####################################################################################################
             # use the resulting frame transformation predictions to update the global, cumulative node transformations
 
             for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-                node_position = deformation_graph.nodes[i_node]
-                current_rotation = deformation_graph.rotations_mat[i_node] = \
-                    rotation.dot(deformation_graph.rotations_mat[i_node])
-                current_translation = deformation_graph.translations_vec[i_node] = \
-                    translation + deformation_graph.translations_vec[i_node]
+                node_position = graph.nodes[i_node]
+                current_rotation = graph.rotations_mat[i_node] = \
+                    rotation.dot(graph.rotations_mat[i_node])
+                current_translation = graph.translations_vec[i_node] = \
+                    translation + graph.translations_vec[i_node]
 
                 translation_global = node_position + current_translation - current_rotation.dot(node_position)
-                deformation_graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
+                graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
 
             # prepare data for Open3D integration
-            nodes_o3d = o3c.Tensor(deformation_graph.nodes, dtype=o3c.Dtype.Float32, device=device)
+            nodes_o3d = o3c.Tensor(graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
             if po.transformation_mode == po.TransformationMode.QUATERNIONS:
                 # prepare data for Open3D integration
-                node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in deformation_graph.transformations_dq])
+                node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in graph.transformations_dq])
                 node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
                 cos_voxel_ray_to_normal = volume.integrate_warped_dq(
                     depth_image_open3d, color_image_open3d, target_normal_map_o3d,
@@ -338,8 +316,8 @@ def main() -> int:
                     nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
                     anchor_count=po.anchor_node_count, depth_scale=options.depth_scale, depth_max=3.0)
             elif po.transformation_mode == po.TransformationMode.MATRICES:
-                node_rotations_o3d = o3c.Tensor(deformation_graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
-                node_translations_o3d = o3c.Tensor(deformation_graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
+                node_rotations_o3d = o3c.Tensor(graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
+                node_translations_o3d = o3c.Tensor(graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
                 cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                     depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                     intrinsics_open3d_cuda, extrinsics_open3d_cuda,

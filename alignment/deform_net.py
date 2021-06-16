@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 import options
 import options as opt
 from utils.nn import make_conv_2d, ResBlock2d, Identity
-from model import pwcnet
+from alignment import pwcnet
 
 
 class MaskNet(torch.nn.Module):

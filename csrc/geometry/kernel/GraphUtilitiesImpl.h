@@ -29,19 +29,21 @@ namespace kernel {
 namespace graph {
 
 template<core::Device::DeviceType TDeviceType>
-NNRT_CPU_OR_CUDA_DEVICE
+NNRT_DEVICE_WHEN_CUDACC
 inline void FindKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_distances, const int anchor_count,
-                                     const int node_count, const Eigen::Vector3f& voxel_global_metric,
+                                     const int node_count, const Eigen::Vector3f& point,
                                      const NDArrayIndexer& node_indexer) {
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		squared_distances[i_anchor] = INFINITY;
 	}
+
 	int max_at_index = 0;
 	float max_squared_distance = INFINITY;
+
 	for (int i_node = 0; i_node < node_count; i_node++) {
 		auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
 		Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-		float squared_distance = (node - voxel_global_metric).squaredNorm();
+		float squared_distance = (node - point).squaredNorm();
 
 		if (squared_distance < max_squared_distance) {
 			squared_distances[max_at_index] = squared_distance;
@@ -61,7 +63,7 @@ inline void FindKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_dis
 }
 
 template<core::Device::DeviceType TDeviceType>
-NNRT_CPU_OR_CUDA_DEVICE
+NNRT_DEVICE_WHEN_CUDACC
 inline bool FindAnchorsAndWeightsForPoint(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
                                           const int node_count, const Eigen::Vector3f& point,
                                           const NDArrayIndexer& node_indexer, const float node_coverage_squared) {
@@ -71,6 +73,7 @@ inline bool FindAnchorsAndWeightsForPoint(int32_t* anchor_indices, float* anchor
 	                                             node_count, point, node_indexer);
 	// endregion
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
+
 	float weight_sum = 0.0;
 	int valid_anchor_count = 0;
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
@@ -102,6 +105,7 @@ inline bool FindAnchorsAndWeightsForPoint(int32_t* anchor_indices, float* anchor
 	// endregion
 	return true;
 }
+
 
 } // namespace graph
 } // namespace kernel

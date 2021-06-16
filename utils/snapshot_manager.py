@@ -36,7 +36,7 @@ class SnapshotManager():
         torch.save(model.state_dict(), model_path)
 
         print("Enough time elapsed ({}s >= {}s) to store a new snapshot.".format(elapsed, self.snapshot_duration))
-        print("Saving model as {}".format(model_name))
+        print("Saving alignment as {}".format(model_name))
         print()
 
         self.previous_snapshot_time = timer()

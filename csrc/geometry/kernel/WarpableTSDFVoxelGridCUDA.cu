@@ -24,6 +24,7 @@ namespace geometry {
 namespace kernel {
 namespace tsdf {
 
+
 template
 void IntegrateWarpedDQ<core::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
@@ -45,7 +46,7 @@ void IntegrateWarpedMat<core::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
 		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
 		const open3d::core::Tensor& extrinsics,
-		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& graph_nodes, const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& node_translations,
 		float node_coverage, int anchor_count, float depth_scale, float depth_max);
 

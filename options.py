@@ -45,15 +45,15 @@ node_coverage = 0.05
 # MODEL INFO
 #####################################################################################################################
 
-# Info for a saved model
+# Info for a saved alignment
 # - In train.py, this info is only used if use_pretrained_model=True
 # - In generate.py, evaluate.py or example_viz.py, it is used regardless of the value of use_pretrained_model
 
 use_pretrained_model = False  # used only in train.py
 
 model_module_to_load = "full_model"  # A: "only_flow_net", B: "full_model"
-model_name = "model_A"  # your model's name
-model_iteration = 0  # iteration number of the model you want to load
+model_name = "model_A"  # your alignment's name
+model_iteration = 0  # iteration number of the alignment you want to load
 
 saved_model = os.path.join(experiments_directory, "models", model_name, f"{model_name}_{model_iteration}.pt")
 
@@ -87,12 +87,12 @@ def print_hyperparams():
     print("\tnum_worker_threads           ", num_worker_threads)
 
     if use_pretrained_model:
-        print("\tPretrained model              \"{}\"".format(saved_model))
+        print("\tPretrained alignment              \"{}\"".format(saved_model))
         print("\tModel part to load:          ", model_module_to_load)
         print("\tfreeze_optical_flow_net      ", freeze_optical_flow_net)
         print("\tfreeze_mask_net              ", freeze_mask_net)
     else:
-        print("\tPretrained model              None")
+        print("\tPretrained alignment              None")
 
     print()
     print("\tuse_adam                     ", use_adam)

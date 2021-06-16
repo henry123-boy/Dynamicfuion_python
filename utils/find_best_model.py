@@ -33,7 +33,7 @@ def find_best_model_name(model_dirname, data_version, verbose=False):
     if verbose:
         print("Best step {} at step {}".format(best_error, best_step))
 
-    # Find model name based on step
+    # Find alignment name based on step
     model_dir = "/data/nonrigid/training/models/deformdata/{}".format(model_dirname)
 
     best_model_name = None

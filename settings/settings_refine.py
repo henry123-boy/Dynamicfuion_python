@@ -4,7 +4,7 @@
 # Do validation?
 do_validation = True
 
-# Freeze parts of the model
+# Freeze parts of the alignment
 freeze_optical_flow_net = False
 freeze_mask_net = False
 

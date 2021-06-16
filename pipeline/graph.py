@@ -1,3 +1,5 @@
+import typing
+
 import dq3d
 import numpy as np
 import open3d as o3d
@@ -83,7 +85,7 @@ def find_knn_graph_connected_components(knn_edges: np.ndarray) -> np.ndarray:
     return labels
 
 
-class DeformationGraph:
+class DeformationGraphNumpy:
     def __init__(self, canonical_node_positions: np.ndarray, edges: np.ndarray, edge_weights: np.ndarray,
                  clusters: np.ndarray):
         self.nodes = canonical_node_positions
@@ -94,13 +96,13 @@ class DeformationGraph:
         self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
         self.translations_vec = np.zeros_like(self.nodes)
 
-    def get_warped_nodes(self):
+    def get_warped_nodes(self) -> np.ndarray:
         return self.nodes + self.translations_vec
 
-    def get_extent_canonical(self):
+    def get_extent_canonical(self) -> typing.Tuple[np.ndarray, np.ndarray]:
         return self.nodes.max(axis=0), self.nodes.min(axis=0)
 
-    def as_line_set_canonical(self):
+    def as_line_set_canonical(self) -> o3d.geometry.LineSet:
         return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
     def warp_mesh_mat(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
@@ -144,7 +146,7 @@ class DeformationGraph:
 
 class DeformationGraphOpen3D:
     def __init__(self, canonical_node_positions: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
-                 clusters: o3c.Tensor):
+                 clusters: o3c.Tensor, anchor_count=4):
         self.nodes = canonical_node_positions
         self.edges = edges
         self.edge_weights = edge_weights
@@ -152,11 +154,27 @@ class DeformationGraphOpen3D:
         self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
         self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
         self.translations_vec = np.zeros_like(self.nodes)
+        self.anchor_count = anchor_count
+
+    def get_warped_nodes(self) -> o3c.Tensor:
+        return self.nodes + self.translations_vec
+
+    def get_extent_canonical(self) -> typing.Tuple[o3c.Tensor, o3c.Tensor]:
+        return self.nodes.max(dim=0), self.nodes.min(dim=0)
+
+    def as_line_set_canonical(self) -> o3d.geometry.LineSet:
+        return knn_graph_to_line_set(self.nodes.numpy(), self.edges.numpy(), self.clusters.numpy())
+
+    def warp_mesh_mat(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
+        return nnrt.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations_mat, self.translations_vec, self.anchor_count, node_coverage)
+
+    def warp_mesh_dq(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
+        raise NotImplemented("Dual-quaternion mesh warping hasn't yet been implemented.")
 
 
 def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
                                       erosion_iteration_count: int = 10, erosion_min_neighbor_count: int = 4,
-                                      neighbor_count: int = 8) -> DeformationGraph:
+                                      neighbor_count: int = 8) -> DeformationGraphNumpy:
     vertex_positions = np.array(mesh.vertices)
     triangle_vertex_indices = np.array(mesh.triangles)
 
@@ -259,12 +277,12 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
             print("Cluster is too small {}".format(clusters_size_list))
             print("It only has nodes:", np.where(graph_clusters == i)[0])
 
-    return DeformationGraph(nodes, graph_edges, graph_edge_weights, graph_clusters)
+    return DeformationGraphNumpy(nodes, graph_edges, graph_edge_weights, graph_clusters)
 
 
 def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
                                              intrinsics: o3d.camera.PinholeCameraIntrinsic,
-                                             downsampling_factor: int) -> DeformationGraph:
+                                             downsampling_factor: int) -> DeformationGraphNumpy:
     fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics)
 
     point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
@@ -275,10 +293,10 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
                                      depth_image.shape[0] // downsampling_factor,
                                      2.0, 0.05, 3.0)
     clusters = find_knn_graph_connected_components(knn_edges=edges)
-    return DeformationGraph(node_positions, edges, np.array([1] * len(edges)), clusters)
+    return DeformationGraphNumpy(node_positions, edges, np.array([1] * len(edges)), clusters)
 
 
-def draw_deformation_graph(deformation_graph: DeformationGraph,
+def draw_deformation_graph(deformation_graph: DeformationGraphNumpy,
                            background_image: o3d.geometry.Image = None) -> None:
     line_set = deformation_graph.as_line_set_canonical()
 

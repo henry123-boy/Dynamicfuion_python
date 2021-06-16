@@ -7,7 +7,7 @@ from tqdm import tqdm
 import argparse
 
 from utils import image as image_utils
-from model import DeformNet
+from alignment import DeformNet
 from data import DeformDataset, io
 
 import options as opt
@@ -67,14 +67,14 @@ def main():
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
     pretrained_dict = torch.load(saved_model)
 
-    # Construct model
+    # Construct alignment
     model = DeformNet().cuda()
 
     if "chairs_things" in saved_model:
         model.flow_net.load_state_dict(pretrained_dict)
     else:
         if opt.model_module_to_load == "full_model":
-            # Load completely model            
+            # Load completely alignment
             model.load_state_dict(pretrained_dict)
         elif opt.model_module_to_load == "only_flow_net":
             # Load only optical flow part

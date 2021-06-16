@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import argparse
 
-from model.loss import EPE_3D_eval
+from alignment.loss import EPE_3D_eval
 from data import DeformDataset
 
 import utils.viz.image as utils

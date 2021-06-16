@@ -10,12 +10,12 @@ import math
 import torch
 from tensorboardX import SummaryWriter
 
-from model import evaluate
+from alignment import evaluate
 from data import DeformDataset
 import options
 from utils import SnapshotManager, TimeStatistics
 from utils import nn
-from model import DeformNet, DeformLoss
+from alignment import DeformNet, DeformLoss
 
 if __name__ == "__main__":
     torch.set_num_threads(options.num_threads)
@@ -83,16 +83,16 @@ if __name__ == "__main__":
     options_file_out = os.path.join(log_dir, "options.py")
     copyfile(options_file_in, options_file_out)
 
-    # Creation of model dir.
+    # Creation of alignment dir.
     training_models = os.path.join(options.experiments_directory, "models")
     if not os.path.exists(training_models): os.mkdir(training_models)
     saving_model_dir = os.path.join(training_models, log_name)
     if not os.path.exists(saving_model_dir): os.mkdir(saving_model_dir)
 
     #####################################################################################
-    # Initializing: model, criterion, optimizer, learning scheduler...
+    # Initializing: alignment, criterion, optimizer, learning scheduler...
     #####################################################################################
-    # Load model, loss and optimizer.
+    # Load alignment, loss and optimizer.
     saved_model = options.saved_model
 
     iteration_number = 0
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     model = DeformNet().cuda()
 
     if options.use_pretrained_model:
-        assert os.path.isfile(saved_model), "\nModel {} does not exist. Please train a model from scratch or specify a valid path to a model.".format(
+        assert os.path.isfile(saved_model), "\nModel {} does not exist. Please train a alignment from scratch or specify a valid path to a alignment.".format(
             saved_model)
         pretrained_dict = torch.load(saved_model)
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
             model.flow_net.load_state_dict(pretrained_dict)
         else:
             if options.model_module_to_load == "full_model":
-                # Load completely model            
+                # Load completely alignment
                 model.load_state_dict(pretrained_dict)
             elif options.model_module_to_load == "only_flow_net":
                 # Load only optical flow part
@@ -156,7 +156,7 @@ if __name__ == "__main__":
                           + ",\nuse_mask: " + str(options.use_mask)
                           + ",\nuse_mask_loss: " + str(options.use_mask_loss))
 
-    # Initialize snaphost manager for model snapshot creation.
+    # Initialize snaphost manager for alignment snapshot creation.
     snapshot_manager = SnapshotManager(log_name, saving_model_dir)
 
     # We count the execution time between evaluations.
@@ -461,7 +461,7 @@ if __name__ == "__main__":
                 time_statistics.train_duration += (timer() - train_batch_start)
 
                 if iteration_number % options.evaluation_frequency == 0:
-                    # Store the latest model snapshot, if the required elased time has passed.
+                    # Store the latest alignment snapshot, if the required elased time has passed.
                     snapshot_manager.save_model(model, iteration_number)
 
                 iteration_number = iteration_number + 1
@@ -472,7 +472,7 @@ if __name__ == "__main__":
             print("-------------------------------------------------------------------")
 
     except (KeyboardInterrupt, TypeError, ConnectionResetError) as err:
-        # We also save the latest model snapshot at interruption.
+        # We also save the latest alignment snapshot at interruption.
         snapshot_manager.save_model(model, iteration_number, final_iteration=True)
         raise err
 
