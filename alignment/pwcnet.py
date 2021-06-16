@@ -309,10 +309,6 @@ class PWCNet(torch.nn.Module):
         self.moduleRefiner = Refiner()
 
     def forward(self, first, second):
-        # __DEBUG
-        # first = first[:, :3, :, :]
-        # second = second[:, :3, :, :]
-
         pyramid_first = self.moduleExtractor(first)
         pyramid_second = self.moduleExtractor(second)
 

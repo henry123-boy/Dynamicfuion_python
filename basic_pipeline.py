@@ -284,7 +284,7 @@ def main() -> int:
                 valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
 
                 tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
-                                                warped_nodes, graph.edges,
+                                                graph.get_warped_nodes(), graph.edges,
                                                 rotations_pred, translations_pred, mask_pred,
                                                 valid_source_points, valid_correspondences, target_matches)
             # endregion

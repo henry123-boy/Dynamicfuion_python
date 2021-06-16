@@ -529,61 +529,6 @@ void IntegrateWarpedDQ(
 			}
 	);
 }
-//
-// //__DEBUG
-// template<core::Device::DeviceType TDeviceType, typename TFunc>
-// void Test(TFunc&& t_func) {
-// #if defined(__CUDACC__)
-// 	core::kernel::CUDALauncher launcher;
-// #else
-// 	core::kernel::CPULauncher launcher;
-// #endif
-// 	launcher.template LaunchGeneralKernel(1, [=] OPEN3D_DEVICE(int64_t workload_idx) {
-// 		t_func(workload_idx);
-// 	});
-// }
-// //__DEBUG
-// #ifdef __CUDACC__
-// __global__
-// void  test_kernel(/*NDArrayIndexer node_indexer,*/ const int node_count){
-// 	int32_t anchor_indices[MAX_ANCHOR_COUNT];
-// 	float squared_distances[MAX_ANCHOR_COUNT];
-// 	Eigen::Vector3f point(0.f, 0.f, 0.f);
-// 	// graph::FindKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, 4,
-// 	//                                              node_count, point, node_indexer);
-// 	for (int i_anchor = 0; i_anchor < 4; i_anchor++) {
-// 		squared_distances[i_anchor] = 10000.0f;
-// 	}
-//
-// 	int max_at_index = 0;
-// 	float max_squared_distance = 10000.0f;
-//
-// 	for (int32_t i_node = 0; i_node < node_count; i_node++) {
-// 		// auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
-// 		// Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-// 		Eigen::Vector3f node;
-// 		node.setRandom();
-// 		float squared_distance = (node - point).squaredNorm();
-//
-// 		if (squared_distance < max_squared_distance) {
-// 			squared_distances[max_at_index] = squared_distance;
-// 			anchor_indices[max_at_index] = i_node;
-//
-// 			//update the maximum distance within current anchor nodes
-// 			max_at_index = 0;
-// 			max_squared_distance = squared_distances[max_at_index];
-// 			for (int i_anchor = 1; i_anchor < 4; i_anchor++) {
-// 				if (squared_distances[i_anchor] > max_squared_distance) {
-// 					// printf("max_at_index: %d, i_anchor: %d\n", max_at_index, i_anchor);
-// 					max_at_index = i_anchor; //WTF?!?!?!?!?!?!?!?! This line produces a memory error?
-// 					max_squared_distance = squared_distances[i_anchor];
-// 				}
-// 			}
-// 		}
-// 	}
-// };
-// #endif
-
 
 template<core::Device::DeviceType TDeviceType>
 void IntegrateWarpedMat(
@@ -597,11 +542,6 @@ void IntegrateWarpedMat(
 ) {
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
 	NDArrayIndexer node_translation_indexer(node_translations, 1);
-
-	// __DEBUG
-	// Test<TDeviceType>([=] NNRT_DEVICE_WHEN_CUDACC(const int input) {
-	// 	                  printf("Input: %d\n", input);
-	//                   });
 
 	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
@@ -628,62 +568,6 @@ void IntegrateWarpedMat(
 			}
 	);
 
-
-
-	//__DEBUG
-	// NDArrayIndexer node_indexer(graph_nodes, 1);
-	// int64_t node_count = graph_nodes.GetLength();
-	// int anchor_count2 = anchor_count;
-
-// #if defined(__CUDACC__)
-// 	core::kernel::CUDALauncher launcher;
-// #else
-// 	core::kernel::CPULauncher launcher;
-// #endif
-
-
-
-// #if defined(__CUDACC__)
-// 	dim3 cuda_grid_size(1);
-// 	dim3 cuda_block_size(1);
-// 	test_kernel<<<cuda_grid_size, cuda_block_size>>>(node_count);
-// #endif
-	//
-	// launcher.template LaunchGeneralKernel(1, [=] OPEN3D_DEVICE(int64_t workload_idx) {
-	// 	int32_t anchor_indices[MAX_ANCHOR_COUNT];
-	// 	float squared_distances[MAX_ANCHOR_COUNT];
-	// 	Eigen::Vector3f point(0.f, 0.f, 0.f);
-	// 	// graph::FindKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, 4,
-	// 	//                                              node_count, point, node_indexer);
-	// 	for (int i_anchor = 0; i_anchor < 4; i_anchor++) {
-	// 		squared_distances[i_anchor] = 10000.0f;
-	// 	}
-	//
-	// 	int max_at_index = 0;
-	// 	float max_squared_distance = 10000.0f;
-	//
-	// 	for (int32_t i_node = 0; i_node < node_count; i_node++) {
-	// 		auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
-	// 		Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-	// 		float squared_distance = (node - point).squaredNorm();
-	//
-	// 		if (squared_distance < max_squared_distance) {
-	// 			squared_distances[max_at_index] = squared_distance;
-	// 			anchor_indices[max_at_index] = i_node;
-	//
-	// 			//update the maximum distance within current anchor nodes
-	// 			max_at_index = 0;
-	// 			max_squared_distance = squared_distances[max_at_index];
-	// 			for (int i_anchor = 1; i_anchor < 4; i_anchor++) {
-	// 				if (squared_distances[i_anchor] > max_squared_distance) {
-	// 					// printf("max_at_index: %d, i_anchor: %d\n", max_at_index, i_anchor);
-	// 					// max_at_index = i_anchor; //WTF?!?!?!?!?!?!?!?! This line produces a memory error?
-	// 					// max_squared_distance = squared_distances[i_anchor];
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// });
 
 }
 

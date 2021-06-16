@@ -43,7 +43,7 @@ print_intrinsics = False
 print_gpu_memory_info = False
 
 # visualization options
-visualization_mode: VisualizationMode = VisualizationMode.WARPED_MESH
+visualization_mode: VisualizationMode = VisualizationMode.NONE
 
 # logging options
 record_visualization_to_disk = False

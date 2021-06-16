@@ -138,8 +138,7 @@ class DeformNet(torch.nn.Module):
         ########################################################################
         # region Compute dense flow from source to target.
         ########################################################################
-        # __DEBUG
-        source_color = torch.clone(source[:, :3, :, :])
+        source_color = torch.clone(source[:, :3, :, :])  # clones avoid memory bugs here
         target_color = torch.clone(target[:, :3, :, :])
         flow2, flow3, flow4, flow5, flow6, features2 = self.flow_net.forward(source_color, target_color)
 
@@ -426,41 +425,8 @@ class DeformNet(torch.nn.Module):
                         print('cluster_id', cluster_id, cluster_match_weights)
 
                     if cluster_match_weights < opt.gn_min_num_correspondences_per_cluster:
-                        # TODO: figure out the bug here, i.e. why does the old code not work
-                        # mask = torch.where(graph_clusters_i == cluster_id, torch.ones_like(graph_clusters_i), torch.zeros_like(graph_clusters_i))
-                        # dummy = mask.sum()  # TODO: figure out why there is some kind of lazy-evaluation bug in PyTorch without this line...
-                        # del dummy
-                        # x = torch.nonzero(mask, as_tuple=True)[0].tolist()
-
-                        # __DEBUG
-                        # print("mask.sum()......................: ", mask.sum())
-
-                        # __DEBUG
-
-                        # print("type(graph_clusters_i)..........: ", type(graph_clusters_i))
-                        # print("graph_clusters_i.shape..........: ", graph_clusters_i.shape)
-                        # print("graph_clusters_i.device.........: ", graph_clusters_i.device)
-                        # print("torch.isnan(graph_clusters_i).sum()",     torch.isnan(graph_clusters_i).sum())
-                        # print("type(cluster_id)................: ", type(cluster_id))
-                        # print("cluster_id......................: ", cluster_id)
-
-
-                        # TODO: PyTorch devs/maintainers--this is where the bug occurs!
-                        # old code:
-
                         index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
-                        # torch.save(graph_clusters_i, "graph_clusters_i.pt")
-                        # torch.save(index_equals_cluster_id, "index_equals_cluster_id.pt")
-                        # dummy = index_equals_cluster_id[0].sum()  # This triggers some kind of bug too!
-                        # # del dummy
-                        x = index_equals_cluster_id[0].tolist()  # <-- original error here!
-
-                        # print("len(index_equals_cluster_id)....: ", len(index_equals_cluster_id))
-                        # print("type(index_equals_cluster_id)...: ", type(index_equals_cluster_id))
-                        # print("type(index_equals_cluster_id[0]): ", type(index_equals_cluster_id[0]))
-                        # print("index_equals_cluster_id[0].shape: ", index_equals_cluster_id[0].shape)
-
-
+                        x = index_equals_cluster_id[0].tolist()
                         node_ids_for_removal += x
 
                 if opt.gn_debug:
