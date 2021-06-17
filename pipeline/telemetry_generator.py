@@ -1,5 +1,6 @@
 import os
 import typing
+from datetime import datetime
 
 import numpy as np
 import open3d as o3d
@@ -15,19 +16,26 @@ import utils.viz.tracking as tracking_viz
 class TelemetryGenerator:
     def __init__(self,
                  record_visualization_to_disk: bool,
+                 record_framewise_canonical_mesh: bool,
+                 record_framewise_warped_mesh: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
-                 output_directory: str):
+                 output_directory: str,
+                 record_over_run_time: datetime = datetime.now()):
         # set up mesh recorder
         self.mesh_video_recorder = None
         self.record_visualization_to_disk = record_visualization_to_disk
+        self.record_framewise_canonical_mesh = record_framewise_canonical_mesh
+        self.record_framewise_warped_mesh = record_framewise_warped_mesh
         self.visualization_mode = visualization_mode
+        self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
+
         if self.record_visualization_to_disk:
             # TODO fix recording, it currently doesn't seem to work. Perhaps use something other than Open3D for rendering,
             #  e.g. PyTorch3D, and ffmpeg-python for recording instead of OpenCV
             self.mesh_video_recorder = FusionVisualizationRecorder(
-                output_video_path=os.path.join(output_directory, "mesh_visualization.mkv"),
+                output_video_path=os.path.join(self.output_directory, "mesh_visualization.mkv"),
                 front=[0, 0, -1], lookat=[0, 0, 1.5],
                 up=[0, -1.0, 0], zoom=0.7
             )
@@ -35,6 +43,9 @@ class TelemetryGenerator:
         if self.print_gpu_memory_info:
             nvmlInit()
         self.print_frame_info = print_frame_info
+        self.frame_output_directory = os.path.join(self.output_directory, "frame_output")
+        if not os.path.exists(self.frame_output_directory):
+            os.makedirs(self.frame_output_directory)
 
     def print_cuda_memory_info_if_needed(self):
         if self.print_gpu_memory_info:
@@ -106,14 +117,11 @@ class TelemetryGenerator:
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
                                                  pixel_anchors: np.ndarray, pixel_weights: np.ndarray,
-                                                 graph: DeformationGraphNumpy):
+                                                 graph: DeformationGraphNumpy,
+                                                 frame_index: int):
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
-            if canonical_mesh is None:
-                raise ArgumentError("Expecting a TriangleMesh as canonical_mesh argument.")
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
-            if canonical_mesh is None:
-                raise ArgumentError("Expecting a TriangleMesh as warped_mesh argument.")
             self.process_warped_mesh(warped_mesh)
         elif self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
             self.process_alignment_viz(deform_net_data,
@@ -126,6 +134,12 @@ class TelemetryGenerator:
                                        graph)
         elif self.visualization_mode == VisualizationMode.COMBINED:
             raise NotImplementedError("TODO")
+        if self.record_framewise_canonical_mesh:
+            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{frame_index:06d}_canonical_mesh.ply"),
+                                       canonical_mesh)
+        if self.record_framewise_warped_mesh:
+            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{frame_index:06d}_warped_mesh.ply"),
+                                       warped_mesh)
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:

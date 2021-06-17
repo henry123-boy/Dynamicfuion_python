@@ -33,7 +33,7 @@ options.gn_max_nodes = 3000
 # Integration
 anchor_node_count = 4  # also used for initial graph generation
 # TODO setting to tune maximum invalid node count
-transformation_mode = TransformationMode.QUATERNIONS
+transformation_mode = TransformationMode.MATRICES
 
 
 # **** TELEMETRY *****
@@ -44,7 +44,7 @@ print_intrinsics = False
 print_cuda_memory_info = False
 
 # visualization options
-visualization_mode: VisualizationMode = VisualizationMode.POINT_CLOUD_TRACKING
+visualization_mode: VisualizationMode = VisualizationMode.NONE
 
 # logging options
 record_visualization_to_disk = False
