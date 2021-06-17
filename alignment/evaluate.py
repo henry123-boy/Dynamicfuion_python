@@ -72,9 +72,9 @@ def evaluate(model, criterion, dataloader, batch_num, split):
         batch_size = source.shape[0]
 
         # Build data for coarser level
-        assert opt.image_height % 64 == 0 and opt.image_width % 64 == 0
-        optical_flow_gt2 = torch.nn.functional.interpolate(input=optical_flow_gt.clone() / 20.0, size=(opt.image_height//4, opt.image_width//4), mode='nearest')
-        optical_flow_mask2 = torch.nn.functional.interpolate(input=optical_flow_mask.clone().float(), size=(opt.image_height//4, opt.image_width//4), mode='nearest').bool()
+        assert opt.alignment_image_height % 64 == 0 and opt.alignment_image_width % 64 == 0
+        optical_flow_gt2 = torch.nn.functional.interpolate(input=optical_flow_gt.clone() / 20.0, size=(opt.alignment_image_height // 4, opt.alignment_image_width // 4), mode='nearest')
+        optical_flow_mask2 = torch.nn.functional.interpolate(input=optical_flow_mask.clone().float(), size=(opt.alignment_image_height // 4, opt.alignment_image_width // 4), mode='nearest').bool()
         assert(torch.isfinite(optical_flow_gt2).all().item())
         assert(torch.isfinite(optical_flow_mask2).all().item())
 
@@ -88,7 +88,7 @@ def evaluate(model, criterion, dataloader, batch_num, split):
                 evaluate=True, split=split
             )
             optical_flow_pred2 = model_data["flow_data"][0]
-            optical_flow_pred = 20.0 * torch.nn.functional.interpolate(input=optical_flow_pred2, size=(opt.image_height, opt.image_width), mode='bilinear', align_corners=False)
+            optical_flow_pred = 20.0 * torch.nn.functional.interpolate(input=optical_flow_pred2, size=(opt.alignment_image_height, opt.alignment_image_width), mode='bilinear', align_corners=False)
             
             translations_pred = model_data["node_translations"]
 

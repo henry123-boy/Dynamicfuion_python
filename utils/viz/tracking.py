@@ -1,12 +1,15 @@
+import typing
+
 import numpy as np
 import open3d as o3d
 import torch
+
 
 import utils.viz
 import utils.mesh
 import utils.image
 import utils.viz.line_mesh as line_mesh_utils
-import utils.viz.example_viewer as viewer
+import utils.viz.example_viewer as example_viewer
 
 
 def draw_node_graph(graph_nodes, graph_edges):
@@ -56,7 +59,12 @@ def visualize_tracking(
         mask_pred: np.ndarray,
         valid_source_points: np.ndarray,
         valid_correspondences: np.ndarray,
-        target_matches: np.ndarray):
+        target_matches: np.ndarray,
+        # TODO: (1) utilize and pass on in the geometry dictionary to viewer, under keys such as
+        #  "geometry_1", "geometry_2", ..., "geometry_N"
+        #  (2) in the viewer, implement a key callback for each extra geometry in the dictionary up to #9, such
+        #     that, for example, key 1 toggles visibility of "geometry_1" when that's present in the geometry dictionary
+        additional_geometry: typing.List[o3d.geometry.Geometry3D] = []):
     # Some params for coloring the predicted correspondence confidences
     weight_threshold = 0.3
     weight_scale = 1
@@ -279,8 +287,8 @@ def visualize_tracking(
     #####################################################################################################
     # Open viewer
     #####################################################################################################
-    manager = viewer.CustomDrawGeometryWithKeyCallbackViewer(
+    viewer = example_viewer.CustomDrawGeometryWithKeyCallbackViewer(
         geometry_dict, alignment_dict, matches_dict
     )
-    manager.custom_draw_geometry_with_key_callback()
+    viewer.custom_draw_geometry_with_key_callback()
     # endregion

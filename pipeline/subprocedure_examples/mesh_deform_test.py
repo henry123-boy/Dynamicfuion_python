@@ -36,7 +36,7 @@ def main():
     sequence_directory = "/mnt/Data/Reconstruction/real_data/deepdeform/val/seq014"
     graph_filename = "5db1b1dcfce4e1021deb83dc_shorts_000200_000400_geodesic_0.05"
     image_size = (480, 640)
-    cropper = StaticCenterCrop(image_size, (options.image_height, options.image_width))
+    cropper = StaticCenterCrop(image_size, (options.alignment_image_height, options.alignment_image_width))
     graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
         DeformDataset.load_graph_data(sequence_directory, graph_filename, False, cropper)
 

@@ -91,7 +91,7 @@ class Deformnet_runner():
 		model_data["node_translations"] = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
 		
 		assert model_data["mask_pred"] is not None, "Make sure use_mask=True in options.py"
-		model_data["mask_pred"] = model_data["mask_pred"].view(-1, opt.image_height, opt.image_width).cpu().numpy()
+		model_data["mask_pred"] = model_data["mask_pred"].view(-1, opt.alignment_image_height, opt.alignment_image_width).cpu().numpy()
 
 		# Correspondence info
 		xy_coords_warped,\
@@ -99,10 +99,10 @@ class Deformnet_runner():
 		target_matches, valid_target_matches,\
 		valid_correspondences, deformed_points_idxs, deformed_points_subsampled = model_data["correspondence_info"]
 
-		model_data["target_matches"]        = target_matches.view(-1, opt.image_height, opt.image_width).cpu().numpy()
-		model_data["valid_source_points"]   = valid_source_points.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+		model_data["target_matches"]        = target_matches.view(-1, opt.alignment_image_height, opt.alignment_image_width).cpu().numpy()
+		model_data["valid_source_points"]   = valid_source_points.view(-1, opt.alignment_image_height, opt.alignment_image_width).cpu().numpy()
 		# model_data["valid_target_matches"]  = valid_target_matches.view(-1, opt.image_height, opt.image_width).cpu().numpy()
-		model_data["valid_correspondences"] = valid_correspondences.view(-1, opt.image_height, opt.image_width).cpu().numpy()
+		model_data["valid_correspondences"] = valid_correspondences.view(-1, opt.alignment_image_height, opt.alignment_image_width).cpu().numpy()
 		model_data["deformed_graph_nodes"] = graph_nodes + model_data["node_translations"]
 
 		return model_data

@@ -238,7 +238,7 @@ class DeformNet(torch.nn.Module):
                 # Patch-wise threshold
                 elif opt.patchwise_threshold_mask_predictions:
                     pooled = torch.nn.functional.max_pool2d(input=mask_pred, kernel_size=opt.patch_size, stride=opt.patch_size)
-                    pooled = torch.nn.functional.interpolate(input=pooled.unsqueeze(1), size=(opt.image_height, opt.image_width),
+                    pooled = torch.nn.functional.interpolate(input=pooled.unsqueeze(1), size=(opt.alignment_image_height, opt.alignment_image_width),
                                                              mode='nearest').squeeze(1)
                     selected = (torch.abs(mask_pred - pooled) <= 1e-8).type(torch.float32)
 

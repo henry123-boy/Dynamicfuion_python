@@ -31,8 +31,8 @@ def main():
     gn_max_depth = opt.gn_max_depth
 
     # Image dimensions to which we crop the input images, such that they are divisible by 64
-    image_height = opt.image_height
-    image_width = opt.image_width
+    image_height = opt.alignment_image_height
+    image_width = opt.alignment_image_width
 
     #####################################################################################################
     # Read labels and check existence of output dir

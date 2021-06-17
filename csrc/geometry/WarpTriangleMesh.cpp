@@ -34,10 +34,10 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 	auto nodes_shape = nodes.GetShape();
 	auto rotations_shape = node_rotations.GetShape();
 	auto translations_shape = node_translations.GetShape();
-	if(nodes_shape.GetLength() != 2 || rotations_shape.GetLength() != 3 || translations_shape.GetLength() != 2){
+	if(nodes_shape.size() != 2 || rotations_shape.size() != 3 || translations_shape.size() != 2){
 		utility::LogError("Arguments nodes, rotations, and translations need to have 2, 3, and 2 dimensions,"
-						  " respectively. Got {}, {}, and {}.", nodes_shape.GetLength(),
-						  rotations_shape.GetLength(), translations_shape.GetLength());
+						  " respectively. Got {}, {}, and {}.", nodes_shape.size(),
+						  rotations_shape.size(), translations_shape.size());
 	}
 
 	const int64_t node_count = nodes_shape[0];

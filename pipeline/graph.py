@@ -124,6 +124,7 @@ class DeformationGraphNumpy:
 
         mesh_warped = o3d.geometry.TriangleMesh(o3d.cuda.pybind.utility.Vector3dVector(deformed_vertices), mesh.triangles)
         mesh_warped.vertex_colors = mesh.vertex_colors
+        mesh_warped.compute_vertex_normals()
         return mesh_warped
 
     def warp_mesh_dq(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
@@ -141,19 +142,22 @@ class DeformationGraphNumpy:
 
         mesh_warped = o3d.geometry.TriangleMesh(o3d.cuda.pybind.utility.Vector3dVector(deformed_vertices), mesh.triangles)
         mesh_warped.vertex_colors = mesh.vertex_colors
+        mesh_warped.compute_vertex_normals()
         return mesh_warped
 
 
 class DeformationGraphOpen3D:
-    def __init__(self, canonical_node_positions: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
+    def __init__(self, nodes: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
                  clusters: o3c.Tensor, anchor_count=4):
-        self.nodes = canonical_node_positions
+        self.nodes = nodes
         self.edges = edges
         self.edge_weights = edge_weights
         self.clusters = clusters
-        self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
-        self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
-        self.translations_vec = np.zeros_like(self.nodes)
+        transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
+        transformations_dq_numpy = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in transformations_dq])
+        self.translations_dq = o3c.Tensor(transformations_dq_numpy, device=nodes.device)
+        self.rotations_mat = o3c.Tensor(np.array([np.eye(3, dtype=np.float32)] * len(self.nodes)), device=nodes.device)
+        self.translations_vec = o3c.Tensor.zeros(self.nodes.shape, dtype=o3c.Dtype.Float32, device=nodes.device),
         self.anchor_count = anchor_count
 
     def get_warped_nodes(self) -> o3c.Tensor:
@@ -166,7 +170,7 @@ class DeformationGraphOpen3D:
         return knn_graph_to_line_set(self.nodes.numpy(), self.edges.numpy(), self.clusters.numpy())
 
     def warp_mesh_mat(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
-        return nnrt.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations_mat, self.translations_vec, self.anchor_count, node_coverage)
+        return nnrt.geometry.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations_mat, self.translations_vec, self.anchor_count, node_coverage)
 
     def warp_mesh_dq(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
         raise NotImplemented("Dual-quaternion mesh warping hasn't yet been implemented.")

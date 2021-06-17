@@ -36,6 +36,9 @@ class FrameSequencePreset(Enum):
 
     BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True, masks_subfolder="sod",
                                             mask_lower_threshold=254, far_clipping_distance=2.4)
+    BERLIN_50_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
+                                               has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
+                                               far_clipping_distance=2.4)
     BERLIN_3_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, frame_count=3,
                                               has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
                                               far_clipping_distance=2.4)

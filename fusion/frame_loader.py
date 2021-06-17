@@ -78,12 +78,12 @@ class RGBDVideoLoader():
 		# Source color and depth
 		src_color_image_path,src_depth_image_path = self.get_frame_path(source_frame)
 		source, _, cropper = dataset.DeformDataset.load_image(
-			src_color_image_path, src_depth_image_path, self.intrinsics, opt.image_height, opt.image_width)
+			src_color_image_path, src_depth_image_path, self.intrinsics, opt.alignment_image_height, opt.alignment_image_width)
 
 		# Update intrinsics to reflect the crops
 		fx, fy, cx, cy = image.modify_intrinsics_due_to_cropping(
 			self.intrinsics['fx'], self.intrinsics['fy'], self.intrinsics['cx'], self.intrinsics['cy'], 
-			opt.image_height, opt.image_width, original_h=cropper.h, original_w=cropper.w		)
+			opt.alignment_image_height, opt.alignment_image_width, original_h=cropper.h, original_w=cropper.w		)
 
 		intrinsics_cropped = np.zeros((4), dtype=np.float32)
 		intrinsics_cropped[0] = fx
@@ -103,7 +103,7 @@ class RGBDVideoLoader():
 		# Target color and depth (and boundary mask)
 		tgt_color_image_path,tgt_depth_image_path = self.get_frame_path(target_frame)
 		target, target_boundary_mask, _ = dataset.DeformDataset.load_image(
-			tgt_color_image_path, tgt_depth_image_path, self.intrinsics, opt.image_height, opt.image_width, cropper=cropper,
+			tgt_color_image_path, tgt_depth_image_path, self.intrinsics, opt.alignment_image_height, opt.alignment_image_width, cropper=cropper,
 			max_boundary_dist=opt.max_boundary_dist, compute_boundary_mask=True)
 
 		target_data = {}

@@ -28,8 +28,8 @@ workspace = "."
 experiments_directory = os.path.join(workspace, "experiments")
 output_directory = os.path.join(workspace, "output")
 
-image_width = 640
-image_height = 448
+alignment_image_width = 640
+alignment_image_height = 448
 # TODO: depth_scale should be part of dataset & loaded from disk!
 depth_scale = 1000
 num_worker_threads = 6

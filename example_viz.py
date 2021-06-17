@@ -80,8 +80,8 @@ def main():
     #####################################################################################################
     intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(frame_pair_dataset.get_intrinsics_path())
 
-    image_height = options.image_height
-    image_width = options.image_width
+    image_height = options.alignment_image_height
+    image_width = options.alignment_image_width
     max_boundary_distance = options.max_boundary_dist
 
     src_color_image_path = frame_pair_dataset.get_source_color_image_path()
@@ -160,16 +160,16 @@ def main():
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure use_mask=True in options.py"
-    mask_pred = mask_pred.view(-1, options.image_height, options.image_width).cpu().numpy()
+    mask_pred = mask_pred.view(-1, options.alignment_image_height, options.alignment_image_width).cpu().numpy()
 
     # Compute mask gt for mask baseline
     _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
         = model_data["correspondence_info"]
 
-    target_matches = target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
-    valid_source_points = valid_source_points.view(-1, options.image_height, options.image_width).cpu().numpy()
-    valid_target_matches = valid_target_matches.view(-1, options.image_height, options.image_width).cpu().numpy()
-    valid_correspondences = valid_correspondences.view(-1, options.image_height, options.image_width).cpu().numpy()
+    target_matches = target_matches.view(-1, options.alignment_image_height, options.alignment_image_width).cpu().numpy()
+    valid_source_points = valid_source_points.view(-1, options.alignment_image_height, options.alignment_image_width).cpu().numpy()
+    valid_target_matches = valid_target_matches.view(-1, options.alignment_image_height, options.alignment_image_width).cpu().numpy()
+    valid_correspondences = valid_correspondences.view(-1, options.alignment_image_height, options.alignment_image_width).cpu().numpy()
 
     # Delete tensors to free up memory
     del source_rgbxyz_cuda

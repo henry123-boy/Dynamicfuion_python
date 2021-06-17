@@ -4,7 +4,7 @@ from alignment.deform_net import DeformNet
 import options
 
 
-def load_default_nnrt_model():
+def load_default_nnrt_network():
     saved_model = options.saved_model
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."

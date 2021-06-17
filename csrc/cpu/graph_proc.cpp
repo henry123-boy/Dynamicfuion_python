@@ -918,7 +918,6 @@ py::tuple compute_vertex_anchors_euclidean(
 		Eigen::Vector3f vertex(*vertices.data(i_vertex, 0),
 		                       *vertices.data(i_vertex, 1),
 		                       *vertices.data(i_vertex, 2));
-		if (vertex.z() <= 0) continue;
 
 		// Keep only the k nearest Euclidean neighbors.
 		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;

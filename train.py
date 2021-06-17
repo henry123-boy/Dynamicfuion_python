@@ -183,7 +183,7 @@ if __name__ == "__main__":
     #####################################################################################
     val_dataset = DeformDataset(
         options.dataset_base_directory, val_dir,
-        options.image_width, options.image_height, options.max_boundary_dist
+        options.alignment_image_width, options.alignment_image_height, options.max_boundary_dist
     )
 
     val_dataloader = torch.utils.data.DataLoader(
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     #####################################################################################
     train_dataset = DeformDataset(
         options.dataset_base_directory, train_dir,
-        options.image_width, options.image_height, options.max_boundary_dist
+        options.alignment_image_width, options.alignment_image_height, options.max_boundary_dist
     )
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -401,7 +401,7 @@ if __name__ == "__main__":
                 with torch.no_grad():
                     # Downscale groundtruth flow
                     flow_gts, flow_masks = nn.downscale_gt_flow(
-                        optical_flow_gt, optical_flow_mask, options.image_height, options.image_width
+                        optical_flow_gt, optical_flow_mask, options.alignment_image_height, options.alignment_image_width
                     )
 
                     # Compute mask gt for mask baseline

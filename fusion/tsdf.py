@@ -58,8 +58,8 @@ class TSDFVolume:
 		self.cam_intr[1, 2] = cam_intr[3]
 
 		# Get corners of 3D camera view frustum of depth image
-		im_h = opt.image_height
-		im_w = opt.image_width
+		im_h = opt.alignment_image_height
+		im_w = opt.alignment_image_width
 		view_frust_pts = np.array([
 			(np.array([0, 0, 0, im_w, im_w])-self.cam_intr[0, 2])*np.array([0, max_depth, max_depth, max_depth, max_depth])/self.cam_intr[0, 0],
 			(np.array([0, 0, im_h, 0, im_h])-self.cam_intr[1, 2])*np.array([0, max_depth, max_depth, max_depth, max_depth])/self.cam_intr[1, 1],
@@ -572,8 +572,8 @@ if __name__ == "__main__":
 
 	"""
 	
-	opt.image_width = 3
-	opt.image_height = 3
+	opt.alignment_image_width = 3
+	opt.alignment_image_height = 3
 	max_depth = 3
 	voxel_size = 1
 	cam_intr = [3, 3, 1.5, 1.5]

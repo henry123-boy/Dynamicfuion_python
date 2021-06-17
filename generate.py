@@ -32,8 +32,8 @@ def main():
     dataset_base_dir = opt.dataset_base_directory
 
     # Image dimensiones to which we crop the input images, such that they are divisible by 64
-    image_height = opt.image_height
-    image_width = opt.image_width
+    image_height = opt.alignment_image_height
+    image_width = opt.alignment_image_width
 
     if opt.gn_max_matches_eval != 100000:
         opt.gn_max_matches_eval = 100000
