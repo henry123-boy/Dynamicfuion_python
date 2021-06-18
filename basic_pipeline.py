@@ -153,7 +153,6 @@ class FusionPipeline:
                 mask_image_open3d_legacy = o3d.io.read_image(current_frame.mask_image_path)
                 mask_image_np = np.array(mask_image_open3d_legacy)
                 color_image_np[mask_image_np < sequence.mask_lower_threshold] = 0
-                mask_image_np = mask_image_np[:, :, 0]
                 depth_image_np[mask_image_np < sequence.mask_lower_threshold] = 0
 
             mask_image_np = depth_image_np != 0
