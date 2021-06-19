@@ -17,7 +17,7 @@
 #include <open3d/geometry/Image.h>
 
 #include "geometry/WarpableTSDFVoxelGrid.h"
-#include "geometry/WarpTriangleMesh.h"
+#include "geometry/Graph.h"
 #include "geometry.h"
 
 using namespace open3d;
@@ -31,7 +31,7 @@ void pybind_geometry(py::module& m) {
 			"geometry", "Open3D-tensor-based geometry defining module.");
 
 	pybind_extended_tsdf_voxelgrid(m_submodule);
-	pybind_warp(m_submodule);
+	pybind_graph(m_submodule);
 }
 
 void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
@@ -103,33 +103,42 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 	                             "max_x"_a, "max_y"_a, "max_z"_a);
 	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const Image&, const Image&,
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarped),
+			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedDQ),
 	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
+	                             "depth_scale"_a, "depth_max"_a);
 	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const Image&, const core::Tensor&,
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarped),
+			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedDQ),
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
+	                             "depth_scale"_a, "depth_max"_a);
 	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const Image&, const core::Tensor&,
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
+			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
 	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
+	                             "depth_scale"_a, "depth_max"_a);
 	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const core::Tensor&,
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
+			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "depth_scale"_a, "depth_max"_a);
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
+	                             "depth_scale"_a, "depth_max"_a);
 	// endregion
 
 
 
 }
 
-void pybind_warp(pybind11::module& m) {
+void pybind_graph(pybind11::module& m) {
+	m.def("compute_anchors_and_weights_euclidean", py::overload_cast<const core::Tensor&, const core::Tensor&, int, int,
+			      float>(&ComputeAnchorsAndWeightsEuclidean), "points"_a, "nodes"_a, "anchor_count"_a,
+			      "minimum_valid_anchor_count"_a,"node_coverage"_a);
+
 	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
+
 }
 
 } // namespace geometry

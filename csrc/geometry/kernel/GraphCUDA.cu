@@ -25,14 +25,20 @@ namespace kernel {
 namespace graph {
 
 template
-void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& anchors,
-		open3d::core::Tensor& weights,
-		const open3d::core::Tensor& points,
-		const open3d::core::Tensor& nodes,
-		const int anchor_count,
-		const float node_coverage
-);
+void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, true>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+                                                                             const open3d::core::Tensor& points,
+                                                                             const open3d::core::Tensor& nodes,
+                                                                             const int anchor_count,
+                                                                             const int minimum_valid_anchor_count,
+                                                                             const float node_coverage);
+
+template
+void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, false>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+                                                                             const open3d::core::Tensor& points,
+                                                                             const open3d::core::Tensor& nodes,
+                                                                             const int anchor_count,
+                                                                             const int minimum_valid_anchor_count,
+                                                                             const float node_coverage);
 
 } // namespace graph
 } // namespace kernel

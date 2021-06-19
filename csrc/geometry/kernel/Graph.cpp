@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "geometry/kernel/Graph.h"
+
 using namespace open3d;
 
 namespace nnrt {
@@ -21,18 +22,30 @@ namespace geometry {
 namespace kernel {
 namespace graph {
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, const int anchor_count, const float node_coverage) {
+                                       const open3d::core::Tensor& nodes, const int anchor_count, const int minimum_valid_anchor_count,
+                                       const float node_coverage) {
 	core::Device device = points.GetDevice();
 	core::Device::DeviceType device_type = device.GetType();
+
 	switch (device_type) {
 		case core::Device::DeviceType::CPU:
-			ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU>(
-					anchors, weights, points, nodes, anchor_count, node_coverage);
+			if (minimum_valid_anchor_count > 0) {
+				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, true>(
+						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+			} else {
+				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, false>(
+						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+			}
 			break;
 		case core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
-			ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA>(
-					anchors, weights, points, nodes, anchor_count, node_coverage);
+			if (minimum_valid_anchor_count > 0) {
+				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, true>(
+						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+			} else {
+				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, false>(
+						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+			}
 #else
 			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

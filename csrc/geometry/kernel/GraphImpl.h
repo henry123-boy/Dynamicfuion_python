@@ -34,13 +34,10 @@ namespace geometry {
 namespace kernel {
 namespace graph {
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
 void ComputeAnchorsAndWeightsEuclidean
-		(open3d::core::Tensor& anchors,
-		 open3d::core::Tensor& weights,
-		 const open3d::core::Tensor& points,
-		 const open3d::core::Tensor& nodes,
-		 const int anchor_count,
+		(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+		 const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
 		 const float node_coverage) {
 
 	float node_coverage_squared = node_coverage * node_coverage;
@@ -68,16 +65,20 @@ void ComputeAnchorsAndWeightsEuclidean
 #endif
 	launcher.LaunchGeneralKernel(
 			point_count,
-			[=] OPEN3D_DEVICE(int64_t workload_idx){
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
 				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
-				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                       point, node_indexer, node_coverage_squared)) {
-					return;
+				if (TUseValidAnchorThreshold) {
+					graph::FindAnchorsAndWeightsForPoint_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+					                                                            minimum_valid_anchor_count, node_count,
+					                                                            point, node_indexer, node_coverage_squared);
+				} else {
+					graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+					                                                  point, node_indexer, node_coverage_squared);
 				}
 				// endregion
 			}

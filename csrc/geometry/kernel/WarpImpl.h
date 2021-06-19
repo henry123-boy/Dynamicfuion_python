@@ -35,7 +35,7 @@ template<open3d::core::Device::DeviceType TDeviceType>
 void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
                 const core::Tensor& nodes, const core::Tensor& node_rotations,
                 const core::Tensor& node_translations,
-                const int anchor_count, const float node_coverage){
+                int anchor_count, const float node_coverage){
 
 	const int64_t point_count = points.GetLength();
 	const int64_t node_count = nodes.GetLength();
@@ -66,14 +66,13 @@ void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx){
 				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
-				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
+				Eigen::Vector3f point(point_data);
 
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                       point, node_indexer, node_coverage_squared)) {
-					return;
-				}
+
+				graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                  point, node_indexer, node_coverage_squared);
 
 				auto warped_point_data = warped_point_indexer.template GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);

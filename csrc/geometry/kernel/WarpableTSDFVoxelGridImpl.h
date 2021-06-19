@@ -311,15 +311,12 @@ void ExtractValuesInExtentCPU(
 
 
 template<core::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
-void IntegrateWarped_Generic(
-		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-		core::Tensor& cos_voxel_ray_to_normal,
-		int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-		const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-		const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-		const core::Tensor& warp_graph_nodes, const float node_coverage, const int anchor_count, const float depth_scale, const float depth_max,
-		TApplyBlendWarp&& blend_function
-) {
+void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
+                             core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                             const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
+                             const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                             const float node_coverage, const int anchor_count, const int minimum_valid_anchor_count, const float depth_scale,
+                             const float depth_max, TApplyBlendWarp&& blend_function) {
 	int64_t block_resolution3 =
 			block_resolution * block_resolution * block_resolution;
 
@@ -408,8 +405,9 @@ void IntegrateWarped_Generic(
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                        voxel_global_metric, node_indexer, node_coverage_squared)) {
+				if (!graph::FindAnchorsAndWeightsForPoint_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                 minimum_valid_anchor_count, node_count,
+				                                                                 voxel_global_metric, node_indexer, node_coverage_squared)) {
 					return;
 				}
 				// endregion
@@ -486,21 +484,19 @@ void IntegrateWarped_Generic(
 }
 
 template<core::Device::DeviceType TDeviceType>
-void IntegrateWarpedDQ(
-		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-		core::Tensor& cos_voxel_ray_to_normal,
-		int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-		const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-		const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-		const core::Tensor& warp_graph_nodes, const core::Tensor& node_dual_quaternion_transformations,
-		float node_coverage, int anchor_count, float depth_scale, float depth_max
-) {
+void IntegrateWarpedDQ(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
+                       core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                       const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
+                       const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                       const core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
+                       const int minimum_valid_anchor_count, float depth_scale, float depth_max) {
 
 	NDArrayIndexer node_transform_indexer(node_dual_quaternion_transformations, 1);
 
 	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count,
+			minimum_valid_anchor_count, depth_scale, depth_max,
 			[=] NNRT_DEVICE_WHEN_CUDACC
 					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
 					 const NDArrayIndexer& node_indexer, const int anchor_count) {
@@ -531,21 +527,19 @@ void IntegrateWarpedDQ(
 }
 
 template<core::Device::DeviceType TDeviceType>
-void IntegrateWarpedMat(
-		const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-		core::Tensor& cos_voxel_ray_to_normal,
-		int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-		const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-		const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-		const core::Tensor& graph_nodes, const core::Tensor& node_rotations, const core::Tensor& node_translations,
-		const float node_coverage, const int anchor_count, const float depth_scale, const float depth_max
-) {
+void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
+                        core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
+                        const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& graph_nodes,
+                        const core::Tensor& node_rotations, const core::Tensor& node_translations, const float node_coverage, const int anchor_count,
+                        const int minimum_valid_anchor_count, const float depth_scale, const float depth_max) {
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
 	NDArrayIndexer node_translation_indexer(node_translations, 1);
 
 	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, graph_nodes, node_coverage, anchor_count, depth_scale, depth_max,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, graph_nodes, node_coverage, anchor_count, minimum_valid_anchor_count,
+			depth_scale, depth_max,
 			[=] NNRT_DEVICE_WHEN_CUDACC
 					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
 					 const NDArrayIndexer& node_indexer, const int anchor_count) {

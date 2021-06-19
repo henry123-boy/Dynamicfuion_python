@@ -8,9 +8,53 @@ from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_compute_anchors_euclidean(device):
+    mesh = o3d.geometry.TriangleMesh.create_box()
+    # mesh = mesh.subdivide_midpoint(number_of_iterations=1)
+    nodes = np.array([[0., 0., 0.],  # 0
+                      [1., 0., 0.],  # 1
+                      [0., 0., 1.],  # 2
+                      [1., 0., 1.],  # 3
+                      [0., 1., 0.],  # 4
+                      [1., 1., 0.],  # 5
+                      [0., 1., 1.],  # 6
+                      [1., 1., 1.]],  # 7
+                     dtype=np.float32)
+    nodes += np.array([0.1, 0.2, 0.3])
+    nodes_o3d = o3c.Tensor(nodes, device=device)
+
+    points = np.array(mesh.vertices)
+    points_o3d = o3c.Tensor(points, device=device)
+
+    nodes_tiled = np.tile(nodes, (len(points), 1, 1))
+    points_tiled = np.tile(points, (1, len(nodes))).reshape(len(points), -1, 3)
+    distance_matrix = np.linalg.norm(points_tiled - nodes_tiled, axis=2)
+    distance_sorted_node_indices = distance_matrix.argsort(axis=1)
+    vertex_anchors_gt = distance_sorted_node_indices # [:, :4]
+    distances_sorted = np.take_along_axis(distance_matrix, distance_sorted_node_indices, axis=1)
+    distances_gt = distances_sorted # [:, :4]
+
+    old_vertex_anchors, old_vertex_weights = nnrt.compute_vertex_anchors_euclidean(nodes, points, 0.5)
+    old_vertex_anchors_sorted = np.sort(old_vertex_anchors, axis=1)
+    vertex_anchors, vertex_weights = nnrt.geometry.compute_anchors_and_weights_euclidean(points_o3d, nodes_o3d, 4, 0, 0.5)
+    vertex_anchors_sorted = np.sort(vertex_anchors.cpu().numpy(), axis=1)
+
+    print(vertex_anchors_gt)
+    print(distances_gt)
+    print(old_vertex_anchors)
+
+    #TODO: establish WTF is going on here.
+
+    assert np.allclose(vertex_anchors_sorted, old_vertex_anchors_sorted)
+    assert np.allclose(vertex_weights.cpu().numpy(), old_vertex_weights)
+
+
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_warp_mesh_numpy_mat(device):
     mesh = o3d.geometry.TriangleMesh.create_box()
+    # increase number of iterations for a "pretty" twisted box mesh (test will fail, of course, due to wrong GT data)
     mesh = mesh.subdivide_midpoint(number_of_iterations=1)
+
     mesh.compute_vertex_normals()
     nodes = np.array([[0., 0., 0.],
                       [1., 0., 0.],
@@ -80,12 +124,19 @@ def test_warp_mesh_numpy_mat(device):
                                       [ 0.98474824,  0.5       ,  0.93913126],
                                       [ 0.5       ,  0.5       ,  0.96193975],
                                       [ 0.5       ,  0.5       ,  0.03806025]], dtype=np.float32)
+    visualize_results = False
+    if visualize_results:
+        o3d.visualization.draw_geometries([warped_mesh],
+                                          zoom=0.8,
+                                          front=[0.0, 0., 2.],
+                                          lookat=[0.5, 0.5, 0.5],
+                                          up=[0, 1, 0])
 
     assert np.allclose(np.array(warped_mesh.vertices), ground_truth_vertices, atol=1e-6)
 
 
-if __name__ == "__main__":
-    device = o3c.Device("cuda:0")
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_warp_mesh_open3d_mat(device):
     mesh_legacy = o3d.geometry.TriangleMesh.create_box()
     mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
     mesh_legacy.compute_vertex_normals()
@@ -134,11 +185,12 @@ if __name__ == "__main__":
                                                device=device)
 
     mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
+
     warped_mesh = graph_open3d.warp_mesh_mat(mesh, 0.5)
     warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy_triangle_mesh()
     warped_mesh_legacy.compute_vertex_normals()
 
-    # @formatter:off
+    # # @formatter:off
     ground_truth_vertices = np.array([[ 0.19256668,  0.        , -0.1164462 ],
                                       [ 1.11644602,  0.        ,  0.19256668],
                                       [-0.1164462 ,  0.        ,  0.80743313],
@@ -165,10 +217,18 @@ if __name__ == "__main__":
                                       [ 0.98474824,  0.5       ,  0.93913126],
                                       [ 0.5       ,  0.5       ,  0.96193975],
                                       [ 0.5       ,  0.5       ,  0.03806025]], dtype=np.float32)
-    # @formatter: on
-    o3d.visualization.draw_geometries([warped_mesh_legacy],
-                                      zoom=0.8,
-                                      front=[0.0, 0., 2.],
-                                      lookat=[0.5, 0.5, 0.5],
-                                      up=[0, 1, 0])
+    # # @formatter:on
+    visualize_results = False
+    if visualize_results:
+        o3d.visualization.draw_geometries([warped_mesh_legacy],
+                                          zoom=0.8,
+                                          front=[0.0, 0., 2.],
+                                          lookat=[0.5, 0.5, 0.5],
+                                          up=[0, 1, 0])
+    new_vertices = np.array(warped_mesh_legacy.vertices)
+    mismatches = np.where(np.bitwise_not(np.isclose(new_vertices, ground_truth_vertices, atol=1e-4)))
+    print(np.stack((new_vertices[mismatches], ground_truth_vertices[mismatches])).T)
+    print(mismatches)
+    print(new_vertices)
 
+    assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)

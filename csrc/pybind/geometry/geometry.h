@@ -22,7 +22,7 @@ namespace geometry {
 
 void pybind_geometry(py::module& m);
 void pybind_extended_tsdf_voxelgrid(py::module& m);
-void pybind_warp(py::module& m);
+void pybind_graph(py::module& m);
 
 } // namespace geometry
 } //namespace nnrt

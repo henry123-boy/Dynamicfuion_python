@@ -38,31 +38,33 @@ public:
 	open3d::core::Tensor ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z, int max_voxel_x, int max_voxel_y, int max_voxel_z);
 
 
-	open3d::core::Tensor IntegrateWarped(const open3d::t::geometry::Image& depth,
-	                                     const open3d::core::Tensor& depth_normals,
-	                                     const open3d::core::Tensor& intrinsics,
-	                                     const open3d::core::Tensor& extrinsics,
-	                                     const open3d::core::Tensor& warp_graph_nodes,
-	                                     const open3d::core::Tensor& node_dual_quaternion_transformations,
-	                                     float node_coverage,
-	                                     int anchor_count = 4,
-	                                     float depth_scale = 1000.0f,
-	                                     float depth_max = 3.0f);
+	open3d::core::Tensor IntegrateWarpedDQ(const open3d::t::geometry::Image& depth,
+	                                       const open3d::core::Tensor& depth_normals,
+	                                       const open3d::core::Tensor& intrinsics,
+	                                       const open3d::core::Tensor& extrinsics,
+	                                       const open3d::core::Tensor& warp_graph_nodes,
+	                                       const open3d::core::Tensor& node_dual_quaternion_transformations,
+	                                       float node_coverage,
+	                                       int anchor_count = 4,
+	                                       int minimum_valid_anchor_count = 3,
+	                                       float depth_scale = 1000.0f,
+	                                       float depth_max = 3.0f);
 
-	open3d::core::Tensor IntegrateWarped(const open3d::t::geometry::Image& depth,
-	                                     const open3d::t::geometry::Image& color,
-	                                     const open3d::core::Tensor& depth_normals,
-	                                     const open3d::core::Tensor& intrinsics,
-	                                     const open3d::core::Tensor& extrinsics,
-	                                     const open3d::core::Tensor& warp_graph_nodes,
+	open3d::core::Tensor IntegrateWarpedDQ(const open3d::t::geometry::Image& depth,
+	                                       const open3d::t::geometry::Image& color,
+	                                       const open3d::core::Tensor& depth_normals,
+	                                       const open3d::core::Tensor& intrinsics,
+	                                       const open3d::core::Tensor& extrinsics,
+	                                       const open3d::core::Tensor& warp_graph_nodes,
 			// TODO: provide a more intuitive handling of quaternions, e.g.
 			//  python (numpy.ndarray w/ dtype=DualQuaternion)<--> CPU code (MemoryBlock<DualQuaternion>) <--> CUDA code (MemoryBlock<DualQuaternion>)
 			//  a good CPU<-->CUDA implementation of MemoryBlock<CUDA-compatible-type>
 			                             const open3d::core::Tensor& node_dual_quaternion_transformations,
-			                             float node_coverage,
-			                             int anchor_count = 4,
-			                             float depth_scale = 1000.0f,
-			                             float depth_max = 3.0f);
+			                               float node_coverage,
+			                               int anchor_count = 4,
+			                               int minimum_valid_anchor_count = 3,
+			                               float depth_scale = 1000.0f,
+			                               float depth_max = 3.0f);
 
 	open3d::core::Tensor IntegrateWarpedMat(const open3d::t::geometry::Image& depth,
 	                                        const open3d::t::geometry::Image& color,
@@ -74,6 +76,7 @@ public:
 	                                        const open3d::core::Tensor& node_translations,
 	                                        float node_coverage,
 	                                        int anchor_count = 4,
+	                                        int minimum_valid_anchor_count = 3,
 	                                        float depth_scale = 1000.0f,
 	                                        float depth_max = 3.0f);
 
@@ -86,6 +89,7 @@ public:
 	                                        const open3d::core::Tensor& node_translations,
 	                                        float node_coverage,
 	                                        int anchor_count = 4,
+	                                        int minimum_valid_anchor_count = 3,
 	                                        float depth_scale = 1000.0f,
 	                                        float depth_max = 3.0f);
 

@@ -72,11 +72,12 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::ExtractValuesInExtent(int min_voxel_
 
 
 open3d::core::Tensor
-WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
-                                       const core::Tensor& depth_normals, const core::Tensor& intrinsics,
-                                       const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                                       const core::Tensor& node_dual_quaternion_transformations,
-                                       float node_coverage, int anchor_count, float depth_scale, float depth_max) {
+WarpableTSDFVoxelGrid::IntegrateWarpedDQ(const Image& depth, const Image& color,
+                                         const core::Tensor& depth_normals, const core::Tensor& intrinsics,
+                                         const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                                         const core::Tensor& node_dual_quaternion_transformations,
+                                         float node_coverage, int anchor_count, int minimum_valid_anchor_count,
+                                         float depth_scale, float depth_max) {
 
 	// note the difference from TSDFVoxelGrid::Integrate:
 	// IntegrateWarpedDQ assumes that all of the relevant hash blocks have already been activated.
@@ -121,26 +122,28 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
 			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
-			node_dual_quaternion_transformations, node_coverage, anchor_count, depth_scale, depth_max
+			node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count,
+			depth_scale, depth_max
 	);
 
 	return cos_voxel_ray_to_normal;
 }
 
-open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
-                                                            const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                                                            const core::Tensor& node_dual_quaternion_transformations, float node_coverage,
-                                                            int anchor_count, float depth_scale, float depth_max) {
+open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedDQ(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
+                                                              const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                                                              const core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+                                                              int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
 	Image empty_color;
-	return IntegrateWarped(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_dual_quaternion_transformations,
-	                       node_coverage, anchor_count, depth_scale, depth_max);
+	return IntegrateWarpedDQ(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_dual_quaternion_transformations,
+	                         node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
 }
 
 open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& depth, const Image& color, const core::Tensor& depth_normals,
                                                                const core::Tensor& intrinsics, const core::Tensor& extrinsics,
                                                                const core::Tensor& warp_graph_nodes,
                                                                const core::Tensor& node_rotations, const core::Tensor& node_translations,
-                                                               float node_coverage, int anchor_count, float depth_scale, float depth_max) {
+                                                               float node_coverage, int anchor_count, int minimum_valid_anchor_count,
+                                                               float depth_scale, float depth_max) {
 	// note the difference from TSDFVoxelGrid::Integrate:
 	// IntegrateWarpedDQ assumes that all of the relevant hash blocks have already been activated.
 
@@ -184,7 +187,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
 			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
 			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
-			node_rotations, node_translations, node_coverage, anchor_count, depth_scale, depth_max
+			node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
 	);
 
 	return cos_voxel_ray_to_normal;
@@ -193,10 +196,11 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
                                                                const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
                                                                const core::Tensor& node_rotations, const core::Tensor& node_translations,
-                                                               float node_coverage, int anchor_count, float depth_scale, float depth_max) {
+                                                               float node_coverage, int anchor_count, int minimum_valid_anchor_count,
+                                                               float depth_scale, float depth_max) {
 	Image empty_color;
 	return IntegrateWarpedMat(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_rotations, node_translations,
-	                          node_coverage, anchor_count, depth_scale, depth_max);
+	                          node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
 }
 
 

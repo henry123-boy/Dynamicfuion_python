@@ -148,7 +148,7 @@ def test_integrate_warped_simple_motion_dq(device):
     cos_voxel_ray_to_normal = volume.integrate_warped_dq(
         depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_dual_quaternions_o3d, node_coverage,
-        anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+        anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 
@@ -260,7 +260,7 @@ def test_integrate_warped_simple_motion_mat(device):
     cos_voxel_ray_to_normal = volume.integrate_warped_mat(
         depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
-        anchor_count=4, depth_scale=1000.0, depth_max=3.0)
+        anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 

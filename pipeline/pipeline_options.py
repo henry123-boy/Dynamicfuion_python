@@ -31,7 +31,8 @@ options.use_mask = True
 options.gn_max_nodes = 3000
 
 # Integration
-anchor_node_count = 4  # also used for initial graph generation
+anchor_node_count = 4  # used for initial graph generation, mesh warping, and integration
+fusion_minimum_valid_anchor_count = 3
 # TODO setting to tune maximum invalid node count
 transformation_mode = TransformationMode.MATRICES
 

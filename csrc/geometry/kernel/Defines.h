@@ -16,4 +16,3 @@
 #pragma once
 
 #define MAX_ANCHOR_COUNT 8
-#define MINIMUM_VALID_ANCHOR_COUNT 3
