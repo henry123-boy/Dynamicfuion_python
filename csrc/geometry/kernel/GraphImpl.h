@@ -69,7 +69,7 @@ void ComputeAnchorsAndWeightsEuclidean
 	launcher.LaunchGeneralKernel(
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				auto point_data = point_indexer.GetDataPtrFromCoord<double>(workload_idx);
+				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================

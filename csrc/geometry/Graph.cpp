@@ -88,6 +88,8 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 void ComputeAnchorsAndWeightsEuclidean(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
                                        int anchor_count, int minimum_valid_anchor_count, float node_coverage) {
 	auto device = points.GetDevice();
+	points.AssertDtype(core::Dtype::Float32);
+	nodes.AssertDtype(core::Dtype::Float32);
 	if (device != nodes.GetDevice()) {
 		utility::LogError("Device not consistent among arguments.");
 	}

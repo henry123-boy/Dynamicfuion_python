@@ -5,14 +5,14 @@ import open3d as o3d
 
 from utils import image
 from utils.viz import image
-from NeuralNRT._C import compute_mesh_from_depth as compute_mesh_from_depth_c
-from NeuralNRT._C import erode_mesh as erode_mesh_c
-from NeuralNRT._C import sample_nodes as sample_nodes_c
-from NeuralNRT._C import compute_edges_geodesic as compute_edges_geodesic_c
-from NeuralNRT._C import node_and_edge_clean_up as node_and_edge_clean_up_c
-from NeuralNRT._C import compute_pixel_anchors_geodesic as compute_pixel_anchors_geodesic_c
-from NeuralNRT._C import compute_clusters as compute_clusters_c
-from NeuralNRT._C import update_pixel_anchors as update_pixel_anchors_c
+from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
+from nnrt import get_vertex_erosion_mask as erode_mesh_c
+from nnrt import sample_nodes as sample_nodes_c
+from nnrt import compute_edges_geodesic as compute_edges_geodesic_c
+from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
+from nnrt import compute_pixel_anchors_geodesic as compute_pixel_anchors_geodesic_c
+from nnrt import compute_clusters as compute_clusters_c
+from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
 
 def create_graph_data_using_depth(depth_image_path,max_triangle_distance=0.05,erosion_num_iterations=10,node_coverage=0.05):

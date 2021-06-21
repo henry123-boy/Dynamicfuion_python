@@ -9,7 +9,7 @@ from collections import namedtuple
 # dataset_base_dir    = "/cluster/lothlann/data/nonrigid/public/"
 # dataset_base_dir    = "/mnt/slurm_cluster/lothlann/data/nonrigid/hidden/"
 # add your mac address & directory to your base dir below
-from utils.network import get_mac_address
+from utils.hardware_id import get_mac_address
 
 LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output")
 

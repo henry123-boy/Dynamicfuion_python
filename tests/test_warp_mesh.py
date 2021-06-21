@@ -23,7 +23,7 @@ def test_compute_anchors_euclidean(device):
     nodes += np.array([0.1, 0.2, 0.3])
     nodes_o3d = o3c.Tensor(nodes, device=device)
 
-    points = np.array(mesh.vertices)
+    points = np.array(mesh.vertices, dtype=np.float32)
     points_o3d = o3c.Tensor(points, device=device)
 
     anchor_count = 4

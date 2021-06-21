@@ -20,7 +20,7 @@ import graph
 from data import StandaloneFramePreset, StandaloneFrameDataset, camera
 
 from pipeline.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
-from utils.network import get_mac_address
+from utils.hardware_id import get_mac_address
 
 PROGRAM_EXIT_SUCCESS = 0
 
