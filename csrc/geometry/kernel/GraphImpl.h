@@ -19,8 +19,10 @@
 #include <Eigen/Dense>
 
 #include <open3d/core/Tensor.h>
+#include <open3d/core/TensorKey.h>
 #include <open3d/core/MemoryManager.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <open3d/utility/Console.h>
 
 #include "utility/PlatformIndependence.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"
@@ -63,10 +65,11 @@ void ComputeAnchorsAndWeightsEuclidean
 #else
 	core::kernel::CPULauncher launcher;
 #endif
+
 	launcher.LaunchGeneralKernel(
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				auto point_data = point_indexer.GetDataPtrFromCoord<double>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
