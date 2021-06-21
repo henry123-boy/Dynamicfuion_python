@@ -92,7 +92,7 @@ py::tuple compute_clusters(const py::array_t<int>& graph_edges_in);
  * It also compute skinning weights for every pixel.
  */
 void compute_pixel_anchors_geodesic(
-		const py::array_t<float>& node_to_vertex_distance,
+		const py::array_t<float>& node_to_vertex_shortest_path_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
 		const py::array_t<int>& vertex_pixels,

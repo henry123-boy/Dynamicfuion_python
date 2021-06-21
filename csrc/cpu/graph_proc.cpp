@@ -170,6 +170,10 @@ inline float compute_anchor_weight(float dist, float node_coverage) {
 	return std::exp(-(dist * dist) / (2.f * node_coverage * node_coverage));
 }
 
+inline float compute_anchor_weight_square_distance(float square_distance, float node_coverage) {
+	return std::exp(-(square_distance) / (2.f * node_coverage * node_coverage));
+}
+
 
 template<typename TVertexCheckLambda>
 inline void compute_edges_geodesic_generic(
@@ -630,58 +634,58 @@ py::tuple compute_clusters(
 	return py::make_tuple(cluster_sizes_out, graph_clusters_out);
 }
 
-inline void compute_nearest_geodesic_nodes(
+inline void find_nearest_nodes(
 		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const int vertex_id,
-		std::vector<int>& nearest_geodesic_node_ids,
-		std::vector<float>& dist_to_nearest_geodesic_nodes
+		std::vector<int>& nearest_node_indexes,
+		std::vector<float>& nearest_node_distances
 ) {
 	int num_nodes = node_to_vertex_distance.shape(0);
 
 	std::map<int, float> node_map;
 
-	for (int n = 0; n < num_nodes; ++n) {
+	for (int node_index = 0; node_index < num_nodes; ++node_index) {
 
 		// discard node if it was marked as invalid (due to not having enough neighbors)
-		if (*valid_nodes_mask.data(n, 0) == false) {
+		if (*valid_nodes_mask.data(node_index, 0) == false) {
 			continue;
 		}
 
-		float dist = *node_to_vertex_distance.data(n, vertex_id);
+		float dist = *node_to_vertex_distance.data(node_index, vertex_id);
 
 		if (dist >= 0) {
-			node_map.emplace(n, dist);
+			node_map.emplace(node_index, dist);
 		}
 	}
 
 	// Sort the map by distance
 	// Declaring the type of Predicate that accepts 2 pairs and return a bool
-	typedef std::function<bool(std::pair<int, float>, std::pair<int, float>)> Comparator;
+	typedef std::function<bool(std::pair<int, float>, std::pair<int, float>)> IntFloatPairComparator;
 
 	// Defining a lambda function to compare two pairs. It will compare two pairs using second field
-	Comparator comp_functor =
+	IntFloatPairComparator compare_by_float =
 			[](std::pair<int, float> node1, std::pair<int, float> node2) {
 				return node1.second < node2.second;
 			};
 
-	// Declaring a set that will store the pairs using above comparision logic
-	std::set<std::pair<int, float>, Comparator> node_set(
-			node_map.begin(), node_map.end(), comp_functor
+	// Declaring a set that will store the pairs using above comparison logic
+	std::set<std::pair<int, float>, IntFloatPairComparator> node_set(
+			node_map.begin(), node_map.end(), compare_by_float
 	);
 
-	for (auto n : node_set) {
-		nearest_geodesic_node_ids.push_back(n.first);
-		dist_to_nearest_geodesic_nodes.push_back(n.second);
+	for (auto node : node_set) {
+		nearest_node_indexes.push_back(node.first);
+		nearest_node_distances.push_back(node.second);
 
-		if (nearest_geodesic_node_ids.size() == GRAPH_K) {
+		if (nearest_node_indexes.size() == GRAPH_K) {
 			break;
 		}
 	}
 }
 
 void compute_pixel_anchors_geodesic(
-		const py::array_t<float>& node_to_vertex_distance,
+		const py::array_t<float>& node_to_vertex_shortest_path_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
 		const py::array_t<int>& vertex_pixels,
@@ -706,8 +710,8 @@ void compute_pixel_anchors_geodesic(
 
 	const int vertex_count = vertices.shape(0);
 
-#pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask, node_to_vertex_distance)\
-    firstprivate(vertex_count, node_coverage)
+#pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask,\
+	node_to_vertex_shortest_path_distance) firstprivate(vertex_count, node_coverage)
 	for (int vertex_id = 0; vertex_id < vertex_count; vertex_id++) {
 		// Get corresponding pixel location
 		int u = *vertex_pixels.data(vertex_id, 0);
@@ -723,8 +727,8 @@ void compute_pixel_anchors_geodesic(
 		skinning_weights.reserve(GRAPH_K);
 
 		// Find closest geodesic nodes
-		compute_nearest_geodesic_nodes(
-				node_to_vertex_distance, valid_nodes_mask, vertex_id,
+		find_nearest_nodes(
+				node_to_vertex_shortest_path_distance, valid_nodes_mask, vertex_id,
 				nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
 		);
 
@@ -890,6 +894,41 @@ void compute_pixel_anchors_euclidean(
 	}
 }
 
+inline
+std::list<std::pair<int, float>> get_knn_with_squared_distances_brute_force(const Eigen::Vector3f& vertex, const py::array_t<float>& graph_nodes, const int neighbor_count){
+// Keep only the k nearest Euclidean neighbors.
+	std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;
+
+	for (int node_index = 0; node_index < graph_nodes.shape(0); node_index++) {
+		Eigen::Vector3f node_position(*graph_nodes.data(node_index, 0),
+		                              *graph_nodes.data(node_index, 1),
+		                              *graph_nodes.data(node_index, 2));
+
+		float squared_distance = (vertex - node_position).squaredNorm();
+		bool nodes_inserted = false;
+		for (auto it = nearest_nodes_with_squared_distances.begin(); it != nearest_nodes_with_squared_distances.end(); ++it) {
+			// We insert the element at the first position where its distance is smaller than the other
+			// element's distance, which enables us to always keep a sorted list of at most k nearest
+			// neighbors.
+			if (squared_distance <= it->second) {
+				it = nearest_nodes_with_squared_distances.insert(it, std::make_pair(node_index, squared_distance));
+				nodes_inserted = true;
+				break;
+			}
+		}
+
+		if (!nodes_inserted && nearest_nodes_with_squared_distances.size() < neighbor_count) {
+			nearest_nodes_with_squared_distances.emplace_back(std::make_pair(node_index, squared_distance));
+		}
+
+		// We keep only the list of k nearest elements.
+		if (nodes_inserted && nearest_nodes_with_squared_distances.size() > neighbor_count) {
+			nearest_nodes_with_squared_distances.pop_back();
+		}
+	}
+	return nearest_nodes_with_squared_distances;
+}
+
 py::tuple compute_pixel_anchors_euclidean(
 		const py::array_t<float>& graph_nodes,
 		const py::array_t<float>& point_image,
@@ -921,35 +960,7 @@ py::tuple compute_vertex_anchors_euclidean(
 		                       *vertices.data(i_vertex, 2));
 
 		// Keep only the k nearest Euclidean neighbors.
-		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;
-
-		for (int node_index = 0; node_index < graph_nodes.shape(0); node_index++) {
-			Eigen::Vector3f node_position(*graph_nodes.data(node_index, 0),
-			                              *graph_nodes.data(node_index, 1),
-			                              *graph_nodes.data(node_index, 2));
-
-			float squared_distance = (vertex - node_position).squaredNorm();
-			bool nodes_inserted = false;
-			for (auto it = nearest_nodes_with_squared_distances.begin(); it != nearest_nodes_with_squared_distances.end(); ++it) {
-				// We insert the element at the first position where its distance is smaller than the other
-				// element's distance, which enables us to always keep a sorted list of at most k nearest
-				// neighbors.
-				if (squared_distance <= it->second) {
-					it = nearest_nodes_with_squared_distances.insert(it, std::make_pair(node_index, squared_distance));
-					nodes_inserted = true;
-					break;
-				}
-			}
-
-			if (!nodes_inserted && nearest_nodes_with_squared_distances.size() < GRAPH_K) {
-				nearest_nodes_with_squared_distances.emplace_back(std::make_pair(node_index, squared_distance));
-			}
-
-			// We keep only the list of k nearest elements.
-			if (nodes_inserted && nearest_nodes_with_squared_distances.size() > GRAPH_K) {
-				nearest_nodes_with_squared_distances.pop_back();
-			}
-		}
+		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances = get_knn_with_squared_distances_brute_force(vertex, graph_nodes, GRAPH_K);
 
 		// Compute skinning weights.
 		std::vector<int> nearest_euclidean_node_indices;
@@ -1264,78 +1275,6 @@ void update_pixel_anchors(
 	}
 }
 
-inline
-void add_adjacency_edge(vector<std::pair<int, float>>* adjacency_graph, int node1_index, int node2_index, float weight){
-	adjacency_graph[node1_index].emplace_back(node2_index, weight);
-	adjacency_graph[node2_index].emplace_back(node1_index, weight);
-}
-
-
-// Prints shortest paths from source_node_index to all other vertices
-inline
-void shortest_path(const vector<std::pair<int, float>>* adjacency_graph, const int total_node_count, int source_node_index) {
-	// Create a priority queue to store vertices that
-	// are being preprocessed. This is weird syntax in C++.
-	// Refer below link for details of this syntax
-	// http://geeksquiz.com/implement-min-heap-using-stl/
-	std::priority_queue <std::pair<int, float>, vector<std::pair<int, float>>, std::greater<>> pq;
-
-	// Create a vector for distances and initialize all
-	// distances as infinite (INF)
-	std::vector<float> distances(total_node_count, FLT_MAX);
-
-	// Insert source itself in priority queue and initialize
-	// its distance as 0.
-	pq.push(std::make_pair(0, source_node_index));
-	distances[source_node_index] = 0;
-
-	/* Looping till priority queue becomes empty (or all
-	distances are not finalized) */
-	while (!pq.empty()) {
-		// The first vertex in pair is the minimum distance
-		// vertex, extract it from priority queue.
-		// vertex label is stored in second of pair (it
-		// has to be done this way to keep the vertices
-		// sorted distance (distance must be first item
-		// in pair)
-		int minimum_distance = pq.top().second;
-		pq.pop();
-
-		// Get all adjacent of minimum_distance.
-		for (auto node_distance_pair : adjacency_graph[minimum_distance]) {
-			// Get vertex label and weight of current adjacent
-			// of minimum_distance.
-			int path_node_index = node_distance_pair.first;
-			float weight = node_distance_pair.second;
-
-			// If there is shorted path to path_node_index through minimum_distance.
-			if (distances[path_node_index] > distances[minimum_distance] + weight) {
-				// Updating distance of path_node_index
-				distances[path_node_index] = distances[minimum_distance] + weight;
-				pq.push(std::make_pair(distances[path_node_index], path_node_index));
-			}
-		}
-	}
-}
-
-void generate_adjacency_graph(vector<std::pair<int, float>>* adjacency_graph, const py::array_t<float>& nodes, const py::array_t<int>& edges, const int max_node_degree){
-	const int node_count = static_cast<int>(nodes.shape(0));
-#pragma omp parallel for default(none) shared(adjacency_graph, nodes, edges)\
-    firstprivate(node_count, max_node_degree)
-	for (int source_node_index = 0; source_node_index < node_count; source_node_index++) {
-		const int* target_node_indices = edges.data(source_node_index, 0);
-		Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
-
-		for(int i_target_node_index =0; i_target_node_index < max_node_degree; i_target_node_index++){
-			int target_node_index = target_node_indices[i_target_node_index];
-			if(target_node_index > -1){
-				Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
-				float squared_distance = (target_node - source_node).squaredNorm();
-				add_adjacency_edge(adjacency_graph, source_node_index, target_node_index, squared_distance);
-			}
-		}
-	}
-}
 
 
 /**
@@ -1350,37 +1289,77 @@ void generate_adjacency_graph(vector<std::pair<int, float>>* adjacency_graph, co
  */
 void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
                                          const py::array_t<float>& nodes,
+                                         // edges are assumed to have been computed in a shortest-path manner,
+                                         // i.e. what the NNRT authors called "geodesically" -- like via the
+                                         // compute_edges_geodesic function in the original source,
+                                         // for each vertex - target vertices sharing an edge, ordered by shortest edge
                                          const py::array_t<int>& edges,
-                                         py::array_t<int>& pixel_anchors,
-                                         py::array_t<float>& pixel_weights,
-                                         int width, int height,
+                                         py::array_t<int>& anchors,
+                                         py::array_t<float>& weights,
+                                         const int anchor_count,
                                          float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
-	// Initialize with invalid anchors.
-	pixel_anchors.resize({height, width, GRAPH_K}, false);
-	pixel_weights.resize({height, width, GRAPH_K}, false);
 
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			for (int k = 0; k < GRAPH_K; k++) {
-				*pixel_anchors.mutable_data(y, x, k) = -1;
-				*pixel_weights.mutable_data(y, x, k) = 0.f;
-			}
+	int node_count = static_cast<int>(nodes.shape(0));
+	int vertex_count = static_cast<int>(vertices.shape(0));
+
+	assert(edges.shape(1) == GRAPH_K);
+	assert(edges.shape(0) == node_count);
+
+	// Initialize with invalid anchors.
+	anchors.resize({node_count, anchor_count}, false);
+	weights.resize({vertex_count, anchor_count}, false);
+
+	for (int i_node = 0; i_node < node_count; i_node++) {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			*anchors.mutable_data(i_node, i_anchor) = -1;
+			*weights.mutable_data(i_node, i_anchor) = 0.f;
 		}
 	}
 
-	const int node_count = nodes.shape(0);
+	bool used_vertex_mask[node_count];
 
-	vector<std::pair<int, float>> adjacency_graph[node_count];
-	generate_adjacency_graph(adjacency_graph, nodes, edges, GRAPH_K);
+#pragma omp parallel for default(none) shared(vertices, nodes, edges, anchors, weights)\
+    firstprivate(vertex_count, node_coverage, anchor_count)
+	for (int i_vertex = 0; i_vertex < vertex_count; i_vertex++) {
+		// Query 3d pixel position.
+		Eigen::Vector3f vertex(*vertices.data(i_vertex, 0),
+		                       *vertices.data(i_vertex, 1),
+		                       *vertices.data(i_vertex, 2));
+		// Keep only the anchor_count nearest Euclidean neighbors.
+		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
+				get_knn_with_squared_distances_brute_force(vertex, nodes, 1);
+		auto closest_euclidean_node_and_distance = nearest_nodes_with_squared_distances.front();
+		// a super-cheap super-wrong method to do this, but heck, given existing shitty code for finding "geodesic" edges,
+		// this is probably good-enough
+		std::list<std::pair<int, float>> queue;
+		queue.emplace_back(closest_euclidean_node_and_distance.first, closest_euclidean_node_and_distance.second);
+		int valid_anchor_count = 0;
 
-	const int vertex_count = vertices.shape(0);
-	//TODO: use Dijkstra's impl. above
-#pragma omp parallel for default(none) shared(vertices, nodes, edges, pixel_anchors, pixel_weights)\
-    firstprivate(vertex_count, node_coverage)
-	for (int vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
+		std::vector<int> vertex_anchors;
+		vertex_anchors.reserve(anchor_count);
+		std::vector<float> vertex_weights;
+		vertex_weights.reserve(anchor_count);
+		while(!queue.empty() && valid_anchor_count < anchor_count){
+			auto graph_node_and_distance = queue.back();
+			queue.pop_back();
+			int source_node_index = graph_node_and_distance.first;
+			Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
+			float source_path_square_distance = graph_node_and_distance.second;
+			vertex_anchors.push_back(source_node_index);
+			vertex_weights.push_back(compute_anchor_weight_square_distance(source_path_square_distance, node_coverage));
+			for(int i_edge = 0; i_edge < GRAPH_K; i_edge++){
+				int target_node_index = *edges.data(source_node_index, 0);
+				Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
+				float square_distance_to_source = (target_node - source_node).squaredNorm();
+				queue.emplace_back(target_node_index, square_distance_to_source + source_path_square_distance);
+			}
+		}
+		// TODO: finish (add more euclidean dist nodes if any anchors are still missing, normalize weights, store results in anchors / weights
 
 	}
 }
+
+
 
 } // namespace graph_proc
