@@ -79,6 +79,8 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 
 	if (input_mesh.HasVertices()) {
 		const auto& vertices = input_mesh.GetVertices();
+		// FIXME: not sure if this check is at all necessary. There seem to be some situations in pythonic context when np.array(mesh.vertices)
+		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
 		vertices.AssertDtype(core::Dtype::Float32);
 		core::Tensor warped_vertices;
 		kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);

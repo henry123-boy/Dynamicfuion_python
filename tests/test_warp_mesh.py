@@ -192,7 +192,6 @@ def test_warp_mesh_open3d_mat(device):
     warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy_triangle_mesh()
     warped_mesh_legacy.compute_vertex_normals()
 
-    # # @formatter:off
     ground_truth_vertices = np.array([[3.20590377e-01, -1.41411602e-08, -1.45292148e-01],
                                       [1.24713349e+00, -1.42059857e-08, 1.99687317e-01],
                                       [-2.50497740e-02, -1.43351269e-08, 7.72609770e-01],
@@ -219,7 +218,6 @@ def test_warp_mesh_open3d_mat(device):
                                       [9.25759017e-01, 5.00000000e-01, 1.07236147e+00],
                                       [4.57848758e-01, 5.00000000e-01, 9.59894180e-01],
                                       [6.23932183e-01, 5.00000000e-01, 4.63563874e-02]], dtype=np.float32)
-    # # @formatter:on
     visualize_results = False
     if visualize_results:
         o3d.visualization.draw_geometries([warped_mesh_legacy],

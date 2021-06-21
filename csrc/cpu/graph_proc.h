@@ -165,4 +165,14 @@ py::tuple construct_regular_graph(
 		float max_depth
 );
 
+void compute_point_anchors_shortest_path(
+		const py::array_t<float>& vertices,
+		const py::array_t<float>& nodes,
+		const py::array_t<int>& edges,
+		py::array_t<int>& pixel_anchors,
+		py::array_t<float>& pixel_weights,
+		int width, int height,
+		float node_coverage
+);
+
 } // namespace graph_proc

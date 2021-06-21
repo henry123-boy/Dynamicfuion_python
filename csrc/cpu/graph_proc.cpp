@@ -8,6 +8,7 @@
 #include <queue>
 
 #include <Eigen/Dense>
+#include <cfloat>
 
 using std::vector;
 
@@ -1260,6 +1261,125 @@ void update_pixel_anchors(
 				}
 			}
 		}
+	}
+}
+
+inline
+void add_adjacency_edge(vector<std::pair<int, float>>* adjacency_graph, int node1_index, int node2_index, float weight){
+	adjacency_graph[node1_index].emplace_back(node2_index, weight);
+	adjacency_graph[node2_index].emplace_back(node1_index, weight);
+}
+
+
+// Prints shortest paths from source_node_index to all other vertices
+inline
+void shortest_path(const vector<std::pair<int, float>>* adjacency_graph, const int total_node_count, int source_node_index) {
+	// Create a priority queue to store vertices that
+	// are being preprocessed. This is weird syntax in C++.
+	// Refer below link for details of this syntax
+	// http://geeksquiz.com/implement-min-heap-using-stl/
+	std::priority_queue <std::pair<int, float>, vector<std::pair<int, float>>, std::greater<>> pq;
+
+	// Create a vector for distances and initialize all
+	// distances as infinite (INF)
+	std::vector<float> distances(total_node_count, FLT_MAX);
+
+	// Insert source itself in priority queue and initialize
+	// its distance as 0.
+	pq.push(std::make_pair(0, source_node_index));
+	distances[source_node_index] = 0;
+
+	/* Looping till priority queue becomes empty (or all
+	distances are not finalized) */
+	while (!pq.empty()) {
+		// The first vertex in pair is the minimum distance
+		// vertex, extract it from priority queue.
+		// vertex label is stored in second of pair (it
+		// has to be done this way to keep the vertices
+		// sorted distance (distance must be first item
+		// in pair)
+		int minimum_distance = pq.top().second;
+		pq.pop();
+
+		// Get all adjacent of minimum_distance.
+		for (auto node_distance_pair : adjacency_graph[minimum_distance]) {
+			// Get vertex label and weight of current adjacent
+			// of minimum_distance.
+			int path_node_index = node_distance_pair.first;
+			float weight = node_distance_pair.second;
+
+			// If there is shorted path to path_node_index through minimum_distance.
+			if (distances[path_node_index] > distances[minimum_distance] + weight) {
+				// Updating distance of path_node_index
+				distances[path_node_index] = distances[minimum_distance] + weight;
+				pq.push(std::make_pair(distances[path_node_index], path_node_index));
+			}
+		}
+	}
+}
+
+void generate_adjacency_graph(vector<std::pair<int, float>>* adjacency_graph, const py::array_t<float>& nodes, const py::array_t<int>& edges, const int max_node_degree){
+	const int node_count = static_cast<int>(nodes.shape(0));
+#pragma omp parallel for default(none) shared(adjacency_graph, nodes, edges)\
+    firstprivate(node_count, max_node_degree)
+	for (int source_node_index = 0; source_node_index < node_count; source_node_index++) {
+		const int* target_node_indices = edges.data(source_node_index, 0);
+		Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
+
+		for(int i_target_node_index =0; i_target_node_index < max_node_degree; i_target_node_index++){
+			int target_node_index = target_node_indices[i_target_node_index];
+			if(target_node_index > -1){
+				Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
+				float squared_distance = (target_node - source_node).squaredNorm();
+				add_adjacency_edge(adjacency_graph, source_node_index, target_node_index, squared_distance);
+			}
+		}
+	}
+}
+
+
+/**
+ * \brief compute point anchors based on shortest path within the graph
+ * \param vertex_to_node_distance
+ * \param vertices
+ * \param pixel_anchors
+ * \param pixel_weights
+ * \param width
+ * \param height
+ * \param node_coverage
+ */
+void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
+                                         const py::array_t<float>& nodes,
+                                         const py::array_t<int>& edges,
+                                         py::array_t<int>& pixel_anchors,
+                                         py::array_t<float>& pixel_weights,
+                                         int width, int height,
+                                         float node_coverage) {
+// Allocate graph node ids and corresponding skinning weights.
+	// Initialize with invalid anchors.
+	pixel_anchors.resize({height, width, GRAPH_K}, false);
+	pixel_weights.resize({height, width, GRAPH_K}, false);
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			for (int k = 0; k < GRAPH_K; k++) {
+				*pixel_anchors.mutable_data(y, x, k) = -1;
+				*pixel_weights.mutable_data(y, x, k) = 0.f;
+			}
+		}
+	}
+
+	const int node_count = nodes.shape(0);
+
+	vector<std::pair<int, float>> adjacency_graph[node_count];
+	generate_adjacency_graph(adjacency_graph, nodes, edges, GRAPH_K);
+
+	const int vertex_count = vertices.shape(0);
+	//TODO: use Dijkstra's impl. above
+#pragma omp parallel for default(none) shared(vertices, nodes, edges, pixel_anchors, pixel_weights)\
+    firstprivate(vertex_count, node_coverage)
+	for (int vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
+
 	}
 }
 
