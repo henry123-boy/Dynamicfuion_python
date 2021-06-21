@@ -60,6 +60,9 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 	if (anchor_count < 1){
 		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
+	nodes.AssertDtype(core::Dtype::Float32);
+	node_rotations.AssertDtype(core::Dtype::Float32);
+	node_translations.AssertDtype(core::Dtype::Float32);
 	// endregion
 
 	TriangleMesh warped_mesh(device);
@@ -76,6 +79,7 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 
 	if (input_mesh.HasVertices()) {
 		const auto& vertices = input_mesh.GetVertices();
+		vertices.AssertDtype(core::Dtype::Float32);
 		core::Tensor warped_vertices;
 		kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 		warped_mesh.SetVertices(warped_vertices);
