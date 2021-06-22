@@ -5,7 +5,9 @@
 #include <numeric> //std::iota
 #include <algorithm>
 #include <random>
+#include <map>
 #include <queue>
+#include <functional>
 
 #include <Eigen/Dense>
 #include <cfloat>
@@ -894,12 +896,22 @@ void compute_pixel_anchors_euclidean(
 	}
 }
 
-inline
-std::list<std::pair<int, float>> get_knn_with_squared_distances_brute_force(const Eigen::Vector3f& vertex, const py::array_t<float>& graph_nodes, const int neighbor_count){
+// All-pass filter for easy decltype and thread-friendly default arguments
+const auto TruePredicate = [] (int x) { return true; };
+inline decltype(TruePredicate) GetTruePredicate() {
+    return TruePredicate;
+}
+
+inline template<typename Predicate = decltype(TruePredicate)>
+std::list<std::pair<int, float>> get_knn_with_squared_distances_brute_force(const Eigen::Vector3f& vertex, const py::array_t<float>& graph_nodes,
+                                                                            const int neighbor_count, Predicate filter = GetTruePredicate()){
 // Keep only the k nearest Euclidean neighbors.
 	std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;
 
 	for (int node_index = 0; node_index < graph_nodes.shape(0); node_index++) {
+	    if (!filter(node_index))
+	        continue;
+
 		Eigen::Vector3f node_position(*graph_nodes.data(node_index, 0),
 		                              *graph_nodes.data(node_index, 1),
 		                              *graph_nodes.data(node_index, 2));
@@ -1276,7 +1288,15 @@ void update_pixel_anchors(
 }
 
 
-
+typedef std::pair<int, float> node_geodesic;
+namespace std {
+    template<>
+    struct less<node_geodesic> {
+        constexpr bool operator()(const node_geodesic& l, const node_geodesic& r) const {
+            return l.second > r.second;
+        }
+    };
+}
 /**
  * \brief compute point anchors based on shortest path within the graph
  * \param vertex_to_node_distance
@@ -1317,8 +1337,6 @@ void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
 		}
 	}
 
-	bool used_vertex_mask[node_count];
-
 #pragma omp parallel for default(none) shared(vertices, nodes, edges, anchors, weights)\
     firstprivate(vertex_count, node_coverage, anchor_count)
 	for (int i_vertex = 0; i_vertex < vertex_count; i_vertex++) {
@@ -1326,37 +1344,57 @@ void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
 		Eigen::Vector3f vertex(*vertices.data(i_vertex, 0),
 		                       *vertices.data(i_vertex, 1),
 		                       *vertices.data(i_vertex, 2));
-		// Keep only the anchor_count nearest Euclidean neighbors.
-		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
-				get_knn_with_squared_distances_brute_force(vertex, nodes, 1);
-		auto closest_euclidean_node_and_distance = nearest_nodes_with_squared_distances.front();
-		// a super-cheap super-wrong method to do this, but heck, given existing shitty code for finding "geodesic" edges,
-		// this is probably good-enough
-		std::list<std::pair<int, float>> queue;
-		queue.emplace_back(closest_euclidean_node_and_distance.first, closest_euclidean_node_and_distance.second);
-		int valid_anchor_count = 0;
 
-		std::vector<int> vertex_anchors;
-		vertex_anchors.reserve(anchor_count);
-		std::vector<float> vertex_weights;
-		vertex_weights.reserve(anchor_count);
-		while(!queue.empty() && valid_anchor_count < anchor_count){
-			auto graph_node_and_distance = queue.back();
-			queue.pop_back();
-			int source_node_index = graph_node_and_distance.first;
-			Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
-			float source_path_square_distance = graph_node_and_distance.second;
-			vertex_anchors.push_back(source_node_index);
-			vertex_weights.push_back(compute_anchor_weight_square_distance(source_path_square_distance, node_coverage));
-			for(int i_edge = 0; i_edge < GRAPH_K; i_edge++){
-				int target_node_index = *edges.data(source_node_index, 0);
-				Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
-				float square_distance_to_source = (target_node - source_node).squaredNorm();
-				queue.emplace_back(target_node_index, square_distance_to_source + source_path_square_distance);
-			}
+        std::map<int, float> vertex_anchors;
+        std::priority_queue<node_geodesic> queue;
+
+        while (vertex_anchors.size() < anchor_count) {
+		    // Keep only the anchor_count nearest Euclidean neighbors.
+            std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
+                    get_knn_with_squared_distances_brute_force(vertex, nodes, 1,
+                                                               [vertex_anchors] (int i) {
+                                                                   return vertex_anchors.find(i) == vertex_anchors.end();
+                                                               });
+            auto closest_euclidean_node_and_distance = nearest_nodes_with_squared_distances.front();
+            queue.emplace(closest_euclidean_node_and_distance.first, sqrt(closest_euclidean_node_and_distance.second));
+
+            while (!queue.empty()) {
+                auto graph_node_and_distance = queue.top();
+                queue.pop();
+
+                int source_node_index = graph_node_and_distance.first;
+                float source_path_distance = graph_node_and_distance.second;
+
+                if (vertex_anchors.find(source_node_index) != vertex_anchors.end())
+                    continue;
+
+                vertex_anchors[source_node_index] = source_path_distance;
+                if (vertex_anchors.size() < anchor_count)
+                    break;
+
+                Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
+
+                for (int i_edge = 0; i_edge < GRAPH_K; i_edge++) {
+                    int target_node_index = *edges.data(i_edge, 0);  // not sure how "edges" is represented
+                    if (target_node_index > -1) {
+                        Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
+                        float distance_to_source = (target_node - source_node).norm();
+                        queue.emplace(target_node_index, distance_to_source + source_path_distance);
+                    }
+                }
+            }
 		}
-		// TODO: finish (add more euclidean dist nodes if any anchors are still missing, normalize weights, store results in anchors / weights
 
+        float weight_sum = 0;
+        for (const auto index_weight : vertex_anchors) {
+            weight_sum += index_weight.second;
+        }
+
+		// TODO: finish (normalize weights, store results in anchors / weights
+        for (const auto index_weight : vertex_anchors) {
+            int index = index_weight.first; // >> anchors // not sure how that's represented
+            float weight = index_weight.second / weight_sum; // >> weights // not sure how that's represented
+        }
 	}
 }
 
