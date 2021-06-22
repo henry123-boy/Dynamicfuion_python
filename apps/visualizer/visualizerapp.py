@@ -2,13 +2,8 @@ import os
 import vtk
 import sys
 
-from apps.shared import trajectory_loading
 from apps.visualizer import utilities
-from apps.visualizer.alloction_data_processing import read_live_block_allocation_data, read_canonical_block_allocation_data
-from apps.visualizer.block_allocation_ray_data import AllocationRays
 from apps.visualizer.mesh import Mesh
-from apps.visualizer.allocated_blocks import AllocatedBlocks
-from apps.visualizer.utilities import get_frame_output_path
 
 
 class VisualizerApp:
@@ -33,9 +28,9 @@ class VisualizerApp:
         # mesh setup
         self.canonical_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Peacock"))
         self.warped_live_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Green"))
-        self.shown_mesh_index = 0
+        self.shown_mesh_index = 1
 
-        self.meshes = [self.warped_live_mesh, self.canonical_mesh]
+        self.meshes = [self.canonical_mesh, self.warped_live_mesh]
         self.mesh_names = ["canonical_mesh", "warped_live_mesh"]
 
         self.renderer.SetBackground(colors.GetColor3d("Black"))

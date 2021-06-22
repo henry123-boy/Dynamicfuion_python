@@ -1,8 +1,4 @@
-import math
-
-import numpy as np
 import vtk
-from plyfile import PlyData, PlyElement
 
 
 class Mesh:
@@ -29,32 +25,7 @@ class Mesh:
     def update(self, path, render=False):
         self.reader.SetFileName(path)
         self.reader.Update()
-        # ply_data = PlyData.read(path)
-        # vertex_data = ply_data["vertex"]
-        # index_data = ply_data['face'].data['vertex_indices']
-        # points = vtk.vtkPoints()
-        #
-        # for vert_d in vertex_data:
-        #     vert = np.array(vert_d.tolist()) * Mesh.FACTOR
-        #     # print(vert)
-        #     points.InsertNextPoint((vert[0], -vert[1], vert[2]))
-        #
-        # triangle_count = points.GetNumberOfPoints() // 3
-        # triangles = vtk.vtkCellArray()
-        #
-        # for i_tri in range(0, triangle_count):
-        #     triangle = vtk.vtkTriangle()
-        #     indices = index_data[i_tri]
-        #     triangle.GetPointIds().SetId(0, indices[0])
-        #     triangle.GetPointIds().SetId(1, indices[1])
-        #     triangle.GetPointIds().SetId(2, indices[2])
-        #     triangles.InsertNextCell(triangle)
-
-        # Add the geometry and topology to the polydata
-        # self.triangle_poly_data.SetPoints(points)
-        # self.triangle_poly_data.SetPolys(triangles)
         self.mapper.SetInputConnection(self.reader.GetOutputPort())
-        # self.mapper.SetInputData(self.triangle_poly_data)
         self.mapper.Modified()
 
         if render:
