@@ -1300,17 +1300,17 @@ void update_pixel_anchors(
  * \param height
  * \param node_coverage
  */
-void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
-                                         const py::array_t<float>& nodes,
+void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
+                                          const py::array_t<float>& nodes,
 		// edges are assumed to have been computed in a shortest-path manner,
 		// i.e. what the NNRT authors called "geodesically" -- like via the
 		// compute_edges_geodesic function in the original source,
 		// for each vertex - target vertices sharing an edge, ordered by shortest edge
 		                                 const py::array_t<int>& edges,
-		                                 py::array_t<int>& anchors,
-		                                 py::array_t<float>& weights,
-		                                 const int anchor_count,
-		                                 float node_coverage) {
+		                                  py::array_t<int>& anchors,
+		                                  py::array_t<float>& weights,
+		                                  int anchor_count,
+		                                  float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
 
 	int node_count = static_cast<int>(nodes.shape(0));
@@ -1420,6 +1420,14 @@ void compute_point_anchors_shortest_path(const py::array_t<float>& vertices,
 			}
 		}
 	} // end vertex loop
+}
+
+py::tuple compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices, const py::array_t<float>& nodes, const py::array_t<int>& edges,
+                                                int anchor_count, float node_coverage) {
+	py::array_t<int> anchors;
+	py::array_t<float> weights;
+	compute_vertex_anchors_shortest_path(vertices, nodes, edges, anchors, weights, anchor_count, node_coverage);
+	return py::make_tuple(anchors, weights);
 }
 
 
