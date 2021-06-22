@@ -2,6 +2,7 @@ import os
 import typing
 from datetime import datetime
 
+import cv2
 import numpy as np
 import open3d as o3d
 
@@ -18,6 +19,7 @@ class TelemetryGenerator:
                  record_visualization_to_disk: bool,
                  record_framewise_canonical_mesh: bool,
                  record_framewise_warped_mesh: bool,
+                 record_rendered_warped_mesh: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
@@ -28,6 +30,7 @@ class TelemetryGenerator:
         self.record_visualization_to_disk = record_visualization_to_disk
         self.record_framewise_canonical_mesh = record_framewise_canonical_mesh
         self.record_framewise_warped_mesh = record_framewise_warped_mesh
+        self.record_rendered_mesh = record_rendered_warped_mesh
         self.visualization_mode = visualization_mode
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
 
@@ -109,6 +112,11 @@ class TelemetryGenerator:
                                             graph.get_warped_nodes(), graph.edges,
                                             rotations_pred, translations_pred, mask_pred,
                                             valid_source_points, valid_correspondences, target_matches, additional_geometry)
+
+    def process_rendering_result(self, color_image, depth_image, frame_index):
+        if self.record_rendered_mesh:
+            cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_color.jpg"), color_image)
+            cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_depth.png"), depth_image)
 
     def process_result_visualization_and_logging(self,
                                                  canonical_mesh: typing.Union[None, o3d.geometry.TriangleMesh],

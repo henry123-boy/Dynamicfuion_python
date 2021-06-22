@@ -25,7 +25,7 @@ class TransformationMode(Enum):
 # **** BEHAVIOR *****
 
 # Tracking
-source_image_mode: SourceImageMode = SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY
+source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 # We will overwrite the default value in options.py / settings.py
 options.use_mask = True
 options.gn_max_nodes = 3000
@@ -51,6 +51,7 @@ visualization_mode: VisualizationMode = VisualizationMode.NONE
 record_visualization_to_disk = False
 record_canonical_meshes_to_disk = True
 record_warped_meshes_to_disk = True
+record_rendered_warped_mesh = False
 
 # **** DATASET *****
 

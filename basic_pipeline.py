@@ -34,7 +34,6 @@ from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
 from pipeline.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
 import pipeline.pipeline_options as po
-from pipeline.pipeline_options import VisualizationMode
 from pipeline.telemetry_generator import TelemetryGenerator
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -53,11 +52,12 @@ class FusionPipeline:
         self.framewise_warped_mesh_needed = \
             po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
             po.visualization_mode == po.VisualizationMode.WARPED_MESH or \
-            po.record_warped_meshes_to_disk
+            po.record_warped_meshes_to_disk or po.record_rendered_warped_mesh
 
         self.telemetry_generator = TelemetryGenerator(po.record_visualization_to_disk,
                                                       po.record_canonical_meshes_to_disk,
                                                       po.record_warped_meshes_to_disk,
+                                                      po.record_rendered_warped_mesh,
                                                       po.print_cuda_memory_info,
                                                       po.print_frame_info,
                                                       po.visualization_mode, options.output_directory)
@@ -181,6 +181,7 @@ class FusionPipeline:
                 else:
                     source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=options.depth_scale)
                     source_depth = source_depth.astype(np.uint16)
+                    telemetry_generator.process_rendering_result(source_color, source_depth, current_frame.frame_index)
 
                     # flip channels, i.e. RGB<-->BGR
                     source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
