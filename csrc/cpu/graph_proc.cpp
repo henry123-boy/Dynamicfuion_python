@@ -1312,23 +1312,17 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
 		                                  int anchor_count,
 		                                  float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
-
-	int node_count = static_cast<int>(nodes.shape(0));
 	int vertex_count = static_cast<int>(vertices.shape(0));
 
 	assert(edges.shape(1) == GRAPH_K);
-	assert(edges.shape(0) == node_count);
+	assert(edges.shape(0) == vertex_count);
 
 	// Initialize with invalid anchors.
-	anchors.resize({node_count, anchor_count}, false);
+	anchors.resize({vertex_count, anchor_count}, false);
 	weights.resize({vertex_count, anchor_count}, false);
+	std::fill_n(anchors.mutable_data(0, 0), anchors.size(), -1);
+	memset(weights.mutable_data(0, 0), 0, weights.size() * sizeof(float));
 
-	for (int i_node = 0; i_node < node_count; i_node++) {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			*anchors.mutable_data(i_node, i_anchor) = -1;
-			*weights.mutable_data(i_node, i_anchor) = 0.f;
-		}
-	}
 
 #pragma omp parallel for default(none) shared(vertices, nodes, edges, anchors, weights)\
     firstprivate(vertex_count, node_coverage, anchor_count)
@@ -1368,12 +1362,7 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
 				int source_node_index = graph_node_and_distance.first;
 				float source_path_distance = graph_node_and_distance.second;
 
-				auto it = distance_by_shortest_path_anchor.find(source_node_index);
-				if (it != distance_by_shortest_path_anchor.end()){
-					if(it->second > source_path_distance){
-						// update distance to the node if a shorter alternative path is found
-						distance_by_shortest_path_anchor[source_node_index] = source_path_distance;
-					}
+				if (distance_by_shortest_path_anchor.find(source_node_index) != distance_by_shortest_path_anchor.end()){
 					continue;
 				}
 

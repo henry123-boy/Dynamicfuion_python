@@ -79,19 +79,21 @@ def test_warp_mesh_numpy_mat(device):
                                         np.array([0] * len(nodes), dtype=np.int32))
 
     mesh_rotation_angle = math.radians(22.5)
-    global_rotation_matrix_top = np.array([[math.cos(mesh_rotation_angle), 0.0, -math.sin(mesh_rotation_angle)],
+    global_rotation_matrix_top = np.array([[math.cos(mesh_rotation_angle), 0.0, math.sin(mesh_rotation_angle)],
                                            [0., 1., 0.],
-                                           [math.sin(mesh_rotation_angle), 0.0, math.cos(mesh_rotation_angle)]],
+                                           [-math.sin(mesh_rotation_angle), 0.0, math.cos(mesh_rotation_angle)]],
                                           dtype=np.float32)
-    global_rotation_matrix_bottom = np.array([[math.cos(-mesh_rotation_angle), 0.0, -math.sin(-mesh_rotation_angle)],
+    global_rotation_matrix_bottom = np.array([[math.cos(-mesh_rotation_angle), 0.0, math.sin(-mesh_rotation_angle)],
                                               [0., 1., 0.],
-                                              [math.sin(-mesh_rotation_angle), 0.0, math.cos(-mesh_rotation_angle)]],
+                                              [-math.sin(-mesh_rotation_angle), 0.0, math.cos(-mesh_rotation_angle)]],
                                              dtype=np.float32)
 
     nodes_center = nodes.mean(axis=0)
     nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
                                                    (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
 
+    # graph_numpy.rotations_mat = np.stack([global_rotation_matrix_bottom] * 4 + [global_rotation_matrix_top] * 4)
+    # TODO why should rotations be flipped??? Should they be inverted during warping?
     graph_numpy.rotations_mat = np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4)
     for i_node, (node, node_rotated) in enumerate(zip(nodes, nodes_rotated)):
         graph_numpy.translations_vec[i_node] = node_rotated - node
@@ -124,7 +126,7 @@ def test_warp_mesh_numpy_mat(device):
                                       [9.25759017e-01, 5.00000000e-01, 1.07236147e+00],
                                       [4.57848758e-01, 5.00000000e-01, 9.59894180e-01],
                                       [6.23932183e-01, 5.00000000e-01, 4.63563874e-02]], dtype=np.float32)
-    visualize_results = False
+    visualize_results = True
     if visualize_results:
         o3d.visualization.draw_geometries([warped_mesh],
                                           zoom=0.8,
