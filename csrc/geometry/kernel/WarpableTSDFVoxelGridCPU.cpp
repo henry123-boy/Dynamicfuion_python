@@ -16,13 +16,14 @@
 
 #include <open3d/core/Dispatch.h>
 #include <open3d/core/Tensor.h>
-//COPY the missing file "open3d/core/hashmap/CPU/CPUHashmapBufferAccessor.hpp" from source to install folder manually. I don't know why it's not
-// properly installed.
-#include <open3d/core/hashmap/CPU/TBBHashmap.h>
-#include <open3d/core/hashmap/Dispatch.h>
+// COPY the missing file "open3d/core/hashmap/CPU/CPUHashmapBufferAccessor.hpp" from source to Open3D install folder manually.
+// I don't know why it's not properly installed.
+// #include <open3d/core/hashmap/CPU/TBBHashmap.h>
+// #include <open3d/core/hashmap/Dispatch.h>
 #include <open3d/core/kernel/CPULauncher.h>
-#include "geometry/kernel/WarpableTSDFVoxelGrid.h"
+
 #include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"
+#include "geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h"
 
 
 using namespace open3d;
@@ -55,18 +56,18 @@ void IntegrateWarpedMat<core::Device::DeviceType::CPU>(const core::Tensor& block
                                                        const float node_coverage, const int anchor_count,
                                                        const int minimum_valid_anchor_count, const float depth_scale, const float depth_max);
 
-template
-void TouchWarpedMat<core::Device::DeviceType::CPU>(std::shared_ptr<open3d::core::Hashmap>& hashmap,
-                                                   const open3d::core::Tensor& points,
-                                                   open3d::core::Tensor& voxel_block_coords,
-                                                   int64_t voxel_grid_resolution,
-                                                   const open3d::core::Tensor& extrinsics,
-                                                   const open3d::core::Tensor& warp_graph_nodes,
-                                                   const open3d::core::Tensor& node_rotations,
-                                                   const open3d::core::Tensor& node_translations,
-                                                   float node_coverage,
-                                                   float voxel_size,
-                                                   float sdf_trunc);
+// template
+// void TouchWarpedMat<core::Device::DeviceType::CPU>(std::shared_ptr<open3d::core::Hashmap>& hashmap,
+//                                                    const open3d::core::Tensor& points,
+//                                                    open3d::core::Tensor& voxel_block_coords,
+//                                                    int64_t voxel_grid_resolution,
+//                                                    const open3d::core::Tensor& extrinsics,
+//                                                    const open3d::core::Tensor& warp_graph_nodes,
+//                                                    const open3d::core::Tensor& node_rotations,
+//                                                    const open3d::core::Tensor& node_translations,
+//                                                    float node_coverage,
+//                                                    float voxel_size,
+//                                                    float sdf_trunc);
 
 } // namespace tsdf
 } // namespace kernel

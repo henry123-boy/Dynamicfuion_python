@@ -64,7 +64,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/Warp.cpp
     geometry/kernel/WarpCPU.cpp
     geometry/kernel/WarpCUDA.cu
-    geometry/kernel/WarpImpl.h)
+    geometry/kernel/WarpImpl.h geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

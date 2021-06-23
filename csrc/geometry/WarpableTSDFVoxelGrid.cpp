@@ -16,9 +16,10 @@
 #include "WarpableTSDFVoxelGrid.h"
 
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
-
 #include <utility>
+
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
+#include "geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry;
@@ -171,10 +172,10 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	}
 
 	core::Tensor block_coords;
-	kernel::tsdf::TouchWarpedMat(point_hashmap_, pcd.GetPoints().Contiguous(),
-	                             block_coords, extrinsics, warp_graph_nodes,
-	                             node_rotations, node_translations, node_coverage,
-	                             block_resolution_, voxel_size_, sdf_trunc_);
+	// kernel::tsdf::TouchWarpedMat(point_hashmap_, pcd.GetPoints().Contiguous(),
+	//                              block_coords, extrinsics, warp_graph_nodes,
+	//                              node_rotations, node_translations, node_coverage,
+	//                              block_resolution_, voxel_size_, sdf_trunc_);
 
 
 

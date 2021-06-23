@@ -26,84 +26,6 @@ namespace geometry {
 namespace kernel {
 namespace tsdf {
 
-void ExtractVoxelCenters(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
-                         const open3d::core::Tensor& block_values, open3d::core::Tensor& voxel_centers,
-                         int64_t block_resolution, float voxel_size) {
-	core::Device device = block_keys.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-	if (device_type == core::Device::DeviceType::CPU) {
-		ExtractVoxelCentersCPU(block_indices,
-		                       block_keys,
-		                       block_values, voxel_centers,
-		                       block_resolution, voxel_size);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		ExtractVoxelCentersCUDA(block_indices,
-		                        block_keys,
-		                        block_values, voxel_centers,
-		                        block_resolution, voxel_size);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-
-}
-
-void ExtractTSDFValuesAndWeights(const open3d::core::Tensor& block_indices,
-                                 const open3d::core::Tensor& block_values,
-                                 open3d::core::Tensor& voxel_values,
-                                 int64_t block_resolution) {
-	core::Device device = block_values.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-	if (device_type == core::Device::DeviceType::CPU) {
-		ExtractTSDFValuesAndWeightsCPU(block_indices, block_values, voxel_values,
-		                               block_resolution);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		ExtractTSDFValuesAndWeightsCUDA(block_indices, block_values, voxel_values,
-		                                block_resolution);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-}
-
-
-void ExtractValuesInExtent(
-		int64_t min_voxel_x, int64_t min_voxel_y, int64_t min_voxel_z,
-		int64_t max_voxel_x, int64_t max_voxel_y, int64_t max_voxel_z,
-		const core::Tensor& block_indices, const core::Tensor& block_keys, const core::Tensor& block_values,
-		core::Tensor& voxel_values, int64_t block_resolution) {
-
-	core::Device device = block_keys.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-
-	if (device_type == core::Device::DeviceType::CPU) {
-		ExtractValuesInExtentCPU(min_voxel_x, min_voxel_y, min_voxel_z,
-		                         max_voxel_x, max_voxel_y, max_voxel_z,
-		                         block_indices, block_keys, block_values,
-		                         voxel_values, block_resolution);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		ExtractValuesInExtentCUDA(min_voxel_x, min_voxel_y, min_voxel_z,
-		                          max_voxel_x, max_voxel_y, max_voxel_z,
-		                          block_indices, block_keys, block_values,
-		                          voxel_values, block_resolution);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-}
-
 void IntegrateWarpedDQ(const core::Tensor& indices, const core::Tensor& block_keys, core::Tensor& block_values, core::Tensor& cos_voxel_ray_to_normal,
                        int64_t block_resolution, float voxel_size, float sdf_truncation_distance, const core::Tensor& depth_tensor,
                        const core::Tensor& color_tensor, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
@@ -176,36 +98,36 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 	}
 
 }
-
-void TouchWarpedMat(std::shared_ptr<core::Hashmap>& hashmap, const core::Tensor& points, core::Tensor& voxel_block_coords,
-					const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                    const core::Tensor& node_rotations, const core::Tensor& node_translations, float node_coverage,
-                    int64_t voxel_grid_resolution, float voxel_size, float sdf_trunc) {
-
-	core::Device device = points.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-	if (device_type == core::Device::DeviceType::CPU) {
-		TouchWarpedMat<core::Device::DeviceType::CPU>(
-				hashmap, points, voxel_block_coords,
-				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
-				voxel_grid_resolution, voxel_size, sdf_trunc
-		);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		TouchWarpedMat<core::Device::DeviceType::CPU>(
-				hashmap, points, voxel_block_coords,
-				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
-				voxel_grid_resolution, voxel_size, sdf_trunc
-		);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-
-}
+//
+// void TouchWarpedMat(std::shared_ptr<core::Hashmap>& hashmap, const core::Tensor& points, core::Tensor& voxel_block_coords,
+// 					const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+//                     const core::Tensor& node_rotations, const core::Tensor& node_translations, float node_coverage,
+//                     int64_t voxel_grid_resolution, float voxel_size, float sdf_trunc) {
+//
+// 	core::Device device = points.GetDevice();
+//
+// 	core::Device::DeviceType device_type = device.GetType();
+// 	if (device_type == core::Device::DeviceType::CPU) {
+// 		TouchWarpedMat<core::Device::DeviceType::CPU>(
+// 				hashmap, points, voxel_block_coords,
+// 				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
+// 				voxel_grid_resolution, voxel_size, sdf_trunc
+// 		);
+// 	} else if (device_type == core::Device::DeviceType::CUDA) {
+// #ifdef BUILD_CUDA_MODULE
+// 		TouchWarpedMat<core::Device::DeviceType::CPU>(
+// 				hashmap, points, voxel_block_coords,
+// 				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
+// 				voxel_grid_resolution, voxel_size, sdf_trunc
+// 		);
+// #else
+// 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+// #endif
+// 	} else {
+// 		utility::LogError("Unimplemented device");
+// 	}
+//
+// }
 
 
 } // namespace tsdf

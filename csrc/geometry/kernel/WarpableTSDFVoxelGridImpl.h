@@ -23,15 +23,15 @@
 #include <open3d/t/geometry/kernel/TSDFVoxel.h>
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
-#include "utility/PlatformIndependence.h"
 #include "WarpableTSDFVoxelGrid.h"
+#include "utility/PlatformIndependence.h"
 #include "geometry/DualQuaternion.h"
 #include "geometry/kernel/Defines.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"
-
 #ifndef __CUDACC__
 #include <tbb/concurrent_unordered_set.h>
 #endif
+
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;
@@ -42,274 +42,6 @@ namespace geometry {
 namespace kernel {
 namespace tsdf {
 
-#if defined(__CUDACC__)
-void ExtractVoxelCentersCUDA
-#else
-void ExtractVoxelCentersCPU
-#endif
-		(const core::Tensor& indices,
-		 const core::Tensor& block_keys,
-		 const core::Tensor& block_values,
-		 core::Tensor& voxel_centers,
-		 int64_t block_resolution, float voxel_size) {
-
-	int64_t resolution3 =
-			block_resolution * block_resolution * block_resolution;
-
-	// Shape / transform indexers, no data involved
-	NDArrayIndexer voxel_indexer(
-			{block_resolution, block_resolution, block_resolution});
-
-	// Output
-#if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
-#endif
-
-	int n_blocks = static_cast<int>(indices.GetLength());
-
-	int64_t n_voxels = n_blocks * resolution3;
-	// each voxel center will need three coordinates: n_voxels x 3
-	voxel_centers = core::Tensor({n_voxels, 3}, core::Dtype::Float32,
-	                             block_keys.GetDevice());
-
-	// Real data indexers
-	NDArrayIndexer voxel_centers_indexer(voxel_centers, 1);
-	NDArrayIndexer block_keys_indexer(block_keys, 1);
-	// Plain array that does not require indexers
-	const int64_t* indices_ptr = indices.GetDataPtr<int64_t>();
-
-#if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
-#else
-	core::kernel::CPULauncher launcher;
-#endif
-
-	// Go through voxels
-	launcher.LaunchGeneralKernel(
-			n_voxels,
-			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-
-				// Natural index (0, N) ->
-				//                        (workload_block_idx, voxel_index_in_block)
-				int64_t workload_block_idx = workload_idx / resolution3;
-				int64_t block_index = indices_ptr[workload_block_idx];
-				int64_t voxel_index_in_block = workload_idx % resolution3;
-
-				// block_index -> (x_block, y_block, z_block)
-				int* block_key_ptr =
-						block_keys_indexer.GetDataPtrFromCoord<int>(block_index);
-				int64_t x_block = static_cast<int64_t>(block_key_ptr[0]);
-				int64_t y_block = static_cast<int64_t>(block_key_ptr[1]);
-				int64_t z_block = static_cast<int64_t>(block_key_ptr[2]);
-
-				// voxel_idx -> (x_voxel, y_voxel, z_voxel)
-				int64_t x_voxel, y_voxel, z_voxel;
-				voxel_indexer.WorkloadToCoord(voxel_index_in_block,
-				                              &x_voxel, &y_voxel, &z_voxel);
-
-
-				auto* voxel_center_pointer = voxel_centers_indexer.GetDataPtrFromCoord<float>(workload_idx);
-
-				voxel_center_pointer[0] = static_cast<float>(x_block * block_resolution + x_voxel) * voxel_size;
-				voxel_center_pointer[1] = static_cast<float>(y_block * block_resolution + y_voxel) * voxel_size;
-				voxel_center_pointer[2] = static_cast<float>(z_block * block_resolution + z_voxel) * voxel_size;
-			}
-	);
-#if defined(__CUDACC__)
-	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
-#endif
-}
-
-#if defined(__CUDACC__)
-void ExtractTSDFValuesAndWeightsCUDA
-#else
-void ExtractTSDFValuesAndWeightsCPU
-#endif
-		(const core::Tensor& indices,
-		 const core::Tensor& block_values,
-		 core::Tensor& voxel_values,
-		 int64_t block_resolution) {
-
-	int64_t block_resolution3 =
-			block_resolution * block_resolution * block_resolution;
-
-	// Shape / transform indexers, no data involved
-	NDArrayIndexer voxel_indexer(
-			{block_resolution, block_resolution, block_resolution});
-
-	// Output
-#if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
-#endif
-
-	int n_blocks = static_cast<int>(indices.GetLength());
-
-
-	int64_t n_voxels = n_blocks * block_resolution3;
-	// each voxel output will need a TSDF value and a weight value: n_voxels x 2
-	voxel_values = core::Tensor::Zeros({n_voxels, 2}, core::Dtype::Float32,
-	                                   block_values.GetDevice());
-
-	// Real data indexers
-	NDArrayIndexer voxel_values_indexer(voxel_values, 1);
-	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
-
-	// Plain arrays that does not require indexers
-	const auto* indices_ptr = indices.GetDataPtr<int64_t>();
-
-
-#if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
-#else
-	core::kernel::CPULauncher launcher;
-#endif
-
-	//  Go through voxels
-//@formatter:off
-	DISPATCH_BYTESIZE_TO_VOXEL(
-			voxel_block_buffer_indexer.ElementByteSize(),
-			[&]() {
-	launcher.LaunchGeneralKernel(
-			n_voxels, [=] OPEN3D_DEVICE(int64_t workload_idx) {
-//@formatter:on
-				// Natural index (0, N) ->
-				//                        (workload_block_idx, voxel_index_in_block)
-				int64_t block_idx = indices_ptr[workload_idx / block_resolution3];
-				int64_t voxel_index_in_block = workload_idx % block_resolution3;
-
-				// voxel_idx -> (x_voxel, y_voxel, z_voxel)
-				int64_t x_local, y_local, z_local;
-				voxel_indexer.WorkloadToCoord(voxel_index_in_block,
-				                              &x_local, &y_local, &z_local);
-
-				auto voxel_ptr = voxel_block_buffer_indexer
-						.GetDataPtrFromCoord<voxel_t>(x_local, y_local, z_local, block_idx);
-
-				auto voxel_value_pointer = voxel_values_indexer.GetDataPtrFromCoord<float>(workload_idx);
-
-				voxel_value_pointer[0] = voxel_ptr->GetTSDF();
-				voxel_value_pointer[1] = static_cast<float>(voxel_ptr->GetWeight());
-
-			} // end lambda
-				);
-			}
-	);
-#if defined(__CUDACC__)
-	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
-#endif
-}
-
-
-#if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
-void ExtractValuesInExtentCUDA(
-#else
-
-void ExtractValuesInExtentCPU(
-#endif
-		int64_t min_x, int64_t min_y, int64_t min_z,
-		int64_t max_x, int64_t max_y, int64_t max_z,
-		const core::Tensor& block_indices,
-		const core::Tensor& block_keys,
-		const core::Tensor& block_values,
-		core::Tensor& voxel_values,
-		int64_t block_resolution) {
-
-	int64_t block_resolution3 =
-			block_resolution * block_resolution * block_resolution;
-
-	// Shape / transform indexers, no data involved
-	NDArrayIndexer voxel_indexer(
-			{block_resolution, block_resolution, block_resolution});
-
-	// Output
-#if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
-#endif
-
-	int n_blocks = static_cast<int>(block_indices.GetLength());
-
-	int64_t output_range_x = max_x - min_x;
-	int64_t output_range_y = max_y - min_y;
-	int64_t output_range_z = max_z - min_z;
-
-	int64_t n_voxels = n_blocks * block_resolution3;
-	// each voxel center will need three coordinates: n_voxels x 3
-	voxel_values = core::Tensor::Ones({output_range_x, output_range_y, output_range_z},
-	                                  core::Dtype::Float32, block_keys.GetDevice());
-	voxel_values *= -2.0f;
-
-	// Real data indexers
-	NDArrayIndexer voxel_value_indexer(voxel_values, 3);
-	NDArrayIndexer block_keys_indexer(block_keys, 1);
-	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
-
-	// Plain array that does not require indexers
-	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
-
-#if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
-#else
-	core::kernel::CPULauncher launcher;
-#endif
-
-//  Go through voxels
-//@formatter:off
-	DISPATCH_BYTESIZE_TO_VOXEL(
-			voxel_block_buffer_indexer.ElementByteSize(),
-			[&]() {
-				launcher.LaunchGeneralKernel(
-						n_voxels, [=] OPEN3D_DEVICE(int64_t workload_idx) {
-//@formatter:on
-				// Natural index (0, N) ->
-				//                    (workload_block_idx, voxel_index_in_block)
-				int64_t block_index = indices_ptr[workload_idx / block_resolution3];
-				int64_t voxel_index_in_block = workload_idx % block_resolution3;
-
-				// block_index -> (x_block, y_block, z_block)
-				int* block_key_ptr =
-						block_keys_indexer.GetDataPtrFromCoord<int>(block_index);
-				auto x_block = static_cast<int64_t>(block_key_ptr[0]);
-				auto y_block = static_cast<int64_t>(block_key_ptr[1]);
-				auto z_block = static_cast<int64_t>(block_key_ptr[2]);
-
-				// voxel_idx -> (x_voxel, y_voxel, z_voxel)
-				int64_t x_voxel_local, y_voxel_local, z_voxel_local;
-				voxel_indexer.WorkloadToCoord(voxel_index_in_block, &x_voxel_local, &y_voxel_local, &z_voxel_local);
-
-				// at this point, (x_voxel, y_voxel, z_voxel) hold local
-				// in-block coordinates. Compute the global voxel coordinates:
-				int64_t x_voxel_global = x_block * block_resolution + x_voxel_local;
-				int64_t y_voxel_global = y_block * block_resolution + y_voxel_local;
-				int64_t z_voxel_global = z_block * block_resolution + z_voxel_local;
-
-				int64_t x_voxel_out = x_voxel_global - min_x;
-				int64_t y_voxel_out = y_voxel_global - min_y;
-				int64_t z_voxel_out = z_voxel_global - min_z;
-
-				if (x_voxel_out >= 0 && x_voxel_out < output_range_x &&
-				    y_voxel_out >= 0 && y_voxel_out < output_range_y &&
-				    z_voxel_out >= 0 && z_voxel_out < output_range_z) {
-					auto* voxel_value_pointer =
-							voxel_value_indexer.GetDataPtrFromCoord<float>(
-									x_voxel_out, y_voxel_out, z_voxel_out);
-
-					auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtrFromCoord<voxel_t>(
-							x_voxel_local, y_voxel_local, z_voxel_local, block_index);
-
-					auto weight = voxel_pointer->GetWeight();
-
-					if (weight > 0) {
-						*voxel_value_pointer = voxel_pointer->GetTSDF();
-					}
-				}
-			} // end element_kernel
-				);
-			}
-	);
-#if defined(__CUDACC__)
-	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
-#endif
-}
 
 
 template<core::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
@@ -564,133 +296,133 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 	);
 }
 
-struct Coord3i {
-	Coord3i(int x, int y, int z) : x_(x), y_(y), z_(z) {}
-	bool operator==(const Coord3i& other) const {
-		return x_ == other.x_ && y_ == other.y_ && z_ == other.z_;
-	}
-
-	int64_t x_;
-	int64_t y_;
-	int64_t z_;
-};
-
-struct Coord3iHash {
-	size_t operator()(const Coord3i& k) const {
-		static const size_t p0 = 73856093;
-		static const size_t p1 = 19349669;
-		static const size_t p2 = 83492791;
-
-		return (static_cast<size_t>(k.x_) * p0) ^
-		       (static_cast<size_t>(k.y_) * p1) ^
-		       (static_cast<size_t>(k.z_) * p2);
-	}
-};
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void TouchWarpedMat(std::shared_ptr<open3d::core::Hashmap>& hashmap,
-                    const open3d::core::Tensor& points,
-                    open3d::core::Tensor& voxel_block_coords,
-                    int64_t voxel_grid_resolution,
-                    const open3d::core::Tensor& extrinsics,
-                    const open3d::core::Tensor& warp_graph_nodes,
-                    const open3d::core::Tensor& node_rotations,
-                    const open3d::core::Tensor& node_translations,
-                    float node_coverage,
-                    float voxel_size,
-                    float sdf_trunc) {
-	int64_t resolution = voxel_grid_resolution;
-	float block_size = voxel_size * resolution;
-
-	int64_t n = points.GetLength();
-	const float* pcd_ptr = static_cast<const float*>(points.GetDataPtr());
-
-#if defined(__CUDACC__)
-	core::Device device = points.GetDevice();
-	core::Tensor block_coordi({8 * n, 3}, core::Dtype::Int32, device);
-	int* block_coordi_ptr = static_cast<int*>(block_coordi.GetDataPtr());
-	core::Tensor count(std::vector<int>{0}, {}, core::Dtype::Int32, device);
-	int* count_ptr = static_cast<int*>(count.GetDataPtr());
-	core::kernel::CUDALauncher launcher;
-
-	#define floor_device(X) floorf(X)
-#else
-	tbb::concurrent_unordered_set<Coord3i, Coord3iHash> set;
-	core::kernel::CPULauncher launcher;
-
-	#define floor_device(X) std::floor(X)
-#endif
-
-	launcher.LaunchGeneralKernel(
-			n, [=] OPEN3D_DEVICE(int64_t workload_idx) {
-				float x = pcd_ptr[3 * workload_idx + 0];
-				float y = pcd_ptr[3 * workload_idx + 1];
-				float z = pcd_ptr[3 * workload_idx + 2];
-
-				int xb_lo =
-						static_cast<int>(floor_device((x - sdf_trunc) / block_size));
-				int xb_hi =
-						static_cast<int>(floor_device((x + sdf_trunc) / block_size));
-				int yb_lo =
-						static_cast<int>(floor_device((y - sdf_trunc) / block_size));
-				int yb_hi =
-						static_cast<int>(floor_device((y + sdf_trunc) / block_size));
-				int zb_lo =
-						static_cast<int>(floor_device((z - sdf_trunc) / block_size));
-				int zb_hi =
-						static_cast<int>(floor_device((z + sdf_trunc) / block_size));
-
-				for (int xb = xb_lo; xb <= xb_hi; ++xb) {
-					for (int yb = yb_lo; yb <= yb_hi; ++yb) {
-						for (int zb = zb_lo; zb <= zb_hi; ++zb) {
-#if defined(__CUDACC__)
-							int idx = atomicAdd(count_ptr, 1);
-							block_coordi_ptr[3 * idx + 0] = xb;
-							block_coordi_ptr[3 * idx + 1] = yb;
-							block_coordi_ptr[3 * idx + 2] = zb;
-#else
-							// set.emplace(xb, yb, zb);
-#endif
-						}
-					}
-				}
-			}
-	);
-
-#if defined(__CUDACC__)
-	int total_block_count = count.Item<int>();
-#else
-	int total_block_count = set.size();
-#endif
-
-	#undef floor_device
-
-
-	if (total_block_count == 0) {
-		utility::LogError(
-				"[CUDATSDFTouchKernel] No block is touched in TSDF volume, "
-				"abort integration. Please check specified parameters, "
-				"especially depth_scale and voxel_size");
-	}
-
-#if defined(__CUDACC__)
-	block_coordi = block_coordi.Slice(0, 0, total_block_count);
-	core::Tensor block_addrs, block_masks;
-	hashmap->Activate(block_coordi.Slice(0, 0, count.Item<int>()), block_addrs,
-	                  block_masks);
-	voxel_block_coords = block_coordi.IndexGet({block_masks});
-#else
-	voxel_block_coords = core::Tensor({total_block_count, 3}, core::Dtype::Int32,points.GetDevice());
-	int* block_coords_ptr = static_cast<int*>(voxel_block_coords.GetDataPtr());
-	int count = 0;
-	for (auto it = set.begin(); it != set.end(); ++it, ++count) {
-		int64_t offset = count * 3;
-		block_coords_ptr[offset + 0] = static_cast<int>(it->x_);
-		block_coords_ptr[offset + 1] = static_cast<int>(it->y_);
-		block_coords_ptr[offset + 2] = static_cast<int>(it->z_);
-	}
-#endif
-}
+// struct Coord3i {
+// 	Coord3i(int x, int y, int z) : x_(x), y_(y), z_(z) {}
+// 	bool operator==(const Coord3i& other) const {
+// 		return x_ == other.x_ && y_ == other.y_ && z_ == other.z_;
+// 	}
+//
+// 	int64_t x_;
+// 	int64_t y_;
+// 	int64_t z_;
+// };
+//
+// struct Coord3iHash {
+// 	size_t operator()(const Coord3i& k) const {
+// 		static const size_t p0 = 73856093;
+// 		static const size_t p1 = 19349669;
+// 		static const size_t p2 = 83492791;
+//
+// 		return (static_cast<size_t>(k.x_) * p0) ^
+// 		       (static_cast<size_t>(k.y_) * p1) ^
+// 		       (static_cast<size_t>(k.z_) * p2);
+// 	}
+// };
+//
+// template<open3d::core::Device::DeviceType TDeviceType>
+// void TouchWarpedMat(std::shared_ptr<open3d::core::Hashmap>& hashmap,
+//                     const open3d::core::Tensor& points,
+//                     open3d::core::Tensor& voxel_block_coords,
+//                     int64_t voxel_grid_resolution,
+//                     const open3d::core::Tensor& extrinsics,
+//                     const open3d::core::Tensor& warp_graph_nodes,
+//                     const open3d::core::Tensor& node_rotations,
+//                     const open3d::core::Tensor& node_translations,
+//                     float node_coverage,
+//                     float voxel_size,
+//                     float sdf_trunc) {
+// 	int64_t resolution = voxel_grid_resolution;
+// 	float block_size = voxel_size * resolution;
+//
+// 	int64_t n = points.GetLength();
+// 	const float* pcd_ptr = static_cast<const float*>(points.GetDataPtr());
+//
+// #if defined(__CUDACC__)
+// 	core::Device device = points.GetDevice();
+// 	core::Tensor block_coordi({8 * n, 3}, core::Dtype::Int32, device);
+// 	int* block_coordi_ptr = static_cast<int*>(block_coordi.GetDataPtr());
+// 	core::Tensor count(std::vector<int>{0}, {}, core::Dtype::Int32, device);
+// 	int* count_ptr = static_cast<int*>(count.GetDataPtr());
+// 	core::kernel::CUDALauncher launcher;
+//
+// 	#define floor_device(X) floorf(X)
+// #else
+// 	tbb::concurrent_unordered_set<Coord3i, Coord3iHash> set;
+// 	core::kernel::CPULauncher launcher;
+//
+// 	#define floor_device(X) std::floor(X)
+// #endif
+//
+// 	launcher.LaunchGeneralKernel(
+// 			n, [=] OPEN3D_DEVICE(int64_t workload_idx) {
+// 				float x = pcd_ptr[3 * workload_idx + 0];
+// 				float y = pcd_ptr[3 * workload_idx + 1];
+// 				float z = pcd_ptr[3 * workload_idx + 2];
+//
+// 				int xb_lo =
+// 						static_cast<int>(floor_device((x - sdf_trunc) / block_size));
+// 				int xb_hi =
+// 						static_cast<int>(floor_device((x + sdf_trunc) / block_size));
+// 				int yb_lo =
+// 						static_cast<int>(floor_device((y - sdf_trunc) / block_size));
+// 				int yb_hi =
+// 						static_cast<int>(floor_device((y + sdf_trunc) / block_size));
+// 				int zb_lo =
+// 						static_cast<int>(floor_device((z - sdf_trunc) / block_size));
+// 				int zb_hi =
+// 						static_cast<int>(floor_device((z + sdf_trunc) / block_size));
+//
+// 				for (int xb = xb_lo; xb <= xb_hi; ++xb) {
+// 					for (int yb = yb_lo; yb <= yb_hi; ++yb) {
+// 						for (int zb = zb_lo; zb <= zb_hi; ++zb) {
+// #if defined(__CUDACC__)
+// 							int idx = atomicAdd(count_ptr, 1);
+// 							block_coordi_ptr[3 * idx + 0] = xb;
+// 							block_coordi_ptr[3 * idx + 1] = yb;
+// 							block_coordi_ptr[3 * idx + 2] = zb;
+// #else
+// 							// set.emplace(xb, yb, zb);
+// #endif
+// 						}
+// 					}
+// 				}
+// 			}
+// 	);
+//
+// #if defined(__CUDACC__)
+// 	int total_block_count = count.Item<int>();
+// #else
+// 	int total_block_count = set.size();
+// #endif
+//
+// 	#undef floor_device
+//
+//
+// 	if (total_block_count == 0) {
+// 		utility::LogError(
+// 				"[CUDATSDFTouchKernel] No block is touched in TSDF volume, "
+// 				"abort integration. Please check specified parameters, "
+// 				"especially depth_scale and voxel_size");
+// 	}
+//
+// #if defined(__CUDACC__)
+// 	block_coordi = block_coordi.Slice(0, 0, total_block_count);
+// 	core::Tensor block_addrs, block_masks;
+// 	hashmap->Activate(block_coordi.Slice(0, 0, count.Item<int>()), block_addrs,
+// 	                  block_masks);
+// 	voxel_block_coords = block_coordi.IndexGet({block_masks});
+// #else
+// 	voxel_block_coords = core::Tensor({total_block_count, 3}, core::Dtype::Int32,points.GetDevice());
+// 	int* block_coords_ptr = static_cast<int*>(voxel_block_coords.GetDataPtr());
+// 	int count = 0;
+// 	for (auto it = set.begin(); it != set.end(); ++it, ++count) {
+// 		int64_t offset = count * 3;
+// 		block_coords_ptr[offset + 0] = static_cast<int>(it->x_);
+// 		block_coords_ptr[offset + 1] = static_cast<int>(it->y_);
+// 		block_coords_ptr[offset + 2] = static_cast<int>(it->z_);
+// 	}
+// #endif
+// }
 
 
 } // namespace tsdf
