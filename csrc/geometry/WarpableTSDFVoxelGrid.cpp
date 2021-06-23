@@ -152,6 +152,32 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 				"[TSDFVoxelGrid] input depth is empty for integration.");
 	}
 
+	// Create a point cloud from a low-resolution depth input to roughly
+	// estimate surfaces.
+	// TODO(wei): merge CreateFromDepth and Touch in one kernel.
+	int down_factor = 4;
+	PointCloud pcd = PointCloud::CreateFromDepthImage(
+			depth, intrinsics, extrinsics, depth_scale, depth_max, down_factor);
+	int64_t capacity = (depth.GetCols() / down_factor) *
+	                   (depth.GetRows() / down_factor) * 8;
+
+	if (point_hashmap_ == nullptr) {
+		point_hashmap_ = std::make_shared<core::Hashmap>(
+				capacity, core::Dtype::Int32, core::Dtype::UInt8,
+				core::SizeVector{3}, core::SizeVector{1}, device_,
+				core::HashmapBackend::Default);
+	} else {
+		point_hashmap_->Clear();
+	}
+
+	core::Tensor block_coords;
+	kernel::tsdf::TouchWarpedMat(point_hashmap_, pcd.GetPoints().Contiguous(),
+	                             block_coords, extrinsics, warp_graph_nodes,
+	                             node_rotations, node_translations, node_coverage,
+	                             block_resolution_, voxel_size_, sdf_trunc_);
+
+
+
 	core::Tensor depth_tensor = depth.AsTensor().To(core::Dtype::Float32).Contiguous();
 	core::Tensor color_tensor;
 
@@ -173,6 +199,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 				"[TSDFIntegrateWarped] color image is ignored for the incompatible "
 				"shape.");
 	}
+
 
 	// Query active blocks and their nearest neighbors to handle boundary cases.
 	core::Tensor active_block_addresses;

@@ -341,6 +341,17 @@ if(TARGET pybind11::module)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS "${PYBIND11_TARGET}")
 
+# TBB
+include(${NNRT_3RDPARTY_DIR}/tbb/tbb.cmake)
+import_3rdparty_library(3rdparty_tbb
+    INCLUDE_DIRS ${STATIC_TBB_INCLUDE_DIR}
+    LIB_DIR      ${STATIC_TBB_LIB_DIR}
+    LIBRARIES    ${STATIC_TBB_LIBRARIES}
+    )
+set(TBB_TARGET "3rdparty_tbb")
+add_dependencies(3rdparty_tbb ext_tbb)
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${TBB_TARGET}")
+
 # Pytorch
 
 #find_package(Pytorch REQUIRED)
@@ -386,6 +397,20 @@ if(NOT WIN32)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS ${Open3D_LIBRARIES})
 
+# Stdgpu
+if (BUILD_CUDA_MODULE)
+    include(${NNRT_3RDPARTY_DIR}/stdgpu/stdgpu.cmake)
+    import_3rdparty_library(3rdparty_stdgpu
+        INCLUDE_DIRS ${STDGPU_INCLUDE_DIRS}
+        LIB_DIR      ${STDGPU_LIB_DIR}
+        LIBRARIES    ${STDGPU_LIBRARIES}
+        )
+    set(STDGPU_TARGET "3rdparty_stdgpu")
+    add_dependencies(3rdparty_stdgpu ext_stdgpu)
+    list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${STDGPU_TARGET}")
+endif ()
+
+# Backward
 list(APPEND CMAKE_PREFIX_PATH "${NNRT_3RDPARTY_DIR}/backward-cpp")
 find_package(Backward REQUIRED)
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS Backward::Backward)

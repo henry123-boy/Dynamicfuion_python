@@ -15,6 +15,7 @@
 //  ================================================================
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Console.h>
+#include <open3d/core/hashmap/Hashmap.h>
 
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 
@@ -167,6 +168,36 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 		                                                   cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 		                                                   depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d, warp_graph_nodes,
 		                                                   node_rotations, node_translations, node_coverage, anchor_count, 0, depth_scale, depth_max);
+#else
+		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+	} else {
+		utility::LogError("Unimplemented device");
+	}
+
+}
+
+void TouchWarpedMat(std::shared_ptr<core::Hashmap>& hashmap, const core::Tensor& points, core::Tensor& voxel_block_coords,
+					const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+                    const core::Tensor& node_rotations, const core::Tensor& node_translations, float node_coverage,
+                    int64_t voxel_grid_resolution, float voxel_size, float sdf_trunc) {
+
+	core::Device device = points.GetDevice();
+
+	core::Device::DeviceType device_type = device.GetType();
+	if (device_type == core::Device::DeviceType::CPU) {
+		TouchWarpedMat<core::Device::DeviceType::CPU>(
+				hashmap, points, voxel_block_coords,
+				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
+				voxel_grid_resolution, voxel_size, sdf_trunc
+		);
+	} else if (device_type == core::Device::DeviceType::CUDA) {
+#ifdef BUILD_CUDA_MODULE
+		TouchWarpedMat<core::Device::DeviceType::CPU>(
+				hashmap, points, voxel_block_coords,
+				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
+				voxel_grid_resolution, voxel_size, sdf_trunc
+		);
 #else
 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

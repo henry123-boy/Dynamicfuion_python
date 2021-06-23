@@ -16,6 +16,8 @@
 #pragma once
 
 #include <open3d/core/Tensor.h>
+#include <open3d/core/hashmap/Hashmap.h>
+#include <open3d/core/hashmap/HashmapBuffer.h>
 
 namespace nnrt {
 namespace geometry {
@@ -92,6 +94,32 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
                         const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, const float node_coverage,
                         const int anchor_count, const int minimum_valid_anchor_count, const float depth_scale, const float depth_max);
+
+void TouchWarpedMat(std::shared_ptr<open3d::core::Hashmap>& hashmap,
+                    const open3d::core::Tensor& points,
+                    open3d::core::Tensor& voxel_block_coords,
+                    const open3d::core::Tensor& extrinsics,
+                    const open3d::core::Tensor& warp_graph_nodes,
+                    const open3d::core::Tensor& node_rotations,
+                    const open3d::core::Tensor& node_translations,
+                    int64_t voxel_grid_resolution,
+                    float node_coverage,
+                    float voxel_size,
+                    float sdf_trunc);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void TouchWarpedMat(std::shared_ptr<open3d::core::Hashmap>& hashmap,
+                    const open3d::core::Tensor& points,
+                    open3d::core::Tensor& voxel_block_coords,
+
+                    const open3d::core::Tensor& extrinsics,
+                    const open3d::core::Tensor& warp_graph_nodes,
+                    const open3d::core::Tensor& node_rotations,
+                    const open3d::core::Tensor& node_translations,
+                    float node_coverage,
+                    int64_t voxel_grid_resolution,
+                    float voxel_size,
+                    float sdf_trunc);
 
 // endregion
 // region =============================== CUDA ======================================

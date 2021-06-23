@@ -13,8 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+
+#include <open3d/core/Dispatch.h>
+#include <open3d/core/hashmap/CUDA/StdGPUHashmap.h>
+#include <open3d/core/hashmap/DeviceHashmap.h>
+#include <open3d/core/hashmap/Dispatch.h>
+#include <open3d/core/kernel/CUDALauncher.cuh>
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
-#include "open3d/core/kernel/CUDALauncher.cuh"
 #include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"
 
 using namespace open3d;
@@ -48,6 +53,19 @@ void IntegrateWarpedMat<core::Device::DeviceType::CUDA>(const core::Tensor& bloc
                                                         const core::Tensor& node_rotations, const core::Tensor& node_translations,
                                                         const float node_coverage, const int anchor_count,
                                                         const int minimum_valid_anchor_count, const float depth_scale, const float depth_max);
+
+template
+void TouchWarpedMat<core::Device::DeviceType::CUDA>(std::shared_ptr<open3d::core::Hashmap>& hashmap,
+                                                   const open3d::core::Tensor& points,
+                                                   open3d::core::Tensor& voxel_block_coords,
+                                                   int64_t voxel_grid_resolution,
+                                                   const open3d::core::Tensor& extrinsics,
+                                                   const open3d::core::Tensor& warp_graph_nodes,
+                                                   const open3d::core::Tensor& node_rotations,
+                                                   const open3d::core::Tensor& node_translations,
+                                                   float node_coverage,
+                                                   float voxel_size,
+                                                   float sdf_trunc);
 
 } // namespace tsdf
 } // namespace kernel
