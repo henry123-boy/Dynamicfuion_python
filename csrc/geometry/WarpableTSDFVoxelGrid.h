@@ -94,6 +94,8 @@ public:
 	                                        float depth_scale = 1000.0f,
 	                                        float depth_max = 3.0f);
 
+    int64_t ActivateSleeveBlocks();
+
 protected:
 	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(
 			const open3d::core::Tensor &active_block_addresses);

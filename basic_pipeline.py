@@ -163,6 +163,7 @@ class FusionPipeline:
             # endregion
             if current_frame.frame_index == sequence.start_frame_index:
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device, options.depth_scale, 3.0)
+                volume.activate_sleeve_blocks()
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph

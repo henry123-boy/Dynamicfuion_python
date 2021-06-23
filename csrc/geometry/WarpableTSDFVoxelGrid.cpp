@@ -221,6 +221,18 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	return cos_voxel_ray_to_normal;
 }
 
+int64_t WarpableTSDFVoxelGrid::ActivateSleeveBlocks() {
+    core::Tensor active_indices;
+    block_hashmap_->GetActiveIndices(active_indices);
+    core::Tensor inactive_neighbor_of_active_blocks_coordinates =
+            BufferCoordinatesOfInactiveNeighborBlocks(active_indices);
+
+    core::Tensor neighbor_block_addresses, neighbor_mask;
+    block_hashmap_->Activate(inactive_neighbor_of_active_blocks_coordinates, neighbor_block_addresses, neighbor_mask);
+
+    return inactive_neighbor_of_active_blocks_coordinates.GetShape()[0];
+}
+
 open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
                                                                const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
                                                                const core::Tensor& node_rotations, const core::Tensor& node_translations,

@@ -125,6 +125,7 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
 	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
 	                             "depth_scale"_a, "depth_max"_a);
+    warpable_tsdf_voxel_grid.def("activate_sleeve_blocks", &WarpableTSDFVoxelGrid::ActivateSleeveBlocks);
 	// endregion
 
 
