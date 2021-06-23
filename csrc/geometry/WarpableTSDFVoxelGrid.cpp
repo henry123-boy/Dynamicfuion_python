@@ -16,6 +16,7 @@
 #include "WarpableTSDFVoxelGrid.h"
 
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
+#include <open3d/core/TensorKey.h>
 #include <utility>
 
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
@@ -153,23 +154,15 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 				"[TSDFVoxelGrid] input depth is empty for integration.");
 	}
 
-	// Create a point cloud from a low-resolution depth input to roughly
-	// estimate surfaces.
-	// TODO(wei): merge CreateFromDepth and Touch in one kernel.
-	int down_factor = 4;
-	PointCloud pcd = PointCloud::CreateFromDepthImage(
-			depth, intrinsics, extrinsics, depth_scale, depth_max, down_factor);
-	int64_t capacity = (depth.GetCols() / down_factor) *
-	                   (depth.GetRows() / down_factor) * 8;
+	// Downsample image to roughly estimate surfaces.
 
-	if (point_hashmap_ == nullptr) {
-		point_hashmap_ = std::make_shared<core::Hashmap>(
-				capacity, core::Dtype::Int32, core::Dtype::UInt8,
-				core::SizeVector{3}, core::SizeVector{1}, device_,
-				core::HashmapBackend::Default);
-	} else {
-		point_hashmap_->Clear();
-	}
+	float downsampling_factor = 0.5;
+	auto depth_downsampled = depth.Resize(downsampling_factor, Image::InterpType::Linear);
+
+	core::Tensor active_indices;
+	block_hashmap_->GetActiveIndices(active_indices);
+	core::Tensor inactive_neighbor_of_active_blocks_coordinates =
+			BufferInactiveRadiusNeighborBlockCoordinates(active_indices);
 
 	core::Tensor block_coords;
 	// kernel::tsdf::TouchWarpedMat(point_hashmap_, pcd.GetPoints().Contiguous(),
@@ -229,6 +222,35 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	Image empty_color;
 	return IntegrateWarpedMat(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_rotations, node_translations,
 	                          node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
+}
+
+open3d::core::Tensor WarpableTSDFVoxelGrid::BufferInactiveRadiusNeighborBlockCoordinates(const core::Tensor& active_block_addresses) {
+	//TODO: shares most code with TSDFVoxelGrid::BufferRadiusNeighbors (DRY violation)
+	core::Tensor key_buffer_int3_tensor = block_hashmap_->GetKeyTensor();
+
+	core::Tensor active_keys = key_buffer_int3_tensor.IndexGet(
+			{active_block_addresses.To(core::Dtype::Int64)});
+	int64_t n = active_keys.GetShape()[0];
+
+	// Fill in radius nearest neighbors.
+	core::Tensor keys_nb({27, n, 3}, core::Dtype::Int32, device_);
+	for (int nb = 0; nb < 27; ++nb) {
+		int dz = nb / 9;
+		int dy = (nb % 9) / 3;
+		int dx = nb % 3;
+		core::Tensor dt = core::Tensor(std::vector<int>{dx - 1, dy - 1, dz - 1},
+		                               {1, 3}, core::Dtype::Int32, device_);
+		keys_nb[nb] = active_keys + dt;
+	}
+	keys_nb = keys_nb.View({27 * n, 3});
+
+	core::Tensor neighbor_block_addresses, neighbor_mask;
+	block_hashmap_->Find(keys_nb, neighbor_block_addresses, neighbor_mask);
+
+	// ~ binary "or" to get the inactive address/coordinate mask instead of the active one
+	neighbor_mask = 1 - neighbor_mask;
+
+	return keys_nb.GetItem(core::TensorKey::IndexTensor(neighbor_mask));
 }
 
 

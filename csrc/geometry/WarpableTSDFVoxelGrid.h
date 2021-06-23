@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+#include <utility>
 
 #include <open3d/t/geometry/TSDFVoxelGrid.h>
 #include <geometry/DualQuaternion.h>
@@ -93,8 +94,10 @@ public:
 	                                        float depth_scale = 1000.0f,
 	                                        float depth_max = 3.0f);
 
-
 protected:
+	open3d::core::Tensor BufferInactiveRadiusNeighborBlockCoordinates(
+			const open3d::core::Tensor &active_block_addresses);
+
 	using TSDFVoxelGrid::voxel_size_;
 	using TSDFVoxelGrid::sdf_trunc_;
 	using TSDFVoxelGrid::block_resolution_;
