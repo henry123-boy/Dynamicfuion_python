@@ -152,26 +152,33 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	if (depth.IsEmpty()) {
 		utility::LogError(
 				"[TSDFVoxelGrid] input depth is empty for integration.");
+
 	}
+
+	intrinsics.AssertDtype(core::Dtype::Float32);
+	extrinsics.AssertDtype(core::Dtype::Float32);
 
 	// Downsample image to roughly estimate surfaces.
 
 	float downsampling_factor = 0.5;
 	auto depth_downsampled = depth.Resize(downsampling_factor, Image::InterpType::Linear);
+	core::Tensor intrinsics_downsampled = intrinsics * downsampling_factor;
 
 	core::Tensor active_indices;
 	block_hashmap_->GetActiveIndices(active_indices);
-	core::Tensor inactive_neighbor_of_active_blocks_coordinates =
-			BufferInactiveRadiusNeighborBlockCoordinates(active_indices);
+	core::Tensor coordinates_of_inactive_neighbors_of_active_blocks =
+			BufferCoordinatesOfInactiveNeighborBlocks(active_indices);
+	core::Tensor blocks_to_activate_mask;
+	kernel::tsdf::DetermineWhichBlocksToActivateWithWarp(
+			blocks_to_activate_mask,
+			coordinates_of_inactive_neighbors_of_active_blocks,
+			depth_downsampled.AsTensor().To(core::Dtype::Float32).Contiguous(),
+			intrinsics_downsampled, extrinsics, warp_graph_nodes, node_rotations, node_translations,
+			node_coverage, block_resolution_, voxel_size_, sdf_trunc_);
+
+
 
 	core::Tensor block_coords;
-	// kernel::tsdf::TouchWarpedMat(point_hashmap_, pcd.GetPoints().Contiguous(),
-	//                              block_coords, extrinsics, warp_graph_nodes,
-	//                              node_rotations, node_translations, node_coverage,
-	//                              block_resolution_, voxel_size_, sdf_trunc_);
-
-
-
 	core::Tensor depth_tensor = depth.AsTensor().To(core::Dtype::Float32).Contiguous();
 	core::Tensor color_tensor;
 
@@ -224,7 +231,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	                          node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
 }
 
-open3d::core::Tensor WarpableTSDFVoxelGrid::BufferInactiveRadiusNeighborBlockCoordinates(const core::Tensor& active_block_addresses) {
+open3d::core::Tensor WarpableTSDFVoxelGrid::BufferCoordinatesOfInactiveNeighborBlocks(const core::Tensor& active_block_addresses) {
 	//TODO: shares most code with TSDFVoxelGrid::BufferRadiusNeighbors (DRY violation)
 	core::Tensor key_buffer_int3_tensor = block_hashmap_->GetKeyTensor();
 
@@ -248,7 +255,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::BufferInactiveRadiusNeighborBlockCoo
 	block_hashmap_->Find(keys_nb, neighbor_block_addresses, neighbor_mask);
 
 	// ~ binary "or" to get the inactive address/coordinate mask instead of the active one
-	neighbor_mask = 1 - neighbor_mask;
+	neighbor_mask = neighbor_mask.LogicalNot();
 
 	return keys_nb.GetItem(core::TensorKey::IndexTensor(neighbor_mask));
 }

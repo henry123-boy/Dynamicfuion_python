@@ -95,7 +95,7 @@ public:
 	                                        float depth_max = 3.0f);
 
 protected:
-	open3d::core::Tensor BufferInactiveRadiusNeighborBlockCoordinates(
+	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(
 			const open3d::core::Tensor &active_block_addresses);
 
 	using TSDFVoxelGrid::voxel_size_;

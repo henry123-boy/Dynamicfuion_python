@@ -98,36 +98,35 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 	}
 
 }
-//
-// void TouchWarpedMat(std::shared_ptr<core::Hashmap>& hashmap, const core::Tensor& points, core::Tensor& voxel_block_coords,
-// 					const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-//                     const core::Tensor& node_rotations, const core::Tensor& node_translations, float node_coverage,
-//                     int64_t voxel_grid_resolution, float voxel_size, float sdf_trunc) {
-//
-// 	core::Device device = points.GetDevice();
-//
-// 	core::Device::DeviceType device_type = device.GetType();
-// 	if (device_type == core::Device::DeviceType::CPU) {
-// 		TouchWarpedMat<core::Device::DeviceType::CPU>(
-// 				hashmap, points, voxel_block_coords,
-// 				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
-// 				voxel_grid_resolution, voxel_size, sdf_trunc
-// 		);
-// 	} else if (device_type == core::Device::DeviceType::CUDA) {
-// #ifdef BUILD_CUDA_MODULE
-// 		TouchWarpedMat<core::Device::DeviceType::CPU>(
-// 				hashmap, points, voxel_block_coords,
-// 				extrinsics, warp_graph_nodes, node_rotations, node_translations, node_coverage,
-// 				voxel_grid_resolution, voxel_size, sdf_trunc
-// 		);
-// #else
-// 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-// #endif
-// 	} else {
-// 		utility::LogError("Unimplemented device");
-// 	}
-//
-// }
+
+void DetermineWhichBlocksToActivateWithWarp(core::Tensor& blocks_to_activate_mask, const core::Tensor& candidate_block_coordinates,
+                                            const core::Tensor& depth_downsampled, const core::Tensor& intrinsics_downsampled,
+                                            const core::Tensor& extrinsics, const core::Tensor& graph_nodes, const core::Tensor& node_rotations,
+                                            const core::Tensor& node_translations, float node_coverage, int64_t block_resolution, float voxel_size,
+                                            float sdf_truncation_distance) {
+	core::Device device = candidate_block_coordinates.GetDevice();
+	core::Device::DeviceType device_type = device.GetType();
+	if (device_type == core::Device::DeviceType::CPU) {
+
+		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CPU>(blocks_to_activate_mask,
+		                                                                      candidate_block_coordinates,
+		                                                                      depth_downsampled,
+		                                                                      intrinsics_downsampled, extrinsics, graph_nodes, node_rotations, node_translations,
+		                                                                      node_coverage, block_resolution, voxel_size, sdf_truncation_distance);
+	} else if (device_type == core::Device::DeviceType::CUDA) {
+#ifdef BUILD_CUDA_MODULE
+		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CUDA>(blocks_to_activate_mask,
+		                                                                       candidate_block_coordinates,
+		                                                                       depth_downsampled,
+		                                                                       intrinsics_downsampled, extrinsics, graph_nodes, node_rotations, node_translations,
+		                                                                       node_coverage, block_resolution, voxel_size, sdf_truncation_distance);
+#else
+		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+	} else {
+		utility::LogError("Unimplemented device");
+	}
+}
 
 
 } // namespace tsdf

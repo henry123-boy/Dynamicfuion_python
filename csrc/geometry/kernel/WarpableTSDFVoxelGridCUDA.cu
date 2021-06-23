@@ -55,18 +55,13 @@ void IntegrateWarpedMat<core::Device::DeviceType::CUDA>(const core::Tensor& bloc
                                                         const float node_coverage, const int anchor_count,
                                                         const int minimum_valid_anchor_count, const float depth_scale, const float depth_max);
 
-// template
-// void TouchWarpedMat<core::Device::DeviceType::CUDA>(std::shared_ptr<open3d::core::Hashmap>& hashmap,
-//                                                    const open3d::core::Tensor& points,
-//                                                    open3d::core::Tensor& voxel_block_coords,
-//                                                    int64_t voxel_grid_resolution,
-//                                                    const open3d::core::Tensor& extrinsics,
-//                                                    const open3d::core::Tensor& warp_graph_nodes,
-//                                                    const open3d::core::Tensor& node_rotations,
-//                                                    const open3d::core::Tensor& node_translations,
-//                                                    float node_coverage,
-//                                                    float voxel_size,
-//                                                    float sdf_trunc);
+template
+void DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
+		const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
+		const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
+		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+		int64_t block_resolution, float voxel_size, float sdf_truncation_distance);
 
 } // namespace tsdf
 } // namespace kernel

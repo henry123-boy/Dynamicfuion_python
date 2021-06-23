@@ -11,7 +11,7 @@ PROGRAM_EXIT_FAILURE = -1
 def main():
     parser = argparse.ArgumentParser("App for visualizing block allocation and generated mesh alignment.")
     parser.add_argument("--output", "-o", type=str, help="Path to output folder",
-                        default="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output/21-06-22-15-33-53/frame_output")
+                        default="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output/21-06-22-12-54-43/frame_output")
     parser.add_argument("--initial_frame", "-i", type=int, help="Index of the first frame to process",
                         default=1)
     args = parser.parse_args()
