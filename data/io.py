@@ -2,7 +2,7 @@ import os
 import sys
 import struct
 import re
-from skimage.io import imsave
+
 
 import numpy as np
 import utils.viz.image as im_aux
@@ -10,6 +10,7 @@ from utils.viz import flow
 
 
 def save_rgb_image(filename, image_numpy):
+    import skimage.io as sio
     image_to_save = np.copy(image_numpy)
 
     if image_to_save.shape[0] == 3:
@@ -23,19 +24,20 @@ def save_rgb_image(filename, image_numpy):
         image_to_save = image_to_save * 255.0
         image_to_save = image_to_save.astype(np.uint8)
 
-    imsave(filename, image_to_save)
+    sio.imsave(filename, image_to_save)
 
 
 def save_grayscale_image(filename, image_numpy):
+    import skimage.io as sio
     image_to_save = np.copy(image_numpy)
     image_to_save = (image_to_save * 255).astype(np.uint8)
 
     if len(image_to_save.shape) == 2:
-        imsave(filename, image_to_save)
+        sio.imsave(filename, image_to_save)
     elif len(image_to_save.shape) == 3:
         assert image_to_save.shape[0] == 1 or image_to_save.shape[-1] == 1
         image_to_save = image_to_save[0]
-        imsave(filename, image_to_save)
+        sio.imsave(filename, image_to_save)
 
 
 def overlay_images_and_save(filename, image_original_1, image_original_2, alpha=0.5):

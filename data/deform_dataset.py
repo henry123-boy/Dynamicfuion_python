@@ -5,7 +5,7 @@ import typing
 from torch.utils.data import Dataset
 import torch
 import numpy as np
-from skimage import io
+import skimage.io
 from multipledispatch import dispatch
 
 from data.io import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
@@ -164,8 +164,8 @@ class DeformDataset(Dataset):
             intrinsics, input_height, input_width, cropper=None,
             max_boundary_dist=0.1, compute_boundary_mask=False):
         # Load images.
-        color_image = io.imread(color_image_path)  # (h, w, 3)
-        depth_image = io.imread(depth_image_path)  # (h, w)
+        color_image = skimage.io.imread(color_image_path)  # (h, w, 3)
+        depth_image = skimage.io.imread(depth_image_path)  # (h, w)
         return DeformDataset.prepare_pytorch_input(
             color_image, depth_image, intrinsics, input_height, input_width, cropper,
             max_boundary_dist, compute_boundary_mask)
