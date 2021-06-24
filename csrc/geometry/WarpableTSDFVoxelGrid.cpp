@@ -158,23 +158,25 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const Image& dept
 	intrinsics.AssertDtype(core::Dtype::Float32);
 	extrinsics.AssertDtype(core::Dtype::Float32);
 
-	// Downsample image to roughly estimate surfaces.
 
-	float downsampling_factor = 0.5;
-	auto depth_downsampled = depth.Resize(downsampling_factor, Image::InterpType::Linear);
-	core::Tensor intrinsics_downsampled = intrinsics * downsampling_factor;
-
-	core::Tensor active_indices;
-	block_hashmap_->GetActiveIndices(active_indices);
-	core::Tensor coordinates_of_inactive_neighbors_of_active_blocks =
-			BufferCoordinatesOfInactiveNeighborBlocks(active_indices);
-	core::Tensor blocks_to_activate_mask;
-	kernel::tsdf::DetermineWhichBlocksToActivateWithWarp(
-			blocks_to_activate_mask,
-			coordinates_of_inactive_neighbors_of_active_blocks,
-			depth_downsampled.AsTensor().To(core::Dtype::Float32).Contiguous(),
-			intrinsics_downsampled, extrinsics, warp_graph_nodes, node_rotations, node_translations,
-			node_coverage, block_resolution_, voxel_size_, sdf_trunc_);
+	//TODO (block activation)
+	// // Downsample image to roughly estimate surfaces.
+	//
+	// float downsampling_factor = 0.5;
+	// auto depth_downsampled = depth.Resize(downsampling_factor, Image::InterpType::Linear);
+	// core::Tensor intrinsics_downsampled = intrinsics * downsampling_factor;
+	//
+	// core::Tensor active_indices;
+	// block_hashmap_->GetActiveIndices(active_indices);
+	// core::Tensor coordinates_of_inactive_neighbors_of_active_blocks =
+	// 		BufferCoordinatesOfInactiveNeighborBlocks(active_indices);
+	// core::Tensor blocks_to_activate_mask;
+	// kernel::tsdf::DetermineWhichBlocksToActivateWithWarp(
+	// 		blocks_to_activate_mask,
+	// 		coordinates_of_inactive_neighbors_of_active_blocks,
+	// 		depth_downsampled.AsTensor().To(core::Dtype::Float32).Contiguous(),
+	// 		intrinsics_downsampled, extrinsics, warp_graph_nodes, node_rotations, node_translations,
+	// 		node_coverage, block_resolution_, voxel_size_, sdf_trunc_);
 
 
 

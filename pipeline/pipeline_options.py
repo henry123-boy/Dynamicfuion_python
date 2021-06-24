@@ -53,6 +53,9 @@ record_canonical_meshes_to_disk = True
 record_warped_meshes_to_disk = True
 record_rendered_warped_mesh = False
 
+# __DEBUG logging options
+record_gn_point_clouds = True
+
 # **** DATASET *****
 
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
@@ -63,7 +66,7 @@ record_rendered_warped_mesh = False
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
-sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
+sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value

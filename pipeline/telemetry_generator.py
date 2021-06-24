@@ -5,6 +5,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 import open3d as o3d
+import torch
 
 from data import SequenceFrameDataset
 from pipeline.graph import DeformationGraphNumpy
@@ -20,6 +21,7 @@ class TelemetryGenerator:
                  record_framewise_canonical_mesh: bool,
                  record_framewise_warped_mesh: bool,
                  record_rendered_warped_mesh: bool,
+                 record_gn_point_clouds: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
@@ -31,6 +33,7 @@ class TelemetryGenerator:
         self.record_framewise_canonical_mesh = record_framewise_canonical_mesh
         self.record_framewise_warped_mesh = record_framewise_warped_mesh
         self.record_rendered_mesh = record_rendered_warped_mesh
+        self.record_gn_point_clouds = record_gn_point_clouds
         self.visualization_mode = visualization_mode
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
 
@@ -49,6 +52,14 @@ class TelemetryGenerator:
         self.frame_output_directory = os.path.join(self.output_directory, "frame_output")
         if not os.path.exists(self.frame_output_directory):
             os.makedirs(self.frame_output_directory)
+
+        self.deformed_points_output_directory = os.path.join(self.output_directory, "gn_deformed_points")
+        if self.record_gn_point_clouds and not os.path.exists(self.deformed_points_output_directory):
+            os.makedirs(self.deformed_points_output_directory)
+        self.frame_index = 0
+
+    def set_frame_index(self, frame_index):
+        self.frame_index = frame_index
 
     def print_cuda_memory_info_if_needed(self):
         if self.print_gpu_memory_info:
@@ -125,8 +136,7 @@ class TelemetryGenerator:
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
                                                  pixel_anchors: np.ndarray, pixel_weights: np.ndarray,
-                                                 graph: DeformationGraphNumpy,
-                                                 frame_index: int):
+                                                 graph: DeformationGraphNumpy):
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
@@ -143,11 +153,17 @@ class TelemetryGenerator:
         elif self.visualization_mode == VisualizationMode.COMBINED:
             raise NotImplementedError("TODO")
         if self.record_framewise_canonical_mesh:
-            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{frame_index:06d}_canonical_mesh.ply"),
+            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
                                        canonical_mesh)
         if self.record_framewise_warped_mesh:
-            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{frame_index:06d}_warped_mesh.ply"),
+            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
                                        warped_mesh)
+
+    def process_gn_point_cloud(self, deformed_points: torch.Tensor, gauss_newton_iteration):
+        if self.record_gn_point_clouds:
+            path = os.path.join(self.deformed_points_output_directory, f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
+            print(path)
+            np.save(path, deformed_points.cpu().detach().numpy())
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:

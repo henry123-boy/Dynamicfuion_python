@@ -58,12 +58,13 @@ class FusionPipeline:
                                                       po.record_canonical_meshes_to_disk,
                                                       po.record_warped_meshes_to_disk,
                                                       po.record_rendered_warped_mesh,
+                                                      po.record_gn_point_clouds,
                                                       po.print_cuda_memory_info,
                                                       po.print_frame_info,
                                                       po.visualization_mode, options.output_directory)
 
         # === load alignment network, configure device ===
-        self.deform_net: DeformNet = load_default_nnrt_network()
+        self.deform_net: DeformNet = load_default_nnrt_network(self.telemetry_generator)
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===
@@ -131,6 +132,7 @@ class FusionPipeline:
 
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
+            self.telemetry_generator.set_frame_index(current_frame.frame_index)
             #####################################################################################################
             # region ===== grab images, mask / clip if necessary, transfer to GPU versions for Open3D ===========
             #####################################################################################################
@@ -294,8 +296,7 @@ class FusionPipeline:
                     options.alignment_image_width,
                     source_rgbxyz, target_rgbxyz,
                     pixel_anchors, pixel_weights,
-                    self.graph,
-                    current_frame.frame_index
+                    self.graph
                 )
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
 
