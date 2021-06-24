@@ -53,9 +53,12 @@ class TelemetryGenerator:
         if not os.path.exists(self.frame_output_directory):
             os.makedirs(self.frame_output_directory)
 
-        self.deformed_points_output_directory = os.path.join(self.output_directory, "gn_deformed_points")
-        if self.record_gn_point_clouds and not os.path.exists(self.deformed_points_output_directory):
-            os.makedirs(self.deformed_points_output_directory)
+        # Note: if you want to store GN point clouds in a different directory, uncomment here and use
+        # self.deformed_points_output_directory in the process_gn_point_cloud method instead of self.frame_output_directory
+        #
+        # self.deformed_points_output_directory = os.path.join(self.output_directory, "gn_deformed_points")
+        # if self.record_gn_point_clouds and not os.path.exists(self.deformed_points_output_directory):
+        #     os.makedirs(self.deformed_points_output_directory)
         self.frame_index = 0
 
     def set_frame_index(self, frame_index):
@@ -159,14 +162,14 @@ class TelemetryGenerator:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
                                        warped_mesh)
 
-    def process_gn_point_cloud(self, deformed_points: torch.Tensor, gauss_newton_iteration):
-        if self.record_gn_point_clouds:
-            path = os.path.join(self.deformed_points_output_directory, f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
-            print(path)
-            np.save(path, deformed_points.cpu().detach().numpy())
-
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:
             print("Processing frame:", current_frame.frame_index)
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
+
+    def process_gn_point_cloud(self, deformed_points: torch.Tensor, gauss_newton_iteration):
+        if self.record_gn_point_clouds:
+            path = os.path.join(self.frame_output_directory,
+                                f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
+            np.save(path, deformed_points.cpu().detach().numpy().reshape(-1, 3))

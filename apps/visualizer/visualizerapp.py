@@ -1,14 +1,18 @@
 import os
+import re
+from enum import Enum
+
 import vtk
 import sys
 
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh
+from apps.visualizer.point_cloud import PointCloud
 
 
 class VisualizerApp:
 
-    def __init__(self, output_path, start_frame_ix=16):
+    def __init__(self, output_path, start_frame_ix=0):
         self.__alt_pressed = False
         # self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_path)
         self.start_frame_ix = start_frame_ix
@@ -28,10 +32,27 @@ class VisualizerApp:
         # mesh setup
         self.canonical_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Peacock"))
         self.warped_live_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Green"))
-        self.shown_mesh_index = 1
+        self.shown_mesh_index = 0
 
         self.meshes = [self.canonical_mesh, self.warped_live_mesh]
         self.mesh_names = ["canonical_mesh", "warped_live_mesh"]
+
+        def get_gn_iteration_count():
+            start_frame_ix_string = f"{start_frame_ix:06d}"
+            first_frame_point_file_pattern = re.compile(start_frame_ix_string + r"_deformed_points_iter_(\d{3})[.]npy")
+            first_frame_point_files_in_output_path = [file for file in os.listdir(self.output_path) if
+                                                      first_frame_point_file_pattern.match(file) is not None]
+            return len(first_frame_point_files_in_output_path)
+
+        self.shown_point_cloud_index = 0
+
+        gn_iteration_count = get_gn_iteration_count()
+
+        self.point_clouds = []
+        self.point_cloud_names = []
+        for i_point_cloud in range(0, gn_iteration_count):
+            self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("White")))
+            self.point_cloud_names.append(f"gn_point_cloud_iter_{i_point_cloud:03d}")
 
         self.renderer.SetBackground(colors.GetColor3d("Black"))
         self.render_window.SetSize(1400, 900)
@@ -92,7 +113,9 @@ class VisualizerApp:
         # fullscreen
 
         self.set_frame(self.current_frame)
-        self.show_mesh_at_index(0)
+        self.show_mesh_at_index(self.shown_mesh_index)
+        self.show_point_cloud_at_index(self.shown_point_cloud_index)
+
         # uncomment to start out with meshes invisible
         # self.meshes[self.shown_mesh_index].toggle_visibility()
         self.render_window.Render()
@@ -103,6 +126,12 @@ class VisualizerApp:
         warped_live_path = os.path.join(self.output_path, f"{i_frame:06d}_warped_mesh.ply")
         self.canonical_mesh.update(canonical_path)
         self.warped_live_mesh.update(warped_live_path)
+
+    def load_frame_point_clouds(self, i_frame):
+        i_gn_iteration = 0
+        for point_cloud in self.point_clouds:
+            point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_deformed_points_iter_{i_gn_iteration:03d}.npy"))
+            i_gn_iteration += 1
 
     def launch(self):
         # Start the event loop.
@@ -120,18 +149,29 @@ class VisualizerApp:
             i_mesh += 1
         self.render_window.Render()
 
+    def show_point_cloud_at_index(self, i_point_cloud_to_show):
+        if i_point_cloud_to_show < len(self.point_clouds):
+            print("Point cloud:", self.point_cloud_names[i_point_cloud_to_show])
+            self.shown_point_cloud_index = i_point_cloud_to_show
+            i_point_cloud = 0
+            for point_cloud in self.point_clouds:
+                if i_point_cloud == i_point_cloud_to_show:
+                    point_cloud.show()
+                else:
+                    point_cloud.hide()
+                i_point_cloud += 1
+            self.render_window.Render()
+
     def set_frame(self, i_frame):
         print("Frame:", i_frame)
 
         self.load_frame_meshes(i_frame)
-        # self.canonical_blocks.set_frame(i_frame)
-        # self.live_blocks.set_frame(i_frame)
-        # self.rays.set_frame(i_frame)
+        self.load_frame_point_clouds(i_frame)
         self.current_frame = i_frame
 
         self.render_window.Render()
 
-    def advance_view(self):
+    def advance_mesh(self):
         if self.shown_mesh_index == len(self.meshes) - 1:
             if self.current_frame < self.frame_index_upper_bound - 1:
                 self.set_frame(self.current_frame + 1)
@@ -139,13 +179,31 @@ class VisualizerApp:
         else:
             self.show_mesh_at_index(self.shown_mesh_index + 1)
 
-    def retreat_view(self):
+    def retreat_mesh(self):
         if self.shown_mesh_index == 0:
-            if self.current_frame > 0:
+            if self.current_frame > self.start_frame_ix:
                 self.set_frame(self.current_frame - 1)
                 self.show_mesh_at_index(len(self.meshes) - 1)
         else:
             self.show_mesh_at_index(self.shown_mesh_index - 1)
+
+    def advance_point_cloud(self):
+        if len(self.point_clouds) > 0:
+            if self.shown_point_cloud_index == len(self.point_clouds) - 1:
+                if self.current_frame < self.frame_index_upper_bound - 1:
+                    self.set_frame(self.current_frame + 1)
+                    self.show_point_cloud_at_index(0)
+            else:
+                self.show_point_cloud_at_index(self.shown_point_cloud_index + 1)
+
+    def retreat_point_cloud(self):
+        if len(self.point_clouds) > 0:
+            if self.shown_point_cloud_index == 0:
+                if self.current_frame > self.start_frame_ix:
+                    self.set_frame(self.current_frame - 1)
+                    self.show_point_cloud_at_index(len(self.point_clouds) - 1)
+            else:
+                self.show_point_cloud_at_index(self.shown_point_cloud_index - 1)
 
     # Handle the mouse button events.
     def button_event(self, obj, event):
@@ -272,46 +330,24 @@ class VisualizerApp:
         elif key == "bracketleft":
             if self.current_frame > 0:
                 self.set_frame(self.current_frame - 1)
-        # elif key == "c":
-        #     if self.__alt_pressed:
-        #         self.rays.canonical_source_point_cloud.toggle_visibility()
-        #         self.render_window.Render()
-        #     else:
-        #         print(self.renderer.GetActiveCamera().GetPosition())
         elif key == "Right":
-            self.advance_view()
+            self.advance_mesh()
         elif key == "Left":
-            self.retreat_view()
+            self.retreat_mesh()
+        elif key == "Up":
+            self.retreat_point_cloud()
+        elif key == "Down":
+            self.advance_point_cloud()
         elif key == "p":
             if self.__alt_pressed:
                 print(self.render_window.GetPosition())
             else:
-                pass
+                if len(self.point_clouds) > 0:
+                    self.point_clouds[self.shown_point_cloud_index].toggle_visibility()
+                    self.render_window.Render()
         elif key == "m":
             self.meshes[self.shown_mesh_index].toggle_visibility()
             self.render_window.Render()
-        # elif key == "l":
-        #     if self.__alt_pressed:
-        #         self.rays.live_source_point_cloud.toggle_visibility()
-        #     else:
-        #         self.active_blocks.toggle_labels()
-        #     self.render_window.Render()
-        # elif key == "b":
-        #     if self.__alt_pressed:
-        #         blocks_visible = self.active_blocks.blocks_visible()
-        #         labels_visible = self.active_blocks.labels_visible()
-        #         if blocks_visible:
-        #             self.active_blocks.hide_blocks()
-        #         if labels_visible:
-        #             self.active_blocks.hide_labels()
-        #         self.active_blocks = self.live_blocks if self.active_blocks == self.canonical_blocks else self.canonical_blocks
-        #         if blocks_visible:
-        #             self.active_blocks.show_blocks()
-        #         if labels_visible:
-        #             self.active_blocks.show_labels()
-        #     else:
-        #         self.active_blocks.toggle_visibility()
-        #     self.render_window.Render()
         elif key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = True
 
