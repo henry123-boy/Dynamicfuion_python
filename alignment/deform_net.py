@@ -194,11 +194,12 @@ class DeformNet(torch.nn.Module):
         )
 
         # We filter out any boundary matches where any of the four pixels are invalid.
-        # TODO: here be dragons
+        # target_validity: mask for all points that are within the desired depth range
         target_validity = ((target_points > 0.0) & (target_points <= opt.gn_max_depth)).type(torch.float32)
         target_matches_validity = torch.nn.functional.grid_sample(
             target_validity, xy_coords_warped, mode="bilinear", padding_mode='zeros', align_corners=False
         )
+        # match validity mask
         target_matches_validity = target_matches_validity[:, 2, :, :] >= 0.999
 
         # Prepare masks for both valid source points and target matches
@@ -263,7 +264,7 @@ class DeformNet(torch.nn.Module):
         deformed_points_idxs = torch.zeros((batch_size, opt.gn_max_warped_points), dtype=torch.int64, device=source.device)
         deformed_points_subsampled = torch.zeros((batch_size), dtype=torch.uint8, device=source.device)
 
-        # Skip the solver
+        # Optionally, skip the solver
         if not evaluate and opt.skip_solver:
             return {
                 "flow_data": [flow2, flow3, flow4, flow5, flow6],
@@ -547,11 +548,14 @@ class DeformNet(torch.nn.Module):
                     node_idxs_k = source_anchors[:, k]  # (num_matches)
                     nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
 
-                    # Compute deformed point contribution.                    
+                    # Compute deformed point contribution.
+                    # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
                     rotated_points_k = torch.matmul(R_current[node_idxs_k],
-                                                    source_points_filtered - nodes_k)  # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
+                                                    source_points_filtered - nodes_k)
                     deformed_points_k = rotated_points_k + nodes_k + t_current[node_idxs_k]
-                    deformed_points += source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * deformed_points_k  # (num_matches, 3, 1)
+                    deformed_points += \
+                        source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * \
+                        deformed_points_k  # (num_matches, 3, 1)
 
                 # Get necessary components of deformed points.
                 eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage
@@ -583,38 +587,44 @@ class DeformNet(torch.nn.Module):
 
                     # Compute jacobian wrt. TRANSLATION.
                     # FLOW PART
-                    jacobian_data[
-                        data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 0] += lambda_data_flow * weights_k * fx_div_z  # (num_matches)
-                    jacobian_data[
-                        data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += lambda_data_flow * weights_k * minus_fx_mul_x_div_z_2  # (num_matches)
-                    jacobian_data[
-                        data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 1] += lambda_data_flow * weights_k * fy_div_z  # (num_matches)
-                    jacobian_data[
-                        data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += lambda_data_flow * weights_k * minus_fy_mul_y_div_z_2  # (num_matches)
+                    jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 0] += \
+                        lambda_data_flow * weights_k * fx_div_z  # (num_matches)
+                    jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                        lambda_data_flow * weights_k * minus_fx_mul_x_div_z_2  # (num_matches)
+                    jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 1] += \
+                        lambda_data_flow * weights_k * fy_div_z  # (num_matches)
+                    jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                        lambda_data_flow * weights_k * minus_fy_mul_y_div_z_2  # (num_matches)
 
                     # DEPTH PART
-                    jacobian_data[data_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += lambda_data_depth * weights_k  # (num_matches)
+                    jacobian_data[data_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                        lambda_data_depth * weights_k  # (num_matches)
 
                     # Compute jacobian wrt. ROTATION.
                     # FLOW PART
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 0] += lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0,
-                                                                                                                0] + minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 0]
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 1] += lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0,
-                                                                                                                1] + minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 1]
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 2] += lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0,
-                                                                                                                2] + minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 2]
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 0] += lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1,
-                                                                                                                0] + minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 0]
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 1] += lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1,
-                                                                                                                1] + minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 1]
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 2] += lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1,
-                                                                                                                2] + minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[
-                                                                                                                                              :, 2, 2]
+                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 0] += \
+                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 0] + \
+                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+
+                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 1] += \
+                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 1] + \
+                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+
+                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 2] += \
+                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 2] + \
+                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 2]
+
+                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 0] += \
+                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 0] + \
+                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+
+                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 1] += \
+                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 1] + \
+                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+
+                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 2] += \
+                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 2] + \
+                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 2]
 
                     # DEPTH PART
                     jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += lambda_data_depth * skew_symetric_mat_data[:, 2, 0]

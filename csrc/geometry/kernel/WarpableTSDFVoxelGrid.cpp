@@ -111,15 +111,19 @@ void DetermineWhichBlocksToActivateWithWarp(core::Tensor& blocks_to_activate_mas
 		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CPU>(blocks_to_activate_mask,
 		                                                                      candidate_block_coordinates,
 		                                                                      depth_downsampled,
-		                                                                      intrinsics_downsampled, extrinsics, graph_nodes, node_rotations, node_translations,
-		                                                                      node_coverage, block_resolution, voxel_size, sdf_truncation_distance);
+		                                                                      intrinsics_downsampled, extrinsics, graph_nodes, node_rotations,
+		                                                                      node_translations,
+		                                                                      node_coverage, block_resolution, voxel_size,
+		                                                                      sdf_truncation_distance);
 	} else if (device_type == core::Device::DeviceType::CUDA) {
 #ifdef BUILD_CUDA_MODULE
 		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CUDA>(blocks_to_activate_mask,
 		                                                                       candidate_block_coordinates,
 		                                                                       depth_downsampled,
-		                                                                       intrinsics_downsampled, extrinsics, graph_nodes, node_rotations, node_translations,
-		                                                                       node_coverage, block_resolution, voxel_size, sdf_truncation_distance);
+		                                                                       intrinsics_downsampled, extrinsics, graph_nodes, node_rotations,
+		                                                                       node_translations,
+		                                                                       node_coverage, block_resolution, voxel_size,
+		                                                                       sdf_truncation_distance);
 #else
 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

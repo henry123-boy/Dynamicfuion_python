@@ -54,6 +54,8 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
                         int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
+
+//TODO: provide dual-quaternion version (?)
 void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
                                             const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
                                             const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,

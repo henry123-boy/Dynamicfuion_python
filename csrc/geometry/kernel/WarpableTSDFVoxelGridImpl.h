@@ -28,8 +28,11 @@
 #include "geometry/DualQuaternion.h"
 #include "geometry/kernel/Defines.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"
+
 #ifndef __CUDACC__
+
 #include <tbb/concurrent_unordered_set.h>
+
 #endif
 
 
@@ -41,7 +44,6 @@ namespace nnrt {
 namespace geometry {
 namespace kernel {
 namespace tsdf {
-
 
 
 template<core::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
@@ -296,17 +298,50 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 	);
 }
 
+// inline
+// NNRT_DEVICE_WHEN_CUDACC
+// void ComputeVoxelHashBlockCorners()
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
                                             const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
                                             const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                                            const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                                            int64_t block_resolution, float voxel_size, float sdf_truncation_distance){
+                                            const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                                            float node_coverage,
+                                            int64_t block_resolution, float voxel_size, float sdf_truncation_distance) {
+	auto candidate_block_count = candidate_block_coordinates.GetLength();
+	blocks_to_activate_mask = core::Tensor({candidate_block_count}, core::Dtype::Bool, candidate_block_coordinates.GetDevice());
+
+	NDArrayIndexer node_indexer(graph_nodes, 1);
+	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
+	NDArrayIndexer node_translation_indexer(node_translations, 1);
+	NDArrayIndexer downsampled_depth_indexer(depth_downsampled, 2);
+
+	// intermediate result storage
+	core::Tensor candidate_block_corners({candidate_block_count * 8, 3}, core::Dtype::Float32, candidate_block_coordinates.GetDevice());
+	NDArrayIndexer 	candidate_block_corner_indexer(candidate_block_corners, 1);
+	TransformIndexer transform_indexer(intrinsics_downsampled, extrinsics, 1.0);
+
+	//TODO
+// #if defined(__CUDACC__)
+// 	core::CUDACachedMemoryManager::ReleaseCache();
+// #endif
+// #if defined(__CUDACC__)
+// 	core::kernel::CUDALauncher launcher;
+// #else
+// 	core::kernel::CPULauncher launcher;
+// #endif
+	//TODO
+	// launcher.LaunchGeneralKernel(
+	// 		candidate_block_count,
+	// 		[=] OPEN3D_DEVICE {
+	//
+	// 		}
+	// );
+
 
 }
-
 
 
 } // namespace tsdf
