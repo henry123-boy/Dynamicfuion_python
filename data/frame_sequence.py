@@ -1,9 +1,16 @@
 import typing
 import os
+
+import numpy as np
 import open3d as o3d
 from collections import Sequence
 from enum import Enum
+
+import options
+from data import DeformDataset, StaticCenterCrop
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
+
+from pipeline.graph import DeformationGraphNumpy
 
 
 class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]):
@@ -89,6 +96,37 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             frame = self.get_frame_at(self._next_frame_index)
             self._next_frame_index += 1
             return frame
+
+    def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
+        if self._base_dataset_type == DatasetType.CUSTOM:
+            return None
+        graph_edges_dir = os.path.join(self.get_sequence_directory(), "graph_edges")
+        # TODO: make flexible-enough to load even when graph data is not available and signify this by storing some
+        #  value in a field
+
+        found_matching_start_frame = False
+        current_frame_index = self._next_frame_index - 1
+        graph_filename = ""
+        for filename in os.listdir(graph_edges_dir):
+            filename_sans_ext = os.path.splitext(filename)[0]
+            parts = filename_sans_ext.split('_')
+            start_frame = int(parts[2])
+            if start_frame == current_frame_index:
+                found_matching_start_frame = True
+                graph_filename = filename_sans_ext
+                break
+
+        if not found_matching_start_frame:
+            return None
+
+        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, _, _ = \
+            DeformDataset.load_graph_data(self.get_sequence_directory(), graph_filename, False,
+                                          StaticCenterCrop(self._resolution,
+                                                           (options.alignment_image_height,
+                                                            options.alignment_image_width)))
+        graph = DeformationGraphNumpy(graph_nodes, graph_edges, graph_edges_weights, graph_clusters)
+
+        return graph
 
     def get_next_frame_index(self):
         return self._next_frame_index

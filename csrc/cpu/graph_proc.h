@@ -26,7 +26,7 @@ py::tuple sample_nodes(
 		bool random_shuffle);
 
 
-void compute_edges_geodesic(
+void compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<bool>& vertex_mask_in,
 		const py::array_t<int>& face_indices_in,
@@ -39,7 +39,7 @@ void compute_edges_geodesic(
 		bool enforce_total_num_neighbors
 );
 
-void compute_edges_geodesic(
+void compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
@@ -51,7 +51,7 @@ void compute_edges_geodesic(
 		bool enforce_total_num_neighbors
 );
 
-py::tuple compute_edges_geodesic(
+py::tuple compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<bool>& vertex_mask_in,
 		const py::array_t<int>& face_indices_in,
@@ -60,7 +60,7 @@ py::tuple compute_edges_geodesic(
 		bool enforce_total_num_neighbors
 );
 
-py::tuple compute_edges_geodesic(
+py::tuple compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
@@ -91,8 +91,8 @@ py::tuple compute_clusters(const py::array_t<int>& graph_edges_in);
  * For each input pixel it computes 4 nearest anchors, following graph edges.
  * It also compute skinning weights for every pixel.
  */
-void compute_pixel_anchors_geodesic(
-		const py::array_t<float>& node_to_vertex_shortest_path_distance,
+void compute_pixel_anchors_shortest_path(
+		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
 		const py::array_t<int>& vertex_pixels,
@@ -102,7 +102,7 @@ void compute_pixel_anchors_geodesic(
 		float node_coverage
 );
 
-py::tuple compute_pixel_anchors_geodesic(
+py::tuple compute_pixel_anchors_shortest_path(
 		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
@@ -176,6 +176,14 @@ void compute_vertex_anchors_shortest_path(
 
 py::tuple compute_vertex_anchors_shortest_path(
 		const py::array_t<float>& vertices,
+		const py::array_t<float>& nodes,
+		const py::array_t<int>& edges,
+		int anchor_count,
+		float node_coverage
+);
+
+py::tuple compute_pixel_anchors_shortest_path(
+		const py::array_t<float>& point_image,
 		const py::array_t<float>& nodes,
 		const py::array_t<int>& edges,
 		int anchor_count,

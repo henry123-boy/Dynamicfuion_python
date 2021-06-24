@@ -155,7 +155,7 @@ py::tuple sample_nodes(
 }
 
 /**
- * Custom comparison operator for geodesic priority queue.
+ * Custom comparison operator for shortest-path priority queue.
  */
 struct CustomCompare {
 	bool operator()(const std::pair<int, float>& left, const std::pair<int, float>& right) {
@@ -178,7 +178,7 @@ inline float compute_anchor_weight_square_distance(float square_distance, float 
 
 
 template<typename TVertexCheckLambda>
-inline void compute_edges_geodesic_generic(
+inline void compute_edges_shortest_path_generic(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
@@ -352,49 +352,49 @@ inline void compute_edges_geodesic_generic(
  * \param node_to_vertex_distances_out
  * \param enforce_total_num_neighbors
  */
-void compute_edges_geodesic(
+void compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<bool>& vertex_mask_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		const int max_neighbor_count, const float node_coverage,
+		int max_neighbor_count, const float node_coverage,
 		py::array_t<int>& graph_edges_out,
 		py::array_t<float>& graph_edges_weights_out,
 		py::array_t<float>& graph_edges_distances_out,
 		py::array_t<float>& node_to_vertex_distances_out,
-		const bool enforce_total_num_neighbors
+		bool enforce_total_num_neighbors
 ) {
-	compute_edges_geodesic_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
-	                               graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
-	                               enforce_total_num_neighbors,
-	                               [&vertex_mask_in](int vertex_index) { return *vertex_mask_in.data(vertex_index); });
+	compute_edges_shortest_path_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                                    graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                                    enforce_total_num_neighbors,
+	                                    [&vertex_mask_in](int vertex_index) { return *vertex_mask_in.data(vertex_index); });
 }
 
-void compute_edges_geodesic(
+void compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		const int max_neighbor_count, const float node_coverage,
+		int max_neighbor_count, float node_coverage,
 		py::array_t<int>& graph_edges_out,
 		py::array_t<float>& graph_edges_weights_out,
 		py::array_t<float>& graph_edges_distances_out,
 		py::array_t<float>& node_to_vertex_distances_out,
-		const bool enforce_total_num_neighbors
+		bool enforce_total_num_neighbors
 ) {
-	compute_edges_geodesic_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
-	                               graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
-	                               enforce_total_num_neighbors,
-	                               [](int vertex_index) { return true; });
+	compute_edges_shortest_path_generic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                                    graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                                    enforce_total_num_neighbors,
+	                                    [](int vertex_index) { return true; });
 }
 
-py::tuple compute_edges_geodesic(
+py::tuple compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<bool>& vertex_mask_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		const int max_neighbor_count,
-		const float node_coverage,
-		const bool enforce_total_num_neighbors) {
+		int max_neighbor_count,
+		float node_coverage,
+		bool enforce_total_num_neighbors) {
 
 
 	const ssize_t node_count = node_indices_in.shape(0);
@@ -412,19 +412,19 @@ py::tuple compute_edges_geodesic(
 	py::array_t<float> node_to_vertex_distances_out({node_count, vertex_count});
 	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0), node_to_vertex_distances_out.size(), -1.f);
 
-	compute_edges_geodesic(vertex_positions_in, vertex_mask_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
-	                       graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
-	                       enforce_total_num_neighbors);
+	compute_edges_shortest_path(vertex_positions_in, vertex_mask_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                            graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                            enforce_total_num_neighbors);
 
 	return py::make_tuple(graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out);
 }
 
-py::tuple compute_edges_geodesic(
+py::tuple compute_edges_shortest_path(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		const int max_neighbor_count, const float node_coverage,
-		const bool enforce_total_num_neighbors
+		int max_neighbor_count, float node_coverage,
+		bool enforce_total_num_neighbors
 ) {
 	const ssize_t node_count = node_indices_in.shape(0);
 	const ssize_t vertex_count = vertex_positions_in.shape(0);
@@ -441,9 +441,9 @@ py::tuple compute_edges_geodesic(
 	py::array_t<float> node_to_vertex_distances_out({node_count, vertex_count});
 	std::fill_n(node_to_vertex_distances_out.mutable_data(0, 0), node_to_vertex_distances_out.size(), -1.f);
 
-	compute_edges_geodesic(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
-	                       graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
-	                       enforce_total_num_neighbors);
+	compute_edges_shortest_path(vertex_positions_in, face_indices_in, node_indices_in, max_neighbor_count, node_coverage,
+	                            graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out,
+	                            enforce_total_num_neighbors);
 
 	return py::make_tuple(graph_edges_out, graph_edges_weights_out, graph_edges_distances_out, node_to_vertex_distances_out);
 }
@@ -686,15 +686,15 @@ inline void find_nearest_nodes(
 	}
 }
 
-void compute_pixel_anchors_geodesic(
-		const py::array_t<float>& node_to_vertex_shortest_path_distance,
+void compute_pixel_anchors_shortest_path(
+		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
 		const py::array_t<int>& vertex_pixels,
 		py::array_t<int>& pixel_anchors,
 		py::array_t<float>& pixel_weights,
-		const int width, const int height,
-		const float node_coverage
+		int width, int height,
+		float node_coverage
 ) {
 	// Allocate graph node ids and corresponding skinning weights.
 	// Initialize with invalid anchors.
@@ -713,35 +713,35 @@ void compute_pixel_anchors_geodesic(
 	const int vertex_count = vertices.shape(0);
 
 #pragma omp parallel for default(none) shared(vertex_pixels, pixel_anchors, pixel_weights, valid_nodes_mask, \
-    node_to_vertex_shortest_path_distance) firstprivate(vertex_count, node_coverage)
+    node_to_vertex_distance) firstprivate(vertex_count, node_coverage)
 	for (int vertex_id = 0; vertex_id < vertex_count; vertex_id++) {
 		// Get corresponding pixel location
 		int u = *vertex_pixels.data(vertex_id, 0);
 		int v = *vertex_pixels.data(vertex_id, 1);
 
 		// Initialize some variables
-		std::vector<int> nearest_geodesic_node_ids;
-		std::vector<float> dist_to_nearest_geodesic_nodes;
+		std::vector<int> nearest_node_ids;
+		std::vector<float> distances_to_nearest_nodes;
 		std::vector<float> skinning_weights;
 
-		nearest_geodesic_node_ids.reserve(GRAPH_K);
-		dist_to_nearest_geodesic_nodes.reserve(GRAPH_K);
+		nearest_node_ids.reserve(GRAPH_K);
+		distances_to_nearest_nodes.reserve(GRAPH_K);
 		skinning_weights.reserve(GRAPH_K);
 
-		// Find closest geodesic nodes
+		// Find closest nodes
 		find_nearest_nodes(
-				node_to_vertex_shortest_path_distance, valid_nodes_mask, vertex_id,
-				nearest_geodesic_node_ids, dist_to_nearest_geodesic_nodes
+				node_to_vertex_distance, valid_nodes_mask, vertex_id,
+				nearest_node_ids, distances_to_nearest_nodes
 		);
 
-		int anchor_count = nearest_geodesic_node_ids.size();
+		int anchor_count = nearest_node_ids.size();
 
 		// Compute skinning weights.
 		float weight_sum{0.f};
 		for (int i = 0; i < anchor_count; ++i) {
-			float geodesic_dist_to_node = dist_to_nearest_geodesic_nodes[i];
+			float shortest_path_distance_to_node = distances_to_nearest_nodes[i];
 
-			float weight = compute_anchor_weight(geodesic_dist_to_node, node_coverage);
+			float weight = compute_anchor_weight(shortest_path_distance_to_node, node_coverage);
 			weight_sum += weight;
 
 			skinning_weights.push_back(weight);
@@ -760,13 +760,13 @@ void compute_pixel_anchors_geodesic(
 
 		// Store the results.
 		for (int i = 0; i < anchor_count; i++) {
-			*pixel_anchors.mutable_data(v, u, i) = nearest_geodesic_node_ids[i];
+			*pixel_anchors.mutable_data(v, u, i) = nearest_node_ids[i];
 			*pixel_weights.mutable_data(v, u, i) = skinning_weights[i];
 		}
 	}
 }
 
-py::tuple compute_pixel_anchors_geodesic(
+py::tuple compute_pixel_anchors_shortest_path(
 		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,
 		const py::array_t<float>& vertices,
@@ -775,8 +775,8 @@ py::tuple compute_pixel_anchors_geodesic(
 		float node_coverage) {
 	py::array_t<int> pixel_anchors;
 	py::array_t<float> pixel_weights;
-	compute_pixel_anchors_geodesic(node_to_vertex_distance, valid_nodes_mask, vertices, vertex_pixels,
-	                               pixel_anchors, pixel_weights, width, height, node_coverage);
+	compute_pixel_anchors_shortest_path(node_to_vertex_distance, valid_nodes_mask, vertices, vertex_pixels,
+	                                    pixel_anchors, pixel_weights, width, height, node_coverage);
 	return py::make_tuple(pixel_anchors, pixel_weights);
 }
 
@@ -1304,7 +1304,7 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
                                           const py::array_t<float>& nodes,
 		// edges are assumed to have been computed in a shortest-path manner,
 		// i.e. what the NNRT authors called "geodesically" -- like via the
-		// compute_edges_geodesic function in the original source,
+		// compute_edges_shortest_path function in the original source,
 		// for each vertex - target vertices sharing an edge, ordered by shortest edge
 		                                 const py::array_t<int>& edges,
 		                                  py::array_t<int>& anchors,

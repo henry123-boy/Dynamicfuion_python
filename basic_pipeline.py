@@ -115,6 +115,7 @@ class FusionPipeline:
         device = self.device
         volume = self.volume
         sequence = self.sequence
+
         fx, fy, cx, cy = self.fx, self.fy, self.cx, self.cy
 
         #####################################################################################################
@@ -169,9 +170,14 @@ class FusionPipeline:
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph
-                self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
-                                                               erosion_iteration_count=10,
-                                                               neighbor_count=8)
+                if po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
+                    self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
+                                                                   erosion_iteration_count=10,
+                                                                   neighbor_count=8)
+                else:
+                    self.graph = sequence.get_current_frame_graph()
+                    if self.graph is None:
+                        raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
             else:
 
@@ -216,9 +222,15 @@ class FusionPipeline:
                     target_normal_map = cpu_compute_normal(target_point_image)
                 target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
-                pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                    self.graph.nodes, source_point_image,
-                    options.node_coverage)
+                if po.pixel_anchor_computation_mode == po.PixelAnchorComputationMode.EUCLIDEAN:
+                    pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
+                        self.graph.nodes, source_point_image,
+                        options.node_coverage)
+                else:
+                    raise NotImplementedError("Argh!")
+                    #  TODO implement
+                    # pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(source_point_image,
+                    #     self.graph.nodes, self.graph.edges, po.anchor_node_count, options.node_coverage)
 
                 pixel_anchors = cropper(pixel_anchors)
                 pixel_weights = cropper(pixel_weights)

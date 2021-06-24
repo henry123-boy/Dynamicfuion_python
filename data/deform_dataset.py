@@ -222,8 +222,13 @@ class DeformDataset(Dataset):
         graph_node_deformations = load_graph_node_deformations(graph_node_deformations_path) \
             if graph_node_deformations_path is not None else None
         graph_clusters = load_graph_clusters(graph_clusters_path)
-        pixel_anchors = cropper(load_int_image(pixel_anchors_path))
-        pixel_weights = cropper(load_float_image(pixel_weights_path))
+
+        if cropper is not None:
+            pixel_anchors = cropper(load_int_image(pixel_anchors_path))
+            pixel_weights = cropper(load_float_image(pixel_weights_path))
+        else:
+            pixel_anchors = load_int_image(pixel_anchors_path)
+            pixel_weights = load_float_image(pixel_weights_path)
 
         assert np.isfinite(graph_edges_weights).all(), graph_edges_weights
         assert np.isfinite(pixel_weights).all(), pixel_weights

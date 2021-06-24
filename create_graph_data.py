@@ -11,9 +11,9 @@ from utils import image
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import get_vertex_erosion_mask as erode_mesh_c
 from nnrt import sample_nodes as sample_nodes_c
-from nnrt import compute_edges_geodesic as compute_edges_geodesic_c
+from nnrt import compute_edges_shortest_path as compute_edges_shortest_path_c
 from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
-from nnrt import compute_pixel_anchors_geodesic as compute_pixel_anchors_geodesic_c
+from nnrt import compute_pixel_anchors_shortest_path as compute_pixel_anchors_shortest_path_c
 from nnrt import compute_clusters as compute_clusters_c
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     visible_vertices = np.ones_like(valid_vertices)
 
-    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = compute_edges_geodesic_c(
+    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = compute_edges_shortest_path_c(
         vertices, visible_vertices, faces, node_indices,
         NUM_NEIGHBORS, NODE_COVERAGE, ENFORCE_TOTAL_NUM_NEIGHBORS
     )
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     #########################################################################
     # Compute pixel anchors.
     #########################################################################
-    pixel_anchors, pixel_weights = compute_pixel_anchors_geodesic_c(
+    pixel_anchors, pixel_weights = compute_pixel_anchors_shortest_path_c(
         node_to_vertex_distances, valid_nodes_mask,
         vertices, vertex_pixels,
         width, height, NODE_COVERAGE
@@ -281,7 +281,7 @@ if __name__ == "__main__":
                 raise Exception("Not good")
 
         # 3. Update pixel anchors using the id mapping (note that, at this point, pixel_anchors is already free of "bad" nodes, since
-        # 'compute_pixel_anchors_geodesic_c' was given 'valid_nodes_mask')
+        # 'compute_pixel_anchors_shortest_path_c' was given 'valid_nodes_mask')
         update_pixel_anchors_c(node_id_mapping, pixel_anchors)
 
     #########################################################################
