@@ -174,6 +174,16 @@ void compute_vertex_anchors_shortest_path(
 		float node_coverage
 );
 
+void compute_pixel_anchors_shortest_path(
+		const py::array_t<float>& point_image,
+		const py::array_t<float>& nodes,
+		const py::array_t<int>& edges,
+		py::array_t<int>& anchors,
+		py::array_t<float>& weights,
+		int anchor_count,
+		float node_coverage
+);
+
 py::tuple compute_vertex_anchors_shortest_path(
 		const py::array_t<float>& vertices,
 		const py::array_t<float>& nodes,
@@ -189,5 +199,6 @@ py::tuple compute_pixel_anchors_shortest_path(
 		int anchor_count,
 		float node_coverage
 );
+
 
 } // namespace graph_proc
