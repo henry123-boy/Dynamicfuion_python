@@ -40,7 +40,7 @@ source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 options.use_mask = True
 options.gn_max_nodes = 3000
 graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
-pixel_anchor_computation_mode = PixelAnchorComputationMode.EUCLIDEAN
+pixel_anchor_computation_mode = PixelAnchorComputationMode.SHORTEST_PATH
 
 # Integration
 anchor_node_count = 4  # used for initial graph generation, mesh warping, and integration
@@ -76,8 +76,7 @@ record_gn_point_clouds = True
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_OFFSET_XY.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
+sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value

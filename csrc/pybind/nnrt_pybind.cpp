@@ -204,6 +204,14 @@ PYBIND11_MODULE(nnrt, m) {
 				  "The shortest path distance between a vertex and a target node is computed by finding the closest node by "
 				  "euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
 		  );
+	m.def("compute_pixel_anchors_shortest_path",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, const py::array_t<int>&, int, float>(
+			      &graph_proc::compute_pixel_anchors_shortest_path),
+	      "point_image"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage"_a,
+	      "Finds pixel anchor nodes based on shortest path distance from point (in point image) to closest nodes by "
+		  "path distance. The shortest path distance between a vertex and a target node is computed by finding the closest"
+		  "node by euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
+	);
 
 
 }

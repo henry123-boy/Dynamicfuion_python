@@ -224,13 +224,12 @@ class FusionPipeline:
 
                 if po.pixel_anchor_computation_mode == po.PixelAnchorComputationMode.EUCLIDEAN:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                        self.graph.nodes, source_point_image,
-                        options.node_coverage)
+                        self.graph.nodes, source_point_image, options.node_coverage
+                    )
                 else:
-                    raise NotImplementedError("Argh!")
-                    #  TODO implement
-                    # pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(source_point_image,
-                    #     self.graph.nodes, self.graph.edges, po.anchor_node_count, options.node_coverage)
+                    pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
+                        source_point_image, self.graph.nodes, self.graph.edges, po.anchor_node_count, options.node_coverage
+                    )
 
                 pixel_anchors = cropper(pixel_anchors)
                 pixel_weights = cropper(pixel_weights)

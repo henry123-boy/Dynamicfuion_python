@@ -1291,6 +1291,101 @@ void update_pixel_anchors(
 }
 
 /**
+ * \brief Find anchor_count shortest path neighbors to the provided vertex, i.e.
+ * compute euclidean nearest neighbor node to the given vertex, then find n-1 nearest shortest-path neighbors of that node.
+ * (To be moved) Record indices (of said neighbors) to provided anchor array & compute weights based on the corresponding shortest-path distances.
+ * \param[out] vertex_anchors
+ * \param[out] vertex_weights
+ * \param vertex
+ * \param nodes
+ * \param edges
+ * \param anchor_count
+ * \param node_coverage
+ */
+inline
+void djikstra_knn(int* vertex_anchors,
+                  float* vertex_weights,
+                  const Eigen::Vector3f& vertex,
+                  const py::array_t<float>& nodes,
+                  const py::array_t<int>& edges,
+                  const int anchor_count,
+                  const float node_coverage) {
+	std::map<int, float> distance_by_shortest_path_anchor;
+	typedef std::pair<int, float> index_and_distance;
+	auto node_geodesic_comparator = [](const index_and_distance& a, const index_and_distance& b) {
+		return a.second > b.second;
+	};
+	std::priority_queue<index_and_distance, std::vector<index_and_distance>,
+			decltype(node_geodesic_comparator)> queue(node_geodesic_comparator);
+
+	while (distance_by_shortest_path_anchor.size() < anchor_count) {
+		// Keep only the anchor_count nearest Euclidean neighbors.
+		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
+				get_knn_with_squared_distances_brute_force(vertex, nodes, 1,
+				                                           [distance_by_shortest_path_anchor](int i) {
+					                                           return distance_by_shortest_path_anchor.find(i) ==
+					                                                  distance_by_shortest_path_anchor.end();
+				                                           });
+		if(nearest_nodes_with_squared_distances.empty()){
+			break; // no node to initialize queue with, we've got no more valid anchors to consider
+		}
+
+		auto closest_euclidean_node_and_distance = nearest_nodes_with_squared_distances.front();
+		queue.emplace(closest_euclidean_node_and_distance.first, sqrt(closest_euclidean_node_and_distance.second));
+
+		while (!queue.empty()) {
+			auto graph_node_and_distance = queue.top();
+			queue.pop();
+
+			int source_node_index = graph_node_and_distance.first;
+			float source_path_distance = graph_node_and_distance.second;
+
+			if (distance_by_shortest_path_anchor.find(source_node_index) != distance_by_shortest_path_anchor.end()){
+				continue;
+			}
+
+			// insert new node in the weight map
+			distance_by_shortest_path_anchor[source_node_index] = source_path_distance;
+			if (distance_by_shortest_path_anchor.size() >= anchor_count)
+				break;
+
+			Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
+
+			for (int i_edge = 0; i_edge < GRAPH_K; i_edge++) {
+				int target_node_index = *edges.data(source_node_index, i_edge);
+				if (target_node_index > -1) {
+					Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
+					float distance_source_to_target = (target_node - source_node).norm();
+					queue.emplace(target_node_index, distance_source_to_target + source_path_distance);
+				}
+			}
+		}
+	}
+
+	//TODO: DRY violation -- move weight normalization out to a separate function and reuse throughout file
+	float weight_sum = 0;
+	int valid_anchor_count = 0;
+	for (const auto anchor : distance_by_shortest_path_anchor) {
+		vertex_anchors[valid_anchor_count] = anchor.first;
+		float weight = compute_anchor_weight(anchor.second, node_coverage);
+		vertex_weights[valid_anchor_count] = weight;
+		weight_sum += weight;
+		valid_anchor_count++;
+	}
+
+	// Normalize weights
+	if (weight_sum > 0) {
+		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
+			vertex_weights[i_anchor] /= weight_sum;
+		}
+	} else if (valid_anchor_count > 0) {
+		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
+			vertex_weights[i_anchor] = 1.f / static_cast<float>(valid_anchor_count);
+		}
+	}
+}
+
+/**
  * \brief compute point anchors based on shortest path within the graph
  * \param vertex_to_node_distance
  * \param vertices
@@ -1313,9 +1408,10 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
 		                                  float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
 	int vertex_count = static_cast<int>(vertices.shape(0));
+	int node_count = static_cast<int>(nodes.shape(0));
 
 	assert(edges.shape(1) == GRAPH_K);
-	assert(edges.shape(0) == vertex_count);
+	assert(edges.shape(0) == node_count);
 
 	// Initialize with invalid anchors.
 	anchors.resize({vertex_count, anchor_count}, false);
@@ -1332,82 +1428,11 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
 		                       *vertices.data(i_vertex, 1),
 		                       *vertices.data(i_vertex, 2));
 
-		std::map<int, float> distance_by_shortest_path_anchor;
-		typedef std::pair<int, float> index_and_distance;
-		auto node_geodesic_comparator = [](const index_and_distance& a, const index_and_distance& b) {
-			return a.second > b.second;
-		};
-		std::priority_queue<index_and_distance, std::vector<index_and_distance>,
-				decltype(node_geodesic_comparator)> queue(node_geodesic_comparator);
-
-		while (distance_by_shortest_path_anchor.size() < anchor_count) {
-			// Keep only the anchor_count nearest Euclidean neighbors.
-			std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
-					get_knn_with_squared_distances_brute_force(vertex, nodes, 1,
-					                                           [distance_by_shortest_path_anchor](int i) {
-						                                           return distance_by_shortest_path_anchor.find(i) ==
-						                                                  distance_by_shortest_path_anchor.end();
-					                                           });
-			if(nearest_nodes_with_squared_distances.empty()){
-				break; // no node to initialize queue with, we've got no more valid anchors to consider
-			}
-
-			auto closest_euclidean_node_and_distance = nearest_nodes_with_squared_distances.front();
-			queue.emplace(closest_euclidean_node_and_distance.first, sqrt(closest_euclidean_node_and_distance.second));
-
-			while (!queue.empty()) {
-				auto graph_node_and_distance = queue.top();
-				queue.pop();
-
-				int source_node_index = graph_node_and_distance.first;
-				float source_path_distance = graph_node_and_distance.second;
-
-				if (distance_by_shortest_path_anchor.find(source_node_index) != distance_by_shortest_path_anchor.end()){
-					continue;
-				}
-
-				// insert new node in the weight map
-				distance_by_shortest_path_anchor[source_node_index] = source_path_distance;
-				if (distance_by_shortest_path_anchor.size() >= anchor_count)
-					break;
-
-				Eigen::Map<const Eigen::Vector3f> source_node(nodes.data(source_node_index, 0));
-
-				for (int i_edge = 0; i_edge < GRAPH_K; i_edge++) {
-					int target_node_index = *edges.data(i_vertex, i_edge);
-					if (target_node_index > -1) {
-						Eigen::Map<const Eigen::Vector3f> target_node(nodes.data(target_node_index, 0));
-						float distance_source_to_target = (target_node - source_node).norm();
-						queue.emplace(target_node_index, distance_source_to_target + source_path_distance);
-					}
-				}
-			}
-		}
-
 		// Write to output directly
 		auto vertex_anchors = anchors.mutable_data(i_vertex, 0);
 		auto vertex_weights = weights.mutable_data(i_vertex, 0);
 
-		float weight_sum = 0;
-		int valid_anchor_count = 0;
-		for (const auto anchor : distance_by_shortest_path_anchor) {
-			vertex_anchors[valid_anchor_count] = anchor.first;
-			float weight = compute_anchor_weight(anchor.second, node_coverage);
-			vertex_weights[valid_anchor_count] = weight;
-			weight_sum += weight;
-			valid_anchor_count++;
-		}
-
-		// Normalize weights
-		if (weight_sum > 0) {
-			for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
-				vertex_weights[i_anchor] /= weight_sum;
-			}
-		} else if (valid_anchor_count > 0) {
-			for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
-				vertex_weights[i_anchor] = 1.f / static_cast<float>(valid_anchor_count);
-			}
-		}
+		djikstra_knn(vertex_anchors, vertex_weights, vertex, nodes, edges, anchor_count, node_coverage);
 	} // end vertex loop
 }
 
@@ -1416,6 +1441,55 @@ py::tuple compute_vertex_anchors_shortest_path(const py::array_t<float>& vertice
 	py::array_t<int> anchors;
 	py::array_t<float> weights;
 	compute_vertex_anchors_shortest_path(vertices, nodes, edges, anchors, weights, anchor_count, node_coverage);
+	return py::make_tuple(anchors, weights);
+}
+
+void compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, const py::array_t<float>& nodes, const py::array_t<int>& edges,
+                                                py::array_t<int>& anchors, py::array_t<float>& weights, int anchor_count,
+                                                float node_coverage) {
+	// Allocate graph node ids and corresponding skinning weights.
+	const int image_height = static_cast<int>(point_image.shape(0));
+	const int image_width = static_cast<int>(point_image.shape(1));
+	const ssize_t image_pixel_count = point_image.shape(0) * point_image.shape(1);
+	const int node_count = static_cast<int>(nodes.shape(0));
+
+
+	assert(edges.shape(1) == GRAPH_K);
+	assert(edges.shape(0) == node_count);
+	assert(point_image.shape(2) == 3);
+	assert(nodes.shape(1) == 3);
+
+	// Initialize with invalid anchors.
+	anchors.resize({image_height, image_width, anchor_count}, false);
+	weights.resize({image_height, image_width, anchor_count}, false);
+	std::fill_n(anchors.mutable_data(0, 0), anchors.size(), -1);
+	memset(weights.mutable_data(0, 0), 0, weights.size() * sizeof(float));
+
+
+#pragma omp parallel for default(none) shared(point_image, nodes, edges, anchors, weights)\
+    firstprivate(image_height, image_width, node_coverage, anchor_count, image_pixel_count)
+	for (ssize_t i_pixel = 0; i_pixel < image_pixel_count; i_pixel++) {
+		int u = static_cast<int>(i_pixel % image_width);
+		int v = static_cast<int>(i_pixel / image_width);
+
+		// Query 3d pixel position.
+		Eigen::Vector3f vertex(*point_image.data(v, u, 0),
+		                       *point_image.data(v, u, 1),
+		                       *point_image.data(v, u, 2));
+
+		// Write to output directly
+		auto vertex_anchors = anchors.mutable_data(v, u, 0);
+		auto vertex_weights = weights.mutable_data(v, u, 0);
+
+		djikstra_knn(vertex_anchors, vertex_weights, vertex, nodes, edges, anchor_count, node_coverage);
+	} // end pixel loop
+}
+
+py::tuple compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, const py::array_t<float>& nodes, const py::array_t<int>& edges,
+                                                int anchor_count, float node_coverage) {
+	py::array_t<int> anchors;
+	py::array_t<float> weights;
+	compute_pixel_anchors_shortest_path(point_image, nodes, edges, anchors, weights, anchor_count, node_coverage);
 	return py::make_tuple(anchors, weights);
 }
 
