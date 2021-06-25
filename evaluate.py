@@ -10,6 +10,7 @@ from data import DeformDataset
 
 import utils.viz.image as utils
 import options as opt
+import data.io
 
 
 def main():
@@ -102,8 +103,8 @@ def main():
         )
 
         # mask is duplicated across feature dimension, so we can safely take the first channel
-        scene_flow_mask = scene_flow_mask[0].astype(np.bool)
-        optical_flow_mask = optical_flow_mask[0].astype(np.bool)
+        scene_flow_mask = scene_flow_mask[0].astype(bool)
+        optical_flow_mask = optical_flow_mask[0].astype(bool)
 
         # All points that have valid optical flow should also have valid scene flow
         assert np.array_equal(scene_flow_mask, optical_flow_mask)
@@ -130,11 +131,11 @@ def main():
             node_translations_pred_file), f"{node_translations_pred_file} does not exist. Make sure you are not missing any prediction."
         assert os.path.isfile(scene_flow_pred_file), f"{scene_flow_pred_file} does not exist. Make sure you are not missing any prediction."
 
-        node_translations_pred = utils.load_graph_node_deformations(
+        node_translations_pred = data.io.load_graph_node_deformations(
             node_translations_pred_file
         )
 
-        scene_flow_pred = utils.load_flow(
+        scene_flow_pred = data.io.load_flow(
             scene_flow_pred_file
         )
 
