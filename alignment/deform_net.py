@@ -80,7 +80,7 @@ class LinearSolverLU(torch.autograd.Function):
 
 
 class DeformNet(torch.nn.Module):
-    def __init__(self, telemetry_generator: TelemetryGenerator):
+    def __init__(self, telemetry_generator: TelemetryGenerator=None):
         super().__init__()
 
         self.telemetry_generator = telemetry_generator
@@ -563,7 +563,8 @@ class DeformNet(torch.nn.Module):
                         source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * \
                         deformed_points_k  # (num_matches, 3, 1)
 
-                self.telemetry_generator.process_gn_point_cloud(deformed_points, gn_i)
+                if self.telemetry_generator is not None:
+                    self.telemetry_generator.process_gn_point_cloud(deformed_points, gn_i)
 
                 # Get necessary components of deformed points.
                 eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage

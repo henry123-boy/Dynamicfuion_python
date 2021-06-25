@@ -8,7 +8,8 @@ import argparse
 
 from utils import image as image_utils
 from alignment import DeformNet
-from data import DeformDataset, io
+from data import DeformDataset
+import data.io
 
 import options as opt
 
@@ -193,11 +194,11 @@ def main():
         node_translations_pred_file = os.path.join(output_dir, f"{sample_name}_node_translations.bin")
         scene_flow_pred_file = os.path.join(output_dir, f"{sample_name}_sceneflow.sflow")
 
-        io.save_graph_node_deformations(
+        data.io.save_graph_node_deformations(
             node_translations_pred_file, node_translations_pred
         )
 
-        io.save_flow(
+        data.io.save_flow(
             scene_flow_pred_file, scene_flow_pred
         )
 
