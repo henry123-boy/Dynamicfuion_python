@@ -30,9 +30,9 @@ namespace graph {
 
 template<core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
-inline void FindKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_distances, const int anchor_count,
-                                     const int node_count, const Eigen::Vector3f& point,
-                                     const NDArrayIndexer& node_indexer) {
+inline void FindEuclideanKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_distances, const int anchor_count,
+                                              const int node_count, const Eigen::Vector3f& point,
+                                              const NDArrayIndexer& node_indexer) {
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		squared_distances[i_anchor] = INFINITY;
 	}
@@ -77,13 +77,13 @@ inline void FindKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_dis
 template<core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline bool
-FindAnchorsAndWeightsForPoint_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count, const int minimum_valid_anchor_count,
-                                        const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-                                        const float node_coverage_squared) {
+FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count, const int minimum_valid_anchor_count,
+                                                 const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+                                                 const float node_coverage_squared) {
 	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
 	// region ===================== FIND ANCHOR POINTS ================================
-	graph::FindKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
-	                                             node_count, point, node_indexer);
+	graph::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
+	                                                      node_count, point, node_indexer);
 	// endregion
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
 
@@ -121,13 +121,13 @@ FindAnchorsAndWeightsForPoint_Threshold(int32_t* anchor_indices, float* anchor_w
 template<core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void
-FindAnchorsAndWeightsForPoint(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                              const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-                              const float node_coverage_squared) {
+FindAnchorsAndWeightsForPointEuclidean(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                       const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+                                       const float node_coverage_squared) {
 	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
 	// region ===================== FIND ANCHOR POINTS ================================
-	graph::FindKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
-	                                             node_count, point, node_indexer);
+	graph::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
+	                                                      node_count, point, node_indexer);
 	// endregion
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
 

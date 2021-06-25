@@ -26,6 +26,8 @@
 
 #include "utility/PlatformIndependence.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"
+#include "Graph.h"
+
 
 using namespace open3d;
 using namespace open3d::t::geometry::kernel;
@@ -76,16 +78,22 @@ void ComputeAnchorsAndWeightsEuclidean
 				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
 				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
 				if (TUseValidAnchorThreshold) {
-					graph::FindAnchorsAndWeightsForPoint_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-					                                                            minimum_valid_anchor_count, node_count,
-					                                                            point, node_indexer, node_coverage_squared);
+					graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+					                                                                     minimum_valid_anchor_count, node_count,
+					                                                                     point, node_indexer, node_coverage_squared);
 				} else {
-					graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-					                                                  point, node_indexer, node_coverage_squared);
+					graph::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+					                                                           point, node_indexer, node_coverage_squared);
 				}
 				// endregion
 			}
 	);
+}
+template<open3d::core::Device::DeviceType TDeviceType>
+void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
+                                          const core::Tensor& edges, int anchor_count, float node_coverage) {
+	float node_coverage_squared = node_coverage * node_coverage;
+	//TODO
 }
 
 } // namespace graph

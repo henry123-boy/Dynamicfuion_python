@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser("App for visualizing block allocation and generated mesh alignment.")
     parser.add_argument("--output", "-o", type=str, help="Path to output folder",
                         default="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output/"
-                                "21-06-24-17-37-37_geodesic_initial_graph/frame_output")
+                                "21-06-25-11-35-06_RED_SHORTS_sp_initial_sp_anchors/frame_output")
     parser.add_argument("--initial_frame", "-i", type=int, help="Index of the first frame to process",
                         default=1)
     args = parser.parse_args()

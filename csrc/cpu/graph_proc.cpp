@@ -975,7 +975,7 @@ py::tuple compute_vertex_anchors_euclidean(
 
 		// Keep only the k nearest Euclidean neighbors.
 		std::list<std::pair<int, float>> nearest_nodes_with_squared_distances =
-				get_knn_with_squared_distances_brute_force(vertex, graph_nodes,GRAPH_K);
+				get_knn_with_squared_distances_brute_force(vertex, graph_nodes, GRAPH_K);
 
 		// Compute skinning weights.
 		std::vector<int> nearest_euclidean_node_indices;
@@ -1326,7 +1326,7 @@ void djikstra_knn(int* vertex_anchors,
 					                                           return distance_by_shortest_path_anchor.find(i) ==
 					                                                  distance_by_shortest_path_anchor.end();
 				                                           });
-		if(nearest_nodes_with_squared_distances.empty()){
+		if (nearest_nodes_with_squared_distances.empty()) {
 			break; // no node to initialize queue with, we've got no more valid anchors to consider
 		}
 
@@ -1340,7 +1340,7 @@ void djikstra_knn(int* vertex_anchors,
 			int source_node_index = graph_node_and_distance.first;
 			float source_path_distance = graph_node_and_distance.second;
 
-			if (distance_by_shortest_path_anchor.find(source_node_index) != distance_by_shortest_path_anchor.end()){
+			if (distance_by_shortest_path_anchor.find(source_node_index) != distance_by_shortest_path_anchor.end()) {
 				continue;
 			}
 
@@ -1375,11 +1375,11 @@ void djikstra_knn(int* vertex_anchors,
 
 	// Normalize weights
 	if (weight_sum > 0) {
-		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
+		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++) {
 			vertex_weights[i_anchor] /= weight_sum;
 		}
 	} else if (valid_anchor_count > 0) {
-		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++){
+		for (int i_anchor = 0; i_anchor < valid_anchor_count; i_anchor++) {
 			vertex_weights[i_anchor] = 1.f / static_cast<float>(valid_anchor_count);
 		}
 	}
@@ -1395,17 +1395,18 @@ void djikstra_knn(int* vertex_anchors,
  * \param height
  * \param node_coverage
  */
-void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
-                                          const py::array_t<float>& nodes,
+void compute_vertex_anchors_shortest_path(
+		const py::array_t<float>& vertices,
+		const py::array_t<float>& nodes,
 		// edges are assumed to have been computed in a shortest-path manner,
 		// i.e. what the NNRT authors called "geodesically" -- like via the
 		// compute_edges_shortest_path function in the original source,
 		// for each vertex - target vertices sharing an edge, ordered by shortest edge
-		                                 const py::array_t<int>& edges,
-		                                  py::array_t<int>& anchors,
-		                                  py::array_t<float>& weights,
-		                                  int anchor_count,
-		                                  float node_coverage) {
+		const py::array_t<int>& edges,
+		py::array_t<int>& anchors,
+		py::array_t<float>& weights,
+		int anchor_count,
+		float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
 	int vertex_count = static_cast<int>(vertices.shape(0));
 	int node_count = static_cast<int>(nodes.shape(0));
@@ -1437,7 +1438,7 @@ void compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices,
 }
 
 py::tuple compute_vertex_anchors_shortest_path(const py::array_t<float>& vertices, const py::array_t<float>& nodes, const py::array_t<int>& edges,
-                                                int anchor_count, float node_coverage) {
+                                               int anchor_count, float node_coverage) {
 	py::array_t<int> anchors;
 	py::array_t<float> weights;
 	compute_vertex_anchors_shortest_path(vertices, nodes, edges, anchors, weights, anchor_count, node_coverage);
@@ -1445,8 +1446,8 @@ py::tuple compute_vertex_anchors_shortest_path(const py::array_t<float>& vertice
 }
 
 void compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, const py::array_t<float>& nodes, const py::array_t<int>& edges,
-                                                py::array_t<int>& anchors, py::array_t<float>& weights, int anchor_count,
-                                                float node_coverage) {
+                                         py::array_t<int>& anchors, py::array_t<float>& weights, int anchor_count,
+                                         float node_coverage) {
 	// Allocate graph node ids and corresponding skinning weights.
 	const int image_height = static_cast<int>(point_image.shape(0));
 	const int image_width = static_cast<int>(point_image.shape(1));
@@ -1485,8 +1486,9 @@ void compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, 
 	} // end pixel loop
 }
 
-py::tuple compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, const py::array_t<float>& nodes, const py::array_t<int>& edges,
-                                                int anchor_count, float node_coverage) {
+py::tuple compute_pixel_anchors_shortest_path(
+		const py::array_t<float>& point_image, const py::array_t<float>& nodes,
+		const py::array_t<int>& edges, int anchor_count, float node_coverage) {
 	py::array_t<int> anchors;
 	py::array_t<float> weights;
 	compute_pixel_anchors_shortest_path(point_image, nodes, edges, anchors, weights, anchor_count, node_coverage);

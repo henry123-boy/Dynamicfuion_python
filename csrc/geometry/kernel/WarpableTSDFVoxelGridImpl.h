@@ -140,9 +140,9 @@ void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tens
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!graph::FindAnchorsAndWeightsForPoint_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                                 minimum_valid_anchor_count, node_count,
-				                                                                 voxel_global_metric, node_indexer, node_coverage_squared)) {
+				if (!graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                          minimum_valid_anchor_count, node_count,
+				                                                                          voxel_global_metric, node_indexer, node_coverage_squared)) {
 					return;
 				}
 				// endregion

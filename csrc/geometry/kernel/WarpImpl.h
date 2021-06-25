@@ -71,8 +71,8 @@ void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				graph::FindAnchorsAndWeightsForPoint<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                  point, node_indexer, node_coverage_squared);
+				graph::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                           point, node_indexer, node_coverage_squared);
 
 				auto warped_point_data = warped_point_indexer.template GetDataPtrFromCoord<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);

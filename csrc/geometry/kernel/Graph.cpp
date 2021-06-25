@@ -55,6 +55,32 @@ void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::co
 			break;
 	}
 }
+
+void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
+                                          const core::Tensor& edges, int anchor_count, float node_coverage) {
+	core::Device device = points.GetDevice();
+	core::Device::DeviceType device_type = device.GetType();
+
+	switch (device_type) {
+		case core::Device::DeviceType::CPU:
+			ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CPU>(
+					anchors, weights, points, nodes, edges, anchor_count, node_coverage);
+			break;
+		case core::Device::DeviceType::CUDA:
+#ifdef BUILD_CUDA_MODULE
+			ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CUDA>(
+					anchors, weights, points, nodes, edges, anchor_count, node_coverage);
+
+#else
+			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+			break;
+		default:
+			utility::LogError("Unimplemented device");
+			break;
+	}
+}
+
 } // namespace graph
 } // namespace kernel
 } // namespace geometry

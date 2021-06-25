@@ -27,7 +27,7 @@ class GraphGenerationMode(Enum):
     FIRST_FRAME_LOADED_GRAPH = 1
 
 
-class PixelAnchorComputationMode(Enum):
+class AnchorComputationMode(Enum):
     EUCLIDEAN = 0
     SHORTEST_PATH = 1
 
@@ -40,7 +40,7 @@ source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 options.use_mask = True
 options.gn_max_nodes = 3000
 graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
-pixel_anchor_computation_mode = PixelAnchorComputationMode.SHORTEST_PATH
+pixel_anchor_computation_mode = AnchorComputationMode.SHORTEST_PATH
 
 # Integration
 anchor_node_count = 4  # used for initial graph generation, mesh warping, and integration

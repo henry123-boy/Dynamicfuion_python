@@ -23,7 +23,7 @@
 namespace nnrt {
 namespace geometry {
 namespace kernel {
-namespace graph {
+namespace graph{
 
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
@@ -33,6 +33,15 @@ template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThres
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
                                        float node_coverage);
+
+void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
+                                          float node_coverage);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
+                                          float node_coverage);
 
 
 } // namespace graph

@@ -167,6 +167,7 @@ class FusionPipeline:
             if current_frame.frame_index == sequence.start_frame_index:
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device, options.depth_scale, 3.0)
                 volume.activate_sleeve_blocks()
+                volume.activate_sleeve_blocks()
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph
@@ -222,7 +223,7 @@ class FusionPipeline:
                     target_normal_map = cpu_compute_normal(target_point_image)
                 target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
-                if po.pixel_anchor_computation_mode == po.PixelAnchorComputationMode.EUCLIDEAN:
+                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
                         self.graph.nodes, source_point_image, options.node_coverage
                     )
