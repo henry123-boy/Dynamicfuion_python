@@ -39,6 +39,13 @@ void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, false>(op
                                                                              const int anchor_count,
                                                                              const int minimum_valid_anchor_count,
                                                                              const float node_coverage);
+template
+void ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CUDA>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+                                                                          const open3d::core::Tensor& points,
+                                                                          const open3d::core::Tensor& nodes,
+                                                                          const open3d::core::Tensor& edges,
+                                                                          int anchor_count,
+                                                                          float node_coverage);
 
 } // namespace graph
 } // namespace kernel
