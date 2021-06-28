@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 import sys
+import os
 import argparse
 
+import options
 from apps.visualizer.visualizerapp import VisualizerApp
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -10,9 +12,9 @@ PROGRAM_EXIT_FAILURE = -1
 
 def main():
     parser = argparse.ArgumentParser("App for visualizing block allocation and generated mesh alignment.")
+    sequence_id = "21-06-23-19-03-59_shorts_activate_no_rot"
     parser.add_argument("--output", "-o", type=str, help="Path to output folder",
-                        default="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output/"
-                                "21-06-25-11-35-06_RED_SHORTS_sp_initial_sp_anchors/frame_output")
+                        default=os.path.join(options.output_directory, sequence_id, "frame_output"))
     parser.add_argument("--initial_frame", "-i", type=int, help="Index of the first frame to process",
                         default=1)
     args = parser.parse_args()
