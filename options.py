@@ -29,7 +29,7 @@ custom_paths_by_mac_address_hash = {
                             output=default_output_directory),
     "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output=default_output_directory)
+                            output=default_output_directory)                                             # ahmed's
 }
 try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
