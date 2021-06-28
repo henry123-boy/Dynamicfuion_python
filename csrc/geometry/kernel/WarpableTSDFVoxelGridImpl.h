@@ -37,6 +37,7 @@
 
 
 using namespace open3d;
+namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 using namespace open3d::t::geometry::kernel::tsdf;
 
@@ -46,11 +47,11 @@ namespace kernel {
 namespace tsdf {
 
 
-template<core::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
-void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                             core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                             const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-                             const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
+template<o3c::Device::DeviceType TDeviceType, typename TApplyBlendWarp>
+void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+                             o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                             const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
+                             const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& warp_graph_nodes,
                              const float node_coverage, const int anchor_count, const int minimum_valid_anchor_count, const float depth_scale,
                              const float depth_max, TApplyBlendWarp&& blend_function) {
 	int64_t block_resolution3 =
@@ -68,7 +69,7 @@ void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tens
 	}
 
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 
 	int n_blocks = static_cast<int>(block_indices.GetLength());
@@ -76,7 +77,7 @@ void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tens
 
 	int64_t n_voxels = n_blocks * block_resolution3;
 	// cosine value for each pixel
-	cos_voxel_ray_to_normal = core::Tensor::Zeros(depth_tensor.GetShape(), core::Dtype::Float32, block_keys.GetDevice());
+	cos_voxel_ray_to_normal = o3c::Tensor::Zeros(depth_tensor.GetShape(), o3c::Dtype::Float32, block_keys.GetDevice());
 
 	// Data structure indexers
 	NDArrayIndexer block_keys_indexer(block_keys, 1);
@@ -98,9 +99,9 @@ void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tens
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 
 	//  Go through voxels
@@ -218,12 +219,12 @@ void IntegrateWarped_Generic(const core::Tensor& block_indices, const core::Tens
 #endif
 }
 
-template<core::Device::DeviceType TDeviceType>
-void IntegrateWarpedDQ(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                       core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                       const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-                       const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                       const core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
+template<o3c::Device::DeviceType TDeviceType>
+void IntegrateWarpedDQ(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+                       o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                       const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
+                       const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& warp_graph_nodes,
+                       const o3c::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
                        const int minimum_valid_anchor_count, float depth_scale, float depth_max) {
 
 	NDArrayIndexer node_transform_indexer(node_dual_quaternion_transformations, 1);
@@ -261,12 +262,12 @@ void IntegrateWarpedDQ(const core::Tensor& block_indices, const core::Tensor& bl
 	);
 }
 
-template<core::Device::DeviceType TDeviceType>
-void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                        core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                        const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-                        const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& graph_nodes,
-                        const core::Tensor& node_rotations, const core::Tensor& node_translations, const float node_coverage, const int anchor_count,
+template<o3c::Device::DeviceType TDeviceType>
+void IntegrateWarpedMat(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+                        o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
+                        const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes,
+                        const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations, const float node_coverage, const int anchor_count,
                         const int minimum_valid_anchor_count, const float depth_scale, const float depth_max) {
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
 	NDArrayIndexer node_translation_indexer(node_translations, 1);
@@ -303,15 +304,15 @@ void IntegrateWarpedMat(const core::Tensor& block_indices, const core::Tensor& b
 // void ComputeVoxelHashBlockCorners()
 
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
-                                            const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
-                                            const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                                            const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+template<o3c::Device::DeviceType TDeviceType>
+void DetermineWhichBlocksToActivateWithWarp(o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
+                                            const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
+                                            const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes,
+                                            const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
                                             float node_coverage,
                                             int64_t block_resolution, float voxel_size, float sdf_truncation_distance) {
 	auto candidate_block_count = candidate_block_coordinates.GetLength();
-	blocks_to_activate_mask = core::Tensor({candidate_block_count}, core::Dtype::Bool, candidate_block_coordinates.GetDevice());
+	blocks_to_activate_mask = o3c::Tensor({candidate_block_count}, o3c::Dtype::Bool, candidate_block_coordinates.GetDevice());
 
 	NDArrayIndexer node_indexer(graph_nodes, 1);
 	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
@@ -319,18 +320,18 @@ void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_acti
 	NDArrayIndexer downsampled_depth_indexer(depth_downsampled, 2);
 
 	// intermediate result storage
-	core::Tensor candidate_block_corners({candidate_block_count * 8, 3}, core::Dtype::Float32, candidate_block_coordinates.GetDevice());
+	o3c::Tensor candidate_block_corners({candidate_block_count * 8, 3}, o3c::Dtype::Float32, candidate_block_coordinates.GetDevice());
 	NDArrayIndexer 	candidate_block_corner_indexer(candidate_block_corners, 1);
 	TransformIndexer transform_indexer(intrinsics_downsampled, extrinsics, 1.0);
 
 	//TODO
 // #if defined(__CUDACC__)
-// 	core::CUDACachedMemoryManager::ReleaseCache();
+// 	o3c::CUDACachedMemoryManager::ReleaseCache();
 // #endif
 // #if defined(__CUDACC__)
-// 	core::kernel::CUDALauncher launcher;
+// 	o3c::kernel::CUDALauncher launcher;
 // #else
-// 	core::kernel::CPULauncher launcher;
+// 	o3c::kernel::CPULauncher launcher;
 // #endif
 	//TODO
 	// launcher.LaunchGeneralKernel(

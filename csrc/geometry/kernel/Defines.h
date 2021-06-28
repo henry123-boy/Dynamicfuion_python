@@ -15,4 +15,5 @@
 //  ================================================================
 #pragma once
 
+#define GRAPH_DEGREE 4
 #define MAX_ANCHOR_COUNT 8

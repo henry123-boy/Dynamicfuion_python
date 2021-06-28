@@ -24,6 +24,7 @@
 #include "geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h"
 
 using namespace open3d;
+namespace o3c = open3d::core;
 
 namespace nnrt {
 namespace geometry {
@@ -32,35 +33,35 @@ namespace tsdf {
 
 
 template
-void IntegrateWarpedDQ<core::Device::DeviceType::CUDA>(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                                                       core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+void IntegrateWarpedDQ<o3c::Device::DeviceType::CUDA>(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+                                                       o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
                                                        float sdf_truncation_distance,
-                                                       const core::Tensor& depth_tensor, const core::Tensor& color_tensor,
-                                                       const core::Tensor& depth_normals,
-                                                       const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-                                                       const core::Tensor& warp_graph_nodes,
-                                                       const core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+                                                       const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor,
+                                                       const o3c::Tensor& depth_normals,
+                                                       const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics,
+                                                       const o3c::Tensor& warp_graph_nodes,
+                                                       const o3c::Tensor& node_dual_quaternion_transformations, float node_coverage,
                                                        int anchor_count,
                                                        const int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
 template
-void IntegrateWarpedMat<core::Device::DeviceType::CUDA>(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                                                        core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+void IntegrateWarpedMat<o3c::Device::DeviceType::CUDA>(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+                                                        o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
                                                         float sdf_truncation_distance,
-                                                        const core::Tensor& depth_tensor, const core::Tensor& color_tensor,
-                                                        const core::Tensor& depth_normals,
-                                                        const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-                                                        const core::Tensor& graph_nodes,
-                                                        const core::Tensor& node_rotations, const core::Tensor& node_translations,
+                                                        const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor,
+                                                        const o3c::Tensor& depth_normals,
+                                                        const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics,
+                                                        const o3c::Tensor& graph_nodes,
+                                                        const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
                                                         const float node_coverage, const int anchor_count,
                                                         const int minimum_valid_anchor_count, const float depth_scale, const float depth_max);
 
 template
-void DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
-		const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
-		const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+void DetermineWhichBlocksToActivateWithWarp<o3c::Device::DeviceType::CUDA>(
+		o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
+		const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
+		const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes,
+		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations, float node_coverage,
 		int64_t block_resolution, float voxel_size, float sdf_truncation_distance);
 
 } // namespace tsdf

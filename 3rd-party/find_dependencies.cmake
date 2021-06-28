@@ -390,6 +390,17 @@ list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS ${CATCH2_TARGET})
 # Python3
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
+
+# Flann
+if(USE_SYSTEM_FLANN)
+    pkg_config_3rdparty_library(3rdparty_flann flann)
+endif()
+if(NOT USE_SYSTEM_FLANN OR NOT 3rdparty_flann_FOUND)
+    build_3rdparty_library(3rdparty_flann DIRECTORY flann)
+endif()
+set(FLANN_TARGET "3rdparty_flann")
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${FLANN_TARGET}")
+
 # Open3D
 find_package(Open3D REQUIRED)
 if(NOT WIN32)

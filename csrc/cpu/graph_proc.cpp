@@ -1312,11 +1312,11 @@ void djikstra_knn(int* vertex_anchors,
                   const float node_coverage) {
 	std::map<int, float> distance_by_shortest_path_anchor;
 	typedef std::pair<int, float> index_and_distance;
-	auto node_geodesic_comparator = [](const index_and_distance& a, const index_and_distance& b) {
+	auto by_second_comparator = [](const index_and_distance& a, const index_and_distance& b) {
 		return a.second > b.second;
 	};
 	std::priority_queue<index_and_distance, std::vector<index_and_distance>,
-			decltype(node_geodesic_comparator)> queue(node_geodesic_comparator);
+			decltype(by_second_comparator)> queue(by_second_comparator);
 
 	while (distance_by_shortest_path_anchor.size() < anchor_count) {
 		// Keep only the anchor_count nearest Euclidean neighbors.

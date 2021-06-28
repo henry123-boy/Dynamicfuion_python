@@ -15,9 +15,9 @@
 //  ================================================================
 #include "geometry/kernel/Graph.h"
 #include "open3d/core/kernel/CPULauncher.h"
+#include "core/DeviceHeapCPU.h"
 #include "geometry/kernel/GraphImpl.h"
 
-using namespace open3d;
 
 namespace nnrt {
 namespace geometry {
@@ -25,20 +25,35 @@ namespace kernel {
 namespace graph {
 
 template
-void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, true>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
-                                                                            const open3d::core::Tensor& points,
-                                                                            const open3d::core::Tensor& nodes,
-                                                                            const int anchor_count,
-                                                                            const int minimum_valid_anchor_count,
-                                                                            const float node_coverage);
+void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CPU, true>(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const int anchor_count,
+		const int minimum_valid_anchor_count,
+		const float node_coverage
+);
 
 template
-void ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, false>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
-                                                                             const open3d::core::Tensor& points,
-                                                                             const open3d::core::Tensor& nodes,
-                                                                             const int anchor_count,
-                                                                             const int minimum_valid_anchor_count,
-                                                                             const float node_coverage);
+void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CPU, false>(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const int anchor_count,
+		const int minimum_valid_anchor_count,
+		const float node_coverage
+);
+
+
+template
+void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges,
+		const int anchor_count,
+		const float node_coverage
+);
 
 } // namespace graph
 } // namespace kernel

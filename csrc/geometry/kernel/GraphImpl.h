@@ -30,6 +30,7 @@
 
 
 using namespace open3d;
+namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
 
@@ -40,16 +41,16 @@ namespace graph {
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
 void ComputeAnchorsAndWeightsEuclidean
-		(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-		 const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
+		(open3d::core::Tensor& anchors, o3c::Tensor& weights, const o3c::Tensor& points,
+		 const o3c::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
 		 const float node_coverage) {
 
 	float node_coverage_squared = node_coverage * node_coverage;
 
 	int64_t point_count = points.GetLength();
 	int64_t node_count = nodes.GetLength();
-	anchors = core::Tensor::Ones({point_count, anchor_count}, core::Dtype::Int32, nodes.GetDevice()) * -1;
-	weights = core::Tensor({point_count, anchor_count}, core::Dtype::Float32, nodes.GetDevice());
+	anchors = o3c::Tensor::Ones({point_count, anchor_count}, o3c::Dtype::Int32, nodes.GetDevice()) * -1;
+	weights = o3c::Tensor({point_count, anchor_count}, o3c::Dtype::Float32, nodes.GetDevice());
 
 	//input indexers
 	NDArrayIndexer point_indexer(points, 1);
@@ -60,12 +61,12 @@ void ComputeAnchorsAndWeightsEuclidean
 	NDArrayIndexer weight_indexer(weights, 1);
 
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 
 	launcher.LaunchGeneralKernel(
@@ -89,11 +90,48 @@ void ComputeAnchorsAndWeightsEuclidean
 			}
 	);
 }
-template<open3d::core::Device::DeviceType TDeviceType>
-void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
-                                          const core::Tensor& edges, int anchor_count, float node_coverage) {
+template<o3c::Device::DeviceType TDeviceType>
+void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& weights, const o3c::Tensor& points, const o3c::Tensor& nodes,
+                                          const o3c::Tensor& edges, int anchor_count, float node_coverage) {
 	float node_coverage_squared = node_coverage * node_coverage;
-	//TODO
+	int64_t point_count = points.GetLength();
+	int64_t node_count = nodes.GetLength();
+	anchors = o3c::Tensor::Ones({point_count, anchor_count}, o3c::Dtype::Int32, nodes.GetDevice()) * -1;
+	weights = o3c::Tensor({point_count, anchor_count}, o3c::Dtype::Float32, nodes.GetDevice());
+
+	//input indexers
+	NDArrayIndexer point_indexer(points, 1);
+	NDArrayIndexer node_indexer(nodes, 1);
+	NDArrayIndexer edge_indexer(nodes, 2);
+
+	//output indexers
+	NDArrayIndexer anchor_indexer(anchors, 1);
+	NDArrayIndexer weight_indexer(weights, 1);
+
+#if defined(__CUDACC__)
+	o3c::CUDACachedMemoryManager::ReleaseCache();
+#endif
+#if defined(__CUDACC__)
+	o3c::kernel::CUDALauncher launcher;
+#else
+	o3c::kernel::CPULauncher launcher;
+#endif
+
+	launcher.LaunchGeneralKernel(
+			point_count,
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
+
+				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
+				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
+				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+
+				graph::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                              point, node_indexer, edge_indexer, node_coverage_squared);
+				// endregion
+			}
+	);
 }
 
 } // namespace graph

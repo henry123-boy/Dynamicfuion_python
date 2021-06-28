@@ -22,6 +22,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 using namespace open3d;
+namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 using namespace open3d::t::geometry::kernel::tsdf;
 
@@ -37,10 +38,10 @@ void ExtractVoxelCentersCUDA
 #else
 void ExtractVoxelCentersCPU
 #endif
-		(const core::Tensor& indices,
-		 const core::Tensor& block_keys,
-		 const core::Tensor& block_values,
-		 core::Tensor& voxel_centers,
+		(const o3c::Tensor& indices,
+		 const o3c::Tensor& block_keys,
+		 const o3c::Tensor& block_values,
+		 o3c::Tensor& voxel_centers,
 		 int64_t block_resolution, float voxel_size) {
 
 	int64_t resolution3 =
@@ -52,14 +53,14 @@ void ExtractVoxelCentersCPU
 
 	// Output
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 
 	int n_blocks = static_cast<int>(indices.GetLength());
 
 	int64_t n_voxels = n_blocks * resolution3;
 	// each voxel center will need three coordinates: n_voxels x 3
-	voxel_centers = core::Tensor({n_voxels, 3}, core::Dtype::Float32,
+	voxel_centers = o3c::Tensor({n_voxels, 3}, o3c::Dtype::Float32,
 	                             block_keys.GetDevice());
 
 	// Real data indexers
@@ -69,9 +70,9 @@ void ExtractVoxelCentersCPU
 	const int64_t* indices_ptr = indices.GetDataPtr<int64_t>();
 
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 
 	// Go through voxels
@@ -115,9 +116,9 @@ void ExtractTSDFValuesAndWeightsCUDA
 #else
 void ExtractTSDFValuesAndWeightsCPU
 #endif
-		(const core::Tensor& indices,
-		 const core::Tensor& block_values,
-		 core::Tensor& voxel_values,
+		(const o3c::Tensor& indices,
+		 const o3c::Tensor& block_values,
+		 o3c::Tensor& voxel_values,
 		 int64_t block_resolution) {
 
 	int64_t block_resolution3 =
@@ -129,7 +130,7 @@ void ExtractTSDFValuesAndWeightsCPU
 
 	// Output
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 
 	int n_blocks = static_cast<int>(indices.GetLength());
@@ -137,7 +138,7 @@ void ExtractTSDFValuesAndWeightsCPU
 
 	int64_t n_voxels = n_blocks * block_resolution3;
 	// each voxel output will need a TSDF value and a weight value: n_voxels x 2
-	voxel_values = core::Tensor::Zeros({n_voxels, 2}, core::Dtype::Float32,
+	voxel_values = o3c::Tensor::Zeros({n_voxels, 2}, o3c::Dtype::Float32,
 	                                   block_values.GetDevice());
 
 	// Real data indexers
@@ -149,9 +150,9 @@ void ExtractTSDFValuesAndWeightsCPU
 
 
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 
 	//  Go through voxels
@@ -197,10 +198,10 @@ void ExtractValuesInExtentCPU(
 #endif
 		int64_t min_x, int64_t min_y, int64_t min_z,
 		int64_t max_x, int64_t max_y, int64_t max_z,
-		const core::Tensor& block_indices,
-		const core::Tensor& block_keys,
-		const core::Tensor& block_values,
-		core::Tensor& voxel_values,
+		const o3c::Tensor& block_indices,
+		const o3c::Tensor& block_keys,
+		const o3c::Tensor& block_values,
+		o3c::Tensor& voxel_values,
 		int64_t block_resolution) {
 
 	int64_t block_resolution3 =
@@ -212,7 +213,7 @@ void ExtractValuesInExtentCPU(
 
 	// Output
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 
 	int n_blocks = static_cast<int>(block_indices.GetLength());
@@ -223,8 +224,8 @@ void ExtractValuesInExtentCPU(
 
 	int64_t n_voxels = n_blocks * block_resolution3;
 	// each voxel center will need three coordinates: n_voxels x 3
-	voxel_values = core::Tensor::Ones({output_range_x, output_range_y, output_range_z},
-	                                  core::Dtype::Float32, block_keys.GetDevice());
+	voxel_values = o3c::Tensor::Ones({output_range_x, output_range_y, output_range_z},
+	                                  o3c::Dtype::Float32, block_keys.GetDevice());
 	voxel_values *= -2.0f;
 
 	// Real data indexers
@@ -236,9 +237,9 @@ void ExtractValuesInExtentCPU(
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 
 //  Go through voxels

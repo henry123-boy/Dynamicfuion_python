@@ -24,6 +24,7 @@
 
 
 using namespace open3d;
+namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
 namespace nnrt {
@@ -31,10 +32,10 @@ namespace geometry {
 namespace kernel {
 namespace warp {
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
-                const core::Tensor& nodes, const core::Tensor& node_rotations,
-                const core::Tensor& node_translations,
+template<o3c::Device::DeviceType TDeviceType>
+void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
+                const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+                const o3c::Tensor& node_translations,
                 int anchor_count, const float node_coverage){
 
 	const int64_t point_count = points.GetLength();
@@ -43,7 +44,7 @@ void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
 	float node_coverage_squared = node_coverage * node_coverage;
 
 	// initialize output array
-	warped_points = core::Tensor::Zeros({point_count, 3}, core::Dtype::Float32, nodes.GetDevice());
+	warped_points = o3c::Tensor::Zeros({point_count, 3}, o3c::Dtype::Float32, nodes.GetDevice());
 
 	//input indexers
 	NDArrayIndexer point_indexer(points, 1);
@@ -55,12 +56,12 @@ void WarpPoints(core::Tensor& warped_points, const core::Tensor& points,
 	NDArrayIndexer warped_point_indexer(warped_points, 1);
 
 #if defined(__CUDACC__)
-	core::CUDACachedMemoryManager::ReleaseCache();
+	o3c::CUDACachedMemoryManager::ReleaseCache();
 #endif
 #if defined(__CUDACC__)
-	core::kernel::CUDALauncher launcher;
+	o3c::kernel::CUDALauncher launcher;
 #else
-	core::kernel::CPULauncher launcher;
+	o3c::kernel::CPULauncher launcher;
 #endif
 	launcher.LaunchGeneralKernel(
 			point_count,

@@ -7,3 +7,6 @@
 [submodule "3rd-party/backward-cpp"]
 	path = 3rd-party/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
+[submodule "3rd-party/flann/flann"]
+	path = 3rd-party/flann/flann
+	url = git@github.com:flann-lib/flann.git
