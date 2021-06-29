@@ -7,45 +7,6 @@ import numpy as np
 from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 
 
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_compute_anchors_euclidean(device):
-    mesh = o3d.geometry.TriangleMesh.create_box()
-    # mesh = mesh.subdivide_midpoint(number_of_iterations=1)
-    nodes = np.array([[0., 0., 0.],  # 0
-                      [1., 0., 0.],  # 1
-                      [0., 0., 1.],  # 2
-                      [1., 0., 1.],  # 3
-                      [0., 1., 0.],  # 4
-                      [1., 1., 0.],  # 5
-                      [0., 1., 1.],  # 6
-                      [1., 1., 1.]],  # 7
-                     dtype=np.float32)
-    nodes += np.array([0.1, 0.2, 0.3])  # to make distances unique
-    nodes_o3d = o3c.Tensor(nodes, device=device)
-
-    points = np.array(mesh.vertices, dtype=np.float32)
-    points_o3d = o3c.Tensor(points, device=device)
-
-    anchor_count = 4
-
-    nodes_tiled = np.tile(nodes, (len(points), 1, 1))
-    points_tiled = np.tile(points, (1, len(nodes))).reshape(len(points), -1, 3)
-    distance_matrix = np.linalg.norm(points_tiled - nodes_tiled, axis=2)
-    distance_sorted_node_indices = distance_matrix.argsort(axis=1)  # distances of closest nodes to each point
-    vertex_anchors_gt = np.sort(distance_sorted_node_indices[:, :anchor_count], axis=1)
-    distances_sorted = np.take_along_axis(distance_matrix, distance_sorted_node_indices, axis=1)
-    distances_gt = distances_sorted[:, :anchor_count]
-
-    old_vertex_anchors, old_vertex_weights = nnrt.compute_vertex_anchors_euclidean(nodes, points, 0.5)
-    old_vertex_anchors_sorted = np.sort(old_vertex_anchors, axis=1)
-    old_vertex_weights_sorted = np.sort(old_vertex_weights, axis=1)
-    vertex_anchors, vertex_weights = nnrt.geometry.compute_anchors_and_weights_euclidean(points_o3d, nodes_o3d, anchor_count, 0, 0.5)
-    vertex_anchors_sorted = np.sort(vertex_anchors.cpu().numpy(), axis=1)
-    vertex_weights_sorted = np.sort(vertex_weights.cpu().numpy(), axis=1)
-
-    assert np.allclose(vertex_anchors_gt, old_vertex_anchors_sorted)
-    assert np.allclose(vertex_anchors_sorted, old_vertex_anchors_sorted)
-    assert np.allclose(vertex_weights_sorted, old_vertex_weights_sorted)
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])

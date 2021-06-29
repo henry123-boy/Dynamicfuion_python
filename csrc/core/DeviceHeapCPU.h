@@ -31,8 +31,8 @@ public:
 	bool insert(TElement element) override {
 		if (size >= capacity) return false;
 		data[size] = element;
-		std::push_heap(data, data + size, compare);
 		size++;
+		std::push_heap(data, data + size, compare);
 		return true;
 
 	}
@@ -40,7 +40,7 @@ public:
 	TElement pop() override {
 		if (size > 0) {
 			std::pop_heap(data, data + size, compare);
-			TElement extremum = data[size];
+			TElement extremum = data[size-1];
 			size--;
 			return extremum;
 		} else {

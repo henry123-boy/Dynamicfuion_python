@@ -36,6 +36,13 @@ void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::co
 py::tuple ComputeAnchorsAndWeightsEuclidean(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, int anchor_count,
 											int minimum_valid_anchor_count, float node_coverage);
 
+void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
+                                          float node_coverage);
+
+py::tuple ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
+											   const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
+
 
 
 } // namespace geometry

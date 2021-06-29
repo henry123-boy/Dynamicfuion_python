@@ -29,6 +29,7 @@ if (BUILD_CPP_TESTS)
     add_test(test_index_conversions test_index_conversions.cpp)
     add_test(test_array_comparisons test_array_comparisons.cpp)
     add_test(test_experiments test_experiments.cpp)
+    add_test(test_priority_queues test_heap.cpp)
 
 
 endif ()

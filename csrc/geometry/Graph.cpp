@@ -96,9 +96,7 @@ void ComputeAnchorsAndWeightsEuclidean(core::Tensor& anchors, core::Tensor& weig
 	auto device = points.GetDevice();
 	points.AssertDtype(core::Dtype::Float32);
 	nodes.AssertDtype(core::Dtype::Float32);
-	if (device != nodes.GetDevice()) {
-		utility::LogError("Device not consistent among arguments.");
-	}
+	nodes.AssertDevice(device);
 	if (minimum_valid_anchor_count > anchor_count){
 		utility::LogError("minimum_valid_anchor_count (now, {}) has to be smaller than or equal to anchor_count, which is {}.",
 						  minimum_valid_anchor_count, anchor_count);
@@ -113,6 +111,27 @@ py::tuple ComputeAnchorsAndWeightsEuclidean(const core::Tensor& points, const co
                                             float node_coverage) {
 	core::Tensor anchors, weights;
 	ComputeAnchorsAndWeightsEuclidean(anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+	return py::make_tuple(anchors, weights);
+}
+
+void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
+                                          const core::Tensor& edges, int anchor_count, float node_coverage) {
+	auto device = points.GetDevice();
+	nodes.AssertDevice(device);
+	edges.AssertDevice(device);
+	points.AssertDtype(core::Dtype::Float32);
+	nodes.AssertDtype(core::Dtype::Float32);
+	edges.AssertDtype(core::Dtype::Int32);
+	if (anchor_count < 1){
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+	}
+	kernel::graph::ComputeAnchorsAndWeightsShortestPath(anchors, weights, points, nodes, edges, anchor_count, node_coverage);
+}
+
+py::tuple ComputeAnchorsAndWeightsShortestPath(const core::Tensor& points, const core::Tensor& nodes, const core::Tensor& edges, int anchor_count,
+                                               float node_coverage) {
+	core::Tensor anchors, weights;
+	ComputeAnchorsAndWeightsShortestPath(anchors, weights, points, nodes, edges, anchor_count, node_coverage);
 	return py::make_tuple(anchors, weights);
 }
 

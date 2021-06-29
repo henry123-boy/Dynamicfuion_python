@@ -137,9 +137,12 @@ void pybind_graph(pybind11::module& m) {
 			      float>(&ComputeAnchorsAndWeightsEuclidean), "points"_a, "nodes"_a, "anchor_count"_a,
 			      "minimum_valid_anchor_count"_a,"node_coverage"_a);
 
+	m.def("compute_anchors_and_weights_shortest_path", py::overload_cast<const open3d::core::Tensor&, const open3d::core::Tensor&,
+	const open3d::core::Tensor&, int, float>(&ComputeAnchorsAndWeightsShortestPath), "points"_a, "nodes"_a, "edges"_a,
+	"anchor_count"_a, "node_coverage"_a);
+
 	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
-
 }
 
 } // namespace geometry

@@ -209,10 +209,10 @@ FindAnchorsAndWeightsForPointEuclidean(int32_t* anchor_indices, float* anchor_we
  */
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
-inline void FindShortestPathKNNAnchorsBruteForce(int32_t* anchor_indices, float* distances, const int anchor_count,
-                                                 const int node_count, const Eigen::Vector3f& point,
-                                                 const NDArrayIndexer& node_indexer,
-                                                 const NDArrayIndexer& edge_indexer) {
+inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances, const int anchor_count,
+                                       const int node_count, const Eigen::Vector3f& point,
+                                       const NDArrayIndexer& node_indexer,
+                                       const NDArrayIndexer& edge_indexer) {
 	int discovered_anchor_count = 0;
 	typedef core::KeyValuePair<float, int32_t> DistanceIndexPair;
 	typedef decltype(core::MinHeapKeyCompare<float, int32_t>) Compare;
@@ -229,7 +229,7 @@ inline void FindShortestPathKNNAnchorsBruteForce(int32_t* anchor_indices, float*
 		}
 		priority_queue.insert(DistanceIndexPair{closest_node_distance, closest_node_index});
 
-		while(!priority_queue.empty()){
+		while(!priority_queue.empty() && discovered_anchor_count < anchor_count){
 			auto source_pair = priority_queue.pop();
 			bool node_already_processed = false;
 			for(int i_anchor = 0; i_anchor < discovered_anchor_count && !node_already_processed; i_anchor++){
@@ -271,7 +271,7 @@ FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor
                                           const NDArrayIndexer& edge_indexer,
                                           const float node_coverage_squared){
 	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
-	graph::FindShortestPathKNNAnchorsBruteForce<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer, edge_indexer);
+	graph::FindShortestPathKNNAnchors<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer, edge_indexer);
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
 
 	float weight_sum = 0.0;
@@ -293,6 +293,7 @@ FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor
 			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
 		}
 	}
+
 	// endregion
 }
 
