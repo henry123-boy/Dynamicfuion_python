@@ -55,14 +55,6 @@ void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CPU>
 		const float node_coverage
 );
 
-template
-void ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CPU>(open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
-                                                                         const open3d::core::Tensor& points,
-                                                                         const open3d::core::Tensor& nodes,
-                                                                         const open3d::core::Tensor& edges,
-                                                                         int anchor_count,
-                                                                         float node_coverage);
-
 } // namespace graph
 } // namespace kernel
 } // namespace geometry
