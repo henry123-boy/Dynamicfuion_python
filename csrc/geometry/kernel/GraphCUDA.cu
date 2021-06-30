@@ -15,7 +15,7 @@
 //  ================================================================
 #include "geometry/kernel/Graph.h"
 #include "open3d/core/kernel/CUDALauncher.cuh"
-#include "core/DeviceHeapCUDA.cuh"
+#include "core/CUDA/DeviceHeapCUDA.cuh"
 #include "geometry/kernel/GraphImpl.h"
 
 namespace nnrt {

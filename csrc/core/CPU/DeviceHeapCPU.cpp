@@ -13,51 +13,22 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+#include <vector>
+#include <algorithm>
+#include "DeviceHeapCPU.h"
 
-#include "core/DeviceHeap.h"
+
 
 namespace o3c = open3d::core;
 
 namespace nnrt {
 namespace core {
 
-template<typename TElement, typename TCompare>
-class DeviceHeap<o3c::Device::DeviceType::CPU, TElement, TCompare> : IDeviceHeap<TElement> {
-public:
-	DeviceHeap(TElement* data, int capacity, TCompare compare) :
-			data(data), capacity(capacity), compare(compare), size(0) {}
 
-	bool insert(TElement element) override {
-		if (size >= capacity) return false;
-		data[size] = element;
-		size++;
-		std::push_heap(data, data + size, compare);
-		return true;
+template
+class DeviceHeap<o3c::Device::DeviceType::CPU, KeyValuePair<float, int32_t>,
+		decltype(MinHeapKeyCompare<float, int32_t>)>;
 
-	}
-
-	TElement pop() override {
-		if (size > 0) {
-			std::pop_heap(data, data + size, compare);
-			TElement extremum = data[size-1];
-			size--;
-			return extremum;
-		} else {
-			open3d::utility::LogError("Trying to pop from an empty heap.");
-		}
-	}
-
-	bool empty() override {
-		return size == 0;
-	}
-
-private:
-	TElement* const data;
-	const int capacity;
-	int size;
-	const TCompare compare;
-};
 
 } // namespace core
 } // namespace nnrt

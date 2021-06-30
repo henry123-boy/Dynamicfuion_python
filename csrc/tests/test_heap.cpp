@@ -15,7 +15,7 @@
 //  ================================================================
 #include "test_main.hpp"
 
-#include <core/DeviceHeapCPU.h>
+#include <core/CPU/DeviceHeapCPU.h>
 
 #include "tests/test_utils/test_utils.hpp"
 

@@ -74,39 +74,48 @@ make_heap(RandomAccessIterator begin, size_t length, TCompare compare) {
 
 
 template<typename TElement, typename TCompare>
-class DeviceHeap<o3c::Device::DeviceType::CUDA, TElement, TCompare> : IDeviceHeap<TElement> {
+class DeviceHeap<o3c::Device::DeviceType::CUDA, TElement, TCompare> : public TypedDeviceHeap<TElement> {
 public:
 	__device__ DeviceHeap(TElement* data, int capacity, TCompare compare) :
-			data(data), cursor(capacity), capacity(capacity), compare(compare), size(0) {}
+			data(data), cursor(capacity), capacity(capacity), compare(compare), _size(0) {}
 
 	__device__ bool insert(TElement element) override {
-		if(size >= capacity) return false;
+		if(_size >= capacity) return false;
 		// fill in from the back, moving toward the front
 		cursor--;
 		data[cursor] = element;
 		heap::sift_down(data, cursor, capacity, compare);
-		size++;
+		_size++;
 		return true;
 	}
 
 	__device__ TElement pop() override {
-		assert(size > 0);
+		assert(_size > 0);
 		TElement extremum = data[cursor];
 		cursor++;
-		size--;
-		heap::make_heap(data + cursor, size, compare);
+		_size--;
+		heap::make_heap(data + cursor, _size, compare);
 		return extremum;
 	}
 
-	__device__ bool empty() override {
-		return size == 0;
+	__device__ TElement& head() override{
+		assert(_size > 0);
+		return data[cursor];
+	}
+
+	__device__ bool empty() const override {
+		return _size == 0;
+	}
+
+	__device__ int size() const override {
+		return _size;
 	}
 
 private:
 	TElement* const data;
 	int cursor;
 	const int capacity;
-	int size;
+	int _size;
 	const TCompare compare;
 };
 

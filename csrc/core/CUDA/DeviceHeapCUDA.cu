@@ -13,20 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <vector>
-#include <algorithm>
-#include "core/DeviceHeapCPU.h"
-
-
-
-namespace o3c = open3d::core;
+#include "DeviceHeapCUDA.cuh"
 
 namespace nnrt {
 namespace core {
 
-
 template
-class DeviceHeap<o3c::Device::DeviceType::CPU, KeyValuePair<float, int32_t>,
+class DeviceHeap<o3c::Device::DeviceType::CUDA, KeyValuePair<float, int32_t>,
 		decltype(MinHeapKeyCompare<float, int32_t>)>;
 
 
