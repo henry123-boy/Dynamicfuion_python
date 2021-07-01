@@ -9,7 +9,7 @@ from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
 from utils.viz.primitive import make_z_aligned_image_plane
-from data import camera
+
 from dq3d import dualquat, quat, op
 
 
@@ -287,7 +287,8 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
 def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
                                              intrinsics: o3d.camera.PinholeCameraIntrinsic,
                                              downsampling_factor: int) -> DeformationGraphNumpy:
-    fx, fy, cx, cy = camera.extract_intrinsic_projection_parameters(intrinsics)
+    import data.camera
+    fx, fy, cx, cy = data.camera.extract_intrinsic_projection_parameters(intrinsics)
 
     point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
 

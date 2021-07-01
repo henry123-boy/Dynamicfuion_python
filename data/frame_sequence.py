@@ -9,7 +9,6 @@ from enum import Enum
 import options
 from data import DeformDataset, StaticCenterCrop
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
-
 from pipeline.graph import DeformationGraphNumpy
 
 
