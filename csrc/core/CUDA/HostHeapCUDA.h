@@ -24,7 +24,7 @@ namespace core {
 
 
 template<>
-class HostHeap<open3d::core::Device::DeviceType::CUDA> : IHostHeap {
+class HostHeap<open3d::core::Device::DeviceType::CUDA> : public IHostHeap {
 public:
 	HostHeap(int32_t capacity,
 	         const open3d::core::Dtype& key_data_type,
@@ -37,11 +37,11 @@ public:
 	void Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) override;
 
 	void Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) override;
-	int size() const override;
+	int Size() const override;
 
-	bool empty() const override;
+	bool Empty() const override;
 private:
-	IDeviceHeap* device_heap;
+	void* device_heap;
 	const open3d::core::Dtype key_data_type;
 	const open3d::core::Dtype value_data_type;
 	const open3d::core::Device device;

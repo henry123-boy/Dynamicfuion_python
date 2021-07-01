@@ -17,8 +17,7 @@
 
 #include <open3d/core/Dtype.h>
 #include <open3d/core/Tensor.h>
-
-
+#include <pybind11/pybind11.h>
 
 namespace nnrt{
 namespace core{
@@ -27,8 +26,8 @@ class IHostHeap{
 public:
 	virtual void Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) = 0;
 	virtual void Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) = 0;
-	virtual int size() const = 0;
-	virtual bool empty() const = 0;
+	virtual int Size() const = 0;
+	virtual bool Empty() const = 0;
 };
 
 enum class HeapType : int{
@@ -37,6 +36,7 @@ enum class HeapType : int{
 };
 
 class Heap {
+public:
 	Heap(int32_t capacity,
 	     const open3d::core::Dtype& key_data_type,
 	     const open3d::core::Dtype& value_data_type,
@@ -44,9 +44,10 @@ class Heap {
 	     HeapType heap_type);
 	~Heap() = default;
 	void Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values);
-	open3d::core::Tensor Pop();
-	int size() const;
-	bool empty() const;
+	void Pop(open3d::core::Tensor& key, open3d::core::Tensor& value);
+	pybind11::tuple Pop();
+	int Size() const;
+	bool Empty() const;
 private:
 	std::shared_ptr<IHostHeap> host_heap;
 

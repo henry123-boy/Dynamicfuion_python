@@ -24,7 +24,7 @@ namespace nnrt {
 namespace core {
 
 template<>
-class HostHeap<open3d::core::Device::DeviceType::CPU> : IHostHeap {
+class HostHeap<open3d::core::Device::DeviceType::CPU> : public IHostHeap {
 
 public:
 	HostHeap(int32_t capacity,
@@ -39,9 +39,9 @@ public:
 
 	void Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) override;
 
-	int size() const override;
+	int Size() const override;
 
-	bool empty() const override;
+	bool Empty() const override;
 private:
 	std::shared_ptr<IDeviceHeap> device_heap;
 	const open3d::core::Dtype key_data_type;

@@ -16,12 +16,16 @@
 #include "test_main.hpp"
 
 #include <core/CPU/DeviceHeapCPU.h>
+#include <core/Heap.h>
+#include <open3d/core/Tensor.h>
+
 
 #include "tests/test_utils/test_utils.hpp"
 
 using namespace nnrt;
+namespace o3c = open3d::core;
 
-TEST_CASE("Test Heap CPU") {
+TEST_CASE("Test Device Heap CPU") {
 	typedef core::KeyValuePair<float, int32_t> DistanceIndexPair;
 	typedef decltype(core::MinHeapKeyCompare<float, int32_t>) Compare;
 
@@ -61,5 +65,89 @@ TEST_CASE("Test Heap CPU") {
 		REQUIRE(current_head.key == expected_output_order[i_item].key);
 		REQUIRE(current_head.value == expected_output_order[i_item].value);
 	}
+}
 
+TEST_CASE("Test Host Heap CPU") {
+	const int queue_capacity = 40;
+
+	auto device = o3c::Device("cpu:0");
+	auto key_data_type = o3c::Dtype::Float32;
+	auto value_data_type = o3c::Dtype::Int32;
+	std::vector<float> keys1_data{50.0f, 40.0f, 20.0f, 100.0f};
+	o3c::Tensor keys1(keys1_data, {4}, key_data_type, device);
+	std::vector<int32_t> values1_data{4, 3, 2, 6};
+	o3c::Tensor values1(values1_data, {4}, value_data_type, device);
+
+	core::Heap heap(queue_capacity, key_data_type, value_data_type, device, core::HeapType::MIN);
+
+	heap.Insert(keys1, values1);
+
+	o3c::Tensor min_key1, min_value1;
+
+	heap.Pop(min_key1, min_value1);
+	REQUIRE(min_key1[0].Item<float>() == 20.0f);
+	REQUIRE(min_value1[0].Item<int32_t>() == 2);
+
+	std::vector<float> keys2_data{60.0f, 10.0f};
+	o3c::Tensor keys2(keys2_data, {2}, key_data_type, device);
+	std::vector<int32_t> values2_data{5, 1};
+	o3c::Tensor values2(values2_data, {2}, value_data_type, device);
+
+	heap.Insert(keys2, values2);
+
+	std::vector<float> expected_output_key_data{10.f, 40.f, 50.f, 60.f, 100.f};
+	std::vector<int32_t> expected_output_value_data{1, 3, 4, 5, 6};
+
+
+	for(int i_item = 0; i_item < 5; i_item++){
+		o3c::Tensor min_key, min_value;
+		heap.Pop(min_key, min_value);
+		REQUIRE(min_key[0].Item<float>() == expected_output_key_data[i_item]);
+		REQUIRE(min_value[0].Item<int32_t>() == expected_output_value_data[i_item]);
+	}
+}
+
+
+TEST_CASE("Test Host Heap CUDA") {
+	const int queue_capacity = 40;
+
+	auto device = o3c::Device("cuda:0");
+	auto cpu = o3c::Device("cpu:0");
+	auto key_data_type = o3c::Dtype::Float32;
+	auto value_data_type = o3c::Dtype::Int32;
+	std::vector<float> keys1_data{50.0f, 40.0f, 20.0f, 100.0f};
+	o3c::Tensor keys1(keys1_data, {4}, key_data_type, device);
+	std::vector<int32_t> values1_data{4, 3, 2, 6};
+	o3c::Tensor values1(values1_data, {4}, value_data_type, device);
+
+	core::Heap heap(queue_capacity, key_data_type, value_data_type, device, core::HeapType::MIN);
+
+	heap.Insert(keys1, values1);
+
+	o3c::Tensor min_key1, min_value1;
+	min_key1 = o3c::Tensor({1}, open3d::core::Dtype::Float32, device);
+
+	// heap.Pop(min_key1, min_value1);
+	auto min_key1_cpu = min_key1.To(cpu);
+
+	// REQUIRE(min_key1.To(cpu)[0].Item<float>() == 20.0f);
+	// REQUIRE(min_value1.To(cpu)[0].Item<int32_t>() == 2);
+
+	// std::vector<float> keys2_data{60.0f, 10.0f};
+	// o3c::Tensor keys2(keys2_data, {2}, key_data_type, device);
+	// std::vector<int32_t> values2_data{5, 1};
+	// o3c::Tensor values2(values2_data, {2}, value_data_type, device);
+	//
+	// heap.Insert(keys2, values2);
+	//
+	// std::vector<float> expected_output_key_data{10.f, 40.f, 50.f, 60.f, 100.f};
+	// std::vector<int32_t> expected_output_value_data{1, 3, 4, 5, 6};
+	//
+	//
+	// for(int i_item = 0; i_item < 5; i_item++){
+	// 	o3c::Tensor min_key, min_value;
+	// 	heap.Pop(min_key, min_value);
+	// 	REQUIRE(min_key.To(cpu)[0].To(cpu).Item<float>() == expected_output_key_data[i_item]);
+	// 	REQUIRE(min_value.To(cpu)[0].To(cpu).Item<int32_t>() == expected_output_value_data[i_item]);
+	// }
 }

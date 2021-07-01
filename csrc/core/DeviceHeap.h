@@ -66,6 +66,7 @@ public:
 		TElement& extremum = this->head();
 		*reinterpret_cast<TKey *>(key) = extremum.key;
 		*reinterpret_cast<TValue *>(value) = extremum.value;
+		this->pop();
 	}
 };
 

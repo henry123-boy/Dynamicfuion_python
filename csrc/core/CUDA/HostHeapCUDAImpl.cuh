@@ -16,43 +16,68 @@
 #pragma once
 
 #include "core/Heap.h"
+#include "core/CUDA/HostHeapCUDA.h"
 #include "core/CUDA/DeviceHeapCUDA.cuh"
-#include <open3d/core/kernel/CUDALauncher.cuh>
 #include <open3d/core/CUDAUtils.h>
 
 
 namespace nnrt {
 namespace core {
 
+__global__
+void InsertIntoHeap(void* device_heap_data, const uint8_t* input_keys_data, const uint8_t* input_values_data,
+					const int64_t key_byte_size, const int64_t value_byte_size, const int64_t count){
+
+	for(int64_t i_pair = 0; i_pair < count; i_pair++){
+		printf("%li\n", key_byte_size);
+		printf("%li\n", value_byte_size);
+		printf("%li\n", count);
+		printf("%u\n", *(input_keys_data + key_byte_size * i_pair));
+		printf("%u\n", *(input_values_data + value_byte_size * i_pair));
+		auto device_heap = reinterpret_cast<IDeviceHeap*>(device_heap_data);
+		printf("%i\n", device_heap->size());
+
+		// device_heap->insert_internal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
+		//                              reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
+	}
+}
+// __DEBUG
+template<typename T>
+__global__ void fixVirtualPointers(T *other) {
+	T temp =  T(*other);
+	memcpy(other, &temp, sizeof(T));
+}
+
 template<typename TKey, typename TValue>
 __global__
-void MakeMinHeap(IDeviceHeap*& device_heap, void* storage, const int capacity) {
+void MakeMinHeap(void** device_heap, void* storage, const int capacity) {
 	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
 	typedef decltype(core::MinHeapKeyCompare<TKey, TValue>) Compare;
 
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HeapType;
-	device_heap = reinterpret_cast<IDeviceHeap*>(malloc(sizeof(HeapType)));
-	(*device_heap) = HeapType(
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HT;
+	*device_heap = malloc(sizeof(HT));
+	HT local(
 			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
 			capacity,
 			core::MinHeapKeyCompare<TKey, TValue>
 	);
+	memcpy((*device_heap),&local, sizeof(HT));
 }
-
-template<typename TKey, typename TValue>
-__global__
-void MakeMaxHeap(IDeviceHeap*& device_heap, void* storage, const int capacity) {
-	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
-	typedef decltype(core::MaxHeapKeyCompare<TKey, TValue>) Compare;
-
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HeapType;
-	device_heap = reinterpret_cast<IDeviceHeap*>(malloc(sizeof(HeapType)));
-	(*device_heap) = HeapType(
-			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
-			capacity,
-			core::MaxHeapKeyCompare<TKey, TValue>
-	);
-}
+//
+// template<typename TKey, typename TValue>
+// __global__
+// void MakeMaxHeap(IDeviceHeap*& device_heap, void* storage, const int capacity) {
+// 	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
+// 	typedef decltype(core::MaxHeapKeyCompare<TKey, TValue>) Compare;
+//
+// 	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HeapType;
+// 	// device_heap = reinterpret_cast<IDeviceHeap*>(malloc(sizeof(HeapType)));
+// 	device_heap = new HeapType(
+// 			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+// 			capacity,
+// 			core::MaxHeapKeyCompare<TKey, TValue>
+// 	);
+// }
 
 __global__
 void PopHeap(IDeviceHeap* device_heap, void* key, void* data) {
@@ -69,99 +94,109 @@ void GetHeapSize(IDeviceHeap* device_heap, int32_t* size) {
 	*size = device_heap->size();
 }
 
-template<>
-class HostHeap<open3d::core::Device::DeviceType::CUDA> : IHostHeap {
-public:
-	HostHeap(int32_t capacity,
-	         const open3d::core::Dtype& key_data_type,
-	         const open3d::core::Dtype& value_data_type,
-	         const open3d::core::Device& device,
-	         HeapType heap_type) :
-			key_data_type(key_data_type),
-			value_data_type(value_data_type),
-			device(device),
-			storage(nullptr),
-			device_heap(nullptr) {
-		dim3 grid_size(1);
-		dim3 block_size(1);
-		if (key_data_type == open3d::core::Dtype::Float32) {
-			if (value_data_type == open3d::core::Dtype::Int32) {
-				cudaMalloc(&storage, sizeof(KeyValuePair<int32_t, float>) * capacity);
-				switch (heap_type) {
-					case HeapType::MIN:
-						MakeMinHeap<float, int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
-						open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("MakeMinHeap() failed.");
-						break;
-					case HeapType::MAX:
-						MakeMaxHeap<float, int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
-						open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("MakeMaxHeap() failed.");
-						break;
-					default:
-						open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
-				}
+template<typename TKey, typename TValue, typename TCompare>
+core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey, TValue>, TCompare>
+        MakeHeap(void* storage, int capacity, TCompare compare) {
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey, TValue>, TCompare> HT;
+	auto ret = HT(
+			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+			capacity,
+			compare
+	);
+	return ret;
+}
 
+HostHeap<open3d::core::Device::DeviceType::CUDA>::HostHeap(int32_t capacity,
+                                                           const open3d::core::Dtype& key_data_type,
+                                                           const open3d::core::Dtype& value_data_type,
+                                                           const open3d::core::Device& device,
+                                                           HeapType heap_type) :
+		key_data_type(key_data_type),
+		value_data_type(value_data_type),
+		device(device),
+		storage(nullptr),
+		device_heap(nullptr) {
+	dim3 grid_size(1);
+	dim3 block_size(1);
+	if (key_data_type == open3d::core::Dtype::Float32) {
+		if (value_data_type == open3d::core::Dtype::Int32) {
+			cudaMalloc(&storage, sizeof(KeyValuePair<int32_t, float>) * capacity);
+			switch (heap_type) {
+				case HeapType::MIN:
+				{
+					// auto heap = MakeHeap<float, int32_t>(storage, capacity, core::MinHeapKeyCompare<float, int32_t>);
+					// OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, sizeof(heap)));
+					// OPEN3D_CUDA_CHECK(cudaMemcpy(device_heap, &heap, sizeof(heap), cudaMemcpyHostToDevice));
+					MakeMinHeap<float,int32_t><<<grid_size, block_size>>>(&device_heap, storage, capacity);
+				}
+					break;
+				case HeapType::MAX:
+				{
+					auto heap = MakeHeap<float, int32_t>(storage, capacity, core::MaxHeapKeyCompare<float, int32_t>);
+					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, sizeof(heap)));
+					OPEN3D_CUDA_CHECK(cudaMemcpy(device_heap, &heap, sizeof(heap), cudaMemcpyHostToDevice));
+				}
+					break;
+				default:
+					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
 			}
-		} else {
-			open3d::utility::LogError("Unsupported Hash key datatype, {}.", key_data_type.ToString());
+
 		}
+	} else {
+		open3d::utility::LogError("Unsupported Hash key datatype, {}.", key_data_type.ToString());
 	}
+}
 
-	~HostHeap() {
-		cudaFree(storage);
-		cudaFree(device_heap);
-	}
+HostHeap<open3d::core::Device::DeviceType::CUDA>::~HostHeap() {
+	cudaFree(storage);
+	cudaFree(device_heap);
+}
 
-	void Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) override {
-		auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
-		auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
-		o3c::kernel::CUDALauncher::LaunchGeneralKernel(
-				input_keys.GetLength(),
-				[=] OPEN3D_DEVICE(int64_t workload_idx) {
-					device_heap->insert_internal(reinterpret_cast<const void*>(input_keys_data + key_data_type.ByteSize() * workload_idx),
-					                             input_values_data + value_data_type.ByteSize() * workload_idx);
-				}
-		);
+void HostHeap<open3d::core::Device::DeviceType::CUDA>::Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) {
+	input_keys.AssertDtype(this->key_data_type);
+	input_values.AssertDtype(this->value_data_type);
+	input_keys.AssertDevice(this->device);
+	input_values.AssertDevice(this->device);
+	auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
+	auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
+	dim3 grid_size(1);
+	dim3 block_size(1);
+	InsertIntoHeap<<<grid_size, block_size>>>(device_heap, input_keys_data, input_values_data,
+	                                          key_data_type.ByteSize(), value_data_type.ByteSize(), input_keys.GetLength());
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap Pop() failed.");
+}
 
-	}
+void HostHeap<open3d::core::Device::DeviceType::CUDA>::Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) {
+	output_key = o3c::Tensor({1}, key_data_type, device);
+	output_value = o3c::Tensor({1}, value_data_type, device);
+	dim3 grid_size(1);
+	dim3 block_size(1);
+	PopHeap<<<grid_size, block_size>>>(reinterpret_cast<IDeviceHeap*>(device_heap), output_key.GetDataPtr(), output_value.GetDataPtr());
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap Pop() failed.");
+}
 
-	void Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) override {
-		output_key = o3c::Tensor({1, 1}, key_data_type, device);
-		output_value = o3c::Tensor({1, 1}, value_data_type, device);
-		dim3 grid_size(1);
-		dim3 block_size(1);
-		PopHeap<<<grid_size, block_size>>>(device_heap, output_key.GetDataPtr(), output_value.GetDataPtr());
-		open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap Pop() failed.");
-	}
+int HostHeap<open3d::core::Device::DeviceType::CUDA>::Size() const {
+	int* size_device;
+	cudaMalloc(&size_device, sizeof(int));
+	int size;
+	dim3 grid_size(1);
+	dim3 block_size(1);
+	GetHeapSize<<<grid_size, block_size>>>(reinterpret_cast<IDeviceHeap*>(device_heap), size_device);
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap Size() failed.");
+	cudaMemcpy(&size, size_device, sizeof(int), cudaMemcpyDeviceToHost);
+	return size;
+};
 
-	int size() const override {
-		int* size_device;
-		cudaMalloc(&size_device, sizeof(int));
-		int size;
-		dim3 grid_size(1);
-		dim3 block_size(1);
-		GetHeapSize<<<grid_size, block_size>>>(device_heap, size_device);
-		open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap size() failed.");
-		cudaMemcpy(&size, size_device, sizeof(int), cudaMemcpyDeviceToHost);
-		return size;
-	};
-
-	bool empty() const override {
-		bool* is_empty_device;
-		cudaMalloc(&is_empty_device, sizeof(bool));
-		bool is_empty;
-		dim3 grid_size(1);
-		dim3 block_size(1);
-		IsHeapEmpty<<<grid_size, block_size>>>(device_heap, is_empty_device);
-		open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap empty() failed.");
-		cudaMemcpy(&is_empty, is_empty_device, sizeof(bool), cudaMemcpyDeviceToHost);
-		return is_empty;
-	};
-private:
-	IDeviceHeap* device_heap;
-	const open3d::core::Dtype key_data_type;
-	const open3d::core::Dtype value_data_type;
-	const open3d::core::Device device;
-	void* storage;
+bool HostHeap<open3d::core::Device::DeviceType::CUDA>::Empty() const {
+	bool* is_empty_device;
+	cudaMalloc(&is_empty_device, sizeof(bool));
+	bool is_empty;
+	dim3 grid_size(1);
+	dim3 block_size(1);
+	IsHeapEmpty<<<grid_size, block_size>>>(reinterpret_cast<IDeviceHeap*>(device_heap), is_empty_device);
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("Heap Empty() failed.");
+	cudaMemcpy(&is_empty, is_empty_device, sizeof(bool), cudaMemcpyDeviceToHost);
+	return is_empty;
 };
 
 } // namespace core
