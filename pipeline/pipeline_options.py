@@ -47,6 +47,7 @@ anchor_node_count = 4  # used for initial graph generation, mesh warping, and in
 fusion_minimum_valid_anchor_count = 3
 # TODO setting to tune maximum invalid node count
 transformation_mode = TransformationMode.MATRICES
+voxel_anchor_computation_mode = AnchorComputationMode.SHORTEST_PATH
 
 # **** TELEMETRY *****
 

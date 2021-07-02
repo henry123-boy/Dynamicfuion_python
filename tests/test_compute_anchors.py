@@ -168,7 +168,6 @@ def test_shortest_path_anchors(device: o3d.core.Device):
     anchors, weights = nnrt.geometry.compute_anchors_and_weights_shortest_path(
         vertices_o3d, nodes_o3d, edges_o3d, anchor_count, node_coverage)
 
-
     assert np.alltrue(anchors_gt == anchors.cpu().numpy())
     assert np.allclose(weights.cpu().numpy().sum(axis=1), [[1.0], [1.0]])
     assert np.allclose(weights.cpu().numpy()[0], weights_s0_gt)

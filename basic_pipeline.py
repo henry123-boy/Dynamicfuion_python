@@ -175,10 +175,12 @@ class FusionPipeline:
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
                                                                    erosion_iteration_count=10,
                                                                    neighbor_count=8)
-                else:
+                elif po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
                     self.graph = sequence.get_current_frame_graph()
                     if self.graph is None:
                         raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
+                else:
+                    raise NotImplementedError(f"graph generation mode {po.graph_generation_mode.name} not implemented.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
             else:
 
@@ -279,7 +281,7 @@ class FusionPipeline:
                     # prepare data for Open3D integration
                     node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in self.graph.transformations_dq])
                     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-                    cos_voxel_ray_to_normal = volume.integrate_warped_dq(
+                    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
                         depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                         self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                         nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
@@ -288,7 +290,7 @@ class FusionPipeline:
                 elif po.transformation_mode == po.TransformationMode.MATRICES:
                     node_rotations_o3d = o3c.Tensor(self.graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
                     node_translations_o3d = o3c.Tensor(self.graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
-                    cos_voxel_ray_to_normal = volume.integrate_warped_mat(
+                    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
                         depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                         self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                         nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,

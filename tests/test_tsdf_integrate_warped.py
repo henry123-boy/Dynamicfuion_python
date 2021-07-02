@@ -145,7 +145,7 @@ def test_integrate_warped_simple_motion_dq(device):
     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
 
-    cos_voxel_ray_to_normal = volume.integrate_warped_dq(
+    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
         depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_dual_quaternions_o3d, node_coverage,
         anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0)
@@ -257,7 +257,7 @@ def test_integrate_warped_simple_motion_mat(device):
     node_translations_o3d = o3c.Tensor(node_translations_vec, dtype=o3c.Dtype.Float32, device=device)
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
 
-    cos_voxel_ray_to_normal = volume.integrate_warped_mat(
+    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
         depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
         anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0)

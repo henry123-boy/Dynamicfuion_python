@@ -24,35 +24,35 @@ namespace geometry {
 namespace kernel {
 namespace tsdf {
 
-void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                       open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                       const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                       const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
-                       const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
-                       int minimum_valid_anchor_count, float depth_scale, float depth_max);
+void IntegrateWarpedEuclideanDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                                open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                                const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                                const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
+                                const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
+                                int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                       open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                       const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                       const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
-                       const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
-                       int minimum_valid_anchor_count, float depth_scale, float depth_max);
+void IntegrateWarpedEuclideanDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                                open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                                const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                                const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
+                                const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
+                                int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
-void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                        const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                        const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                        int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
+void IntegrateWarpedEuclideanMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                                 open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                                 const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                                 const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
+                                 const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+                                 int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                        const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                        const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                        int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
+void IntegrateWarpedEuclideanMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                                 open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                                 const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                                 const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
+                                 const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+                                 int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
 
 //TODO: provide dual-quaternion version (?)
