@@ -1317,6 +1317,7 @@ void djikstra_knn(int* vertex_anchors,
 	};
 	std::priority_queue<index_and_distance, std::vector<index_and_distance>,
 			decltype(by_second_comparator)> queue(by_second_comparator);
+	std::vector<index_and_distance> discovered_anchors;
 
 	while (distance_by_shortest_path_anchor.size() < anchor_count) {
 		// Keep only the anchor_count nearest Euclidean neighbors.
@@ -1344,8 +1345,9 @@ void djikstra_knn(int* vertex_anchors,
 				continue;
 			}
 
-			// insert new node in the weight map
+			// insert new node in the weight map & anchor set
 			distance_by_shortest_path_anchor[source_node_index] = source_path_distance;
+			discovered_anchors.push_back(graph_node_and_distance);
 			if (distance_by_shortest_path_anchor.size() >= anchor_count)
 				break;
 
@@ -1365,7 +1367,7 @@ void djikstra_knn(int* vertex_anchors,
 	//TODO: DRY violation -- move weight normalization out to a separate function and reuse throughout file
 	float weight_sum = 0;
 	int valid_anchor_count = 0;
-	for (const auto anchor : distance_by_shortest_path_anchor) {
+	for (const auto anchor : discovered_anchors) {
 		vertex_anchors[valid_anchor_count] = anchor.first;
 		float weight = compute_anchor_weight(anchor.second, node_coverage);
 		vertex_weights[valid_anchor_count] = weight;

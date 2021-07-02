@@ -47,10 +47,10 @@ def test_compute_anchors_euclidean(device):
     assert np.allclose(vertex_weights_sorted, old_vertex_weights_sorted)
 
 
-def prepare_test_data_anchor_computation_test1():
+def prepare_test_data_anchor_computation_test1(node_coverage: float):
     vertices = np.array([
-        [-4.6, -4.2, 0],  # SOURCE_1
-        [-4.4, 7.1, 0]  # SOURCE_2
+        [-4.6, -4.2, 0],  # SOURCE_1 in image, s0 here
+        [-4.4, 7.1, 0]  # SOURCE_2 in image, s1 here
     ], dtype=np.float32)
 
     # @formatter:off
@@ -96,30 +96,35 @@ def prepare_test_data_anchor_computation_test1():
     dist_s0_5 = np.linalg.norm(vertices[0] - nodes[5])
     dist_s0_9 = np.linalg.norm(vertices[0] - nodes[9])
 
-    anchors_gt = np.array([[0, 1, 2, 3, 4, 5, 6, 9],
-                           [1, 2, 3, 4, 7, 8, 9, 10]], dtype=np.int32)
+    dist_s1_9 = np.linalg.norm(vertices[1] - nodes[9])
+    dist_s1_1 = np.linalg.norm(vertices[1] - nodes[1])
+
+    anchors_gt = np.array([[4, 3, 2, 1, 0, 5, 6, 9],
+                           [9, 8, 7, 10, 1, 2, 3, 4]], dtype=np.int32)
 
     sp_dists_s0 = np.array([
-        dist_s0_4 + dist_0_4,                        # anchor node: 0
-        dist_s0_4 + dist_3_4 + dist_2_3 + dist_1_2,  # anchor node: 1
-        dist_s0_4 + dist_3_4 + dist_2_3,             # anchor node: 2
-        dist_s0_4 + dist_3_4,                        # anchor node: 3
-        dist_s0_4,                                   # anchor node: 4
-        dist_s0_5,                                   # anchor node: 5
-        dist_s0_5 + dist_5_6,                        # anchor node: 6
-        dist_s0_9,                                   # anchor node: 9
+        dist_s0_4,                                    # anchor node: 4
+        dist_s0_4 + dist_3_4,                         # anchor node: 3
+        dist_s0_4 + dist_3_4 + dist_2_3,              # anchor node: 2
+        dist_s0_4 + dist_3_4 + dist_2_3 + dist_1_2,   # anchor node: 1
+        dist_s0_4 + dist_0_4,                         # anchor node: 0
+        dist_s0_5,                                    # anchor node: 5
+        dist_s0_5 + dist_5_6,                         # anchor node: 6
+        dist_s0_9,                                    # anchor node: 9
     ])
+
+    sp_dists_s1 = np.array([
+        dist_s1_9,                                    # anchor node: 9
+        dist_s1_9 + dist_8_9,                         # anchor node: 8
+        dist_s1_9 + dist_8_9 + dist_7_8,              # anchor node: 7
+        dist_s1_9 + dist_8_9 + dist_7_8 + dist_7_10,  # anchor node: 10
+        dist_s1_1,                                    # anchor node: 1
+        dist_s1_1 + dist_1_2,                         # anchor node: 2
+        dist_s1_1 + dist_1_2 + dist_2_3,              # anchor node: 3
+        dist_s1_1 + dist_1_2 + dist_3_4,              # anchor node: 4
+    ])
+
     # @formatter:on
-    return vertices, nodes, edges, anchors_gt, sp_dists_s0
-
-
-# see tests/test_data/AnchorComputationTest1.jpg for reference
-def test_shortest_path_anchors_legacy():
-    anchor_count = 8
-    node_coverage = 1.0
-
-    vertices, nodes, edges, anchors_gt, sp_dists_s0 = prepare_test_data_anchor_computation_test1()
-
     def compute_anchor_weight(dist, _node_coverage):
         return math.exp(-(math.pow(dist, 2.0) / 2.0 * math.pow(_node_coverage, 2.0)))
 
@@ -128,22 +133,43 @@ def test_shortest_path_anchors_legacy():
     weight_sum = weights_s0_gt.sum()
     weights_s0_gt /= weight_sum
 
+    weights_s1_gt = u_compute_anchor_weights(sp_dists_s1, node_coverage)
+    weight_sum = weights_s1_gt.sum()
+    weights_s1_gt /= weight_sum
+    return vertices, nodes, edges, anchors_gt, weights_s0_gt, weights_s1_gt
+
+
+# see tests/test_data/AnchorComputationTest1.jpg for reference
+def test_shortest_path_anchors_legacy():
+    anchor_count = 8
+    node_coverage = 1.0
+
+    vertices, nodes, edges, anchors_gt, weights_s0_gt, weights_s1_gt = prepare_test_data_anchor_computation_test1(node_coverage)
+
     anchors, weights = nnrt.compute_vertex_anchors_shortest_path(vertices, nodes, edges, anchor_count, node_coverage)
 
     assert np.alltrue(anchors_gt == anchors)
     assert np.allclose(weights.sum(axis=1), [[1.0], [1.0]])
     assert np.allclose(weights[0], weights_s0_gt)
+    assert np.allclose(weights[1], weights_s1_gt)
 
 
-# @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-@pytest.mark.parametrize("device", [o3d.core.Device('cpu:0')])
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_shortest_path_anchors(device: o3d.core.Device):
     anchor_count = 8
     node_coverage = 1.0
-    vertices, nodes, edges, anchors_gt, sp_dists_s0 = prepare_test_data_anchor_computation_test1()
+    vertices, nodes, edges, anchors_gt, weights_s0_gt, weights_s1_gt = prepare_test_data_anchor_computation_test1(node_coverage)
+
     vertices_o3d = o3c.Tensor(vertices, device=device)
+
     nodes_o3d = o3c.Tensor(nodes, device=device)
     edges_o3d = o3c.Tensor(edges, device=device)
 
     anchors, weights = nnrt.geometry.compute_anchors_and_weights_shortest_path(
         vertices_o3d, nodes_o3d, edges_o3d, anchor_count, node_coverage)
+
+
+    assert np.alltrue(anchors_gt == anchors.cpu().numpy())
+    assert np.allclose(weights.cpu().numpy().sum(axis=1), [[1.0], [1.0]])
+    assert np.allclose(weights.cpu().numpy()[0], weights_s0_gt)
+    assert np.allclose(weights.cpu().numpy()[1], weights_s1_gt)

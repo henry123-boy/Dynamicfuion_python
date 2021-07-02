@@ -93,6 +93,7 @@ void ComputeAnchorsAndWeightsEuclidean
 template<o3c::Device::DeviceType TDeviceType>
 void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& weights, const o3c::Tensor& points, const o3c::Tensor& nodes,
                                           const o3c::Tensor& edges, int anchor_count, float node_coverage) {
+
 	float node_coverage_squared = node_coverage * node_coverage;
 	int64_t point_count = points.GetLength();
 	int64_t node_count = nodes.GetLength();
@@ -102,7 +103,9 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	//input indexers
 	NDArrayIndexer point_indexer(points, 1);
 	NDArrayIndexer node_indexer(nodes, 1);
-	NDArrayIndexer edge_indexer(nodes, 2);
+	NDArrayIndexer edge_indexer(edges, 1);
+
+	edges.AssertShape({node_count, GRAPH_DEGREE});
 
 	//output indexers
 	NDArrayIndexer anchor_indexer(anchors, 1);

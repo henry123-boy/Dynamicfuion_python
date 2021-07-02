@@ -31,7 +31,7 @@ namespace graph {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
-inline void SetFloatsToValue(float* array, const int size, const float value){
+inline void SetFloatsToValue(float* array, const int size, const float value) {
 	for (int i_anchor = 0; i_anchor < size; i_anchor++) {
 		array[i_anchor] = value;
 	}
@@ -40,8 +40,8 @@ inline void SetFloatsToValue(float* array, const int size, const float value){
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void ProcessNodeEuclideanKNNBruteForce(int& max_at_index, float& max_squared_distance, int32_t* anchor_indices,
-											  float* squared_distances, const int anchor_count,
-											  const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer, const int i_node){
+                                              float* squared_distances, const int anchor_count,
+                                              const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer, const int i_node) {
 	auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
 	Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
 	float squared_distance = (node - point).squaredNorm();
@@ -73,7 +73,7 @@ inline void FindEuclideanKNNAnchorsBruteForce(int32_t* anchor_indices, float* sq
 
 	for (int i_node = 0; i_node < node_count; i_node++) {
 		ProcessNodeEuclideanKNNBruteForce<TDeviceType>(max_at_index, max_squared_distance, anchor_indices, squared_distances, anchor_count,
-													   point, node_indexer, i_node);
+		                                               point, node_indexer, i_node);
 	}
 }
 
@@ -81,7 +81,8 @@ template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void FindEuclideanKNNAnchorsBruteForce_ExcludingSet(int32_t* anchor_indices, float* squared_distances, const int anchor_count,
                                                            const int node_count, const Eigen::Vector3f& point,
-                                                           const NDArrayIndexer& node_indexer, const int32_t* excluded_set, const int excluded_set_size) {
+                                                           const NDArrayIndexer& node_indexer, const int32_t* excluded_set,
+                                                           const int excluded_set_size) {
 	SetFloatsToValue<TDeviceType>(squared_distances, anchor_count, INFINITY);
 
 	int max_at_index = 0;
@@ -89,12 +90,12 @@ inline void FindEuclideanKNNAnchorsBruteForce_ExcludingSet(int32_t* anchor_indic
 
 	for (int i_node = 0; i_node < node_count; i_node++) {
 		bool excluded = false;
-		for(int i_excluded_index = 0; i_excluded_index < excluded_set_size; i_excluded_index++){
-			if(i_node == excluded_set[i_excluded_index]){
+		for (int i_excluded_index = 0; i_excluded_index < excluded_set_size; i_excluded_index++) {
+			if (i_node == excluded_set[i_excluded_index]) {
 				excluded = true;
 			}
 		}
-		if(excluded) continue;
+		if (excluded) continue;
 
 		ProcessNodeEuclideanKNNBruteForce<TDeviceType>(max_at_index, max_squared_distance, anchor_indices, squared_distances, anchor_count,
 		                                               point, node_indexer, i_node);
@@ -220,42 +221,47 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 	const int queue_capacity = 40;
 	DistanceIndexPair queue_data[queue_capacity];
 	core::DeviceHeap<TDeviceType, DistanceIndexPair, Compare> priority_queue(queue_data, queue_capacity, core::MinHeapKeyCompare<float, int32_t>);
+
 	while (discovered_anchor_count < anchor_count) {
 		int closest_node_index = -1;
 		float closest_node_distance;
-		FindEuclideanKNNAnchorsBruteForce_ExcludingSet<TDeviceType>(&closest_node_index, &closest_node_distance, 1, node_count, point, node_indexer, anchor_indices, anchor_count);
-		if(closest_node_index == -1){
+		FindEuclideanKNNAnchorsBruteForce_ExcludingSet<TDeviceType>(
+				&closest_node_index, &closest_node_distance, 1, node_count,
+				point, node_indexer, anchor_indices, anchor_count
+		);
+		closest_node_distance = sqrtf(closest_node_distance);
+		if (closest_node_index == -1) {
 			break; // no node to initialize queue with, we've got no more valid anchors to consider
 		}
 		priority_queue.insert(DistanceIndexPair{closest_node_distance, closest_node_index});
 
-		while(!priority_queue.empty() && discovered_anchor_count < anchor_count){
+		while (!priority_queue.empty() && discovered_anchor_count < anchor_count) {
 			auto source_pair = priority_queue.pop();
 			bool node_already_processed = false;
-			for(int i_anchor = 0; i_anchor < discovered_anchor_count && !node_already_processed; i_anchor++){
-				if(anchor_indices[i_anchor] == source_pair.key){
+			for (int i_anchor = 0; i_anchor < discovered_anchor_count && !node_already_processed; i_anchor++) {
+				if (anchor_indices[i_anchor] == source_pair.value) {
 					node_already_processed = true;
 				}
 			}
-			if(node_already_processed){
+			if (node_already_processed) {
 				continue;
 			}
 			distances[discovered_anchor_count] = source_pair.key;
 			anchor_indices[discovered_anchor_count] = source_pair.value;
 			discovered_anchor_count++;
-			if(discovered_anchor_count >= anchor_count) break;
+			if (discovered_anchor_count >= anchor_count) break;
 
-			auto source_pointer = node_indexer.GetDataPtrFromCoord<float>(source_pair.value);
+			auto source_pointer = node_indexer.template GetDataPtrFromCoord<float>(source_pair.value);
 			Eigen::Map<const Eigen::Vector3f> source_node(source_pointer);
 
-			for(int i_edge = 0; i_edge < GRAPH_DEGREE; i_edge++){
-				auto target_index_pointer = edge_indexer.template GetDataPtrFromCoord<int>(source_pair.value, i_edge);
-				int target_node_index = *target_index_pointer;
-				if(target_node_index > -1){
-					auto target_pointer = node_indexer.GetDataPtrFromCoord<float>(target_node_index);
+			for (int i_edge = 0; i_edge < GRAPH_DEGREE; i_edge++) {
+				auto target_index_pointer = edge_indexer.template GetDataPtrFromCoord<int32_t>(source_pair.value);
+				int target_node_index = target_index_pointer[i_edge];
+				if (target_node_index > -1) {
+					auto target_pointer = node_indexer.template GetDataPtrFromCoord<float>(target_node_index);
 					Eigen::Map<const Eigen::Vector3f> target_node(target_pointer);
 					float distance_source_to_target = (target_node - source_node).norm();
-					priority_queue.insert(DistanceIndexPair{source_pair.value + distance_source_to_target, target_node_index});
+					priority_queue.insert(DistanceIndexPair{source_pair.key + distance_source_to_target, target_node_index});
 				}
 			}
 		}
@@ -269,7 +275,7 @@ FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor
                                           const int node_count, const Eigen::Vector3f& point,
                                           const NDArrayIndexer& node_indexer,
                                           const NDArrayIndexer& edge_indexer,
-                                          const float node_coverage_squared){
+                                          const float node_coverage_squared) {
 	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
 	graph::FindShortestPathKNNAnchors<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer, edge_indexer);
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
@@ -278,7 +284,7 @@ FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor
 	int valid_anchor_count = 0;
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		float distance = distances[i_anchor];
-		float weight = expf(-(distance*distance) / (2 * node_coverage_squared));
+		float weight = expf(-(distance * distance) / (2 * node_coverage_squared));
 		weight_sum += weight;
 		anchor_weights[i_anchor] = weight;
 		valid_anchor_count++;

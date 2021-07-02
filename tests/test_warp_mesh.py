@@ -7,8 +7,6 @@ import numpy as np
 from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 
 
-
-
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_warp_mesh_numpy_mat(device):
     mesh = o3d.geometry.TriangleMesh.create_box()
