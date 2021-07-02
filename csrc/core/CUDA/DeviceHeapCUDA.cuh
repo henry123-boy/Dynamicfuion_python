@@ -76,7 +76,7 @@ make_heap(RandomAccessIterator begin, size_t length, TCompare compare) {
 template<typename TElement, typename TCompare>
 class DeviceHeap<o3c::Device::DeviceType::CUDA, TElement, TCompare> : public TypedDeviceHeap<TElement> {
 public:
-	__host__ __device__ DeviceHeap(TElement* data, int capacity, TCompare compare) :
+	__device__ DeviceHeap(TElement* data, int capacity, TCompare compare) :
 			data(data), cursor(capacity), capacity(capacity), compare(compare), _size(0) {}
 
 	__device__ bool insert(TElement element) override {
@@ -84,8 +84,8 @@ public:
 		// fill in from the back, moving toward the front
 		cursor--;
 		data[cursor] = element;
-		heap::sift_down(data, cursor, capacity, compare);
 		_size++;
+		heap::sift_down(data + cursor, 0, _size, compare);
 		return true;
 	}
 

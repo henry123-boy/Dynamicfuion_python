@@ -41,7 +41,7 @@ public:
 
 	bool Empty() const override;
 private:
-	void* device_heap;
+	IDeviceHeap* device_heap;
 	const open3d::core::Dtype key_data_type;
 	const open3d::core::Dtype value_data_type;
 	const open3d::core::Device device;
