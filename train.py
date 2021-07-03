@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Ask user input regarding the use of data augmentation
     #####################################################################################
     # Confirm hyperparameters
-    options.print_hyperparams()
+    options.print_hyperparameters()
 
     print()
     print("train_dir        ", train_dir)

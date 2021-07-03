@@ -29,7 +29,7 @@ custom_paths_by_mac_address_hash = {
                             output=default_output_directory),
     "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output=default_output_directory)                                             # ahmed's
+                            output=default_output_directory)  # ahmed's
 }
 try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
@@ -91,13 +91,10 @@ elif mode == "4_your_custom_settings":
     pass
 
 
-#####################################################################################################################
-# Print options
-#####################################################################################################################
-
-# GPU id
-def print_hyperparams():
-    print("HYPERPARAMETERS:")
+def print_hyperparameters(stdout=sys.stdout) -> None:
+    original_stdout = sys.stdout
+    sys.stdout = stdout
+    print("HYPERPARAMETERS (options.py):")
     print()
 
     print("\tnum_worker_threads           ", num_worker_threads)
@@ -144,3 +141,9 @@ def print_hyperparams():
     print("\tuse_mask_loss                ", use_mask_loss, "\t", lambda_mask)
     print()
     print("\tuse_mask                     ", use_mask)
+    sys.stdout = original_stdout
+
+
+def save_hyperparameters_to_file(file_path: str) -> None:
+    with open(file_path, 'w') as file:
+        print_hyperparameters(file)

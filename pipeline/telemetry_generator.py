@@ -13,6 +13,8 @@ from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
 from pynvml import *
 from pipeline.pipeline_options import VisualizationMode
 import utils.viz.tracking as tracking_viz
+import pipeline.pipeline_options as po
+import options
 
 
 class TelemetryGenerator:
@@ -27,6 +29,9 @@ class TelemetryGenerator:
                  visualization_mode: VisualizationMode,
                  output_directory: str,
                  record_over_run_time: datetime = datetime.now()):
+
+        save_all_parameters_to_file = True
+
         # set up mesh recorder
         self.mesh_video_recorder = None
         self.record_visualization_to_disk = record_visualization_to_disk
@@ -36,6 +41,13 @@ class TelemetryGenerator:
         self.record_gn_point_clouds = record_gn_point_clouds
         self.visualization_mode = visualization_mode
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
+        if save_all_parameters_to_file:
+            options_path = os.path.join(self.output_directory, "options.txt")
+            options.save_hyperparameters_to_file(options_path)
+            pipeline_options_path = os.path.join(self.output_directory, "pipeline_options.txt")
+            po.save_pipeline_options_to_file(pipeline_options_path)
 
         if self.record_visualization_to_disk:
             # TODO fix recording, it currently doesn't seem to work. Perhaps use something other than Open3D for rendering,
@@ -173,3 +185,4 @@ class TelemetryGenerator:
             path = os.path.join(self.frame_output_directory,
                                 f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
             np.save(path, deformed_points.cpu().detach().numpy().reshape(-1, 3))
+
