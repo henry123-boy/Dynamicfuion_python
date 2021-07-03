@@ -90,14 +90,14 @@ void IntegrateWarpedShortestPathMat<o3c::Device::DeviceType::CPU>(
 		int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
-template
-void DetermineWhichBlocksToActivateWithWarp<o3c::Device::DeviceType::CPU>(
-		o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
-		const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
-		const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes, const o3c::Tensor& graph_edges,
-		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
-		float node_coverage, int64_t block_resolution, float voxel_size, float sdf_truncation_distance
-);
+// template
+// void DetermineWhichBlocksToActivateWithWarp<o3c::Device::DeviceType::CPU>(
+// 		o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
+// 		const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
+// 		const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes, const o3c::Tensor& graph_edges,
+// 		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
+// 		float node_coverage, int64_t block_resolution, float voxel_size, float sdf_truncation_distance
+// );
 
 } // namespace tsdf
 } // namespace kernel

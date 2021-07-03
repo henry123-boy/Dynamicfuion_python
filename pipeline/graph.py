@@ -146,6 +146,11 @@ class DeformationGraphNumpy:
         return mesh_warped
 
 
+# TODO: eventually, the idea is to first use this class instead of DeformationGraphNumpy, then make an Open3D-based
+#  C++ implementation of it (with a python port, of course, and could be something like WarpField instead of Graph to
+#  further abstract away things)
+#  This will greatly reduce or eliminate the Long Parameter List anti-pattern in the IntegrateWarped____ member functions,
+#  since these will accept a graph with all of the parameters like "nodes", "edges", "node_transformations", etc.
 class DeformationGraphOpen3D:
     def __init__(self, nodes: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
                  clusters: o3c.Tensor, anchor_count=4):

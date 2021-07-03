@@ -165,7 +165,8 @@ class FusionPipeline:
 
             # endregion
             if current_frame.frame_index == sequence.start_frame_index:
-                volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device, options.depth_scale, 3.0)
+                volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                                 options.depth_scale, 3.0)
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
@@ -277,27 +278,57 @@ class FusionPipeline:
                 # prepare data for Open3D integration
                 nodes_o3d = o3c.Tensor(self.graph.nodes, dtype=o3c.Dtype.Float32, device=device)
 
+                # TODO: to eliminate some of the indirection here, see TODO above DeformationGraphOpen3D. Might be able to
+                #  condense the four variants here into a single function with two flag arguments controlling behavior.
                 if po.transformation_mode == po.TransformationMode.QUATERNIONS:
-                    # prepare data for Open3D integration
+                    # prepare quaternion data for Open3D integration
                     node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in self.graph.transformations_dq])
                     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-                    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
-                        depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                        self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                        nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
-                        anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
-                        depth_scale=options.depth_scale, depth_max=3.0)
+                    if po.voxel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
+                        cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
+                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                            nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
+                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            depth_scale=options.depth_scale, depth_max=3.0)
+                    elif po.voxel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
+                        cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_dq(
+                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                            nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
+                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            depth_scale=options.depth_scale, depth_max=3.0)
+                    else:
+                        raise NotImplementedError(
+                            f"{po.AnchorComputationMode.__name__} '{po.voxel_anchor_computation_mode.name:s}' not "
+                            f"implemented for TSDF voxel anchors using {po.transformation_mode.name:s} "
+                            f"'{po.TransformationMode.__name__}'")
                 elif po.transformation_mode == po.TransformationMode.MATRICES:
                     node_rotations_o3d = o3c.Tensor(self.graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
                     node_translations_o3d = o3c.Tensor(self.graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
-                    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
-                        depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                        self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                        nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
-                        anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
-                        depth_scale=options.depth_scale, depth_max=3.0)
+                    if po.voxel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
+                        cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
+                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                            nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
+                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            depth_scale=options.depth_scale, depth_max=3.0)
+                    elif po.voxel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
+                        cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_mat(
+                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                            nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
+                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            depth_scale=options.depth_scale, depth_max=3.0)
+                    else:
+                        raise NotImplementedError(
+                            f"{po.AnchorComputationMode.__name__:s} '{po.voxel_anchor_computation_mode.name:s}' not "
+                            f"implemented for TSDF voxel anchors using {po.transformation_mode.name:s} "
+                            f"'{po.TransformationMode.__name__:s}'")
                 else:
-                    raise ValueError("Unsupported motion blending mode")
+                    raise NotImplementedError(
+                        f"Unsupported {po.TransformationMode.__name__:s} '{po.voxel_anchor_computation_mode.name:s}' "
+                        f"for motion blending of voxels during integration.")
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
                 #  Check BaldrLector's NeuralTracking fork code.
                 # endregion
