@@ -98,27 +98,27 @@ def print_pipeline_options(stdout=sys.stdout):
     print("pixel_anchor_computation_mode:", pixel_anchor_computation_mode)
 
     # Integration
-    print("anchor_node_count", anchor_node_count)
-    print("fusion_minimum_valid_anchor_count", fusion_minimum_valid_anchor_count)
-    print("transformation_mode", transformation_mode)
-    print("voxel_anchor_computation_mode", voxel_anchor_computation_mode)
+    print("anchor_node_count:", anchor_node_count)
+    print("fusion_minimum_valid_anchor_count:", fusion_minimum_valid_anchor_count)
+    print("transformation_mode:", transformation_mode)
+    print("voxel_anchor_computation_mode:", voxel_anchor_computation_mode)
 
     # **** TELEMETRY *****
 
     # verbosity options
-    print("print_frame_info", print_frame_info)
-    print("print_intrinsics", print_intrinsics)
-    print("print_cuda_memory_info", print_cuda_memory_info)
+    print("print_frame_info:", print_frame_info)
+    print("print_intrinsics:", print_intrinsics)
+    print("print_cuda_memory_info:", print_cuda_memory_info)
 
     # visualization options
-    print("visualization_mode", visualization_mode)
+    print("visualization_mode:", visualization_mode)
 
     # logging options
-    print("record_visualization_to_disk", record_visualization_to_disk)
-    print("record_canonical_meshes_to_disk", record_canonical_meshes_to_disk)
-    print("record_warped_meshes_to_disk", record_warped_meshes_to_disk)
-    print("record_rendered_warped_mesh", record_rendered_warped_mesh)
-    print("record_gn_point_clouds", record_gn_point_clouds)
+    print("record_visualization_to_disk:", record_visualization_to_disk)
+    print("record_canonical_meshes_to_disk:", record_canonical_meshes_to_disk)
+    print("record_warped_meshes_to_disk:", record_warped_meshes_to_disk)
+    print("record_rendered_warped_mesh:", record_rendered_warped_mesh)
+    print("record_gn_point_clouds:", record_gn_point_clouds)
 
     # **** DATASET *****
     print("sequence id:", sequence.sequence_id)
