@@ -52,8 +52,8 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
                              o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                              const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
                              const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& warp_graph_nodes,
-                             const float node_coverage, const int anchor_count, const int minimum_valid_anchor_count, const float depth_scale,
-                             const float depth_max, TApplyBlendWarp&& blend_motion, TFindKNN&& find_knn) {
+                             const float node_coverage, const float depth_scale, const float depth_max,
+                             TApplyBlendWarp&& blend_motion, TFindKNN&& find_knn) {
 	int64_t block_resolution3 =
 			block_resolution * block_resolution * block_resolution;
 
@@ -64,9 +64,6 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 			{block_resolution, block_resolution, block_resolution});
 	TransformIndexer transform_indexer(intrinsics, extrinsics, 1.0);
 
-	if (anchor_count < 0 || anchor_count > MAX_ANCHOR_COUNT) {
-		utility::LogError("anchor_count is {}, but is required to satisfy 0 < anchor_count < {}", anchor_count, MAX_ANCHOR_COUNT);
-	}
 
 #if defined(__CUDACC__)
 	o3c::CUDACachedMemoryManager::ReleaseCache();
@@ -141,9 +138,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!find_knn(anchor_indices, anchor_weights, anchor_count,
-				              minimum_valid_anchor_count, node_count,
-				              voxel_global_metric, node_indexer, node_coverage_squared)) {
+				if (!find_knn(anchor_indices, anchor_weights, node_count, voxel_global_metric, node_indexer, node_coverage_squared)) {
 					return;
 				}
 				// endregion
@@ -155,7 +150,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 				                                 &x_voxel_camera, &y_voxel_camera, &z_voxel_camera);
 				Eigen::Vector3f voxel_camera(x_voxel_camera, y_voxel_camera, z_voxel_camera);
 
-				Eigen::Vector3f warped_voxel = blend_motion(voxel_camera, anchor_indices, anchor_weights, node_indexer, anchor_count);
+				Eigen::Vector3f warped_voxel = blend_motion(voxel_camera, anchor_indices, anchor_weights, node_indexer);
 				if (warped_voxel.z() < 0) {
 					// voxel is behind camera
 					return;
@@ -219,6 +214,55 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 #endif
 }
 
+inline NNRT_DEVICE_WHEN_CUDACC
+Eigen::Vector3f BlendWarpDualQuaternions(const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+                                         const NDArrayIndexer& node_transform_indexer, const Eigen::Vector3f& voxel_camera) {
+	// *** linearly blend the anchor nodes' dual quaternions ***
+	float coefficients[8];
+	for (float& coefficient : coefficients) {
+		coefficient = 0.0f;
+	}
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		int anchor_node_index = anchor_indices[i_anchor];
+		if (anchor_node_index != -1) {
+			float anchor_weight = anchor_weights[i_anchor];
+			auto node_transform = node_transform_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			for (int i_coefficient = 0; i_coefficient < 8; i_coefficient++) {
+				coefficients[i_coefficient] += anchor_weight * node_transform[i_coefficient];
+			}
+		}
+	}
+	Eigen::DualQuaternion<float> voxel_transformation(
+			Eigen::Quaternion<float>(coefficients[0], coefficients[1], coefficients[2], coefficients[3]),
+			Eigen::Quaternion<float>(coefficients[4], coefficients[5], coefficients[6], coefficients[7])
+	);
+
+	voxel_transformation.normalize();
+	return voxel_transformation.transformPoint(voxel_camera);
+}
+
+inline NNRT_DEVICE_WHEN_CUDACC
+Eigen::Vector3f BlendWarpMatrices(const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+                                  const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
+                                  const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& voxel_camera) {
+	Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
+
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		int anchor_node_index = anchor_indices[i_anchor];
+		if (anchor_node_index != -1) {
+			float anchor_weight = anchor_weights[i_anchor];
+			auto node_rotation_data = node_rotation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			auto node_translation_data = node_translation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			Eigen::Matrix3f node_rotation(node_rotation_data);
+			Eigen::Vector3f node_translation(node_translation_data);
+			auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
+			warped_voxel += anchor_weight * (node + node_rotation * (voxel_camera - node) + node_translation);
+		}
+	}
+	return warped_voxel;
+}
+
 template<o3c::Device::DeviceType TDeviceType>
 void IntegrateWarpedEuclideanDQ(const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
                                 o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
@@ -231,38 +275,14 @@ void IntegrateWarpedEuclideanDQ(const o3c::Tensor& block_indices, const o3c::Ten
 
 	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, anchor_count,
-			minimum_valid_anchor_count, depth_scale, depth_max,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, depth_scale, depth_max,
 			[=] NNRT_DEVICE_WHEN_CUDACC
 					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
-					 const NDArrayIndexer& node_indexer, const int anchor_count) {
-				// *** linearly blend the anchor nodes' dual quaternions ***
-				float coefficients[8];
-				for (float& coefficient : coefficients) {
-					coefficient = 0.0f;
-				}
-				for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-					int anchor_node_index = anchor_indices[i_anchor];
-					if (anchor_node_index != -1) {
-						float anchor_weight = anchor_weights[i_anchor];
-						auto node_transform = node_transform_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						for (int i_coefficient = 0; i_coefficient < 8; i_coefficient++) {
-							coefficients[i_coefficient] += anchor_weight * node_transform[i_coefficient];
-						}
-					}
-				}
-				Eigen::DualQuaternion<float> voxel_transformation(
-						Eigen::Quaternion<float>(coefficients[0], coefficients[1], coefficients[2], coefficients[3]),
-						Eigen::Quaternion<float>(coefficients[4], coefficients[5], coefficients[6], coefficients[7])
-				);
-
-				voxel_transformation.normalize();
-				return voxel_transformation.transformPoint(voxel_camera);
+					 const NDArrayIndexer& node_indexer) {
+				return BlendWarpDualQuaternions(anchor_indices, anchor_weights, anchor_count, node_transform_indexer, voxel_camera);
 			},
-			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-			                            const int minimum_valid_anchor_count,
-			                            const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-			                            const float node_coverage_squared){
+			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int node_count, const Eigen::Vector3f& point,
+			                            const NDArrayIndexer& node_indexer, const float node_coverage_squared) {
 				return graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
 				                                                                            minimum_valid_anchor_count, node_count,
 				                                                                            point, node_indexer, node_coverage_squared);
@@ -282,35 +302,80 @@ void IntegrateWarpedEuclideanMat(const o3c::Tensor& block_indices, const o3c::Te
 
 	IntegrateWarped_Generic<TDeviceType>(
 			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, graph_nodes, node_coverage, anchor_count, minimum_valid_anchor_count,
-			depth_scale, depth_max,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, graph_nodes, node_coverage, depth_scale, depth_max,
 			[=] NNRT_DEVICE_WHEN_CUDACC
 					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
-					 const NDArrayIndexer& node_indexer, const int anchor_count) {
-				Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
-
-				for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-					int anchor_node_index = anchor_indices[i_anchor];
-					if (anchor_node_index != -1) {
-						float anchor_weight = anchor_weights[i_anchor];
-						auto node_rotation_data = node_rotation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						auto node_translation_data = node_translation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						Eigen::Matrix3f node_rotation(node_rotation_data);
-						Eigen::Vector3f node_translation(node_translation_data);
-						auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-						Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
-						warped_voxel += anchor_weight * (node + node_rotation * (voxel_camera - node) + node_translation);
-					}
-				}
-				return warped_voxel;
+					 const NDArrayIndexer& node_indexer) {
+				return BlendWarpMatrices(anchor_indices, anchor_weights, anchor_count, node_indexer,
+				                         node_rotation_indexer, node_translation_indexer, voxel_camera);
 			},
-			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-			                            const int minimum_valid_anchor_count,
-			                            const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-			                            const float node_coverage_squared){
+			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int node_count, const Eigen::Vector3f& point,
+			                            const NDArrayIndexer& node_indexer, const float node_coverage_squared) {
 				return graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
 				                                                                            minimum_valid_anchor_count, node_count,
 				                                                                            point, node_indexer, node_coverage_squared);
+			}
+	);
+}
+
+
+template<o3c::Device::DeviceType TDeviceType>
+void IntegrateWarpedShortestPathDQ(
+		const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+		o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
+		const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& warp_graph_nodes, const o3c::Tensor& warp_graph_edges,
+		const o3c::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
+		int minimum_valid_anchor_count, float depth_scale, float depth_max
+) {
+
+	NDArrayIndexer node_transform_indexer(node_dual_quaternion_transformations, 1);
+	NDArrayIndexer edge_indexer(warp_graph_edges, 1);
+
+	IntegrateWarped_Generic<TDeviceType>(
+			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_coverage, depth_scale, depth_max,
+			[=] NNRT_DEVICE_WHEN_CUDACC
+					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
+					 const NDArrayIndexer& node_indexer) {
+				return BlendWarpDualQuaternions(anchor_indices, anchor_weights, anchor_count, node_transform_indexer, voxel_camera);
+			},
+			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int node_count, const Eigen::Vector3f& point,
+			                            const NDArrayIndexer& node_indexer, const float node_coverage_squared) {
+				graph::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                              point, node_indexer, edge_indexer, node_coverage_squared);
+				return true;
+			}
+	);
+}
+
+template<o3c::Device::DeviceType TDeviceType>
+void IntegrateWarpedShortestPathMat(
+		const o3c::Tensor& block_indices, const o3c::Tensor& block_keys, o3c::Tensor& block_values,
+		o3c::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const o3c::Tensor& depth_tensor, const o3c::Tensor& color_tensor, const o3c::Tensor& depth_normals,
+		const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes, const o3c::Tensor& graph_edges,
+		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations, float node_coverage, int anchor_count,
+		int minimum_valid_anchor_count, float depth_scale, float depth_max
+) {
+	NDArrayIndexer node_rotation_indexer(node_rotations, 1);
+	NDArrayIndexer node_translation_indexer(node_translations, 1);
+	NDArrayIndexer edge_indexer(graph_edges, 1);
+
+	IntegrateWarped_Generic<TDeviceType>(
+			block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, graph_nodes, node_coverage, depth_scale, depth_max,
+			[=] NNRT_DEVICE_WHEN_CUDACC
+					(const Eigen::Vector3f& voxel_camera, const int* anchor_indices, const float* anchor_weights,
+					 const NDArrayIndexer& node_indexer) {
+				return BlendWarpMatrices(anchor_indices, anchor_weights, anchor_count, node_indexer,
+				                         node_rotation_indexer, node_translation_indexer, voxel_camera);
+			},
+			[=] NNRT_DEVICE_WHEN_CUDACC(int32_t* anchor_indices, float* anchor_weights, const int node_count, const Eigen::Vector3f& point,
+			                            const NDArrayIndexer& node_indexer, const float node_coverage_squared) {
+				graph::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				                                                              point, node_indexer, edge_indexer, node_coverage_squared);
+				return true;
 			}
 	);
 }
@@ -321,12 +386,13 @@ void IntegrateWarpedEuclideanMat(const o3c::Tensor& block_indices, const o3c::Te
 
 
 template<o3c::Device::DeviceType TDeviceType>
-void DetermineWhichBlocksToActivateWithWarp(o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
-                                            const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
-                                            const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes,
-                                            const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
-                                            float node_coverage,
-                                            int64_t block_resolution, float voxel_size, float sdf_truncation_distance) {
+void DetermineWhichBlocksToActivateWithWarp(
+		o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
+		const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
+		const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes, const o3c::Tensor& graph_edges,
+		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
+		float node_coverage, int64_t block_resolution, float voxel_size, float sdf_truncation_distance
+) {
 	auto candidate_block_count = candidate_block_coordinates.GetLength();
 	blocks_to_activate_mask = o3c::Tensor({candidate_block_count}, o3c::Dtype::Bool, candidate_block_coordinates.GetDevice());
 
@@ -337,9 +403,10 @@ void DetermineWhichBlocksToActivateWithWarp(o3c::Tensor& blocks_to_activate_mask
 
 	// intermediate result storage
 	o3c::Tensor candidate_block_corners({candidate_block_count * 8, 3}, o3c::Dtype::Float32, candidate_block_coordinates.GetDevice());
-	NDArrayIndexer 	candidate_block_corner_indexer(candidate_block_corners, 1);
+	NDArrayIndexer candidate_block_corner_indexer(candidate_block_corners, 1);
 	TransformIndexer transform_indexer(intrinsics_downsampled, extrinsics, 1.0);
 
+	open3d::utility::LogError("Sorry, function not implemented.");
 	//TODO
 // #if defined(__CUDACC__)
 // 	o3c::CUDACachedMemoryManager::ReleaseCache();

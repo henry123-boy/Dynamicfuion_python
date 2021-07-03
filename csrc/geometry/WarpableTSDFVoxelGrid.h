@@ -94,6 +94,36 @@ public:
 	                                                 float depth_scale = 1000.0f,
 	                                                 float depth_max = 3.0f);
 
+	open3d::core::Tensor IntegrateWarpedShortestPathDQ(const open3d::t::geometry::Image& depth, const open3d::core::Tensor& depth_normals,
+	                                                   const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	                                                   const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+	                                                   const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+	                                                   int anchor_count = 4, int minimum_valid_anchor_count = 3, float depth_scale = 1000.0f,
+	                                                   float depth_max = 3.0f);
+
+	open3d::core::Tensor IntegrateWarpedShortestPathDQ(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
+	                                                   const open3d::core::Tensor& depth_normals,
+	                                                   const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	                                                   const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+	                                                   const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+	                                                   int anchor_count = 4, int minimum_valid_anchor_count = 3, float depth_scale = 1000.0f,
+	                                                   float depth_max = 3.0f);
+
+	open3d::core::Tensor IntegrateWarpedShortestPathMat(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
+	                                                    const open3d::core::Tensor& depth_normals,
+	                                                    const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	                                                    const open3d::core::Tensor& warp_graph_nodes,  const open3d::core::Tensor& warp_graph_edges,
+	                                                    const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+	                                                    float node_coverage, int anchor_count = 4, int minimum_valid_anchor_count = 3,
+	                                                    float depth_scale = 1000.0f, float depth_max = 3.0f);
+
+	open3d::core::Tensor IntegrateWarpedShortestPathMat(const open3d::t::geometry::Image& depth, const open3d::core::Tensor& depth_normals,
+	                                                    const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	                                                    const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+	                                                    const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+	                                                    float node_coverage, int anchor_count = 4, int minimum_valid_anchor_count = 3,
+	                                                    float depth_scale = 1000.0f, float depth_max = 3.0f);
+
     int64_t ActivateSleeveBlocks();
 
 protected:
