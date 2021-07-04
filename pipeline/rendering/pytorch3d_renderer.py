@@ -83,7 +83,7 @@ class PyTorch3DRenderer:
                                                             faces_per_pixel=1)
 
         self.rasterizer = MeshRasterizer(self.cameras, raster_settings=self.rasterization_settings)
-
+        self.image_size = image_size
         self.renderer = MeshRenderer(
             rasterizer=self.rasterizer,
             shader=SoftPhongShader(
@@ -138,7 +138,7 @@ class PyTorch3DRenderer:
                 )
             )
         fragments = self.rasterizer.forward(meshes_torch3d)
-        rendered_depth = fragments.zbuf.cpu().numpy().reshape(480, 640)
+        rendered_depth = fragments.zbuf.cpu().numpy().reshape(self.image_size[0], self.image_size[1])
         rendered_depth[rendered_depth == -1.0] = 0.0
         rendered_depth *= depth_scale
 
