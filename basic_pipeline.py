@@ -167,6 +167,7 @@ class FusionPipeline:
             if current_frame.frame_index == sequence.start_frame_index:
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                                  options.depth_scale, 3.0)
+                # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
@@ -277,6 +278,7 @@ class FusionPipeline:
 
                 # prepare data for Open3D integration
                 nodes_o3d = o3c.Tensor(self.graph.nodes, dtype=o3c.Dtype.Float32, device=device)
+                edges_o3d = o3c.Tensor(self.graph.edges, dtype=o3c.Dtype.Int32, device=device)
 
                 # TODO: to eliminate some of the indirection here, see TODO above DeformationGraphOpen3D. Might be able to
                 #  condense the four variants here into a single function with two flag arguments controlling behavior.
@@ -295,7 +297,7 @@ class FusionPipeline:
                         cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_dq(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, node_dual_quaternions_o3d, options.node_coverage,
+                            nodes_o3d, edges_o3d, node_dual_quaternions_o3d, options.node_coverage,
                             anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
                             depth_scale=options.depth_scale, depth_max=3.0)
                     else:
@@ -317,7 +319,7 @@ class FusionPipeline:
                         cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
+                            nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, options.node_coverage,
                             anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
                             depth_scale=options.depth_scale, depth_max=3.0)
                     else:
