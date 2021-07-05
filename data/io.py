@@ -295,6 +295,54 @@ def save_graph_node_deformations(filename, node_deformations):
         fout.write(struct.pack('={}f'.format(node_deformations.size), *node_deformations.flatten("C")))
 
 
+def load_graph_node_translations(filename):
+    # Node translations are stored row-wise in order [num_nodes, 3].
+    assert os.path.isfile(filename), "File not found: {}".format(filename)
+
+    node_deformations = None
+    with open(filename, 'rb') as fin:
+        num_nodes = struct.unpack('I', fin.read(4))[0]
+
+        translations_vec = struct.unpack('f' * num_nodes * 3, fin.read(num_nodes * 3 * 4))
+        translations_vec = np.asarray(translations_vec, dtype=np.float32).reshape([num_nodes, 3])
+
+    return translations_vec
+
+
+def save_graph_node_translations(filename, translations_vec):
+    # Node positions are stored row-wise in order [num_nodes, 3].
+    assert len(translations_vec.shape) == 2
+    assert (translations_vec.shape[1] == 3)
+
+    with open(filename, 'wb') as fout:
+        fout.write(struct.pack('I', translations_vec.shape[0]))
+        fout.write(struct.pack('={}f'.format(translations_vec.size), *translations_vec.flatten("C")))
+
+
+def load_graph_node_rotations(filename):
+    # Node rotations are stored row-wise in order [num_nodes, 3, 3].
+    assert os.path.isfile(filename), "File not found: {}".format(filename)
+
+    node_deformations = None
+    with open(filename, 'rb') as fin:
+        num_nodes = struct.unpack('I', fin.read(4))[0]
+
+        rotations_mat = struct.unpack('f' * num_nodes * 3 * 3, fin.read(num_nodes * 3 * 3 * 4))
+        rotations_mat = np.asarray(rotations_mat, dtype=np.float32).reshape([num_nodes, 3, 3])
+
+    return rotations_mat
+
+
+def save_graph_node_rotations(filename, rotations_mat):
+    assert len(rotations_mat.shape) == 3
+    assert (rotations_mat.shape[1] == 3)
+    assert (rotations_mat.shape[2] == 3)
+
+    with open(filename, 'wb') as fout:
+        fout.write(struct.pack('I', rotations_mat.shape[0]))
+        fout.write(struct.pack('={}f'.format(rotations_mat.size), *rotations_mat.flatten("C")))
+
+
 def load_graph_clusters(filename):
     # Graph clusters are stored row-wise in order [num_nodes, 1].
     assert os.path.isfile(filename), "File not found: {}".format(filename)
@@ -378,6 +426,7 @@ def load_int_image(filename):
         image = np.asarray(image, dtype=np.int32).reshape([xdim, ydim, zdim])
 
     return image
+
 
 def draw_optical_flow_and_save(flow_image, filename):
     save_rgb_image(filename, flow.flow_to_color_safe(flow_image))

@@ -9,23 +9,79 @@ import open3d.core as o3c
 import nnrt
 from scipy.spatial.transform.rotation import Rotation
 
+import data.io as dio
 import options
 from pipeline.rendering.camera import Camera
 from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer, make_ndc_intrinsic_matrix
 
+NODE_COVERAGE = 0.05  # in meters
 
-def main():
-    # prepare folders
-    root_output_directory = os.path.join(options.output_directory, "twisted_cube")
-    if not os.path.exists(root_output_directory):
-        os.makedirs(root_output_directory)
+
+def save_sensor_data(seq_name: str, i_frame: int, depth: np.ndarray, color: np.ndarray):
+    root_output_directory = os.path.join(options.output_directory, seq_name)
+
     depth_output_directory = os.path.join(root_output_directory, "depth")
     if not os.path.exists(depth_output_directory):
         os.makedirs(depth_output_directory)
     color_output_directory = os.path.join(root_output_directory, "color")
     if not os.path.exists(color_output_directory):
         os.makedirs(color_output_directory)
+
+    depth_output_directory = os.path.join(root_output_directory, "depth")
+    color_output_directory = os.path.join(root_output_directory, "color")
+
+    color_path = os.path.join(color_output_directory, f"{i_frame:06d}.jpg")
+    depth_path = os.path.join(depth_output_directory, f"{i_frame:06d}.png")
+    cv2.imwrite(color_path, color)
+    cv2.imwrite(depth_path, depth.astype(np.uint16))
+
+
+def save_graph_data(seq_name: str, i_frame: int, graph: DeformationGraphOpen3D):
+    root_output_directory = os.path.join(options.output_directory, seq_name)
+
+    dst_graph_nodes_dir = os.path.join(root_output_directory, "graph_nodes")
+    if not os.path.exists(dst_graph_nodes_dir): os.makedirs(dst_graph_nodes_dir)
+
+    dst_graph_edges_dir = os.path.join(root_output_directory, "graph_edges")
+    if not os.path.exists(dst_graph_edges_dir): os.makedirs(dst_graph_edges_dir)
+
+    dst_graph_edges_weights_dir = os.path.join(root_output_directory, "graph_edges_weights")
+    if not os.path.exists(dst_graph_edges_weights_dir): os.makedirs(dst_graph_edges_weights_dir)
+
+    dst_node_translations_dir = os.path.join(root_output_directory, "graph_node_translations")
+    if not os.path.exists(dst_node_translations_dir): os.makedirs(dst_node_translations_dir)
+
+    dst_node_rotations_dir = os.path.join(root_output_directory, "graph_node_rotations")
+    if not os.path.exists(dst_node_rotations_dir): os.makedirs(dst_node_rotations_dir)
+
+    dst_graph_clusters_dir = os.path.join(root_output_directory, "graph_clusters")
+    if not os.path.exists(dst_graph_clusters_dir): os.makedirs(dst_graph_clusters_dir)
+
+    filename = "{}_{}_geodesic_{:.2f}.bin".format(seq_name, i_frame, NODE_COVERAGE)
+    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, filename)
+    output_graph_edges_path = os.path.join(dst_graph_edges_dir, filename)
+    output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir, filename)
+    output_node_translations_path = os.path.join(dst_node_translations_dir, filename)
+    output_node_rotations_path = os.path.join(dst_node_rotations_dir, filename)
+    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, filename)
+
+    dio.save_graph_nodes(output_graph_nodes_path, graph.nodes.cpu().numpy())
+    dio.save_graph_edges(output_graph_edges_path, graph.edges.cpu().numpy())
+    dio.save_graph_edges_weights(output_graph_edges_weights_path, graph.edge_weights.cpu().numpy())
+    dio.save_graph_node_translations(output_node_translations_path, graph.translations_vec.cpu().numpy())
+    dio.save_graph_node_rotations(output_node_rotations_path, graph.rotations_mat.cpu().numpy())
+    dio.save_graph_clusters(output_graph_clusters_path, graph.clusters.cpu().numpy())
+
+
+def main():
+    seq_name = "twisted_cube"
+    visualize_results = True
+    save_results = True
+
+    root_output_directory = os.path.join(options.output_directory, seq_name)
+    if not os.path.exists(root_output_directory):
+        os.makedirs(root_output_directory)
 
     # prepare geometry
     deepdeform_origin = np.array([0.0, 0.0, 2.8], dtype=np.float32)
@@ -64,8 +120,8 @@ def main():
     device = o3c.Device("cuda:0")
     nodes_o3d = o3c.Tensor(nodes, device=device)
     edges_o3d = o3c.Tensor(edges, device=device)
-    edge_weights_o3d = o3c.Tensor(np.array([1] * len(edges)), device=device)
-    clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
+    edge_weights_o3d = o3c.Tensor(np.ones((len(edges), 1)), device=device)
+    clusters_o3d = o3c.Tensor(np.zeros((len(nodes), 1), dtype=int), device=device)
 
     # setup cameras and renderer
     camera = Camera(800, 800)
@@ -102,18 +158,16 @@ def main():
         return warped_mesh_legacy
 
     # record animation rendering output
-    frame_count = 10
+    frame_count = 20
     rotation_increment = 2.0  # degrees
-    visualize_results = True
     rotated_mesh = original_mesh
     for i_frame in range(0, frame_count):
         i_angle = math.radians(rotation_increment)
         rotated_mesh = rotate_cube(rotated_mesh, i_angle)
-        depth, color = renderer.render_mesh(rotated_mesh, depth_scale=1000.0, extrinsics=None)
-        color_path = os.path.join(color_output_directory, f"{i_frame:06d}.jpg")
-        depth_path = os.path.join(depth_output_directory, f"{i_frame:06d}.png")
-        cv2.imwrite(color_path, color)
-        cv2.imwrite(depth_path, depth.astype(np.uint16))
+        depth, color = renderer.render_mesh(rotated_mesh, depth_scale=1000.0)
+        if save_results:
+            save_sensor_data(seq_name, i_frame, depth, color)
+            save_graph_data(seq_name, i_frame, graph_open3d)
         if visualize_results:
             o3d.visualization.draw_geometries([rotated_mesh],
                                               zoom=0.8,
