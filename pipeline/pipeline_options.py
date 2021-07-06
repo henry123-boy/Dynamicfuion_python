@@ -31,6 +31,11 @@ class GraphGenerationMode(Enum):
 class AnchorComputationMode(Enum):
     EUCLIDEAN = 0
     SHORTEST_PATH = 1
+    PRELOAD = 2
+
+class TrackingSpanMode(Enum):
+    ZERO_TO_T = 0
+    T_MINUS_ONE_TO_T = 1
 
 
 # **** BEHAVIOR *****
@@ -42,11 +47,11 @@ options.use_mask = True
 options.gn_max_nodes = 3000
 graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
 pixel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
+tracking_span_mode = TrackingSpanMode.T_MINUS_ONE_TO_T
 
 # Integration
 anchor_node_count = 4  # used for initial graph generation, mesh warping, and integration
 fusion_minimum_valid_anchor_count = 3
-# TODO setting to tune maximum invalid node count
 transformation_mode = TransformationMode.MATRICES
 voxel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
 
@@ -96,6 +101,7 @@ def print_pipeline_options(stdout=sys.stdout):
     print("gn_max_nodes (overridden from options.py):", options.gn_max_nodes)
     print("graph_generation_mode:", graph_generation_mode)
     print("pixel_anchor_computation_mode:", pixel_anchor_computation_mode)
+    print("tracking_span_mode:", tracking_span_mode)
 
     # Integration
     print("anchor_node_count:", anchor_node_count)

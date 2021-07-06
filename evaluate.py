@@ -93,10 +93,12 @@ def main():
         source_points = source[3:, :, :]
 
         # Graph
-        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights = DeformDataset.load_graph_data(
-            graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path,
-            graph_clusters_path, pixel_anchors_path, pixel_weights_path, cropper
-        )
+        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights = \
+            DeformDataset.load_graph_data(
+                graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path, graph_clusters_path
+            )
+
+        pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
 
         optical_flow_gt, optical_flow_mask, scene_flow_gt, scene_flow_mask = DeformDataset.load_flow(
             optical_flow_image_path, scene_flow_image_path, cropper

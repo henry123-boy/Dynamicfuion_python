@@ -126,10 +126,11 @@ def main():
         )
 
         # Graph
-        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = DeformDataset.load_graph_data(
-            graph_nodes_path, graph_edges_path, graph_edges_weights_path, None,
-            graph_clusters_path, pixel_anchors_path, pixel_weights_path, cropper
-        )
+        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters =  \
+            DeformDataset.load_graph_data(
+                graph_nodes_path, graph_edges_path, graph_edges_weights_path, None, graph_clusters_path
+            )
+        pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
 
         num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 

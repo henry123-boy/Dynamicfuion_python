@@ -68,10 +68,11 @@ class DeformDataset(Dataset):
         )
 
         # Load/compute graph.
-        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights = DeformDataset.load_graph_data(
+        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters = DeformDataset.load_graph_data(
             graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path,
             graph_clusters_path, pixel_anchors_path, pixel_weights_path, cropper
         )
+        pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
 
         # Compute groundtruth transformation for graph canonical_node_positions.
         num_nodes = graph_nodes.shape[0]
@@ -209,12 +210,31 @@ class DeformDataset(Dataset):
         return optical_flow_image, optical_flow_mask, scene_flow_image, scene_flow_mask
 
     @staticmethod
-    @dispatch(str, str, str, object, str, str, str, StaticCenterCrop)
+    def load_anchors_and_weights(pixel_anchors_path: str, pixel_weights_path: str,
+                                 cropper: typing.Union[StaticCenterCrop, None]) -> typing.Tuple[np.ndarray, np.ndarray]:
+        if cropper is not None:
+            pixel_anchors = cropper(load_int_image(pixel_anchors_path))
+            pixel_weights = cropper(load_float_image(pixel_weights_path))
+        else:
+            pixel_anchors = load_int_image(pixel_anchors_path)
+            pixel_weights = load_float_image(pixel_weights_path)
+
+        assert np.isfinite(pixel_weights).all(), pixel_weights
+        return pixel_anchors, pixel_weights
+
+    @staticmethod
+    def load_anchors_and_weights_from_sequence_directory_and_graph_filename(sequence_directory: str, graph_filename: str,
+                                                                            cropper: typing.Union[StaticCenterCrop, None]):
+        pixel_anchors_path = os.path.join(sequence_directory, "pixel_anchors", graph_filename + ".bin")
+        pixel_weights_path = os.path.join(sequence_directory, "pixel_weights", graph_filename + ".bin")
+        return DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
+
+    @staticmethod
+    @dispatch(str, str, str, object, str)
     def load_graph_data(
             graph_nodes_path: str, graph_edges_path: str, graph_edges_weights_path: str,
-            graph_node_deformations_path: str, graph_clusters_path: str,
-            pixel_anchors_path: str, pixel_weights_path: str, cropper: StaticCenterCrop
-    ):
+            graph_node_deformations_path: typing.Union[None, str], graph_clusters_path: str
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray, typing.Union[np.ndarray, None], np.ndarray]:
         # Load data.
         graph_nodes = load_graph_nodes(graph_nodes_path)
         graph_edges = load_graph_edges(graph_edges_path)
@@ -223,37 +243,27 @@ class DeformDataset(Dataset):
             if graph_node_deformations_path is not None else None
         graph_clusters = load_graph_clusters(graph_clusters_path)
 
-        if cropper is not None:
-            pixel_anchors = cropper(load_int_image(pixel_anchors_path))
-            pixel_weights = cropper(load_float_image(pixel_weights_path))
-        else:
-            pixel_anchors = load_int_image(pixel_anchors_path)
-            pixel_weights = load_float_image(pixel_weights_path)
-
         assert np.isfinite(graph_edges_weights).all(), graph_edges_weights
-        assert np.isfinite(pixel_weights).all(), pixel_weights
 
         if graph_node_deformations is not None:
             assert np.isfinite(graph_node_deformations).all(), graph_node_deformations
             assert graph_node_deformations.shape[1] == 3
             assert graph_node_deformations.dtype == np.float32
 
-        return graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights
+        return graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters
 
     @staticmethod
-    @dispatch(str, str, bool, StaticCenterCrop)
-    def load_graph_data(sequence_directory: str, graph_filename: str, load_deformations: bool, cropper: StaticCenterCrop):
+    @dispatch(str, str, bool)
+    def load_graph_data(sequence_directory: str, graph_filename: str, load_deformations: bool):
         graph_nodes_path = os.path.join(sequence_directory, "graph_nodes", graph_filename + ".bin")
         graph_edges_path = os.path.join(sequence_directory, "graph_edges", graph_filename + ".bin")
         graph_edges_weights_path = os.path.join(sequence_directory, "graph_edges_weights", graph_filename + ".bin")
         graph_node_deformations_path = None if not load_deformations \
             else os.path.join(sequence_directory, "graph_node_deformations", graph_filename + ".bin")
         graph_clusters_path = os.path.join(sequence_directory, "graph_clusters", graph_filename + ".bin")
-        pixel_anchors_path = os.path.join(sequence_directory, "pixel_anchors", graph_filename + ".bin")
-        pixel_weights_path = os.path.join(sequence_directory, "pixel_weights", graph_filename + ".bin")
+
         return DeformDataset.load_graph_data(graph_nodes_path, graph_edges_path, graph_edges_weights_path,
-                                             graph_node_deformations_path, graph_clusters_path, pixel_anchors_path,
-                                             pixel_weights_path, cropper)
+                                             graph_node_deformations_path, graph_clusters_path)
 
     @staticmethod
     def collate_with_padding(batch):

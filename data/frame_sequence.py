@@ -47,7 +47,6 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         """
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder,
                          far_clipping_distance, mask_lower_threshold)
-        self.graph_filename = None
 
         if self._base_dataset_type is not DatasetType.CUSTOM:
             # assumes add_in_graph_data.py script has already been successfully run on the sequence.
@@ -96,33 +95,44 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             self._next_frame_index += 1
             return frame
 
-    def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
-        if self._base_dataset_type == DatasetType.CUSTOM:
-            return None
+    def get_current_graph_name(self):
         graph_edges_dir = os.path.join(self.get_sequence_directory(), "graph_edges")
-        # TODO: make flexible-enough to load even when graph data is not available and signify this by storing some
-        #  value in a field
-
-        found_matching_start_frame = False
+        graph_filename = None
         current_frame_index = self._next_frame_index - 1
-        graph_filename = ""
         for filename in os.listdir(graph_edges_dir):
             filename_sans_ext = os.path.splitext(filename)[0]
             parts = filename_sans_ext.split('_')
             start_frame = int(parts[2])
             if start_frame == current_frame_index:
-                found_matching_start_frame = True
                 graph_filename = filename_sans_ext
                 break
+        return graph_filename
 
-        if not found_matching_start_frame:
+    def get_current_pixel_anchors_and_weights(self, cropper: typing.Union[None, StaticCenterCrop] = None):
+        graph_filename = self.get_current_graph_name()
+        if graph_filename is None:
+            return None, None
+
+        pixel_anchors, pixel_weights = \
+            DeformDataset.load_anchors_and_weights_from_sequence_directory_and_graph_filename(
+                self.get_sequence_directory(), graph_filename, cropper
+            )
+
+        return pixel_anchors, pixel_weights
+
+    def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
+        if self._base_dataset_type == DatasetType.CUSTOM:
             return None
 
-        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, _, _ = \
-            DeformDataset.load_graph_data(self.get_sequence_directory(), graph_filename, False,
-                                          StaticCenterCrop(self._resolution,
-                                                           (options.alignment_image_height,
-                                                            options.alignment_image_width)))
+        # TODO: make flexible-enough to load even when graph data is not available and signify this by storing some
+        #  value in a field
+
+        graph_filename = self.get_current_graph_name()
+        if graph_filename is None:
+            return None
+
+        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = \
+            DeformDataset.load_graph_data(self.get_sequence_directory(), graph_filename, False)
         graph = DeformationGraphNumpy(graph_nodes, graph_edges, graph_edges_weights, graph_clusters)
 
         return graph

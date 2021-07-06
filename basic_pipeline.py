@@ -131,6 +131,9 @@ class FusionPipeline:
         canonical_mesh: typing.Union[None, o3d.geometry.TriangleMesh] = None
         warped_mesh: typing.Union[None, o3d.geometry.TriangleMesh] = None
 
+        precomputed_anchors = None
+        precomputed_weights = None
+
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
             self.telemetry_generator.set_frame_index(current_frame.frame_index)
@@ -173,6 +176,8 @@ class FusionPipeline:
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph
+                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRELOAD:
+                    precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
                 if po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
                                                                    erosion_iteration_count=10,
@@ -189,7 +194,8 @@ class FusionPipeline:
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image ====
                 #####################################################################################################
-                if po.source_image_mode == po.SourceImageMode.REUSE_PREVIOUS_FRAME:
+                if po.source_image_mode == po.SourceImageMode.REUSE_PREVIOUS_FRAME \
+                        or po.tracking_span_mode == po.TrackingSpanMode.ZERO_TO_T: # when we track 0-to-t, we force reusing original frame for the source.
                     source_depth = previous_depth_image_np
                     source_color = previous_color_image_np
                 else:
@@ -231,9 +237,21 @@ class FusionPipeline:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
                         self.graph.nodes, source_point_image, options.node_coverage
                     )
-                else:
+                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
                         source_point_image, self.graph.nodes, self.graph.edges, po.anchor_node_count, options.node_coverage
+                    )
+                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRELOAD:
+                    if po.tracking_span_mode is not po.TrackingSpanMode.ZERO_TO_T:
+                        raise ValueError(f"Illegal value: {po.AnchorComputationMode.__name__:s} "
+                                         f"{po.AnchorComputationMode.PRELOAD} for pixel anchors is only allowed when "
+                                         f"{po.TrackingSpanMode.__name__} is set to {po.TrackingSpanMode.ZERO_TO_T}")
+                    pixel_anchors = precomputed_anchors
+                    pixel_weights = precomputed_weights
+                else:
+                    raise NotImplementedError(
+                        f"{po.AnchorComputationMode.__name__:s} '{po.pixel_anchor_computation_mode.name:s}' not "
+                        f"implemented for pixel anchors."
                     )
 
                 pixel_anchors = cropper(pixel_anchors)
@@ -265,16 +283,24 @@ class FusionPipeline:
                 # region === fuse alignment ====
                 #####################################################################################################
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations
+                if po.tracking_span_mode is po.TrackingSpanMode.ZERO_TO_T:
+                    self.graph.rotations_mat = rotations_pred
+                    self.graph.translations_vec = translations_pred
 
                 for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-                    node_position = self.graph.nodes[i_node]
-                    current_rotation = self.graph.rotations_mat[i_node] = \
-                        rotation.dot(self.graph.rotations_mat[i_node])
-                    current_translation = self.graph.translations_vec[i_node] = \
-                        translation + self.graph.translations_vec[i_node]
-
-                    translation_global = node_position + current_translation - current_rotation.dot(node_position)
-                    self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
+                    if po.tracking_span_mode is po.TrackingSpanMode.ZERO_TO_T:
+                        self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
+                    elif po.tracking_span_mode is po.TrackingSpanMode.T_MINUS_ONE_TO_T:
+                        node_position = self.graph.nodes[i_node]
+                        current_rotation = self.graph.rotations_mat[i_node] = \
+                            rotation.dot(self.graph.rotations_mat[i_node])
+                        current_translation = self.graph.translations_vec[i_node] = \
+                            translation + self.graph.translations_vec[i_node]
+                        translation_global = node_position + current_translation - current_rotation.dot(node_position)
+                        self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
+                    else:
+                        raise NotImplementedError(f"{po.TrackingSpanMode.__class__:s} {po.tracking_span_mode.name:s} "
+                                                  f" post-processing not implemented.")
 
                 # prepare data for Open3D integration
                 nodes_o3d = o3c.Tensor(self.graph.nodes, dtype=o3c.Dtype.Float32, device=device)
@@ -347,9 +373,11 @@ class FusionPipeline:
                 )
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
 
-            previous_color_image_np = color_image_np
-            previous_depth_image_np = depth_image_np
-            previous_mask_image_np = mask_image_np
+            if po.tracking_span_mode is not po.TrackingSpanMode.ZERO_TO_T \
+                    or current_frame.frame_index == sequence.start_frame_index:
+                previous_color_image_np = color_image_np
+                previous_depth_image_np = depth_image_np
+                previous_mask_image_np = mask_image_np
 
         return PROGRAM_EXIT_SUCCESS
 

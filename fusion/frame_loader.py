@@ -130,10 +130,12 @@ class RGBDVideoLoader():
 		# Graph
 		graph_path_dict = self.get_graph_path(index)
 
-		graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = dataset.DeformDataset.load_graph_data(
+		graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = dataset.DeformDataset.load_graph_data(
 			graph_path_dict["graph_nodes_path"], graph_path_dict["graph_edges_path"], graph_path_dict["graph_edges_weights_path"], None, 
-			graph_path_dict["graph_clusters_path"], graph_path_dict["pixel_anchors_path"], graph_path_dict["pixel_weights_path"], cropper
+			graph_path_dict["graph_clusters_path"]
 		)
+		pixel_anchors, pixel_weights = dataset.DeformDataset.load_anchors_and_weights(
+			graph_path_dict["pixel_anchors_path"], graph_path_dict["pixel_weights_path"], cropper)
 
 		num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)	
 

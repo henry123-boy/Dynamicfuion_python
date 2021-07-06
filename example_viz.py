@@ -104,6 +104,9 @@ def main():
     graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
         DeformDataset.load_graph_data(frame_pair_dataset.get_sequence_directory(),
                                       frame_pair_dataset.graph_filename, False, cropper)
+    pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights_from_sequence_directory_and_graph_filename(
+        frame_pair_dataset.get_sequence_directory(),
+        frame_pair_dataset.graph_filename, cropper)
 
     num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
