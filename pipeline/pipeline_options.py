@@ -41,14 +41,14 @@ source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
 options.use_mask = True
 options.gn_max_nodes = 3000
 graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
-pixel_anchor_computation_mode = AnchorComputationMode.SHORTEST_PATH
+pixel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
 
 # Integration
 anchor_node_count = 4  # used for initial graph generation, mesh warping, and integration
 fusion_minimum_valid_anchor_count = 3
 # TODO setting to tune maximum invalid node count
 transformation_mode = TransformationMode.MATRICES
-voxel_anchor_computation_mode = AnchorComputationMode.SHORTEST_PATH
+voxel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
 
 # **** TELEMETRY *****
 
