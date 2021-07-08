@@ -56,7 +56,7 @@ class VisualizerApp:
 
         self.renderer.SetBackground(colors.GetColor3d("Black"))
         self.render_window.SetSize(1400, 900)
-        self.render_window.SetWindowName('Allocation')
+        self.render_window.SetWindowName(output_path)
 
         # Interactor setup
         self.interactor = vtk.vtkRenderWindowInteractor()
