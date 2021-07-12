@@ -1,4 +1,6 @@
 import os
+import typing
+
 import numpy as np
 import open3d as o3d
 import data.io as dio
@@ -7,7 +9,6 @@ import skimage.io
 import options
 from utils import image
 
-
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import get_vertex_erosion_mask as erode_mesh_c
 from nnrt import sample_nodes as sample_nodes_c
@@ -15,6 +16,7 @@ from nnrt import compute_edges_shortest_path as compute_edges_shortest_path_c
 from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
 from nnrt import compute_pixel_anchors_shortest_path as compute_pixel_anchors_shortest_path_c
 from nnrt import compute_clusters as compute_clusters_c
+
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
 if __name__ == "__main__":
@@ -50,15 +52,27 @@ if __name__ == "__main__":
     #########################################################################
     # Paths.
     #########################################################################
-    # seq_dir = os.path.join("example_data", "train", "seq258")
-    seq_dir = os.path.join(options.dataset_base_directory, "train", "seq070")
+    slice_name = "train"
+    sequence_number = 70
+    seq_dir = os.path.join(options.dataset_base_directory, slice_name, f"seq{sequence_number:03d}")
 
-    depth_image_path = os.path.join(seq_dir, "depth", "000000.png")
-    mask_image_path = os.path.join(seq_dir, "mask", "000000_shirt.png")
-    scene_flow_path = os.path.join(seq_dir, "scene_flow", "shirt_000000_000110.sflow")
+    start_frame_number = 0
+    end_frame_number = 100
+    segment_name = "adult0"
+
+    depth_image_path = os.path.join(seq_dir, "depth", f"{start_frame_number:06d}.png")
+    mask_image_path = os.path.join(seq_dir, "mask", f"{start_frame_number:06d}_{segment_name:s}.png")
+    scene_flow_path = os.path.join(seq_dir, "scene_flow", f"{segment_name:s}_{start_frame_number:06d}_{end_frame_number:06d}.sflow")
     intrinsics_path = os.path.join(seq_dir, "intrinsics.txt")
 
-    pair_name = "generated_shirt_000000_000110"
+    prefix = "generated"
+    pair_name = f"{prefix:s}_{segment_name:s}_{start_frame_number:06d}_{end_frame_number:06d}"
+
+    # enables/disables optional checks at end of script
+    CHECK_AGAINST_GROUND_TRUTH = False
+    # both prefixes can be set to the same value to simply check functions for the loading / saving of the graph
+    ground_truth_prefix = "ground_truth"
+    ground_truth_pair_name = f"{ground_truth_prefix:s}_{segment_name:s}_{start_frame_number:06d}_{end_frame_number:06d}"
 
     #########################################################################
     # Load data.
@@ -171,10 +185,11 @@ if __name__ == "__main__":
 
     visible_vertices = np.ones_like(valid_vertices)
 
-    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = compute_edges_shortest_path_c(
-        vertices, visible_vertices, faces, node_indices,
-        NUM_NEIGHBORS, NODE_COVERAGE, ENFORCE_TOTAL_NUM_NEIGHBORS
-    )
+    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = \
+        compute_edges_shortest_path_c(
+            vertices, visible_vertices, faces, node_indices,
+            NUM_NEIGHBORS, NODE_COVERAGE, ENFORCE_TOTAL_NUM_NEIGHBORS
+        )
 
     # Remove nodes 
     valid_nodes_mask = np.ones((num_nodes, 1), dtype=bool)
@@ -184,7 +199,7 @@ if __name__ == "__main__":
         node_and_edge_clean_up_c(graph_edges, valid_nodes_mask)
 
         # Get the list of invalid nodes
-        node_id_black_list = np.where(valid_nodes_mask is False)[0].tolist()
+        node_id_black_list = np.where(valid_nodes_mask == False)[0].tolist()
     else:
         node_id_black_list = []
         print("You're allowing nodes with not enough neighbors!")
@@ -283,7 +298,6 @@ if __name__ == "__main__":
         # 3. Update pixel anchors using the id mapping (note that, at this point, pixel_anchors is already free of "bad" nodes, since
         # 'compute_pixel_anchors_shortest_path_c' was given 'valid_nodes_mask')
         update_pixel_anchors_c(node_id_mapping, pixel_anchors)
-
     #########################################################################
     # Compute clusters.
     #########################################################################
@@ -335,10 +349,21 @@ if __name__ == "__main__":
     dio.save_int_image(output_pixel_anchors_path, pixel_anchors)
     dio.save_float_image(output_pixel_weights_path, pixel_weights)
 
-    assert np.array_equal(node_coords, dio.load_graph_nodes(output_graph_nodes_path))
-    assert np.array_equal(graph_edges, dio.load_graph_edges(output_graph_edges_path))
-    assert np.array_equal(graph_edges_weights, dio.load_graph_edges_weights(output_graph_edges_weights_path))
-    assert np.allclose(node_deformations, dio.load_graph_node_deformations(output_node_deformations_path))
-    assert np.array_equal(graph_clusters, dio.load_graph_clusters(output_graph_clusters_path))
-    assert np.array_equal(pixel_anchors, dio.load_int_image(output_pixel_anchors_path))
-    assert np.array_equal(pixel_weights, dio.load_float_image(output_pixel_weights_path))
+    if CHECK_AGAINST_GROUND_TRUTH:
+        gt_output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_graph_edges_path = os.path.join(dst_graph_edges_dir, ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir,
+                                                          ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_node_deformations_path = os.path.join(dst_node_deformations_dir,
+                                                        ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+        gt_output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", NODE_COVERAGE))
+
+        assert np.array_equal(node_coords, dio.load_graph_nodes(gt_output_graph_nodes_path))
+        assert np.array_equal(graph_edges, dio.load_graph_edges(gt_output_graph_edges_path))
+        assert np.array_equal(graph_edges_weights, dio.load_graph_edges_weights(gt_output_graph_edges_weights_path))
+        assert np.allclose(node_deformations, dio.load_graph_node_deformations(gt_output_node_deformations_path))
+        assert np.array_equal(graph_clusters, dio.load_graph_clusters(gt_output_graph_clusters_path))
+        assert np.array_equal(pixel_anchors, dio.load_int_image(gt_output_pixel_anchors_path))
+        assert np.array_equal(pixel_weights, dio.load_float_image(gt_output_pixel_weights_path))

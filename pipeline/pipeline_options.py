@@ -33,6 +33,7 @@ class AnchorComputationMode(Enum):
     SHORTEST_PATH = 1
     PRELOAD = 2
 
+
 class TrackingSpanMode(Enum):
     ZERO_TO_T = 0
     T_MINUS_ONE_TO_T = 1
@@ -84,6 +85,8 @@ record_gn_point_clouds = True
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
 sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
+
+
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value
 
 

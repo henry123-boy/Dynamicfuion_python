@@ -177,6 +177,12 @@ PYBIND11_MODULE(nnrt, m) {
 	      "Computes graph node clusters sizes. Output is in the form of a tuple (sizes, clusters), where clusters is an N x 1 array"
 	      " (N being the number of nodes, i.e. number of rows in the input graph_edges_in array).");
 
+	m.def("compute_clusters_legacy", &graph_proc::compute_clusters_legacy,
+	      "graph_edges_in"_a, "graph_clusters_in"_a,
+	      "Computes graph node clusters sizes. Output is in the form of a tuple (sizes, clusters), where clusters is an N x 1 array"
+	      " (N being the number of nodes, i.e. number of rows in the input graph_edges_in array).");
+
+
 	m.def("update_pixel_anchors", &graph_proc::update_pixel_anchors, "node_id_mapping"_a,
 	      "pixel_anchors"_a,
 	      "Update pixel anchor after node id change");

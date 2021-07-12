@@ -86,6 +86,15 @@ void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<boo
  */
 py::tuple compute_clusters(const py::array_t<int>& graph_edges_in);
 
+/**
+ * Computes node clusters based on connectivity.
+ * @returns Sizes (number of nodes) of each cluster.
+ */
+std::vector<int> compute_clusters_legacy(
+		const py::array_t<int> graph_edges,
+		py::array_t<int> graph_clusters
+);
+
 
 /**
  * For each input pixel it computes 4 nearest anchors, following graph edges.
