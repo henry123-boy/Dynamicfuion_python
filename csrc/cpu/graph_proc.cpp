@@ -637,49 +637,6 @@ py::tuple compute_clusters(
 }
 
 
-std::vector<int> compute_clusters_legacy(
-		const py::array_t<int> graph_edges,
-		py::array_t<int> graph_clusters
-) {
-	int num_nodes = graph_edges.shape(0);
-	int max_num_neighbors = graph_edges.shape(1);
-
-	// convert graph_edges to a vector of sets
-	std::vector<std::set<int>> node_neighbors(num_nodes);
-
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
-		for (int neighbor_idx = 0; neighbor_idx < max_num_neighbors; ++neighbor_idx) {
-
-			int neighbor_id = *graph_edges.data(node_id, neighbor_idx);
-
-			if (neighbor_id == -1) {
-				break;
-			}
-
-			node_neighbors[node_id].insert(neighbor_id);
-			node_neighbors[neighbor_id].insert(node_id);
-		}
-	}
-
-	std::vector<int> cluster_ids(num_nodes, -1);
-	std::vector<int> clusters_size;
-
-	int cluster_id = 0;
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
-		int cluster_size = traverse_neighbors(node_neighbors, cluster_ids, cluster_id, node_id);
-		if (cluster_size > 0) {
-			cluster_id++;
-			clusters_size.push_back(cluster_size);
-		}
-	}
-
-	for (int node_id = 0; node_id < num_nodes; ++node_id) {
-		*graph_clusters.mutable_data(node_id, 0) = cluster_ids[node_id];
-	}
-
-	return clusters_size;
-}
-
 inline void find_nearest_nodes(
 		const py::array_t<float>& node_to_vertex_distance,
 		const py::array_t<int>& valid_nodes_mask,

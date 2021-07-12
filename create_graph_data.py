@@ -41,10 +41,10 @@ if __name__ == "__main__":
     SAMPLE_RANDOM_SHUFFLE = False
 
     # Pixel anchors
-    NEIGHBORHOOD_DEPTH = 2
+    NEIGHBORHOOD_DEPTH = 2  # unused in code. Is this set as default parameter C++-side?
 
-    MIN_CLUSTER_SIZE = 3
-    MIN_NUM_NEIGHBORS = 2
+    MIN_CLUSTER_SIZE = 3  # unused in code. Is this set as default parameter C++-side?
+    MIN_NUM_NEIGHBORS = 2  # unused in code. Is this set as default parameter C++-side?
 
     # Node clean-up
     REMOVE_NODES_WITH_NOT_ENOUGH_NEIGHBORS = True
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # enables/disables optional checks at end of script
     CHECK_AGAINST_GROUND_TRUTH = False
     # both prefixes can be set to the same value to simply check functions for the loading / saving of the graph
-    ground_truth_prefix = "ground_truth"
+    ground_truth_prefix = "5c8446e47ef76a0addc6d0d1"
     ground_truth_pair_name = f"{ground_truth_prefix:s}_{segment_name:s}_{start_frame_number:06d}_{end_frame_number:06d}"
 
     #########################################################################
