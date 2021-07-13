@@ -12,7 +12,7 @@ PROGRAM_EXIT_FAILURE = -1
 
 def main():
     parser = argparse.ArgumentParser("App for visualizing block allocation and generated mesh alignment.")
-    run_output_folder = "21-07-06-11-25-22_BERLIN_0-to-t"
+    run_output_folder = "21-07-13-16-52-59_BERLIN_test_graph"
     parser.add_argument("--output", "-o", type=str, help="Path to output folder",
                         default=os.path.join(options.output_directory, run_output_folder, "frame_output"))
     parser.add_argument("--initial_frame", "-i", type=int, help="Index of the first frame to process",

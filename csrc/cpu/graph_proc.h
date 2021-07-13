@@ -31,7 +31,7 @@ void compute_edges_shortest_path(
 		const py::array_t<bool>& vertex_mask_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		int max_neighbor_count, const float node_coverage,
+		int max_neighbor_count, float node_coverage,
 		py::array_t<int>& graph_edges_out,
 		py::array_t<float>& graph_edges_weights_out,
 		py::array_t<float>& graph_edges_distances_out,

@@ -51,9 +51,18 @@ namespace image_proc {
     void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& point_image_out, float fx, float fy, float cx, float cy);
 
     void compute_mesh_from_depth(
-		    const py::array_t<float>& point_image, float max_triangle_edge_distance,
-		    py::array_t<float>& vertex_positions, py::array_t<int>& face_indices
+		    const py::array_t<float>& point_image_in, float max_triangle_edge_distance,
+		    py::array_t<float>& vertex_positions_out, py::array_t<int>& face_indices_out
     );
+
+	void compute_mesh_from_depth(
+			const py::array_t<float>& point_image_in, float max_triangle_edge_distance,
+			py::array_t<float>& vertex_positions_out, py::array_t<int>& vertex_pixels_out, py::array_t<int>& face_indices_out
+	);
+
+	py::tuple compute_mesh_from_depth(
+			const py::array_t<float>& point_image_in, float max_triangle_edge_distance
+	);
 
     void compute_mesh_from_depth_and_color(
 		    const py::array_t<float>& point_image, const py::array_t<int>& color_image, float max_triangle_edge_distance,
@@ -64,6 +73,10 @@ namespace image_proc {
 		    const py::array_t<float>& point_image_in, const py::array_t<float>& flow_image_in, float max_triangle_edge_distance,
 		    py::array_t<float>& vertex_positions_out, py::array_t<float>& vertex_flows_out, py::array_t<int>& vertex_pixels_out, py::array_t<int>& face_indices_out
     );
+
+	py::tuple compute_mesh_from_depth_and_flow(
+			const py::array_t<float>& point_image_in, const py::array_t<float>& flow_image_in, float max_triangle_edge_distance
+	);
 
     void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsigned short>& depth_image_out, int radius);
 	py::array_t<unsigned short> filter_depth(py::array_t<unsigned short>& depth_image_in, int radius);

@@ -3,6 +3,8 @@ import typing
 
 import numpy as np
 import open3d as o3d
+from icecream import ic
+
 import data.io as dio
 import skimage.io
 
@@ -10,6 +12,7 @@ import options
 from utils import image
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
+from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
 from nnrt import get_vertex_erosion_mask as erode_mesh_c
 from nnrt import sample_nodes as sample_nodes_c
 from nnrt import compute_edges_shortest_path as compute_edges_shortest_path_c
@@ -25,12 +28,16 @@ if __name__ == "__main__":
     #########################################################################
     VISUAL_DEBUGGING = False
 
+    # Scene flow data is assumed to be only known at training time. To compute graphs for test time, 
+    # this should be set to false.
+    USE_SCENE_FLOW_DATA = False
+
     # Depth-to-mesh conversion
     DEPTH_NORMALIZER = 1000.0
     MAX_TRIANGLE_DISTANCE = 0.05
 
     # Erosion of vertices in the boundaries
-    EROSION_NUM_ITERATIONS = 10
+    EROSION_NUM_ITERATIONS = 4  # original authors' value: 10
     EROSION_MIN_NEIGHBORS = 4
 
     # Node sampling and edges computation
@@ -53,7 +60,7 @@ if __name__ == "__main__":
     # Paths.
     #########################################################################
     slice_name = "train"
-    sequence_number = 70
+    sequence_number = 700
     seq_dir = os.path.join(options.dataset_base_directory, slice_name, f"seq{sequence_number:03d}")
 
     start_frame_number = 0
@@ -91,9 +98,6 @@ if __name__ == "__main__":
     # Load mask image.
     mask_image = skimage.io.imread(mask_image_path)
 
-    # Load scene flow image.
-    scene_flow_image = dio.load_flow(scene_flow_path)
-    scene_flow_image = np.moveaxis(scene_flow_image, 0, 2)
 
     #########################################################################
     # Convert depth to mesh.
@@ -113,16 +117,22 @@ if __name__ == "__main__":
     # Convert depth image into mesh, using pixelwise connectivity.
     # We also compute flow values, and invalidate any vertex with non-finite
     # flow values.
-    vertices = np.zeros((0), dtype=np.float32)
-    vertex_flows = np.zeros((0), dtype=np.float32)
-    vertex_pixels = np.zeros((0), dtype=np.int32)
-    faces = np.zeros((0), dtype=np.int32)
 
-    compute_mesh_from_depth_and_flow_c(
-        point_image, scene_flow_image,
-        MAX_TRIANGLE_DISTANCE,
-        vertices, vertex_flows, vertex_pixels, faces
-    )
+    if USE_SCENE_FLOW_DATA:
+        # Load scene flow image.
+        scene_flow_image = dio.load_flow(scene_flow_path)
+        scene_flow_image = np.moveaxis(scene_flow_image, 0, 2)
+
+        vertices, vertex_flows, vertex_pixels, faces = \
+            compute_mesh_from_depth_and_flow_c(
+                point_image, scene_flow_image,
+                MAX_TRIANGLE_DISTANCE
+            )
+    else:
+        vertices, vertex_pixels, faces = \
+            compute_mesh_from_depth_c(
+                point_image, MAX_TRIANGLE_DISTANCE
+            )
 
     num_vertices = vertices.shape[0]
     num_faces = faces.shape[0]
@@ -143,11 +153,14 @@ if __name__ == "__main__":
 
         o3d.visualization.draw_geometries([mesh, pcd], mesh_show_back_face=True)
 
-        mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows), o3d.utility.Vector3iVector(faces))
-        mesh_transformed.compute_vertex_normals()
-        mesh_transformed.paint_uniform_color([0.0, 1.0, 0.0])
+        if USE_SCENE_FLOW_DATA:
+            mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows), o3d.utility.Vector3iVector(faces))
+            mesh_transformed.compute_vertex_normals()
+            mesh_transformed.paint_uniform_color([0.0, 1.0, 0.0])
 
-        o3d.visualization.draw_geometries([mesh, mesh_transformed], mesh_show_back_face=True)
+            o3d.visualization.draw_geometries([mesh, mesh_transformed], mesh_show_back_face=True)
+        else:
+            o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
     #########################################################################
     # Sample graph nodes.
@@ -167,12 +180,13 @@ if __name__ == "__main__":
     node_coords = node_coords[:num_nodes, :]
     node_indices = node_indices[:num_nodes, :]
 
-    # Get node deformation.
-    node_deformations = vertex_flows[node_indices.squeeze()]
-    node_deformations = node_deformations.reshape(-1, 3)
+    if USE_SCENE_FLOW_DATA:
+        # Get node deformation.
+        node_deformations = vertex_flows[node_indices.squeeze()]
+        node_deformations = node_deformations.reshape(-1, 3)
 
-    assert np.isfinite(node_deformations).all(), "All deformations should be valid."
-    assert node_deformations.shape[0] == node_coords.shape[0] == node_indices.shape[0]
+        assert np.isfinite(node_deformations).all(), "All deformations should be valid."
+        assert node_deformations.shape[0] == node_coords.shape[0] == node_indices.shape[0]
 
     if VISUAL_DEBUGGING:
         pcd_nodes = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(node_coords))
@@ -227,7 +241,8 @@ if __name__ == "__main__":
     # Get only valid nodes and their corresponding info
     node_coords = node_coords[valid_nodes_mask.squeeze()]
     node_indices = node_indices[valid_nodes_mask.squeeze()]
-    node_deformations = node_deformations[valid_nodes_mask.squeeze()]
+    if USE_SCENE_FLOW_DATA:
+        node_deformations = node_deformations[valid_nodes_mask.squeeze()]
     graph_edges = graph_edges[valid_nodes_mask.squeeze()]
     graph_edges_weights = graph_edges_weights[valid_nodes_mask.squeeze()]
     graph_edges_distances = graph_edges_distances[valid_nodes_mask.squeeze()]
@@ -344,7 +359,8 @@ if __name__ == "__main__":
     dio.save_graph_nodes(output_graph_nodes_path, node_coords)
     dio.save_graph_edges(output_graph_edges_path, graph_edges)
     dio.save_graph_edges_weights(output_graph_edges_weights_path, graph_edges_weights)
-    dio.save_graph_node_deformations(output_node_deformations_path, node_deformations)
+    if USE_SCENE_FLOW_DATA:
+        dio.save_graph_node_deformations(output_node_deformations_path, node_deformations)
     dio.save_graph_clusters(output_graph_clusters_path, graph_clusters)
     dio.save_int_image(output_pixel_anchors_path, pixel_anchors)
     dio.save_float_image(output_pixel_weights_path, pixel_weights)
@@ -363,7 +379,8 @@ if __name__ == "__main__":
         assert np.array_equal(node_coords, dio.load_graph_nodes(gt_output_graph_nodes_path))
         assert np.array_equal(graph_edges, dio.load_graph_edges(gt_output_graph_edges_path))
         assert np.array_equal(graph_edges_weights, dio.load_graph_edges_weights(gt_output_graph_edges_weights_path))
-        assert np.allclose(node_deformations, dio.load_graph_node_deformations(gt_output_node_deformations_path))
+        if USE_SCENE_FLOW_DATA:
+            assert np.allclose(node_deformations, dio.load_graph_node_deformations(gt_output_node_deformations_path))
         assert np.array_equal(graph_clusters, dio.load_graph_clusters(gt_output_graph_clusters_path))
         assert np.array_equal(pixel_anchors, dio.load_int_image(gt_output_pixel_anchors_path))
         assert np.array_equal(pixel_weights, dio.load_float_image(gt_output_pixel_weights_path))

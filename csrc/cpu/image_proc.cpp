@@ -428,12 +428,14 @@ void backproject_depth_float(py::array_t<float>& image_in, py::array_t<float>& p
 	}
 }
 
-void compute_mesh_from_depth(
-		const py::array_t<float>& point_image, float max_triangle_edge_distance,
-		py::array_t<float>& vertex_positions, py::array_t<int>& face_indices
-) {
-	int width = point_image.shape(2);
-	int height = point_image.shape(1);
+void compute_mesh_from_depth(const py::array_t<float>& point_image_in, float max_triangle_edge_distance,
+                             py::array_t<float>& vertex_positions_out, py::array_t<int>& vertex_pixels_out,
+                             py::array_t<int>& face_indices_out) {
+	assert(point_image_in.ndim() == 3);
+	assert(point_image_in.shape(2) == 3);
+
+	int width = static_cast<int>(point_image_in.shape(1));
+	int height = static_cast<int>(point_image_in.shape(0));
 
 	// Compute valid pixel vertices and faces.
 	// We also need to compute the pixel -> vertex index mapping for
@@ -445,16 +447,17 @@ void compute_mesh_from_depth(
 	// point towards the camera.
 	std::vector<Eigen::Vector3f> vertices;
 	std::vector<Eigen::Vector3i> faces;
+	std::vector<Eigen::Vector2i> pixels;
 
 	int vertexIdx = 0;
 	std::vector<int> mapPixelToVertexIdx(width * height, -1);
 
 	for (int y = 0; y < height - 1; y++) {
 		for (int x = 0; x < width - 1; x++) {
-			Eigen::Vector3f obs00(*point_image.data(0, y, x), *point_image.data(1, y, x), *point_image.data(2, y, x));
-			Eigen::Vector3f obs01(*point_image.data(0, y + 1, x), *point_image.data(1, y + 1, x), *point_image.data(2, y + 1, x));
-			Eigen::Vector3f obs10(*point_image.data(0, y, x + 1), *point_image.data(1, y, x + 1), *point_image.data(2, y, x + 1));
-			Eigen::Vector3f obs11(*point_image.data(0, y + 1, x + 1), *point_image.data(1, y + 1, x + 1), *point_image.data(2, y + 1, x + 1));
+			Eigen::Vector3f obs00(*point_image_in.data(y + 0, x + 0, 0), *point_image_in.data(y + 0, x + 0, 1), *point_image_in.data(y + 0, x + 0, 2));
+			Eigen::Vector3f obs01(*point_image_in.data(y + 1, x + 0, 0), *point_image_in.data(y + 1, x + 0, 1), *point_image_in.data(y + 1, x + 0, 2));
+			Eigen::Vector3f obs10(*point_image_in.data(y + 0, x + 1, 0), *point_image_in.data(y + 0, x + 1, 1), *point_image_in.data(y + 0, x + 1, 2));
+			Eigen::Vector3f obs11(*point_image_in.data(y + 1, x + 1, 0), *point_image_in.data(y + 1, x + 1, 1), *point_image_in.data(y + 1, x + 1, 2));
 
 			int idx00 = y * width + x;
 			int idx01 = (y + 1) * width + x;
@@ -481,18 +484,21 @@ void compute_mesh_from_depth(
 						mapPixelToVertexIdx[idx00] = vertexIdx;
 						vertices.push_back(obs00);
 						vertexIdx++;
+						pixels.emplace_back(x, y);
 					}
 					if (vIdx1 == -1) {
 						vIdx1 = vertexIdx;
 						mapPixelToVertexIdx[idx01] = vertexIdx;
 						vertices.push_back(obs01);
 						vertexIdx++;
+						pixels.emplace_back(x, y + 1);
 					}
 					if (vIdx2 == -1) {
 						vIdx2 = vertexIdx;
 						mapPixelToVertexIdx[idx10] = vertexIdx;
 						vertices.push_back(obs10);
 						vertexIdx++;
+						pixels.emplace_back(x + 1, y);
 					}
 
 					faces.emplace_back(vIdx0, vIdx1, vIdx2);
@@ -514,18 +520,21 @@ void compute_mesh_from_depth(
 						mapPixelToVertexIdx[idx11] = vertexIdx;
 						vertices.push_back(obs11);
 						vertexIdx++;
+						pixels.emplace_back(x + 1, y + 1);
 					}
 					if (vIdx1 == -1) {
 						vIdx1 = vertexIdx;
 						mapPixelToVertexIdx[idx10] = vertexIdx;
 						vertices.push_back(obs10);
 						vertexIdx++;
+						pixels.emplace_back(x + 1, y);
 					}
 					if (vIdx2 == -1) {
 						vIdx2 = vertexIdx;
 						mapPixelToVertexIdx[idx01] = vertexIdx;
 						vertices.push_back(obs01);
 						vertexIdx++;
+						pixels.emplace_back(x, y + 1);
 					}
 
 					faces.emplace_back(vIdx0, vIdx1, vIdx2);
@@ -535,35 +544,56 @@ void compute_mesh_from_depth(
 	}
 
 	// Convert to numpy array.
-	int nVertices = vertices.size();
-	int nFaces = faces.size();
+	int vertex_count = vertices.size();
+	int face_count = faces.size();
 
-	if (nVertices > 0 && nFaces > 0) {
+	if (vertex_count > 0 && face_count > 0) {
 		// Reference check should be set to false otherwise there is a runtime
 		// error. Check why that is the case.
-		vertex_positions.resize({nVertices, 3}, false);
-		face_indices.resize({nFaces, 3}, false);
+		vertex_positions_out.resize({vertex_count, 3}, false);
+		face_indices_out.resize({face_count, 3}, false);
+		vertex_pixels_out.resize({vertex_count, 2}, false);
 
-		for (int i = 0; i < nVertices; i++) {
-			*vertex_positions.mutable_data(i, 0) = vertices[i].x();
-			*vertex_positions.mutable_data(i, 1) = vertices[i].y();
-			*vertex_positions.mutable_data(i, 2) = vertices[i].z();
+		for (int i = 0; i < vertex_count; i++) {
+			*vertex_positions_out.mutable_data(i, 0) = vertices[i].x();
+			*vertex_positions_out.mutable_data(i, 1) = vertices[i].y();
+			*vertex_positions_out.mutable_data(i, 2) = vertices[i].z();
+
+			*vertex_pixels_out.mutable_data(i, 0) = pixels[i].x();
+			*vertex_pixels_out.mutable_data(i, 1) = pixels[i].y();
 		}
 
-		for (int i = 0; i < nFaces; i++) {
-			*face_indices.mutable_data(i, 0) = faces[i].x();
-			*face_indices.mutable_data(i, 1) = faces[i].y();
-			*face_indices.mutable_data(i, 2) = faces[i].z();
+		for (int i = 0; i < face_count; i++) {
+			*face_indices_out.mutable_data(i, 0) = faces[i].x();
+			*face_indices_out.mutable_data(i, 1) = faces[i].y();
+			*face_indices_out.mutable_data(i, 2) = faces[i].z();
 		}
 	}
+}
+
+
+void compute_mesh_from_depth(
+		const py::array_t<float>& point_image_in, float max_triangle_edge_distance,
+		py::array_t<float>& vertex_positions_out, py::array_t<int>& face_indices_out
+) {
+	py::array_t<int> vertex_pixels;
+	compute_mesh_from_depth(point_image_in, max_triangle_edge_distance, vertex_positions_out, vertex_pixels, face_indices_out);
+}
+
+py::tuple compute_mesh_from_depth(const py::array_t<float>& point_image_in, float max_triangle_edge_distance) {
+	py::array_t<float> vertex_positions_out;
+	py::array_t<int> face_indices_out;
+	py::array_t<int> vertex_pixels_out;
+	compute_mesh_from_depth(point_image_in, max_triangle_edge_distance, vertex_positions_out, vertex_pixels_out, face_indices_out);
+	return py::make_tuple(vertex_positions_out, vertex_pixels_out, face_indices_out);
 }
 
 void compute_mesh_from_depth_and_color(
 		const py::array_t<float>& point_image, const py::array_t<int>& color_image, float max_triangle_edge_distance,
 		py::array_t<float>& vertex_positions, py::array_t<int>& vertex_colors, py::array_t<int>& face_indices
 ) {
-	int width = point_image.shape(2);
-	int height = point_image.shape(1);
+	int width = static_cast<int>(point_image.shape(1));
+	int height = static_cast<int>(point_image.shape(0));
 
 	// Compute valid pixel vertices and faces.
 	// We also need to compute the pixel -> vertex index mapping for
@@ -582,16 +612,17 @@ void compute_mesh_from_depth_and_color(
 
 	for (int y = 0; y < height - 1; y++) {
 		for (int x = 0; x < width - 1; x++) {
-			Eigen::Vector3f obs00(*point_image.data(0, y, x), *point_image.data(1, y, x), *point_image.data(2, y, x));
-			Eigen::Vector3f obs01(*point_image.data(0, y + 1, x), *point_image.data(1, y + 1, x), *point_image.data(2, y + 1, x));
-			Eigen::Vector3f obs10(*point_image.data(0, y, x + 1), *point_image.data(1, y, x + 1), *point_image.data(2, y, x + 1));
-			Eigen::Vector3f obs11(*point_image.data(0, y + 1, x + 1), *point_image.data(1, y + 1, x + 1), *point_image.data(2, y + 1, x + 1));
+			Eigen::Vector3f obs00(*point_image.data(y + 0, x + 0, 0), *point_image.data(y + 0, x + 0, 1), *point_image.data(y + 0, x + 0, 2));
+			Eigen::Vector3f obs01(*point_image.data(y + 1, x + 0, 0), *point_image.data(y + 1, x + 0, 1), *point_image.data(y + 1, x + 0, 2));
+			Eigen::Vector3f obs10(*point_image.data(y + 0, x + 1, 0), *point_image.data(y + 0, x + 1, 1), *point_image.data(y + 0, x + 1, 2));
+			Eigen::Vector3f obs11(*point_image.data(y + 1, x + 1, 0), *point_image.data(y + 1, x + 1, 1), *point_image.data(y + 1, x + 1, 2));
 
-			Eigen::Vector3i color00(*color_image.data(0, y, x), *color_image.data(1, y, x), *color_image.data(2, y, x));
-			Eigen::Vector3i color01(*color_image.data(0, y + 1, x), *color_image.data(1, y + 1, x), *color_image.data(2, y + 1, x));
-			Eigen::Vector3i color10(*color_image.data(0, y, x + 1), *color_image.data(1, y, x + 1), *color_image.data(2, y, x + 1));
-			Eigen::Vector3i color11(*color_image.data(0, y + 1, x + 1), *color_image.data(1, y + 1, x + 1), *color_image.data(2, y + 1, x + 1));
+			Eigen::Vector3i color00(*color_image.data(y + 0, x + 0, 0), *color_image.data(y + 0, x + 0, 1), *color_image.data(y + 0, x + 0, 2));
+			Eigen::Vector3i color01(*color_image.data(y + 1, x + 0, 0), *color_image.data(y + 1, x + 0, 1), *color_image.data(y + 1, x + 0, 2));
+			Eigen::Vector3i color10(*color_image.data(y + 0, x + 1, 0), *color_image.data(y + 0, x + 1, 1), *color_image.data(y + 0, x + 1, 2));
+			Eigen::Vector3i color11(*color_image.data(y + 1, x + 1, 0), *color_image.data(y + 1, x + 1, 1), *color_image.data(y + 1, x + 1, 2));
 
+			// find linear indices
 			int idx00 = y * width + x;
 			int idx01 = (y + 1) * width + x;
 			int idx10 = y * width + (x + 1);
@@ -602,6 +633,7 @@ void compute_mesh_from_depth_and_color(
 			bool valid10 = obs10.z() > 0;
 			bool valid11 = obs11.z() > 0;
 
+			// region ======= LOWER LEFT TRIANGLE =======
 			if (valid00 && valid01 && valid10) {
 				float d0 = (obs00 - obs01).norm();
 				float d1 = (obs00 - obs10).norm();
@@ -637,7 +669,8 @@ void compute_mesh_from_depth_and_color(
 					faces.emplace_back(vIdx0, vIdx1, vIdx2);
 				}
 			}
-
+			// endregion
+			// region ======= UPPER RIGHT TRIANGLE =======
 			if (valid01 && valid10 && valid11) {
 				float d0 = (obs10 - obs01).norm();
 				float d1 = (obs10 - obs11).norm();
@@ -673,21 +706,22 @@ void compute_mesh_from_depth_and_color(
 					faces.emplace_back(vIdx0, vIdx1, vIdx2);
 				}
 			}
+			// endregion
 		}
 	}
 
 	// Convert to numpy array.
-	int nVertices = vertices.size();
-	int nFaces = faces.size();
+	int vertex_count = vertices.size();
+	int face_count = faces.size();
 
-	if (nVertices > 0 && nFaces > 0) {
+	if (vertex_count > 0 && face_count > 0) {
 		// Reference check should be set to false otherwise there is a runtime
 		// error. Check why that is the case.
-		vertex_positions.resize({nVertices, 3}, false);
-		vertex_colors.resize({nVertices, 3}, false);
-		face_indices.resize({nFaces, 3}, false);
+		vertex_positions.resize({vertex_count, 3}, false);
+		vertex_colors.resize({vertex_count, 3}, false);
+		face_indices.resize({face_count, 3}, false);
 
-		for (int i = 0; i < nVertices; i++) {
+		for (int i = 0; i < vertex_count; i++) {
 			*vertex_positions.mutable_data(i, 0) = vertices[i].x();
 			*vertex_positions.mutable_data(i, 1) = vertices[i].y();
 			*vertex_positions.mutable_data(i, 2) = vertices[i].z();
@@ -697,7 +731,7 @@ void compute_mesh_from_depth_and_color(
 			*vertex_colors.mutable_data(i, 2) = colors[i].z();
 		}
 
-		for (int i = 0; i < nFaces; i++) {
+		for (int i = 0; i < face_count; i++) {
 			*face_indices.mutable_data(i, 0) = faces[i].x();
 			*face_indices.mutable_data(i, 1) = faces[i].y();
 			*face_indices.mutable_data(i, 2) = faces[i].z();
@@ -715,16 +749,20 @@ void compute_mesh_from_depth_and_flow(
 	int height = point_image_in.shape(0);
 
 
-	// TODO: what constitutes a valid vertex?
-	// Compute valid pixel vertices and faces.
+	// Compute valid pixel vertices and faces
+	// a pixel is considered valid if the corresponding point's z coordinate is greater than zero and x, y, and z of the flow vector are all finite
 
 	// We also need to compute the pixel -> vertex index mapping for computation of faces.
 	// TODO: why are there no vertex indices > 400, if the total image has 640x480=307200 pixels?
 
-	// We connect neighboring pixels on the square into two triangles.
-	// TODO: what square?
+	// For every 2x2 pixel area, we connect neighboring pixels into two triangles.
+	// [ ]-------[ ]
+	//  | ╲       |
+	//  |    ╲    |
+	//  |       ╲ |
+	// [ ]-------[ ]
 
-	// We only select valid triangles, i.e. with all valid vertices and not too far apart.
+	// We only select valid triangles, i.e. with all valid vertices, and vertices not too far apart.
 
 	// Important: The triangle orientation is set such that the normals point towards the camera.
 
@@ -748,19 +786,22 @@ void compute_mesh_from_depth_and_flow(
 			Eigen::Vector3f flow10(*flow_image_in.data(y, x + 1, 0), *flow_image_in.data(y, x + 1, 1), *flow_image_in.data(y, x + 1, 2));
 			Eigen::Vector3f flow11(*flow_image_in.data(y + 1, x + 1, 0), *flow_image_in.data(y + 1, x + 1, 1), *flow_image_in.data(y + 1, x + 1, 2));
 
+			// linear indices of the four pixels
 			int idx00 = y * width + x;
 			int idx01 = (y + 1) * width + x;
 			int idx10 = y * width + (x + 1);
 			int idx11 = (y + 1) * width + (x + 1);
 
+			// determine pixel validity
 			bool valid00 = obs00.z() > 0 && std::isfinite(flow00.x()) && std::isfinite(flow00.y()) && std::isfinite(flow00.z());
 			bool valid01 = obs01.z() > 0 && std::isfinite(flow01.x()) && std::isfinite(flow01.y()) && std::isfinite(flow01.z());
 			bool valid10 = obs10.z() > 0 && std::isfinite(flow10.x()) && std::isfinite(flow10.y()) && std::isfinite(flow10.z());
 			bool valid11 = obs11.z() > 0 && std::isfinite(flow11.x()) && std::isfinite(flow11.y()) && std::isfinite(flow11.z());
 
+			// region ======= LOWER LEFT TRIANGLE =============
 			if (valid00 && valid01 && valid10) {
 				float d0 = (obs00 - obs01).norm();
-				float d1 = (obs00 - obs10).norm();
+				float d1 = (obs00 - obs10).norm(); // hypotenuse when triangle projected to image plane
 				float d2 = (obs01 - obs10).norm();
 
 				if (d0 <= max_triangle_edge_distance && d1 <= max_triangle_edge_distance && d2 <= max_triangle_edge_distance) {
@@ -796,7 +837,8 @@ void compute_mesh_from_depth_and_flow(
 					faces.emplace_back(vertex_index_0, vertex_index_1, vertex_index_2);
 				}
 			}
-
+			// endregion
+			// region ======= UPPER RIGHT TRIANGLE ==================
 			if (valid01 && valid10 && valid11) {
 				float d0 = (obs10 - obs01).norm();
 				float d1 = (obs10 - obs11).norm();
@@ -835,6 +877,7 @@ void compute_mesh_from_depth_and_flow(
 					faces.emplace_back(vertex_index_0, vertex_index_1, vertex_index_2);
 				}
 			}
+			// endregion
 		}
 	}
 
@@ -869,6 +912,16 @@ void compute_mesh_from_depth_and_flow(
 			*face_indices_out.mutable_data(i, 2) = faces[i].z();
 		}
 	}
+}
+
+py::tuple compute_mesh_from_depth_and_flow(const py::array_t<float>& point_image_in, const py::array_t<float>& flow_image_in,
+                                           float max_triangle_edge_distance) {
+	py::array_t<float> vertex_positions_out;
+	py::array_t<float> vertex_flows_out;
+	py::array_t<int> vertex_pixels_out;
+	py::array_t<int> face_indices_out;
+	compute_mesh_from_depth_and_flow(point_image_in, flow_image_in, max_triangle_edge_distance, vertex_positions_out, vertex_flows_out, vertex_pixels_out, face_indices_out);
+	return py::make_tuple(vertex_positions_out, vertex_flows_out, vertex_pixels_out, face_indices_out);
 }
 
 void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsigned short>& depth_image_out, int radius) {

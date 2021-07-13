@@ -33,7 +33,7 @@ PYBIND11_MODULE(nnrt, m) {
 	m.def("extend3", &image_proc::extend3, "");
 
 
-	//[image] --> [ordered point cloud (point image)] and [point image] --> [mesh (vertex positions, vertex colors, face vertex indices)]
+	//[image] --> [ordered point cloud (point image)]
 
 	m.def("backproject_depth_ushort",
 	      py::overload_cast<
@@ -52,17 +52,32 @@ PYBIND11_MODULE(nnrt, m) {
 	m.def("backproject_depth_float", &image_proc::backproject_depth_float, "image_in"_a, "point_image_out"_a,
 	      "fx"_a, "fy"_a, "cx"_a, "cy"_a, "Back-project depth image into 3D points");
 
-	m.def("compute_mesh_from_depth", &image_proc::compute_mesh_from_depth, "point_image"_a, "max_triangle_edge_distance"_a,
-	      "vertex_position"_a, "face_indices"_a, "Computes a mesh using back-projected points and pixel connectivity");
 
-	m.def("compute_mesh_from_depth_and_color", &image_proc::compute_mesh_from_depth_and_color, "point_image"_a, "background_image"_a,
+	// [point image] --> [mesh (vertex positions, vertex colors, face vertex indices)]
+	m.def("compute_mesh_from_depth", py::overload_cast<const py::array_t<float>&, float, py::array_t<float>&, py::array_t<int>&,
+	        py::array_t<int>&>(&image_proc::compute_mesh_from_depth),
+	        "point_image"_a, "max_triangle_edge_distance"_a, "vertex_position"_a, "vertex_pixels_out"_a, "face_indices"_a,
+	        "Compute a triangle mesh using back-projected points and pixel connectivity");
+	m.def("compute_mesh_from_depth", py::overload_cast<const py::array_t<float>&, float, py::array_t<float>&,
+	        py::array_t<int>&>(&image_proc::compute_mesh_from_depth),
+	      "point_image"_a, "max_triangle_edge_distance"_a, "vertex_position"_a,  "face_indices"_a,
+	      "Compute a triangle mesh using back-projected points and pixel connectivity");
+	m.def("compute_mesh_from_depth", py::overload_cast<const py::array_t<float>&, float>(&image_proc::compute_mesh_from_depth),
+	      "point_image"_a, "max_triangle_edge_distance"_a,"Compute a mesh using back-projected points and pixel connectivity");
+
+	m.def("compute_mesh_from_depth_and_color", &image_proc::compute_mesh_from_depth_and_color, "point_image"_a, "color_image"_a,
 	      "max_triangle_edge_distance"_a, "vertex_positions"_a, "vertex_colors"_a, "face_indices"_a,
-	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
+	      "Compute a triangle mesh using back-projected points and pixel connectivity. Additionally, extracts colors for each vertex");
 
-	m.def("compute_mesh_from_depth_and_flow", &image_proc::compute_mesh_from_depth_and_flow,
+	m.def("compute_mesh_from_depth_and_flow", py::overload_cast<const py::array_t<float>&,const py::array_t<float>&, float,
+			      py::array_t<float>&,py::array_t<float>&, py::array_t<int>&, py::array_t<int>&>(&image_proc::compute_mesh_from_depth_and_flow),
 	      "point_image_in"_a, "flow_image_in"_a, "max_triangle_edge_distance"_a, "vertex_positions_out"_a,
 	      "vertex_flows_out"_a, "vertex_pixels_out"_a, "face_indices_out"_a,
-	      "Compute a mesh using backprojected points and pixel connectivity. Additionally, extracts flows for each vertex");
+	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts flows for each vertex");
+	m.def("compute_mesh_from_depth_and_flow", py::overload_cast<const py::array_t<float>&,const py::array_t<float>&, float>(
+			&image_proc::compute_mesh_from_depth_and_flow),
+	      "point_image_in"_a, "flow_image_in"_a, "max_triangle_edge_distance"_a,
+	      "Compute a mesh using back-projected points and pixel connectivity. Additionally, extracts flows for each vertex");
 
 	// image filtering
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
