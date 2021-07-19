@@ -43,9 +43,6 @@ class TrackingSpanMode(Enum):
 
 # Tracking
 source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
-# We will overwrite the default value in options.py / settings.py
-options.use_mask = True
-options.gn_max_nodes = 3000
 graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
 pixel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
 tracking_span_mode = TrackingSpanMode.ZERO_TO_T
@@ -84,9 +81,10 @@ record_gn_point_clouds = True
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN2_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value
+sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_100_SOD_MASKS.value
 
 
 def print_pipeline_options(stdout=sys.stdout):

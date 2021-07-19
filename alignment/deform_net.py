@@ -585,7 +585,7 @@ class DeformNet(torch.nn.Module):
                     node_idxs_k = source_anchors[:, k]  # (num_matches)
                     nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
 
-                    weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches)
+                    weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches) #TODO: check arm pixel correspondence_weights
 
                     # Compute skew-symmetric part.
                     rotated_points_k = torch.matmul(R_current[node_idxs_k],

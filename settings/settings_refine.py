@@ -27,12 +27,12 @@ max_boundary_dist = 0.10
 gn_depth_sampling_mode = "bilinear"  # "bilinear" or "nearest"
 gn_max_depth = 6.0
 gn_min_nodes = 4
-gn_max_nodes = 300
+gn_max_nodes = 3000
 gn_max_matches_train = 10000
 gn_max_matches_train_per_batch = 100000
 gn_max_matches_eval = 10000
 gn_max_warped_points = 100000
-gn_debug = False
+gn_debug = True
 gn_print_timings = False
 
 gn_use_edge_weighting = False
@@ -40,8 +40,8 @@ gn_check_condition_num = False
 gn_break_on_condition_num = True
 gn_max_condition_num = 1e6
 
-gn_remove_clusters_with_few_matches = True
-gn_min_num_correspondences_per_cluster = 2000
+gn_remove_clusters_with_few_matches = True  # TRY SETTING TO FALSE!
+gn_min_num_correspondences_per_cluster = 2000  # TRY TUNING
 
 gn_invalidate_too_far_away_translations = True
 gn_max_mean_translation_error = 0.5
