@@ -12,11 +12,11 @@ PROGRAM_EXIT_FAILURE = -1
 
 def main():
     parser = argparse.ArgumentParser("App for visualizing block allocation and generated mesh alignment.")
-    run_output_folder = "21-07-19-14-20-20_BERLIN"
+    run_output_folder = "21-07-20-13-47-24"
     parser.add_argument("--output", "-o", type=str, help="Path to output folder",
                         default=os.path.join(options.output_directory, run_output_folder, "frame_output"))
     parser.add_argument("--initial_frame", "-i", type=int, help="Index of the first frame to process",
-                        default=1)
+                        default=-1)
     args = parser.parse_args()
     print("Reading data from ", args.output)
     visualizer = VisualizerApp(args.output, args.initial_frame)

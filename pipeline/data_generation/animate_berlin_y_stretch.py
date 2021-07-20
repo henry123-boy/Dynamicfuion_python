@@ -25,8 +25,8 @@ def main():
 
     depth_image = frame_dataset.load_depth_image_open3d(device)
     color_image = frame_dataset.load_color_image_open3d(device)
-    intrinsics_open3d_cpu = data.camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_dataset.get_intrinsics_path(),
-                                                                                              frame_dataset.get_depth_image_path())
+    intrinsics_open3d_cpu, _ = data.camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_dataset.get_intrinsics_path(),
+                                                                                                 frame_dataset.get_depth_image_path())
     intrinsics_open3d_cuda = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
     extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
 

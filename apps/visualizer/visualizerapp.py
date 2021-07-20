@@ -12,8 +12,17 @@ from apps.visualizer.point_cloud import PointCloud
 
 class VisualizerApp:
 
-    def __init__(self, output_path, start_frame_ix=0):
+    def __init__(self, output_path, start_frame_ix=-1):
         self.__alt_pressed = False
+
+        minimum_start_frame, self.frame_index_upper_bound = utilities.get_start_and_end_frame(output_path)
+
+        if start_frame_ix == -1:
+            start_frame_ix = minimum_start_frame
+        elif start_frame_ix < minimum_start_frame:
+            raise ValueError(f"Smallest start frame for given sequence is {minimum_start_frame:d}, "
+                             f"cannot start from frame {start_frame_ix:d}.")
+
         # self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_path)
         self.start_frame_ix = start_frame_ix
         self.output_path = output_path
@@ -25,9 +34,6 @@ class VisualizerApp:
         self.renderer = vtk.vtkRenderer()
         self.render_window = vtk.vtkRenderWindow()
         self.render_window.AddRenderer(self.renderer)
-
-        frame_count = utilities.get_output_frame_count(output_path)
-        self.frame_index_upper_bound = frame_count
 
         # mesh setup
         self.canonical_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Peacock"))

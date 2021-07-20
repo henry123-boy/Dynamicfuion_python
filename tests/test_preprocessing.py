@@ -11,7 +11,7 @@ from pipeline.numba_cuda.preprocessing import cuda_compute_normal
 def test_compute_normals():
     frame_data: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_200.value
     depth_image = np.array(o3d.io.read_image(frame_data.get_depth_image_path()))
-    intrinsics: o3d.camera.PinholeCameraIntrinsic = \
+    intrinsics, _ = \
         data.camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_data.get_intrinsics_path(),
                                                                           frame_data.get_depth_image_path())
     intrinsic_matrix = np.array(intrinsics.intrinsic_matrix)

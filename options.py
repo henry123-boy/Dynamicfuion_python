@@ -26,10 +26,10 @@ custom_paths_by_mac_address_hash = {
                             output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),  # wifi usb card
     "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output"),                                             # ahmed's
+                            output="/mnt/Data/NNRT/output"),                                             # Ahmed's
     "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output")                                              # ahmed's
+                            output="/mnt/Data/NNRT/output")                                              # Ahmed's
 }
 try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
@@ -57,6 +57,15 @@ num_samples_eval = 700
 #####################################################################################################################
 node_coverage = 0.05
 graph_debug = False
+graph_max_triangle_distance = 0.05
+graph_erosion_num_iterations = 4
+graph_erosion_min_neighbors = 4
+graph_use_only_valid_vertices = True
+graph_neighbor_count = 8
+graph_enforce_neighbor_count = False
+graph_sample_random_shuffle = False
+graph_remove_nodes_with_too_few_neighbors = True
+
 
 #####################################################################################################################
 # MODEL INFO

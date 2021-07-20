@@ -25,13 +25,14 @@ class TransformationMode(Enum):
 
 class GraphGenerationMode(Enum):
     FIRST_FRAME_EXTRACTED_MESH = 0
-    FIRST_FRAME_LOADED_GRAPH = 1
+    FIRST_FRAME_DEPTH_IMAGE = 1
+    FIRST_FRAME_LOADED_GRAPH = 2
 
 
 class AnchorComputationMode(Enum):
     EUCLIDEAN = 0
     SHORTEST_PATH = 1
-    PRELOAD = 2
+    PRECOMPUTED = 2
 
 
 class TrackingSpanMode(Enum):
@@ -43,8 +44,8 @@ class TrackingSpanMode(Enum):
 
 # Tracking
 source_image_mode: SourceImageMode = SourceImageMode.REUSE_PREVIOUS_FRAME
-graph_generation_mode = GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH
-pixel_anchor_computation_mode = AnchorComputationMode.EUCLIDEAN
+graph_generation_mode = GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE
+pixel_anchor_computation_mode = AnchorComputationMode.PRECOMPUTED
 tracking_span_mode = TrackingSpanMode.ZERO_TO_T
 
 # Integration

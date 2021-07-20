@@ -199,7 +199,7 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
                                     neighbor_count, node_coverage, True)
 
     # ===== Remove nodes with not enough neighbors ===
-    # TODO sometimes, commented-out C++ calls here result in infinite loops & segfaults, FIX!
+    # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding C++ code
     # valid_nodes_mask = np.ones((node_count, 1), dtype=bool)
     # # Mark nodes with not enough neighbors
     # nnrt.node_and_edge_clean_up(graph_edges, valid_nodes_mask)
@@ -287,23 +287,6 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
             print("It only has nodes:", np.where(graph_clusters == i)[0])
 
     return DeformationGraphNumpy(nodes, graph_edges, graph_edge_weights, graph_clusters)
-
-
-def build_deformation_graph_from_depth_image(depth_image: np.ndarray,
-                                             intrinsics: o3d.camera.PinholeCameraIntrinsic,
-                                             downsampling_factor: int) -> DeformationGraphNumpy:
-    import data.camera
-    fx, fy, cx, cy = data.camera.extract_intrinsic_projection_parameters(intrinsics)
-
-    point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
-
-    node_positions, edges, pixel_anchors, pixel_weights = \
-        nnrt.construct_regular_graph(point_image,
-                                     depth_image.shape[1] // downsampling_factor,
-                                     depth_image.shape[0] // downsampling_factor,
-                                     2.0, 0.05, 3.0)
-    clusters = find_knn_graph_connected_components(knn_edges=edges)
-    return DeformationGraphNumpy(node_positions, edges, np.array([1] * len(edges)), clusters)
 
 
 def draw_deformation_graph(deformation_graph: DeformationGraphNumpy,

@@ -11,6 +11,7 @@ import skimage.io
 
 import options
 from utils import image
+from pipeline.graph import DeformationGraphNumpy
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
@@ -20,17 +21,17 @@ from nnrt import compute_edges_shortest_path as compute_edges_shortest_path_c
 from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
 from nnrt import compute_pixel_anchors_shortest_path as compute_pixel_anchors_shortest_path_c
 from nnrt import compute_clusters as compute_clusters_c
-
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
 
-def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrinsic_matrix: np.ndarray,
-                        max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
-                        erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
-                        remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
-                        sample_random_shuffle: bool = False, num_neighbors: int = 8,
-                        enforce_total_num_neighbors: bool = True, compute_anchors: bool = False,
-                        scene_flow_path: typing.Union[str, None] = None, enable_visual_debugging: bool = False):
+def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image: np.ndarray, intrinsic_matrix: np.ndarray,
+                                             max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
+                                             erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
+                                             remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
+                                             sample_random_shuffle: bool = False, neighbor_count: int = 8,
+                                             enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
+                                             enable_visual_debugging: bool = False) -> \
+        typing.Tuple[DeformationGraphNumpy, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
     # extract intrinsic coefficients
 
     fx = intrinsic_matrix[0, 0]
@@ -53,7 +54,7 @@ def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrins
     point_image = image.backproject_depth(depth_image, fx, fy, cx, cy, depth_scale=depth_scale_reciprocal)
     point_image = point_image.astype(np.float32)
 
-    # Convert depth image into mesh, using pixelwise connectivity.
+    # Convert depth image into mesh, using pixel-wise connectivity.
     # We also compute flow values, and invalidate any vertex with non-finite
     # flow values.
 
@@ -143,7 +144,7 @@ def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrins
     graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = \
         compute_edges_shortest_path_c(
             vertices, visible_vertices, faces, node_indices,
-            num_neighbors, options.node_coverage, enforce_total_num_neighbors
+            neighbor_count, options.node_coverage, enforce_neighbor_count
         )
 
     # Remove nodes 
@@ -163,28 +164,24 @@ def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrins
     if options.graph_debug:
         print("Node filtering: initial num nodes", num_nodes, "| invalid nodes", len(node_id_black_list), "({})".format(node_id_black_list))
 
-    if compute_anchors:
-        #########################################################################
-        # Compute pixel anchors.
-        #########################################################################
-        pixel_anchors, pixel_weights = compute_pixel_anchors_shortest_path_c(
-            node_to_vertex_distances, valid_nodes_mask,
-            vertices, vertex_pixels,
-            width, height, options.node_coverage
-        )
+    #########################################################################
+    # Compute pixel anchors.
+    #########################################################################
+    pixel_anchors, pixel_weights = compute_pixel_anchors_shortest_path_c(
+        node_to_vertex_distances, valid_nodes_mask,
+        vertices, vertex_pixels,
+        width, height, options.node_coverage
+    )
 
-        if options.graph_debug:
-            print("Valid pixels:", np.sum(np.all(pixel_anchors != -1, axis=2)))
+    if options.graph_debug:
+        print("Valid pixels:", np.sum(np.all(pixel_anchors != -1, axis=2)))
 
-        if enable_visual_debugging:
-            pixel_anchors_image = np.sum(pixel_anchors, axis=2)
-            pixel_anchors_mask_ed = np.copy(pixel_anchors_image).astype(np.uint8)
-            pixel_anchors_mask_ed[...] = 1
-            pixel_anchors_mask_ed[pixel_anchors_image == -4] = 0
-            dio.save_grayscale_image("pixel_anchors_mask_ed.jpeg", pixel_anchors_mask_ed)
-    else:
-        pixel_anchors = None
-        pixel_weights = None
+    if enable_visual_debugging:
+        pixel_anchors_image = np.sum(pixel_anchors, axis=2)
+        pixel_anchors_mask_ed = np.copy(pixel_anchors_image).astype(np.uint8)
+        pixel_anchors_mask_ed[...] = 1
+        pixel_anchors_mask_ed[pixel_anchors_image == -4] = 0
+        dio.save_grayscale_image("pixel_anchors_mask_ed.jpeg", pixel_anchors_mask_ed)
 
     # Get only valid nodes and their corresponding info
     node_coords = node_coords[valid_nodes_mask.squeeze()]
@@ -258,8 +255,7 @@ def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrins
             if sum_weights > 0:
                 graph_edges_weights[node_id] /= sum_weights
             else:
-                print("Hmmmmm", graph_edges_weights[node_id])
-                raise Exception("Not good")
+                raise ValueError(f"Weight sum for node anchors is {sum_weights}. Weights: {str(graph_edges_weights[node_id])}.")
 
         # 3. Update pixel anchors using the id mapping (note that, at this point, pixel_anchors is already free of "bad" nodes, since
         # 'compute_pixel_anchors_shortest_path_c' was given 'valid_nodes_mask')
@@ -271,11 +267,9 @@ def generate_graph_data(depth_image: np.ndarray, mask_image: np.ndarray, intrins
 
     for i, cluster_size in enumerate(cluster_sizes):
         if cluster_size <= 2:
-            print("Cluster is too small {}".format(cluster_sizes))
-            print("It only has nodes:", np.where(graph_clusters == i)[0])
-            exit()
+            raise ValueError(f"Cluster is too small: {cluster_size}, it only has nodes: {str(np.where(graph_clusters == i)[0])}")
 
-    return node_coords, graph_edges, graph_edges_weights, graph_clusters, node_deformations, pixel_anchors, pixel_weights
+    return DeformationGraphNumpy(node_coords, graph_edges, graph_edges_weights, graph_clusters), node_deformations, pixel_anchors, pixel_weights
 
 
 def generate_paths(seq_dir: str):
@@ -400,10 +394,9 @@ def main():
     EROSION_MIN_NEIGHBORS = 4
 
     # Node sampling and edges computation
-    options.node_coverage = 0.05  # in meters
     USE_ONLY_VALID_VERTICES = True
-    NUM_NEIGHBORS = 8
-    ENFORCE_TOTAL_NUM_NEIGHBORS = False
+    NEIGHBOR_COUNT = 8
+    ENFORCE_NEIGHBOR_COUNT = False
     SAMPLE_RANDOM_SHUFFLE = False
 
     # Pixel anchors
@@ -456,21 +449,19 @@ def main():
     # Load mask image.
     mask_image = skimage.io.imread(mask_image_path)
 
-    COMPUTE_ANCHORS = True
-
-    node_coords, graph_edges, graph_edges_weights, graph_clusters, node_deformations, pixel_anchors, pixel_weights = \
-        generate_graph_data(depth_image, mask_image, intrinsic_matrix, MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL,
-                            EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS, REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS,
-                            USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NUM_NEIGHBORS, ENFORCE_TOTAL_NUM_NEIGHBORS,
-                            COMPUTE_ANCHORS, scene_flow_path, VISUAL_DEBUGGING)
+    graph, node_deformations, pixel_anchors, pixel_weights = \
+        build_deformation_graph_from_depth_image(depth_image, mask_image, intrinsic_matrix, MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL,
+                                                 EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS, REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS,
+                                                 USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NEIGHBOR_COUNT, ENFORCE_NEIGHBOR_COUNT,
+                                                 scene_flow_path, VISUAL_DEBUGGING)
 
     if SAVE_GRAPH_DATA:
-        save_graph_data(seq_dir, pair_name, node_coords, graph_edges, graph_edges_weights, graph_clusters,
+        save_graph_data(seq_dir, pair_name, graph.nodes, graph.edges, graph.edge_weights, graph.clusters,
                         node_deformations, pixel_anchors, pixel_weights)
 
     if CHECK_AGAINST_GROUND_TRUTH:
-        check_graph_data_against_ground_truth(seq_dir, ground_truth_pair_name, node_coords,
-                                              graph_edges, graph_edges_weights, graph_clusters,
+        check_graph_data_against_ground_truth(seq_dir, ground_truth_pair_name,
+                                              graph.nodes, graph.edges, graph.edge_weights, graph.clusters,
                                               node_deformations, pixel_anchors, pixel_weights)
 
     return PROGRAM_EXIT_SUCCESS

@@ -2,8 +2,12 @@ import os
 import re
 
 
-def get_frame_output_path(output_path, i_frame):
-    return os.path.join(output_path, "Frame_{:03}".format(i_frame))
+def get_start_and_end_frame(output_path):
+    filenames = os.listdir(output_path)
+    filenames.sort()
+    start_frame_ix = int(filenames[0][:6])
+    end_frame_ix = int(filenames[-1][:6])
+    return start_frame_ix, end_frame_ix
 
 
 def get_output_frame_count(output_path):

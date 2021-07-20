@@ -47,7 +47,7 @@ def main():
     # === handle intrinsics ===
 
     depth_intrinsics_path = dataset.get_intrinsics_path()
-    intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
+    intrinsics_open3d_cpu, _ = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
     extrinsics_numpy = np.eye(4)

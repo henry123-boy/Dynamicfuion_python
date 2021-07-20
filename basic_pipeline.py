@@ -35,6 +35,7 @@ from alignment.default import load_default_nnrt_network
 from pipeline.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
 import pipeline.pipeline_options as po
 from pipeline.telemetry_generator import TelemetryGenerator
+from create_graph_data import build_deformation_graph_from_depth_image
 
 PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAIL = 1
@@ -77,11 +78,11 @@ class FusionPipeline:
         self.sequence: FrameSequenceDataset = po.sequence
         first_frame = self.sequence.get_frame_at(0)
 
-        intrinsics_open3d_cpu = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
-            self.sequence.get_intrinsics_path(),
-            first_frame.get_depth_image_path())
+        intrinsics_open3d_cpu, self.intrinsic_matrix_np = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
+            self.sequence.get_intrinsics_path(), first_frame.get_depth_image_path())
         self.fx, self.fy, self.cx, self.cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
         self.intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
+
         if po.print_intrinsics:
             camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
@@ -176,7 +177,7 @@ class FusionPipeline:
                 canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph
-                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRELOAD:
+                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRECOMPUTED:
                     precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
                 if po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
@@ -186,6 +187,16 @@ class FusionPipeline:
                     self.graph = sequence.get_current_frame_graph()
                     if self.graph is None:
                         raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
+                elif po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
+                    self.graph, _, precomputed_anchors, precomputed_weights = \
+                        build_deformation_graph_from_depth_image(
+                            depth_image_np, mask_image_np, intrinsic_matrix=self.intrinsic_matrix_np,
+                            max_triangle_distance=options.graph_max_triangle_distance, depth_scale_reciprocal=options.depth_scale,
+                            erosion_num_iterations=options.graph_erosion_num_iterations, erosion_min_neighbors=options.graph_erosion_min_neighbors,
+                            remove_nodes_with_too_few_neighbors=options.graph_remove_nodes_with_too_few_neighbors,
+                            use_only_valid_vertices=options.graph_use_only_valid_vertices, sample_random_shuffle=options.graph_sample_random_shuffle,
+                            neighbor_count=options.graph_neighbor_count, enforce_neighbor_count=options.graph_enforce_neighbor_count
+                        )
                 else:
                     raise NotImplementedError(f"graph generation mode {po.graph_generation_mode.name} not implemented.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
@@ -194,8 +205,9 @@ class FusionPipeline:
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image ====
                 #####################################################################################################
+                #  when we track 0-to-t, we force reusing original frame for the source.
                 if po.source_image_mode == po.SourceImageMode.REUSE_PREVIOUS_FRAME \
-                        or po.tracking_span_mode == po.TrackingSpanMode.ZERO_TO_T: # when we track 0-to-t, we force reusing original frame for the source.
+                        or po.tracking_span_mode == po.TrackingSpanMode.ZERO_TO_T:
                     source_depth = previous_depth_image_np
                     source_color = previous_color_image_np
                 else:
@@ -241,10 +253,10 @@ class FusionPipeline:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
                         source_point_image, self.graph.nodes, self.graph.edges, po.anchor_node_count, options.node_coverage
                     )
-                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRELOAD:
+                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRECOMPUTED:
                     if po.tracking_span_mode is not po.TrackingSpanMode.ZERO_TO_T:
                         raise ValueError(f"Illegal value: {po.AnchorComputationMode.__name__:s} "
-                                         f"{po.AnchorComputationMode.PRELOAD} for pixel anchors is only allowed when "
+                                         f"{po.AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
                                          f"{po.TrackingSpanMode.__name__} is set to {po.TrackingSpanMode.ZERO_TO_T}")
                     pixel_anchors = precomputed_anchors
                     pixel_weights = precomputed_weights
