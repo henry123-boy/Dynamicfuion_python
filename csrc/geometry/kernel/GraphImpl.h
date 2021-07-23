@@ -61,23 +61,19 @@ void ComputeAnchorsAndWeightsEuclidean
 	NDArrayIndexer weight_indexer(weights, 1);
 
 #if defined(__CUDACC__)
-	o3c::CUDACachedMemoryManager::ReleaseCache();
-#endif
-#if defined(__CUDACC__)
-	o3c::kernel::CUDALauncher launcher;
+	namespace launcher = o3c::kernel::cuda_launcher;
 #else
-	o3c::kernel::CPULauncher launcher;
+	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
-
-	launcher.LaunchGeneralKernel(
+	launcher::ParallelFor(
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
-				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
-				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+				auto anchor_indices = anchor_indexer.template GetDataPtr<int32_t>(workload_idx);
+				auto anchor_weights = weight_indexer.template GetDataPtr<float>(workload_idx);
 				if (TUseValidAnchorThreshold) {
 					graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
 					                                                                     minimum_valid_anchor_count, node_count,
@@ -112,23 +108,19 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	NDArrayIndexer weight_indexer(weights, 1);
 
 #if defined(__CUDACC__)
-	o3c::CUDACachedMemoryManager::ReleaseCache();
-#endif
-#if defined(__CUDACC__)
-	o3c::kernel::CUDALauncher launcher;
+	namespace launcher = o3c::kernel::cuda_launcher;
 #else
-	o3c::kernel::CPULauncher launcher;
+	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
-
-	launcher.LaunchGeneralKernel(
+	launcher::ParallelFor(
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
 
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
-				auto anchor_indices = anchor_indexer.template GetDataPtrFromCoord<int32_t>(workload_idx);
-				auto anchor_weights = weight_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+				auto anchor_indices = anchor_indexer.template GetDataPtr<int32_t>(workload_idx);
+				auto anchor_weights = weight_indexer.template GetDataPtr<float>(workload_idx);
 
 				graph::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
 				                                                              point, node_indexer, edge_indexer, node_coverage_squared);

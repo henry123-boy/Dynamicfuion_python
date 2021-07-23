@@ -101,10 +101,10 @@ class CMakeBuild(build_ext):
 # logic and declaration, and simpler if you include description/version in a file.
 setup(
     name="nnrt",
-    version="0.1.0",
-    author="Pablo Palafox, Aljaz Bozic",
+    version="0.1.1",
+    author="Pablo Palafox, Aljaz Bozic, Gregory Kramida, Ahmed Abdelkader",
     author_email="",
-    description="Neural Non-Rigid Tracking",
+    description="Neural Non-Rigid Tracking & Fusion",
     long_description="",
     ext_modules=[CMakeExtension("nnrt")],
     cmdclass={"build_ext": CMakeBuild},

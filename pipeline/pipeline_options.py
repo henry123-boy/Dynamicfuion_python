@@ -85,7 +85,8 @@ record_gn_point_clouds = True
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN2_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value
-sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_100_SOD_MASKS.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_100_150_SOD_MASKS.value
+# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_150_200_SOD_MASKS.value
 
 
 def print_pipeline_options(stdout=sys.stdout):

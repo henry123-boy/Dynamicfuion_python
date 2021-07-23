@@ -93,7 +93,7 @@ def test_warp_mesh_numpy_mat(device, ground_truth_vertices):
 
     warped_mesh = graph_numpy.warp_mesh_mat(mesh, 0.5)
 
-    visualize_results = True
+    visualize_results = False
     if visualize_results:
         o3d.visualization.draw_geometries([warped_mesh],
                                           zoom=0.8,

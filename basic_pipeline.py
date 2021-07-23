@@ -232,7 +232,7 @@ class FusionPipeline:
                 #####################################################################################################
                 # region === prepare target point cloud, RGB image, normal map, pixel anchors, and pixel weights ====
                 #####################################################################################################
-                # TODO: replace options.depth_scale by a calibration property read from disk for each dataset
+                # TODO: replace options.depth_scale by a calibration/intrinsic property read from disk for each dataset, like InfiniTAM
                 target_point_image = image_utils.backproject_depth(depth_image_np, fx, fy, cx, cy, depth_scale=options.depth_scale)  # (h, w, 3)
                 target_rgbxyz, _, _ = DeformDataset.prepare_pytorch_input(
                     color_image_np, target_point_image, self.intrinsics_dict,

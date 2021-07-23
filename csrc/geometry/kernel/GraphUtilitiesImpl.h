@@ -16,6 +16,7 @@
 #pragma once
 
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <Eigen/Dense>
 
 #include "geometry/kernel/Defines.h"
 #include "core/DeviceHeap.h"
@@ -41,8 +42,10 @@ template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void ProcessNodeEuclideanKNNBruteForce(int& max_at_index, float& max_squared_distance, int32_t* anchor_indices,
                                               float* squared_distances, const int anchor_count,
-                                              const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer, const int i_node) {
-	auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(i_node);
+                                              const Eigen::Vector3f& point,
+                                              const open3d::t::geometry::kernel::NDArrayIndexer& node_indexer,
+                                              const int i_node) {
+	auto node_pointer = node_indexer.GetDataPtr<float>(i_node);
 	Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
 	float squared_distance = (node - point).squaredNorm();
 	if (squared_distance < max_squared_distance) {
@@ -251,14 +254,14 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 			discovered_anchor_count++;
 			if (discovered_anchor_count >= anchor_count) break;
 
-			auto source_pointer = node_indexer.template GetDataPtrFromCoord<float>(source_pair.value);
+			auto source_pointer = node_indexer.template GetDataPtr<float>(source_pair.value);
 			Eigen::Map<const Eigen::Vector3f> source_node(source_pointer);
 
 			for (int i_edge = 0; i_edge < GRAPH_DEGREE; i_edge++) {
-				auto target_index_pointer = edge_indexer.template GetDataPtrFromCoord<int32_t>(source_pair.value);
+				auto target_index_pointer = edge_indexer.template GetDataPtr<int32_t>(source_pair.value);
 				int target_node_index = target_index_pointer[i_edge];
 				if (target_node_index > -1) {
-					auto target_pointer = node_indexer.template GetDataPtrFromCoord<float>(target_node_index);
+					auto target_pointer = node_indexer.template GetDataPtr<float>(target_node_index);
 					Eigen::Map<const Eigen::Vector3f> target_node(target_pointer);
 					float distance_source_to_target = (target_node - source_node).norm();
 					priority_queue.insert(DistanceIndexPair{source_pair.key + distance_source_to_target, target_node_index});

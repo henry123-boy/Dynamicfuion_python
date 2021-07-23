@@ -46,7 +46,7 @@ class FrameSequencePreset(Enum):
     BERLIN_3_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, frame_count=3,
                                               has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
                                               far_clipping_distance=2.4)
-    RED_SHORTS_40_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, frame_count=40, has_masks=True,
+    RED_SHORTS_50_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, frame_count=50, has_masks=True,
                                                    masks_subfolder="sod")
     BERLIN_50_100_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=50, frame_count=50,
                                                    far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
@@ -54,6 +54,9 @@ class FrameSequencePreset(Enum):
                                                     far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
     BERLIN_150_200_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=150, frame_count=50,
                                                     far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
+    # TODO: set up SOD generation as a sub-repo, run SOD on the BLUE_MAN sequence
+    # BLUE_MAN_0_50_SOD_MASKS = FrameSequenceDataset(76, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
+    #                                               far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
 
     # The BERLIN OFFSET, ROTATION, SCALE, ETC. sequences can be generated from the BERLIN_0 sequence using scripts
     # such as pipeline/data_generation/animate_berlin_x_offset.py

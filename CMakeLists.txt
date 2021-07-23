@@ -8,10 +8,18 @@ option(USE_SYSTEM_EIGEN3          "Use system pre-installed eigen3"          OFF
 option(USE_SYSTEM_FLANN           "Use system pre-installed flann"           OFF)
 option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF)
 option(USE_SYSTEM_CATCH2          "Use system pre-installed Catch2"          OFF)
-option(GLIBCXX_USE_CXX11_ABI      "Set -D_GLIBCXX_USE_CXX11_ABI=1"           ON)
+option(GLIBCXX_USE_CXX11_ABI      "Set use the newer (C++11 and later) ABI (Relevant to GCC compiler only)"           OFF)
 option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
 option(USE_SYSTEM_GLEW            "Use system pre-installed glew"            OFF)
+option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF)
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
+
+if(GLIBCXX_USE_CXX11_ABI)
+    set(usage "1")
+else()
+    set(usage "0")
+endif()
+message(STATUS "Force GLIBCXX_USE_CXX11_ABI=" "${usage}")
 
 ### Set up CCACHE as the default compiler launcher
 # (to speed up builds on compatible systems)
@@ -53,6 +61,20 @@ set(NNRT_VERSION_FULL "${NNRT_VERSION}${NNRT_VERSION_DEVHASH}")
 
 project(NNRT VERSION ${NNRT_VERSION} LANGUAGES C CXX)
 message(STATUS "NNRT ${NNRT_VERSION_FULL}")
+
+# Set installation paths
+if(UNIX OR CYGWIN)
+    include(GNUInstallDirs)
+    set(NNRT_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}")
+    set(NNRT_INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}")
+    set(NNRT_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}")
+    set(NNRT_INSTALL_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
+else()
+    set(NNRT_INSTALL_INCLUDE_DIR include)
+    set(NNRT_INSTALL_BIN_DIR bin)
+    set(NNRT_INSTALL_LIB_DIR lib)
+    set(NNRT_INSTALL_CMAKE_DIR CMake)
+endif()
 
 
 # Set up CUDA settings

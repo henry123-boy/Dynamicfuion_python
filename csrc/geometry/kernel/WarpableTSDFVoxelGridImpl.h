@@ -65,10 +65,6 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 	TransformIndexer transform_indexer(intrinsics, extrinsics, 1.0);
 
 
-#if defined(__CUDACC__)
-	o3c::CUDACachedMemoryManager::ReleaseCache();
-#endif
-
 	int n_blocks = static_cast<int>(block_indices.GetLength());
 	int64_t node_count = warp_graph_nodes.GetLength();
 
@@ -96,9 +92,9 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 #if defined(__CUDACC__)
-	o3c::kernel::CUDALauncher launcher;
+	namespace launcher = o3c::kernel::cuda_launcher;
 #else
-	o3c::kernel::CPULauncher launcher;
+	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
 
 	//  Go through voxels
@@ -106,7 +102,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 	DISPATCH_BYTESIZE_TO_VOXEL(
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
-				launcher.LaunchGeneralKernel(
+				launcher::ParallelFor(
 						n_voxels,
 						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
@@ -119,7 +115,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 
 				// block_index -> x_block, y_block, z_block (in voxel hash blocks)
 				int* block_key_ptr =
-						block_keys_indexer.GetDataPtrFromCoord<int>(block_index);
+						block_keys_indexer.GetDataPtr<int>(block_index);
 				auto x_block = static_cast<int64_t>(block_key_ptr[0]);
 				auto y_block = static_cast<int64_t>(block_key_ptr[1]);
 				auto z_block = static_cast<int64_t>(block_key_ptr[2]);
@@ -163,13 +159,13 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 				}
 				// endregion
 				// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
-				auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtrFromCoord<voxel_t>(
+				auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
 						x_voxel_local, y_voxel_local, z_voxel_local, block_index);
 
 				auto u_rounded = static_cast<int64_t>(roundf(u_precise));
 				auto v_rounded = static_cast<int64_t>(roundf(v_precise));
 
-				float depth = (*depth_indexer.GetDataPtrFromCoord<float>(u_rounded, v_rounded)) / depth_scale;
+				float depth = (*depth_indexer.GetDataPtr<float>(u_rounded, v_rounded)) / depth_scale;
 
 
 				if (depth > 0.0f && depth < depth_max) {
@@ -179,10 +175,10 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 					view_direction.normalize();
 
 					// === compute normal ===
-					auto normal_pointer = normals_indexer.GetDataPtrFromCoord<float>(u_rounded, v_rounded);
+					auto normal_pointer = normals_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 					Eigen::Vector3f normal(normal_pointer[0], normal_pointer[1], normal_pointer[2]);
 					float cosine = normal.dot(view_direction);
-					auto cosine_pointer = cosine_indexer.GetDataPtrFromCoord<float>(u_rounded, v_rounded);
+					auto cosine_pointer = cosine_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 					*cosine_pointer = cosine;
 
 					/*
@@ -194,10 +190,10 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 					if (psdf > -sdf_truncation_distance && cosine > 0.5f) {
 						float tsdf_normalized =
 								(psdf < sdf_truncation_distance ? psdf : sdf_truncation_distance) / sdf_truncation_distance;
-						auto voxel_ptr = voxel_block_buffer_indexer.GetDataPtrFromCoord<voxel_t>(
+						auto voxel_ptr = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
 								x_voxel_local, y_voxel_local, z_voxel_local, block_index);
 						if (integrate_color) {
-							auto color_ptr = color_indexer.GetDataPtrFromCoord<float>(u_rounded, v_rounded);
+							auto color_ptr = color_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 							voxel_ptr->Integrate(tsdf_normalized, color_ptr[0], color_ptr[1], color_ptr[2]);
 						} else {
 							voxel_ptr->Integrate(tsdf_normalized);
@@ -226,7 +222,7 @@ Eigen::Vector3f BlendWarpDualQuaternions(const int32_t* anchor_indices, const fl
 		int anchor_node_index = anchor_indices[i_anchor];
 		if (anchor_node_index != -1) {
 			float anchor_weight = anchor_weights[i_anchor];
-			auto node_transform = node_transform_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			auto node_transform = node_transform_indexer.GetDataPtr<float>(anchor_node_index);
 			for (int i_coefficient = 0; i_coefficient < 8; i_coefficient++) {
 				coefficients[i_coefficient] += anchor_weight * node_transform[i_coefficient];
 			}
@@ -251,11 +247,11 @@ Eigen::Vector3f BlendWarpMatrices(const int32_t* anchor_indices, const float* an
 		int anchor_node_index = anchor_indices[i_anchor];
 		if (anchor_node_index != -1) {
 			float anchor_weight = anchor_weights[i_anchor];
-			auto node_rotation_data = node_rotation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
-			auto node_translation_data = node_translation_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			auto node_rotation_data = node_rotation_indexer.GetDataPtr<float>(anchor_node_index);
+			auto node_translation_data = node_translation_indexer.GetDataPtr<float>(anchor_node_index);
 			Eigen::Matrix3f node_rotation(node_rotation_data);
 			Eigen::Vector3f node_translation(node_translation_data);
-			auto node_pointer = node_indexer.GetDataPtrFromCoord<float>(anchor_node_index);
+			auto node_pointer = node_indexer.GetDataPtr<float>(anchor_node_index);
 			Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
 			warped_voxel += anchor_weight * (node + node_rotation * (voxel_camera - node) + node_translation);
 		}
@@ -412,12 +408,12 @@ void DetermineWhichBlocksToActivateWithWarp(
 // 	o3c::CUDACachedMemoryManager::ReleaseCache();
 // #endif
 // #if defined(__CUDACC__)
-// 	o3c::kernel::CUDALauncher launcher;
+// 	namespace launcher = o3c::kernel::cuda_launcher;
 // #else
-// 	o3c::kernel::CPULauncher launcher;
+// 	namespace launcher = o3c::kernel::cpu_launcher;
 // #endif
 	//TODO
-	// launcher.LaunchGeneralKernel(
+	// launcher::ParallelFor(
 	// 		candidate_block_count,
 	// 		[=] OPEN3D_DEVICE {
 	//

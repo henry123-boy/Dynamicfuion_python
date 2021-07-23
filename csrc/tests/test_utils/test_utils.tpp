@@ -20,27 +20,31 @@
 #include <pybind11/numpy.h>
 #include <pybind11/detail/descr.h>
 
-#include <dlib/image_io.h>
-#include <dlib/python.h>
+// #include <dlib/image_io.h>
+// #include <dlib/python.h>
+#include "image_loader/png_loader.h"
+#include "numpy_image.h"
 
 namespace py = pybind11;
-using namespace dlib;
+// using namespace test;
 
 namespace test {
 
 // loading, general
 template<typename TElement>
 py::array_t<TElement> load_image(const std::string& path) {
-	dlib::numpy_image<unsigned short> image;
-	dlib::load_png(image, path);
+	numpy_image<unsigned short> image;
+	// TODO
+	test::load_png(image, path);
 	return image;
 }
 
 // saving, general
 template<typename TElement>
 void save_image(const py::array_t<TElement>& image, const std::string& path) {
-	dlib::numpy_image<float> _image(image);
-	dlib::save_png(_image, path);
+	// TODO
+	// test::numpy_image<float> _image(image);
+	// test::save_png(_image, path);
 }
 
 template<typename TElement>

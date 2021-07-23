@@ -83,14 +83,18 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
 			"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
 			                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
-	warpable_tsdf_voxel_grid.def("extract_surface_mesh",
-	                             &TSDFVoxelGrid::ExtractSurfaceMesh,
-	                             "weight_threshold"_a = 3.0f);
+	warpable_tsdf_voxel_grid.def(
+			"extract_surface_mesh", &TSDFVoxelGrid::ExtractSurfaceMesh,
+			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
+			"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
+			                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap |
+			                   TSDFVoxelGrid::SurfaceMaskCode::NormalMap);
 
 	warpable_tsdf_voxel_grid.def("to", &TSDFVoxelGrid::To, "device"_a, "copy"_a = false);
 	warpable_tsdf_voxel_grid.def("clone", &TSDFVoxelGrid::Clone);
 	warpable_tsdf_voxel_grid.def("cpu", &TSDFVoxelGrid::CPU);
 	warpable_tsdf_voxel_grid.def("cuda", &TSDFVoxelGrid::CUDA, "device_id"_a);
+
 	warpable_tsdf_voxel_grid.def("get_block_hashmap", &TSDFVoxelGrid::GetBlockHashmap);
 	warpable_tsdf_voxel_grid.def("get_device", &TSDFVoxelGrid::GetDevice);
 	// endregion

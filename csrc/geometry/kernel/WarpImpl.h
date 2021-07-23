@@ -56,17 +56,14 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 	NDArrayIndexer warped_point_indexer(warped_points, 1);
 
 #if defined(__CUDACC__)
-	o3c::CUDACachedMemoryManager::ReleaseCache();
-#endif
-#if defined(__CUDACC__)
-	o3c::kernel::CUDALauncher launcher;
+	namespace launcher = o3c::kernel::cuda_launcher;
 #else
-	o3c::kernel::CPULauncher launcher;
+	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
-	launcher.LaunchGeneralKernel(
+	launcher::ParallelFor(
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx){
-				auto point_data = point_indexer.GetDataPtrFromCoord<float>(workload_idx);
+				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data);
 
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
@@ -75,15 +72,15 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 				graph::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
 				                                                           point, node_indexer, node_coverage_squared);
 
-				auto warped_point_data = warped_point_indexer.template GetDataPtrFromCoord<float>(workload_idx);
+				auto warped_point_data = warped_point_indexer.template GetDataPtr<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);
 				for (int i_anchor_index = 0; i_anchor_index < anchor_count; i_anchor_index++){
 					int32_t anchor_index = anchor_indices[i_anchor_index];
 					float weight = anchor_weights[i_anchor_index];
 					if(anchor_index != -1){
-						auto node_data = node_indexer.template GetDataPtrFromCoord<float>(anchor_index);
-						auto rotation_data = node_rotation_indexer.template GetDataPtrFromCoord<float>(anchor_index);
-						auto translation_data = node_translation_indexer.template GetDataPtrFromCoord<float>(anchor_index);
+						auto node_data = node_indexer.template GetDataPtr<float>(anchor_index);
+						auto rotation_data = node_rotation_indexer.template GetDataPtr<float>(anchor_index);
+						auto translation_data = node_translation_indexer.template GetDataPtr<float>(anchor_index);
 						Eigen::Vector3f node(node_data);
 						Eigen::Vector3f translation(translation_data);
 						Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotation(rotation_data);
