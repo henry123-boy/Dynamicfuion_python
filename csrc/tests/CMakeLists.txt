@@ -12,38 +12,21 @@ if (BUILD_CPP_TESTS)
     file(MAKE_DIRECTORY ${GENERATED_TEST_DATA_DIRECTORY})
     configure_file(test_utils/test_data_paths.hpp.in test_utils/test_data_paths.hpp @ONLY)
 
-    add_library(test_utils STATIC
+    add_library(
+        test_utils STATIC
+
         test_utils/test_utils.hpp
         test_utils/test_utils.tpp
         test_utils/test_utils.cpp
         test_utils/compile_time_string_concatenation.hpp
         test_utils/numpy_image.h
+        test_utils/png_loader.h
+        test_utils/png_loader.cpp
         test_utils/pixel.h
-        test_utils/algs.h
-        test_utils/enable_if.h
-        test_utils/uintn.h
-        test_utils/serialize.h
-        test_utils/noncopyable.h
-        test_utils/error.h
-        test_utils/float_details.h
-        test_utils/matrix.h
-        test_utils/is_kind.h
-        test_utils/memory_manager.h
-        test_utils/stl_checked.h
-        test_utils/std_allocator.h
-        test_utils/matrix/matrix_utilities.h
-        test_utils/array.h
-        test_utils/array2d.h
-        test_utils/image_processing/generic_image.h
-        test_utils/sort.h
-        test_utils/memory_manager_stateless.h
-        test_utils/vectorstream.h
-        test_utils/byte_orderer.h
-        test_utils/image_loader/png_loader.h
-        test_utils/image_loader/png_loader.cpp
-        test_utils/image_loader/png_loader_abstract.h)
+        test_utils/image_view.h
+    )
 
-    target_link_libraries(test_utils PUBLIC Python3::Module nnrt_cpp)
+    target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
 
 

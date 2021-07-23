@@ -14,39 +14,26 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// Copyright (C) 2014  Davis E. King (davis@dlib.net)
-// License: Boost Software License   See LICENSE.txt for the full license.
-#ifndef DLIB_PYTHON_NuMPY_IMAGE_Hh_
-#define DLIB_PYTHON_NuMPY_IMAGE_Hh_
 
-#include "algs.h"
-#include "error.h"
-#include "matrix.h"
-#include "pixel.h"
-#include <string>
-#include <memory>
+#include <stdexcept>
 #include <pybind11/numpy.h>
-#include <pybind11/pybind11.h>
-// #include <dlib/image_transforms/assign_image.h>
-#include <cstdint>
-#include <type_traits>
+
+#include "image_view.h"
+#include "pixel.h"
 
 namespace py = pybind11;
 
+namespace test {
 
-namespace test
-{
+// region ==================================== assert_is_image =============================================
 
-// ----------------------------------------------------------------------------------------
-
-template<typename pixel_type>
-bool is_image(const py::array& img)
 /*!
 	ensures
 		- returns true if and only if the given python numpy array can reasonably be
 		  interpreted as an image containing pixel_type pixels.
 !*/
-{
+template <typename pixel_type>
+bool is_image (const py::array& img){
 	using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
 	const size_t expected_channels = pixel_traits<pixel_type>::num;
 
@@ -58,48 +45,29 @@ bool is_image(const py::array& img)
 	       has_correct_number_of_dims;
 }
 
-// ----------------------------------------------------------------------------------------
-
-template <
-		typename pixel_type
->
-void assert_correct_num_channels_in_image (
-		const py::array& img
-)
-{
+template <typename pixel_type>
+void assert_correct_num_channels_in_image (const py::array& img){
 	const size_t expected_channels = pixel_traits<pixel_type>::num;
-	if (expected_channels == 1)
-	{
-		if (!(img.ndim() == 2 || (img.ndim()==3&&img.shape(2)==1)))
-			throw test::error("Expected a 2D numpy array, but instead got one with " + std::to_string(img.ndim()) + " dimensions.");
-	}
-	else
-	{
-		if (img.ndim() != 3)
-		{
-			throw test::error("Expected a numpy array with 3 dimensions, but instead got one with " + std::to_string(img.ndim()) + " dimensions.");
+	if (expected_channels == 1){
+		if (!(img.ndim() == 2 || (img.ndim()==3&&img.shape(2)==1))){
+			throw std::runtime_error("Expected a 2D numpy array, but instead got one with " + std::to_string(img.ndim()) + " dimensions.");
 		}
-		else if (img.shape(2) != expected_channels)
-		{
-			if (pixel_traits<pixel_type>::rgb)
-				throw test::error("Expected a RGB image with " + std::to_string(expected_channels) + " channels but got an image with " + std::to_string(img.shape(2)) + " channels.");
-			else
-				throw test::error("Expected an image with " + std::to_string(expected_channels) + " channels but got an image with " + std::to_string(img.shape(2)) + " channels.");
+	}else{
+		if (img.ndim() != 3){
+			throw std::runtime_error("Expected a numpy array with 3 dimensions, but instead got one with " + std::to_string(img.ndim()) + " dimensions.");
+		} else if (img.shape(2) != expected_channels) {
+			if (pixel_traits<pixel_type>::rgb){
+				throw std::runtime_error("Expected a RGB image with " + std::to_string(expected_channels) + " channels but got an image with " + std::to_string(img.shape(2)) + " channels.");
+			} else {
+				throw std::runtime_error("Expected an image with " + std::to_string(expected_channels) + " channels but got an image with " + std::to_string(img.shape(2)) + " channels.");
+			}
 		}
 	}
 }
 
-// ----------------------------------------------------------------------------------------
-
-template <
-		typename pixel_type
->
-void assert_is_image (
-		const py::array& obj
-)
-{
-	if (!is_image<pixel_type>(obj))
-	{
+template <typename pixel_type>
+void assert_is_image ( const py::array& obj) {
+	if (!is_image<pixel_type>(obj)) {
 		assert_correct_num_channels_in_image<pixel_type>(obj);
 
 		using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
@@ -120,23 +88,22 @@ void assert_is_image (
 			else if (type == 'u' && size == 8) return "uint64";
 			else if (type == 'f' && size == 4) return "float32";
 			else if (type == 'd' && size == 8) return "float64";
-			else DLIB_CASSERT(false, "unknown type");
+			else throw std::runtime_error("unknown type");
 		};
 
-		throw test::error("Expected numpy array with elements of type " + std::string(toname(expected_type,expected_size)) + " but got " + toname(got_type, got_size) + ".");
+		throw std::runtime_error("Expected numpy array with elements of type " +
+		                         std::string(toname(expected_type, expected_size)) + " but got " + toname(got_type, got_size) + ".");
 	}
 }
 
-// ----------------------------------------------------------------------------------------
+// endregion
 
-template <
-		typename pixel_type
->
-class numpy_image : public py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>
-{
+// region ==================================== numpy_image class ============================================
+template<typename pixel_type>
+class numpy_image : public py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style> {
 	/*!
 		REQUIREMENTS ON pixel_type
-			- is a dlib pixel type, this just means that test::pixel_traits<pixel_type>
+			- is a dlib pixel type, this just means that dlib::pixel_traits<pixel_type>
 			  is defined.
 
 		WHAT THIS OBJECT REPRESENTS
@@ -152,22 +119,15 @@ public:
 
 	numpy_image() = default;
 
-	numpy_image(
-			const py::array& img
-	) : py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>(img)
-	{
+	numpy_image(const py::array& img) : py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>(img) {
 		assert_is_image<pixel_type>(img);
 	}
 
-	numpy_image (
-			long rows,
-			long cols
-	)
-	{
-		set_size(rows,cols);
+	numpy_image(long rows, long cols) {
+		set_size(rows, cols);
 	}
 
-	numpy_image (
+	numpy_image(
 			const py::object& img
 	) : numpy_image(img.cast<py::array>()) {}
 
@@ -175,42 +135,38 @@ public:
 			const numpy_image& img
 	) = default;
 
-	numpy_image& operator= (
+	numpy_image& operator=(
 			const py::object& rhs
-	)
-	{
+	) {
 		*this = numpy_image(rhs);
 		return *this;
 	}
 
-	numpy_image& operator= (
+	numpy_image& operator=(
 			const py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>& rhs
-	)
-	{
+	) {
 		*this = numpy_image(rhs);
 		return *this;
 	}
 
-	numpy_image& operator= (
+	numpy_image& operator=(
 			const numpy_image& rhs
 	) = default;
 
-	template <long NR, long NC>
-	numpy_image (
-			matrix<pixel_type,NR,NC>&& rhs
-	) : numpy_image(convert_to_numpy(std::move(rhs))) {}
+	// template<long NR, long NC>
+	// numpy_image(
+	// 		matrix <pixel_type, NR, NC>&& rhs
+	// ) : numpy_image(convert_to_numpy(std::move(rhs))) {}
 
-	template <long NR, long NC>
-	numpy_image& operator= (
-			matrix<pixel_type,NR,NC>&& rhs
-	)
-	{
-		*this = numpy_image(rhs);
-		return *this;
-	}
+	// template<long NR, long NC>
+	// numpy_image& operator=(
+	// 		matrix <pixel_type, NR, NC>&& rhs
+	// ) {
+	// 	*this = numpy_image(rhs);
+	// 	return *this;
+	// }
 
-	void set_size(size_t rows, size_t cols)
-	{
+	void set_size(size_t rows, size_t cols) {
 		using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
 		constexpr size_t channels = pixel_traits<pixel_type>::num;
 		if (channels != 1)
@@ -220,94 +176,44 @@ public:
 	}
 
 private:
-	static py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style> convert_to_numpy(matrix<pixel_type>&& img)
-	{
-		using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
-		const size_t dtype_size = sizeof(basic_pixel_type);
-		const auto rows = static_cast<const size_t>(num_rows(img));
-		const auto cols = static_cast<const size_t>(num_columns(img));
-		const size_t channels = pixel_traits<pixel_type>::num;
-		const size_t image_size = dtype_size * rows * cols * channels;
-
-		std::unique_ptr<pixel_type[]> arr_ptr = img.steal_memory();
-		basic_pixel_type* arr = (basic_pixel_type *) arr_ptr.release();
-
-		if (channels == 1)
-		{
-			return pybind11::template array_t<basic_pixel_type, py::array::c_style>(
-					{rows, cols},                                                       // shape
-					{dtype_size*cols, dtype_size},                                      // strides
-					arr,                                                                // pointer
-					pybind11::capsule{ arr, [](void *arr_p) { delete[] reinterpret_cast<basic_pixel_type*>(arr_p); } }
-			);
-		}
-		else
-		{
-			return pybind11::template array_t<basic_pixel_type, py::array::c_style>(
-					{rows, cols, channels},                                                     // shape
-					{dtype_size * cols * channels, dtype_size * channels, dtype_size},          // strides
-					arr,                                                                        // pointer
-					pybind11::capsule{ arr, [](void *arr_p) { delete[] reinterpret_cast<basic_pixel_type*>(arr_p); } }
-			);
-		}
-	}
+	// static py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style> convert_to_numpy(matrix <pixel_type>&& img) {
+	// 	using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
+	// 	const size_t dtype_size = sizeof(basic_pixel_type);
+	// 	const auto rows = static_cast<const size_t>(num_rows(img));
+	// 	const auto cols = static_cast<const size_t>(num_columns(img));
+	// 	const size_t channels = pixel_traits<pixel_type>::num;
+	// 	const size_t image_size = dtype_size * rows * cols * channels;
+	//
+	// 	std::unique_ptr < pixel_type[] > arr_ptr = img.steal_memory();
+	// 	basic_pixel_type* arr = (basic_pixel_type*) arr_ptr.release();
+	//
+	// 	if (channels == 1) {
+	// 		return pybind11::template array_t<basic_pixel_type, py::array::c_style>(
+	// 				{rows, cols},                                                       // shape
+	// 				{dtype_size * cols, dtype_size},                                      // strides
+	// 				arr,                                                                // pointer
+	// 				pybind11::capsule{arr, [](void* arr_p) { delete[] reinterpret_cast<basic_pixel_type*>(arr_p); }}
+	// 		);
+	// 	} else {
+	// 		return pybind11::template array_t<basic_pixel_type, py::array::c_style>(
+	// 				{rows, cols, channels},                                                     // shape
+	// 				{dtype_size * cols * channels, dtype_size * channels, dtype_size},          // strides
+	// 				arr,                                                                        // pointer
+	// 				pybind11::capsule{arr, [](void* arr_p) { delete[] reinterpret_cast<basic_pixel_type*>(arr_p); }}
+	// 		);
+	// 	}
+	// }
 
 };
+// endregion
 
-// ----------------------------------------------------------------------------------------
+// region ================================================= generic image functions ==================================================================
 
-template <typename pixel_type>
-void assign_image (
-		numpy_image<pixel_type>& dest,
-		const py::array& src
-)
+template <typename T>
+struct image_traits<numpy_image<T>>
 {
-	if (is_image<pixel_type>(src))     dest = src;
-	else if (is_image<uint8_t>(src))   assign_image(dest, numpy_image<uint8_t>(src));
-	else if (is_image<uint16_t>(src))  assign_image(dest, numpy_image<uint16_t>(src));
-	else if (is_image<uint32_t>(src))  assign_image(dest, numpy_image<uint32_t>(src));
-	else if (is_image<uint64_t>(src))  assign_image(dest, numpy_image<uint64_t>(src));
-	else if (is_image<int8_t>(src))    assign_image(dest, numpy_image<int8_t>(src));
-	else if (is_image<int16_t>(src))   assign_image(dest, numpy_image<int16_t>(src));
-	else if (is_image<int32_t>(src))   assign_image(dest, numpy_image<int32_t>(src));
-	else if (is_image<int64_t>(src))   assign_image(dest, numpy_image<int64_t>(src));
-	else if (is_image<float>(src))     assign_image(dest, numpy_image<float>(src));
-	else if (is_image<double>(src))    assign_image(dest, numpy_image<double>(src));
-	else if (is_image<rgb_pixel>(src)) assign_image(dest, numpy_image<rgb_pixel>(src));
-	else DLIB_CASSERT(false, "Unsupported pixel type used in assign_image().");
-}
-
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-//                          BORING IMPLEMENTATION STUFF
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
-template <typename pixel_type>
-long num_rows(const numpy_image<pixel_type>& img)
-{
-	if (img.size()==0)
-		return 0;
-
-	assert_correct_num_channels_in_image<pixel_type>(img);
-	return img.shape(0);
-}
-
-template <typename pixel_type>
-long num_columns(const numpy_image<pixel_type>& img)
-{
-	if (img.size()==0)
-		return 0;
-
-	assert_correct_num_channels_in_image<pixel_type>(img);
-	return img.shape(1);
-}
-
-template <typename pixel_type>
-void set_image_size(numpy_image<pixel_type>& img, size_t rows, size_t cols)
-{
-	img.set_size(rows, cols);
-}
+	typedef T pixel_type;
+};
 
 template <typename pixel_type>
 void* image_data(numpy_image<pixel_type>& img)
@@ -338,98 +244,38 @@ long width_step (const numpy_image<pixel_type>& img)
 	assert_correct_num_channels_in_image<pixel_type>(img);
 	using basic_pixel_type = typename pixel_traits<pixel_type>::basic_pixel_type;
 	if (img.ndim()==3 && img.strides(2) != sizeof(basic_pixel_type))
-		throw test::error("The stride of the 3rd dimension (the channel dimension) of the numpy array must be " + std::to_string(sizeof(basic_pixel_type)));
+		throw std::runtime_error("The stride of the 3rd dimension (the channel dimension) of the numpy array must be " + std::to_string(sizeof(basic_pixel_type)));
 	if (img.strides(1) != sizeof(pixel_type))
-		throw test::error("The stride of the 2nd dimension (the columns dimension) of the numpy array must be " + std::to_string(sizeof(pixel_type)));
+		throw std::runtime_error("The stride of the 2nd dimension (the columns dimension) of the numpy array must be " + std::to_string(sizeof(pixel_type)));
 
 	return img.strides(0);
 }
 
 template <typename pixel_type>
-void swap(numpy_image<pixel_type>& a, numpy_image<pixel_type>& b)
+long num_rows(const numpy_image<pixel_type>& img)
 {
-	std::swap(a,b);
+	if (img.size()==0)
+		return 0;
+
+	assert_correct_num_channels_in_image<pixel_type>(img);
+	return img.shape(0);
 }
 
-
-template <typename T>
-struct image_traits<numpy_image<T>>
+template <typename pixel_type>
+long num_columns(const numpy_image<pixel_type>& img)
 {
-	typedef T pixel_type;
-};
-} // namespace test
+	if (img.size()==0)
+		return 0;
 
-// ----------------------------------------------------------------------------------------
-
-namespace pybind11
-{
-namespace detail
-{
-template <typename pixel_type> struct handle_type_name<test::numpy_image<pixel_type>>
-{
-	using basic_pixel_type = typename test::pixel_traits<pixel_type>::basic_pixel_type;
-
-	template <size_t channels>
-	static auto getname(typename std::enable_if<channels==1,int>::type) {
-		return type_descr(_("numpy.ndarray[(rows,cols),") + npy_format_descriptor<basic_pixel_type>::name() + _("]"));
-	}
-	template <size_t channels>
-	static auto getname(typename std::enable_if<channels!=1,int>::type) {
-		if (channels == 2)
-			return type_descr(_("numpy.ndarray[(rows,cols,2),") + npy_format_descriptor<basic_pixel_type>::name() + _("]"));
-		else if (channels == 3)
-			return type_descr(_("numpy.ndarray[(rows,cols,3),") + npy_format_descriptor<basic_pixel_type>::name() + _("]"));
-		else if (channels == 4)
-			return type_descr(_("numpy.ndarray[(rows,cols,4),") + npy_format_descriptor<basic_pixel_type>::name() + _("]"));
-	}
-
-	static auto name() {
-		constexpr size_t channels = test::pixel_traits<pixel_type>::num;
-		// The reason we have to call getname() in this wonky way is because
-		// pybind11 uses a type that records the length of the returned string in
-		// the type.  So we have to do this overloading to make the return type
-		// from name() consistent.  In C++17 this would be a lot cleaner with
-		// constexpr if, but can't use C++17 yet because of lack of wide support  :(
-		return getname<channels>(0);
-	}
-};
+	assert_correct_num_channels_in_image<pixel_type>(img);
+	return img.shape(1);
+}
 
 template <typename pixel_type>
-struct pyobject_caster<test::numpy_image<pixel_type>> {
-	using type = test::numpy_image<pixel_type>;
+void set_image_size(numpy_image<pixel_type>& img, size_t rows, size_t cols)
+{
+	img.set_size(rows, cols);
+}
 
-	bool load(handle src, bool convert) {
-		// If passed a tuple where the first element of the tuple is a valid
-		// numpy_image then bind the numpy_image to that element of the tuple.
-		// We do this because there is a pattern of returning an image and some
-		// associated metadata.  This allows the returned tuple from such functions
-		// to also be treated as an image without needing to unpack the first
-		// argument.
-		if (PyTuple_Check(src.ptr()) && PyTuple_Size(src.ptr()) >= 1)
-			src = reinterpret_borrow<py::tuple>(src)[0];
-
-		if (!type::check_(src))
-			return false;
-		// stash the output of ensure into a temp variable since assigning it to
-		// value (the member variable created by the PYBIND11_TYPE_CASTER)
-		// apparently causes the return bool value to be ignored?
-		auto temp = type::ensure(src);
-		if (!test::is_image<pixel_type>(temp))
-			return false;
-		value = temp;
-		return static_cast<bool>(value);
-	}
-
-	static handle cast(const handle &src, return_value_policy /* policy */, handle /* parent */) {
-		return src.inc_ref();
-	}
-PYBIND11_TYPE_CASTER(type, handle_type_name<type>::name());
-};
-} // namespace detail
-} // namespace pybind11
-
-
-// ----------------------------------------------------------------------------------------
-
-#endif // DLIB_PYTHON_NuMPY_IMAGE_Hh_
-
+// endregion
+} // namespace test

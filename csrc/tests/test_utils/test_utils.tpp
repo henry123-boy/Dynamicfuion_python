@@ -22,11 +22,11 @@
 
 // #include <dlib/image_io.h>
 // #include <dlib/python.h>
-#include "image_loader/png_loader.h"
+// #include "image_loader/png_loader.h"
 #include "numpy_image.h"
+#include "png_loader.h"
 
 namespace py = pybind11;
-// using namespace test;
 
 namespace test {
 
@@ -34,7 +34,6 @@ namespace test {
 template<typename TElement>
 py::array_t<TElement> load_image(const std::string& path) {
 	numpy_image<unsigned short> image;
-	// TODO
 	test::load_png(image, path);
 	return image;
 }
@@ -42,9 +41,10 @@ py::array_t<TElement> load_image(const std::string& path) {
 // saving, general
 template<typename TElement>
 void save_image(const py::array_t<TElement>& image, const std::string& path) {
+
+	test::numpy_image<float> _image(image);
 	// TODO
-	// test::numpy_image<float> _image(image);
-	// test::save_png(_image, path);
+	test::save_png(_image, path);
 }
 
 template<typename TElement>
