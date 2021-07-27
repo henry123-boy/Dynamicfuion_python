@@ -141,3 +141,4 @@ dmypy.json
 /example_data/train/seq258/graph_node_deformations
 /example_data/train/seq258/pixel_anchors
 /example_data/train/seq258/pixel_weights
+/3rd-party/U-2-Net/saved_models/

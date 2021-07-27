@@ -73,6 +73,8 @@ record_gn_point_clouds = True
 
 # **** DATASET *****
 
+# Note: pick one of these sequences to run the fusion pipeline on.
+
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STATIC.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_ROTATION_Z.value
@@ -82,8 +84,7 @@ record_gn_point_clouds = True
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_STRETCH_Y.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.RED_SHORTS_40.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_SOD_MASKS.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
-# sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN2_50_SOD_MASKS.value
+sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_3_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_100_150_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_150_200_SOD_MASKS.value

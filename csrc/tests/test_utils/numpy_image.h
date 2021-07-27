@@ -1,18 +1,5 @@
-//  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/23/21.
-//  Copyright (c) 2021 Gregory Kramida
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-
-//  http://www.apache.org/licenses/LICENSE-2.0
-
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-//  ================================================================
+// Copyright (C) 2005  Davis E. King (davis@dlib.net)
+// License: Boost Software License   See https://github.com/davisking/dlib/blob/master/LICENSE.txt for the full license.
 #pragma once
 
 #include <stdexcept>
@@ -127,31 +114,21 @@ public:
 		set_size(rows, cols);
 	}
 
-	numpy_image(
-			const py::object& img
-	) : numpy_image(img.cast<py::array>()) {}
+	numpy_image(const py::object& img) : numpy_image(img.cast<py::array>()) {}
 
-	numpy_image(
-			const numpy_image& img
-	) = default;
+	numpy_image(const numpy_image& img) = default;
 
-	numpy_image& operator=(
-			const py::object& rhs
-	) {
+	numpy_image& operator=(const py::object& rhs) {
 		*this = numpy_image(rhs);
 		return *this;
 	}
 
-	numpy_image& operator=(
-			const py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>& rhs
-	) {
+	numpy_image& operator=(const py::array_t<typename pixel_traits<pixel_type>::basic_pixel_type, py::array::c_style>& rhs) {
 		*this = numpy_image(rhs);
 		return *this;
 	}
 
-	numpy_image& operator=(
-			const numpy_image& rhs
-	) = default;
+	numpy_image& operator=(const numpy_image& rhs) = default;
 
 	// template<long NR, long NC>
 	// numpy_image(

@@ -1,9 +1,11 @@
+// Copyright (C) 2005  Davis E. King (davis@dlib.net)
+// License: Boost Software License   See https://github.com/davisking/dlib/blob/master/LICENSE.txt for the full license.
 #pragma once
 
 #include <string>
 #include <memory>
-#include "pixel.h"
-#include "image_view.h"
+#include "tests/test_utils/pixel.h"
+#include "tests/test_utils/image_view.h"
 
 namespace test{
 

@@ -1,5 +1,6 @@
 import os
 
+from alignment import pwcnet
 import torch
 import torch.nn as nn
 import numpy as np
@@ -10,7 +11,7 @@ from timeit import default_timer as timer
 import options
 import pipeline.pipeline_options as po
 from utils.nn import make_conv_2d, ResBlock2d, Identity
-from alignment import pwcnet
+
 
 from pipeline.telemetry_generator import TelemetryGenerator
 

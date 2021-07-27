@@ -1,18 +1,5 @@
-//  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/23/21.
-//  Copyright (c) 2021 Gregory Kramida
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-
-//  http://www.apache.org/licenses/LICENSE-2.0
-
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-//  ================================================================
+// Copyright (C) 2005  Davis E. King (davis@dlib.net)
+// License: Boost Software License   See https://github.com/davisking/dlib/blob/master/LICENSE.txt for the full license.
 #pragma once
 
 #include "pixel.h"
@@ -23,9 +10,7 @@ template <typename image_type>
 struct image_traits;
 
 // region ============================================ image view ==============================================
-template <
-		typename image_type
->
+template <typename image_type>
 class image_view
 {
 	/*!
@@ -57,9 +42,7 @@ class image_view
 public:
 	typedef typename image_traits<image_type>::pixel_type pixel_type;
 
-	image_view(
-			image_type& img
-	) :
+	image_view(image_type& img) :
 			_data(reinterpret_cast<char*>(image_data(img))),
 			_width_step(width_step(img)),
 			_nr(num_rows(img)),
@@ -250,5 +233,74 @@ void assign_all_pixels (
 
 
 // endregion ===================================================================================================
+// region ================================= const image view ===================================================
+
+template <typename image_type>
+class const_image_view{
+	/*!
+		REQUIREMENTS ON image_type
+			image_type must be an image object as defined at the top of this file.
+
+		WHAT THIS OBJECT REPRESENTS
+			This object is just like the image_view except that it provides a "const"
+			view into an image.  That is, it has the same interface as image_view
+			except that you can't modify the image through a const_image_view.
+	!*/
+
+public:
+	typedef typename image_traits<image_type>::pixel_type pixel_type;
+
+	const_image_view(
+			const image_type& img
+	) :
+			_data(reinterpret_cast<const char*>(image_data(img))),
+			_width_step(width_step(img)),
+			_nr(num_rows(img)),
+			_nc(num_columns(img))
+	{}
+
+	long nr() const { return _nr; }
+	long nc() const { return _nc; }
+	unsigned long size() const { return static_cast<unsigned long>(nr()*nc()); }
+#ifndef ENABLE_ASSERTS
+	const pixel_type* operator[] (long row) const { return (const pixel_type*)(_data+_width_step*row); }
+#else
+	// If asserts are enabled then we need to return a proxy class so we can make sure
+        // the column accesses don't go out of bounds.
+        struct pix_row
+        {
+            pix_row(pixel_type* data_, long nc_) : data(data_),_nc(nc_) {}
+            const pixel_type& operator[] (long col) const
+            {
+                DLIB_ASSERT(0 <= col && col < _nc,
+                    "\t The given column index is out of range."
+                    << "\n\t col: " << col
+                    << "\n\t _nc: " << _nc);
+                return data[col];
+            }
+        private:
+            pixel_type* const data;
+            const long _nc;
+        };
+        const pix_row operator[] (long row) const
+        {
+            DLIB_ASSERT(0 <= row && row < _nr,
+                "\t The given row index is out of range."
+                << "\n\t row: " << row
+                << "\n\t _nr: " << _nr);
+            return pix_row((pixel_type*)(_data+_width_step*row), _nc);
+        }
+#endif
+
+	long get_width_step() const { return _width_step; }
+
+private:
+	const char* _data;
+	long _width_step;
+	long _nr;
+	long _nc;
+};
+
+// endregion
 
 } // namespace test

@@ -20,11 +20,13 @@
 #include <pybind11/numpy.h>
 #include <pybind11/detail/descr.h>
 
+
 // #include <dlib/image_io.h>
 // #include <dlib/python.h>
 // #include "image_loader/png_loader.h"
 #include "numpy_image.h"
-#include "png_loader.h"
+#include "image_io/load_png.h"
+#include "image_io/save_png.h"
 
 namespace py = pybind11;
 
@@ -43,7 +45,6 @@ template<typename TElement>
 void save_image(const py::array_t<TElement>& image, const std::string& path) {
 
 	test::numpy_image<float> _image(image);
-	// TODO
 	test::save_png(_image, path);
 }
 
@@ -68,8 +69,7 @@ compare(const pybind11::array_t<TElement>& array1, const pybind11::array_t<TElem
 	if (dimensions1 != dimensions2) {
 		result.arrays_match = false;
 		result.dimension_mismatch_information = std::make_shared<array_dimension_mismatch_information>(
-				array_dimension_mismatch_information{dimensions1, dimensions2}
-				);
+				array_dimension_mismatch_information{dimensions1, dimensions2});
 		return result;
 	}
 

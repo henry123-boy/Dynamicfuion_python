@@ -1,5 +1,5 @@
 // Copyright (C) 2006  Davis E. King (davis@dlib.net)
-// License: Boost Software License   See LICENSE.txt for the full license.
+// License: Boost Software License   See https://github.com/davisking/dlib/blob/master/LICENSE.txt for the full license.
 #ifndef DLIB_MEMORY_MANAGER_STATELESs_
 #define DLIB_MEMORY_MANAGER_STATELESs_
 

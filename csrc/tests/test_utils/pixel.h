@@ -1,75 +1,16 @@
-//  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/23/21.
-//  Copyright (c) 2021 Gregory Kramida
-//  Licensed under the Apache License, Version 2.0 (the "License");
-//  you may not use this file except in compliance with the License.
-//  You may obtain a copy of the License at
-
-//  http://www.apache.org/licenses/LICENSE-2.0
-
-//  Unless required by applicable law or agreed to in writing, software
-//  distributed under the License is distributed on an "AS IS" BASIS,
-//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//  See the License for the specific language governing permissions and
-//  limitations under the License.
-//  ================================================================
+// Copyright (C) 2005  Davis E. King (davis@dlib.net)
+// License: Boost Software License   See https://github.com/davisking/dlib/blob/master/LICENSE.txt for the full license.
 #pragma once
 
 
 #include <limits>
 #include <complex>
 
+#include "enable_if.h"
+#include "uintn.h"
+
 namespace test {
 
-//region =================================== primitive datatype typedefs ========================
-
-
-#ifdef __GNUC__
-typedef unsigned long long uint64;
-typedef long long int64;
-#elif defined(__BORLANDC__)
-typedef unsigned __int64 uint64;
-	typedef __int64 int64;
-#elif defined(_MSC_VER)
-	typedef unsigned __int64 uint64;
-	typedef __int64 int64;
-#else
-	typedef unsigned long long uint64;
-	typedef long long int64;
-#endif
-
-typedef unsigned short uint16;
-typedef unsigned int uint32;
-typedef unsigned char uint8;
-
-typedef short int16;
-typedef int int32;
-typedef char int8;
-
-
-// make sure these types have the right sizes on this platform
-static_assert(sizeof(uint8) == 1, "Failed assertion");
-static_assert(sizeof(uint16) == 2, "Failed assertion");
-static_assert(sizeof(uint32) == 4, "Failed assertion");
-static_assert(sizeof(uint64) == 8, "Failed assertion");
-
-static_assert(sizeof(int8) == 1, "Failed assertion");
-static_assert(sizeof(int16) == 2, "Failed assertion");
-static_assert(sizeof(int32) == 4, "Failed assertion");
-static_assert(sizeof(int64) == 8, "Failed assertion");
-
-template <typename T, size_t s = sizeof(T)>
-struct unsigned_type;
-template <typename T>
-struct unsigned_type<T,1> { typedef uint8 type; };
-template <typename T>
-struct unsigned_type<T,2> { typedef uint16 type; };
-template <typename T>
-struct unsigned_type<T,4> { typedef uint32 type; };
-template <typename T>
-struct unsigned_type<T,8> { typedef uint64 type; };
-
-//endregion =====================================================================================
 
 
 template<typename T>
@@ -183,6 +124,57 @@ struct pixel_traits<rgb_pixel> {
 
 // ----------------------------------------------------------------------------------------
 
+struct hsi_pixel
+{
+	/*!
+		WHAT THIS OBJECT REPRESENTS
+			This is a simple struct that represents an HSI colored graphical pixel.
+	!*/
+
+	hsi_pixel (
+	) {}
+
+	hsi_pixel (
+			unsigned char h_,
+			unsigned char s_,
+			unsigned char i_
+	) : h(h_), s(s_), i(i_) {}
+
+	unsigned char h;
+	unsigned char s;
+	unsigned char i;
+
+	bool operator == (const hsi_pixel& that) const
+	{
+		return this->h == that.h
+		       && this->s == that.s
+		       && this->i == that.i;
+	}
+
+	bool operator != (const hsi_pixel& that) const
+	{
+		return !(*this == that);
+	}
+
+};
+// ----------------------------------------------------------------------------------------
+
+template <>
+struct pixel_traits<hsi_pixel>
+{
+	constexpr static bool rgb  = false;
+	constexpr static bool rgb_alpha  = false;
+	constexpr static bool grayscale = false;
+	constexpr static bool hsi = true;
+	constexpr static bool lab = false;
+	constexpr static long num = 3;
+	typedef unsigned char basic_pixel_type;
+	static basic_pixel_type min() { return 0;}
+	static basic_pixel_type max() { return 255;}
+	constexpr static bool is_unsigned = true;
+	constexpr static bool has_alpha = false;
+};
+// ----------------------------------------------------------------------------------------
 struct bgr_pixel {
 	/*!
 		WHAT THIS OBJECT REPRESENTS
@@ -358,21 +350,7 @@ struct pixel_traits<std::complex<double> > : public float_grayscale_pixel_traits
 template<>
 struct pixel_traits<std::complex<long double> > : public float_grayscale_pixel_traits<long double> {
 };
-// region ================================ enable if =====================================================
-template<bool B, class T = void>
-struct enable_if_c {
-	typedef T type;
-};
 
-template<class T>
-struct enable_if_c<false, T> {
-};
-
-template<class Cond, class T = void>
-struct enable_if : public enable_if_c<Cond::value, T> {
-};
-
-// endregion ===========================================================================================
 // region ================================ assign pixel ==============================================
 
 namespace assign_pixel_helpers {
@@ -535,10 +513,9 @@ assign(P1& dest, const unsigned char& src)
 
 template < typename P1, typename P2 >
 typename enable_if_c<pixel_traits<P1>::rgb && pixel_traits<P2>::grayscale>::type
-assign(P1& dest, const P2& src)
-{
+assign(P1& dest, const P2& src){
 	unsigned char p;
-	assign_pixel(p, src);
+	assign(p, src);
 	dest.red = p;
 	dest.green = p;
 	dest.blue = p;
@@ -546,16 +523,12 @@ assign(P1& dest, const P2& src)
 
 template < typename P1, typename P2 >
 typename enable_if_c<pixel_traits<P1>::rgb && pixel_traits<P2>::rgb_alpha>::type
-assign(P1& dest, const P2& src)
-{
-	if (src.alpha == 255)
-	{
+assign(P1& dest, const P2& src){
+	if (src.alpha == 255){
 		dest.red = src.red;
 		dest.green = src.green;
 		dest.blue = src.blue;
-	}
-	else
-	{
+	} else {
 		// perform this assignment using fixed point arithmetic:
 		// dest = src*(alpha/255) + dest*(1 - alpha/255);
 		// dest = src*(alpha/255) + dest*1 - dest*(alpha/255);
@@ -587,8 +560,7 @@ assign(P1& dest, const P2& src)
 
 template < typename P1 >
 typename enable_if_c<pixel_traits<P1>::rgb_alpha>::type
-assign(P1& dest, const unsigned char& src)
-{
+assign(P1& dest, const unsigned char& src){
 	dest.red = src;
 	dest.green = src;
 	dest.blue = src;
@@ -598,8 +570,7 @@ assign(P1& dest, const unsigned char& src)
 
 template < typename P1, typename P2 >
 typename enable_if_c<pixel_traits<P1>::rgb_alpha && pixel_traits<P2>::grayscale>::type
-assign(P1& dest, const P2& src)
-{
+assign(P1& dest, const P2& src){
 	unsigned char p;
 	assign(p, src);
 
@@ -611,12 +582,31 @@ assign(P1& dest, const P2& src)
 
 template < typename P1, typename P2 >
 typename enable_if_c<pixel_traits<P1>::rgb_alpha && pixel_traits<P2>::rgb>::type
-assign(P1& dest, const P2& src)
-{
+assign(P1& dest, const P2& src){
 	dest.red = src.red;
 	dest.green = src.green;
 	dest.blue = src.blue;
 	dest.alpha = 255;
+}
+
+template < typename P1, typename P2 >
+typename enable_if_c<pixel_traits<P1>::grayscale && pixel_traits<P2>::hsi>::type
+assign(P1& dest, const P2& src){
+	assign(dest, src.i);
+}
+
+template < typename P1, typename P2 >
+typename enable_if_c<pixel_traits<P1>::hsi && pixel_traits<P2>::grayscale>::type
+assign(P1& dest, const P2& src){
+	dest.h = 0;
+	dest.s = 0;
+	assign(dest.i, src);
+}
+
+template < typename P1, typename P2 >
+typename enable_if_c<pixel_traits<P1>::grayscale && pixel_traits<P2>::lab>::type
+assign(P1& dest, const P2& src){
+	assign(dest, src.l);
 }
 
 } // namespace assign_pixel_helpers

@@ -2,10 +2,10 @@
 # All rights reserved. 
 # Licensed under the GNU General Public License v3.0 (https://github.com/sniklaus/pytorch-pwc/blob/master/LICENSE)
 
+from alignment.correlation import correlation  # the custom cost volume layer
+
 import torch
 import numpy as np
-
-from alignment.correlation import correlation  # the custom cost volume layer
 
 backward_grid = {}
 backward_partial = {}

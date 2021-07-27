@@ -13,7 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include <tests/test_utils/image_io/save_dng.h>
 #include "test_utils.tpp"
+#include "tests/test_utils/image_io/load_dng.h"
 
 namespace test {
 
@@ -23,7 +25,6 @@ template py::array_t<unsigned short> load_image<unsigned short>(const std::strin
 template<>
 py::array_t<float> load_image<float>(const std::string& path) {
 	test::numpy_image<float> image;
-	//TODO
 	test::load_dng(image, path);
 	return image;
 }
@@ -35,7 +36,6 @@ template void save_image<unsigned short>(const pybind11::array_t<unsigned short>
 template<>
 void save_image<float>(const py::array_t<float>& image, const std::string& path) {
 	test::numpy_image<float> _image(image);
-	//TODO
 	test::save_dng(_image, path);
 }
 

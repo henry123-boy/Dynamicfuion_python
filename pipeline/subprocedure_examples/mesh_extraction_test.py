@@ -82,7 +82,7 @@ def main():
 
     # === mesh extraction ===
 
-    mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+    mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
     mesh.compute_vertex_normals()
 
     # === visualization ===

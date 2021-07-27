@@ -10,6 +10,8 @@ from enum import Enum
 import cProfile
 import argparse
 
+from alignment.interface import run_non_rigid_alignment
+
 # 3rd-party
 import numpy as np
 import open3d as o3d
@@ -22,7 +24,7 @@ from scipy.spatial.transform.rotation import Rotation
 import nnrt
 
 import options
-from alignment.interface import run_non_rigid_alignment
+
 from data import camera
 from data import *
 from pipeline.numba_cuda.preprocessing import cuda_compute_normal
@@ -99,7 +101,7 @@ class FusionPipeline:
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: typing.Union[None, o3d.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
-            canonical_mesh = self.volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+            canonical_mesh = self.volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
 
         warped_mesh: typing.Union[None, o3d.geometry.TriangleMesh] = None
         # TODO: perform topological graph update
@@ -174,12 +176,12 @@ class FusionPipeline:
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
-                canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
 
                 # === Construct initial deformation graph
                 if po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRECOMPUTED:
                     precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
                 if po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
+                    canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, options.node_coverage,
                                                                    erosion_iteration_count=10,
                                                                    neighbor_count=8)

@@ -39,7 +39,7 @@ class FrameSequencePreset(Enum):
     BERLIN_50_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
                                                has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
                                                far_clipping_distance=2.4)
-    # pseudo-sequence with same frame data as sequence 70, but with generated graph data.
+    # pseudo-sequence with same frame data as sequence 70, but with generated graph data (not available by default).
     # BERLIN2_50_SOD_MASKS = FrameSequenceDataset(700, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
     #                                             has_masks=True, masks_subfolder="sod", mask_lower_threshold=254,
     #                                             far_clipping_distance=2.4)
