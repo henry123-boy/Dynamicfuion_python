@@ -1,7 +1,7 @@
 import numpy as np
 import math
 
-from pipeline.numpy_cpu.distance_matrix import compute_distance_matrix
+from warp_field.distance_matrix import compute_distance_matrix
 
 
 def test_compute_distance_matrix():

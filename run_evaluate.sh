@@ -2,4 +2,5 @@
 # Specify the dataset split for which to run evaluation
 SPLIT="test"
 
-python evaluate.py --split=${SPLIT}
+export PYTHONPATH="$(pwd):$PYTHONPATH"
+python3 apps/evaluate.py --split=${SPLIT}

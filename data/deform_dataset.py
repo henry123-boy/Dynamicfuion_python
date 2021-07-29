@@ -10,7 +10,7 @@ from multipledispatch import dispatch
 
 from data.io import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
     load_graph_clusters, load_int_image, load_float_image
-from utils import image as image_utils
+from image_processing import image_processing2 as image_utils
 
 from data.cropping import StaticCenterCrop
 

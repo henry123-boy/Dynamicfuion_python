@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 import open3d as o3d
 
-import options
-from abc import ABC, abstractmethod, ABCMeta
+from settings import settings_general
+from abc import abstractmethod, ABCMeta
 
 
 class DataSplit(Enum):
@@ -63,7 +63,7 @@ class GenericDataset:
         self.split = split
         self._base_dataset_type = base_dataset_type
         folder_switcher = {
-            DatasetType.DEEP_DEFORM: options.dataset_base_directory,
+            DatasetType.DEEP_DEFORM: settings_general.dataset_base_directory,
             DatasetType.LOCAL: "example_data",
             DatasetType.CUSTOM: custom_frame_directory
         }

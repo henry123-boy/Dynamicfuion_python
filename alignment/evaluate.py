@@ -2,8 +2,8 @@ import torch
 import math
 import sys
 
-import options as opt
-from utils import nn
+from settings import settings_general as opt
+from alignment import nn_utilities
 
 
 def evaluate(model, criterion, dataloader, batch_num, split):
@@ -100,7 +100,7 @@ def evaluate(model, criterion, dataloader, batch_num, split):
                 valid_target_matches, valid_correspondences, deformed_points_idxs, \
                     deformed_points_subsampled = model_data["correspondence_info"]
 
-            mask_gt, valid_mask_pixels = nn.compute_baseline_mask_gt(
+            mask_gt, valid_mask_pixels = nn_utilities.compute_baseline_mask_gt(
                 xy_coords_warped, 
                 target_matches, valid_target_matches,
                 source_points, valid_source_points,
@@ -109,7 +109,7 @@ def evaluate(model, criterion, dataloader, batch_num, split):
             )
 
             # Compute deformed point gt
-            deformed_points_gt, deformed_points_mask = nn.compute_deformed_points_gt(
+            deformed_points_gt, deformed_points_mask = nn_utilities.compute_deformed_points_gt(
                 source_points, scene_flow_gt, 
                 model_data["valid_solve"], valid_correspondences, 
                 deformed_points_idxs, deformed_points_subsampled

@@ -1,9 +1,7 @@
-import sys,os
 import torch
 import torch.nn as nn
-import options as opt
+from settings import settings_general as opt
 import numpy as np
-import math
 
 
 class DeformLoss(torch.nn.Module):

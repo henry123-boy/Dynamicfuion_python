@@ -1,15 +1,11 @@
 import typing
 import os
 
-import numpy as np
 import open3d as o3d
-from collections import Sequence
-from enum import Enum
 
-import options
 from data import DeformDataset, StaticCenterCrop
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
-from pipeline.graph import DeformationGraphNumpy
+from warp_field.graph import DeformationGraphNumpy
 
 
 class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]):

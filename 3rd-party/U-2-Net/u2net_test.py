@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms  # , utils
+from torchvision import transforms  # , image_processing
 # import torch.optim as optim
 
 import numpy as np

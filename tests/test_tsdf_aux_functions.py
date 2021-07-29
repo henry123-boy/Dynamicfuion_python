@@ -9,9 +9,9 @@ from dq3d import quat, dualquat, op
 
 import nnrt
 
-from pipeline.numba_cuda.fusion_functions import cuda_compute_psdf_warped_voxel_centers, cuda_compute_voxel_center_anchors, \
+from tsdf_management.numba_cuda.host_functions import cuda_compute_psdf_warped_voxel_centers, cuda_compute_voxel_center_anchors, \
     cuda_update_warped_voxel_center_tsdf_and_weights
-from pipeline.numba_cuda.preprocessing import cuda_compute_normal
+from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 
 
 import tests.shared.tsdf as utils

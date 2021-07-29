@@ -9,6 +9,7 @@ echo ${experiment}
 
 GPU=${1:-0}
 
-CUDA_VISIBLE_DEVICES=${GPU} python train.py --train_dir="${train_dir}" \
+export PYTHONPATH="$(pwd):$PYTHONPATH"
+CUDA_VISIBLE_DEVICES=${GPU} python3 train.py --train_dir="${train_dir}" \
                                             --val_dir="${val_dir}" \
                                             --experiment="${experiment}"

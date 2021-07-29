@@ -40,54 +40,16 @@ Under this formulation, correspondence confidences can be learned via self-super
 
 ![Neural Non-Rigid Tracking Pipeline Diagram](media/teaser.jpg)
 
-
 ## Installation
-You can either choose to setup your enviromment locally or use a docker with all dependencies.
-### Setup Locally
-#### Set up the conda enviromment
 
-After cloning this repo, `cd` into it and create a conda environment with (hopefully) all required packages:
-
-```
-conda env create --file resources/env.yml
-```
-
-#### Install some C++ extensions ([csrc](csrc))
-
-Then, activate the environment and install some c++ dependencies:
-
-```
-conda activate nnrt
-cd csrc
-python setup.py install
-cd ..
-```
-
-### Use Docker
-
-#### Specify Repository Path To Mount
-
-After cloning the repo, 'cd' into it and modify `start_nnrt.sh` with your repository absolute path for variable `LOCAL_SRC_DIR`.
-
-For Example, In `start_nnrt.sh`
-``` 
-# Varibles to edit - NNRT Repo absolute path
-LOCAL_SRC_DIR=/home/user_name/Repositories/NeuralTracking
-```
-#### Run Docker
-Run the following command:
-
-```
-sh start_nnrt.sh
-```
-The repository folder will be mounted in `/workspace/local_station/`
+Please follow instructions for the Fusion project above. The original NNRT setup instructions with Docker or Python virtualenv is no longer up-to-date.
 
 ## I just want to try it on two frames!
 
 If you just want to get a feeling of the whole approach at inference time, you can run
 
 ```
-python example_viz.py
+python apps/example_viz.py
 ```
 
 to run inference on a couple of source and target frames that you can already find at [example_data](example_data). For this, you'll be using a model checkpoint that we also provide at [experiments](experiments).

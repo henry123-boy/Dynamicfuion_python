@@ -59,7 +59,7 @@ class FrameSequencePreset(Enum):
     #                                               far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
 
     # The BERLIN OFFSET, ROTATION, SCALE, ETC. sequences can be generated from the BERLIN_0 sequence using scripts
-    # such as pipeline/data_generation/animate_berlin_x_offset.py
+    # such as tsdf_management/data_generation/animate_berlin_x_offset.py
     # (comment these out if you get an error here)
     # BERLIN_OFFSET_X = FrameSequenceDataset(
     #     base_dataset_type=DatasetType.CUSTOM,

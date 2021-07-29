@@ -1,5 +1,4 @@
 # Copyright 2021 Gregory Kramida
-import typing
 
 import open3d.core
 import torch
@@ -8,7 +7,7 @@ import numpy as np
 from multipledispatch import dispatch
 
 from alignment.deform_net import DeformNet
-from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
+from warp_field.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 
 
 @dispatch(DeformNet, np.ndarray, np.ndarray, np.ndarray, np.ndarray, DeformationGraphNumpy, np.ndarray, open3d.core.Device)

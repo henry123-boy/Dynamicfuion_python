@@ -5,8 +5,8 @@ import re
 
 
 import numpy as np
-import visualization as im_aux
-from visualization import flow
+from telemetry import visualization as im_aux
+from telemetry.visualization import flow
 
 
 def save_rgb_image(filename, image_numpy):

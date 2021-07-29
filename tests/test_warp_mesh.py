@@ -1,10 +1,9 @@
 import math
 import open3d as o3d
 import open3d.core as o3c
-import nnrt
 import pytest
 import numpy as np
-from pipeline.graph import DeformationGraphNumpy, DeformationGraphOpen3D
+from warp_field.graph import DeformationGraphNumpy, DeformationGraphOpen3D
 
 
 @pytest.fixture

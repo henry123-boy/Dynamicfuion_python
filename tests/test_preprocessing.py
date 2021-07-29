@@ -5,7 +5,7 @@ from sklearn.preprocessing import normalize
 import nnrt
 import data.camera
 from data import StandaloneFrameDataset, StandaloneFramePreset
-from pipeline.numba_cuda.preprocessing import cuda_compute_normal
+from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 
 
 def test_compute_normals():
