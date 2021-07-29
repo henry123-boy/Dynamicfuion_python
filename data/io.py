@@ -5,8 +5,8 @@ import re
 
 
 import numpy as np
-import utils.viz.image as im_aux
-from utils.viz import flow
+import visualization as im_aux
+from visualization import flow
 
 
 def save_rgb_image(filename, image_numpy):

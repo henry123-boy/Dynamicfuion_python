@@ -31,7 +31,7 @@ from pipeline.numba_cuda.preprocessing import cuda_compute_normal
 from pipeline.numpy_cpu.preprocessing import cpu_compute_normal
 from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
 import utils.image
-import utils.voxel_grid
+import utils.default_voxel_grid
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
 from pipeline.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
@@ -72,7 +72,7 @@ class FusionPipeline:
 
         # === initialize structures ===
         self.graph: typing.Union[DeformationGraphNumpy, None] = None
-        self.volume = utils.voxel_grid.make_default_tsdf_voxel_grid(self.device)
+        self.volume = utils.default_voxel_grid.make_default_tsdf_voxel_grid(self.device)
 
         #####################################################################################################
         # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===

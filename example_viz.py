@@ -1,14 +1,19 @@
 #!/usr/bin/python3
+# standard
 import os
 
+from alignment import DeformNet  # temporarily out-of-order here due to some CuPy 10 / CUDA 11.4 problems
+
+# 3rd party
 import torch
 import numpy as np
 
+# local
 from data.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
 import utils.image
-import utils.viz.tracking as tracking_viz
+import visualization.tracking as tracking_viz
 
-from alignment import DeformNet
+
 
 import options
 
@@ -101,9 +106,10 @@ def main():
     )
 
     # Graph
-    graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters, pixel_anchors, pixel_weights = \
+    graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = \
         DeformDataset.load_graph_data(frame_pair_dataset.get_sequence_directory(),
-                                      frame_pair_dataset.graph_filename, False, cropper)
+                                      frame_pair_dataset.graph_filename, False)
+
     pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights_from_sequence_directory_and_graph_filename(
         frame_pair_dataset.get_sequence_directory(),
         frame_pair_dataset.graph_filename, cropper)

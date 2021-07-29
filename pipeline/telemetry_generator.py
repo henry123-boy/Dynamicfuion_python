@@ -1,4 +1,3 @@
-import os
 import typing
 from datetime import datetime
 
@@ -9,10 +8,10 @@ import torch
 
 from data import SequenceFrameDataset
 from pipeline.graph import DeformationGraphNumpy
-from utils.viz.fusion_visualization_recorder import FusionVisualizationRecorder
+from visualization.fusion_visualization_recorder import FusionVisualizationRecorder
 from pynvml import *
 from pipeline.pipeline_options import VisualizationMode
-import utils.viz.tracking as tracking_viz
+import visualization as tracking_viz
 import pipeline.pipeline_options as po
 import options
 

@@ -9,7 +9,7 @@ import re
 from data import camera
 from data.presets import StandaloneFramePreset, StandaloneFrameDataset
 import options
-from utils.voxel_grid import make_default_tsdf_voxel_grid
+from utils.default_voxel_grid import make_default_tsdf_voxel_grid
 
 PROGRAM_EXIT_SUCCESS = 0
 

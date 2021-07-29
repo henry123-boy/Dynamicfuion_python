@@ -11,7 +11,7 @@ from scipy.spatial.transform.rotation import Rotation
 from pipeline.rendering.pytorch3d_renderer import PyTorch3DRenderer
 from data import StandaloneFrameDataset
 import data.presets as presets
-import utils.voxel_grid
+import utils.default_voxel_grid
 import data.camera
 import options
 
@@ -22,7 +22,7 @@ def main():
     frame_dataset: StandaloneFrameDataset = presets.StandaloneFramePreset.BERLIN_0.value
 
     device = o3c.Device("cuda:0")
-    volume: o3d.t = utils.voxel_grid.make_default_tsdf_voxel_grid(device)
+    volume: o3d.t = utils.default_voxel_grid.make_default_tsdf_voxel_grid(device)
 
     depth_image = frame_dataset.load_depth_image_open3d(device)
     color_image = frame_dataset.load_color_image_open3d(device)

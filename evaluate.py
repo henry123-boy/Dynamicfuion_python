@@ -8,7 +8,6 @@ import argparse
 from alignment.loss import EPE_3D_eval
 from data import DeformDataset
 
-import utils.viz.image as utils
 import options as opt
 import data.io
 
@@ -93,7 +92,7 @@ def main():
         source_points = source[3:, :, :]
 
         # Graph
-        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters, pixel_anchors, pixel_weights = \
+        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters = \
             DeformDataset.load_graph_data(
                 graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path, graph_clusters_path
             )

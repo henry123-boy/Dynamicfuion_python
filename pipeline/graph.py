@@ -1,6 +1,5 @@
 import typing
 
-import dq3d
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -8,7 +7,7 @@ import nnrt
 from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
-from utils.viz.primitive import make_z_aligned_image_plane
+from visualization.primitive_geometry_generation import make_z_aligned_image_plane
 
 from dq3d import dualquat, quat, op
 

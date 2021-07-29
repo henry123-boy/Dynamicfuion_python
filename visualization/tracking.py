@@ -2,14 +2,13 @@ import typing
 
 import numpy as np
 import open3d as o3d
-import torch
 
-
-import utils.viz
 import utils.mesh
 import utils.image
-import utils.viz.line_mesh as line_mesh_utils
-import utils.viz.example_viewer as example_viewer
+import visualization.line_mesh as line_mesh_utils
+import visualization.example_viewer as example_viewer
+from visualization.coordinate_transformations import transform_pointcloud_to_opengl_coords
+
 
 
 def draw_node_graph(graph_nodes, graph_edges):
@@ -76,7 +75,7 @@ def visualize_tracking(
     # region >>>> Original Source Point Cloud <<<<
     #####################################################################################################
     source_flat = np.moveaxis(source_rgbxyz, 0, -1).reshape(-1, 6)
-    source_points = utils.viz.transform_pointcloud_to_opengl_coords(source_flat[..., 3:])
+    source_points = transform_pointcloud_to_opengl_coords(source_flat[..., 3:])
     source_colors = source_flat[..., :3]
 
     source_pcd = o3d.geometry.PointCloud()
@@ -107,7 +106,7 @@ def visualize_tracking(
 
     # (source) warped RGB-D image
     source_warped = np.moveaxis(source_warped, 0, -1).reshape(-1, 6)
-    warped_points = utils.viz.transform_pointcloud_to_opengl_coords(source_warped[..., 3:])
+    warped_points = transform_pointcloud_to_opengl_coords(source_warped[..., 3:])
     warped_colors = source_warped[..., :3]
     # Filter points at (0, 0, 0)
     warped_points = warped_points[valid_source_mask]
@@ -124,7 +123,7 @@ def visualize_tracking(
     ####################################
     # target RGB-D image
     target_flat = np.moveaxis(target_rgbxyz, 0, -1).reshape(-1, 6)
-    target_points = utils.viz.transform_pointcloud_to_opengl_coords(target_flat[..., 3:])
+    target_points = transform_pointcloud_to_opengl_coords(target_flat[..., 3:])
     target_colors = target_flat[..., :3]
     # target PointCloud
     target_pcd = o3d.geometry.PointCloud()
@@ -138,8 +137,8 @@ def visualize_tracking(
     deformed_graph_nodes = graph_nodes + translations_pred
 
     # Transform to OpenGL coords
-    graph_nodes = utils.viz.transform_pointcloud_to_opengl_coords(graph_nodes)
-    deformed_graph_nodes = utils.viz.transform_pointcloud_to_opengl_coords(deformed_graph_nodes)
+    graph_nodes = transform_pointcloud_to_opengl_coords(graph_nodes)
+    deformed_graph_nodes = transform_pointcloud_to_opengl_coords(deformed_graph_nodes)
 
     source_graph = draw_node_graph(graph_nodes, graph_edges)
     target_graph = draw_node_graph(deformed_graph_nodes, graph_edges)
@@ -156,7 +155,7 @@ def visualize_tracking(
     ####################################
     # target matches
     target_matches = np.moveaxis(target_matches, 0, -1).reshape(-1, 3)
-    target_matches = utils.viz.transform_pointcloud_to_opengl_coords(target_matches)
+    target_matches = transform_pointcloud_to_opengl_coords(target_matches)
 
     ################################
     # "Good" matches
