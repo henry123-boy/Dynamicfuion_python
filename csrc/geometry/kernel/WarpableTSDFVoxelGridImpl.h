@@ -24,7 +24,7 @@
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
 #include "WarpableTSDFVoxelGrid.h"
-#include "utility/PlatformIndependence.h"
+#include "core/PlatformIndependence.h"
 #include "geometry/DualQuaternion.h"
 #include "geometry/kernel/Defines.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"

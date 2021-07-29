@@ -1,21 +1,44 @@
-# Neural Non-Rigid Tracking (NeurIPS 2020)
+# NNRT Fusion 
+
+This repository is a work-in-progress on the application of the Neural Non-Rigid Tracking code by Aljaz Bozic and Pablo Palafox to an actual fusion application that can process entire RGB-D video sequences. 
+
+## July 2021 Result YouTube Video ##
+[![NeuralTracking Dynamic Fusion Pipeline Result (July 2021)](media/YouTubePreview.gif)](https://youtu.be/lrFXuSWLmy8 "NeuralTracking Dynamic Fusion Pipeline Result (July 2021)")
+
+## Architecture Choices ##
+
+Part of the pipeline is an extension to Open3D, because it yields two advantages over most alternatives:
+
+1) Support for dynamically-allocated spatial voxel hash structures to manage the TSDF voxel volume in a sparse, computationally-efficient way.
+2) Support for color within the TSDF voxel structure, enabling to rebuild colored, animated meshes. 
+
+We are also currently experimenting with PyTorch3D in order to be able to render a mesh, which may yield certain tracking improvements if we manage to successfully integrate deformed mesh rendering into the Gauss-Newton alignment optimization to refine point associations. 
+
+The original Neural Non-Rigid Tracking is still relevant for this repo and provided below.
+
+## Setup Instructions ##
+#### (mostly, for fellow researchers & developers) ####
+
+COMING SOON :)
+
+## License Information ##
+
+Any original code in this repository that does not come from the original [Neural Non-Rigid Tracking repository](https://github.com/DeformableFriends/NeuralTracking), except where explicitly specified otherwise, is licensed under the [Apache License, Version 2.0 (the "License")](LICENSE).
+
+# (Based on) Neural Non-Rigid Tracking (NeurIPS 2020)
 
 ### [Project Page](https://www.niessnerlab.org/projects/bozic2020nnrt.html) | [Paper](https://arxiv.org/abs/2006.13240) | [Video](https://www.youtube.com/watch?time_continue=1&v=nqYaxM6Rj8I&feature=emb_logo) | [Data](https://github.com/AljazBozic/DeepDeform)
 
-<p align="center">
-  <img width="100%" src="media/teaser.gif"/>
-</p>
 
-This repository contains the code for the NeurIPS 2020 paper [Neural Non-Rigid Tracking](https://arxiv.org/abs/2006.13240), where we introduce a novel, end-to-end learnable, differentiable non-rigid tracker that enables state-of-the-art non-rigid reconstruction. 
+![Neural Non-Rigid Tracking Result Preview](media/teaser.gif)
 
-By enabling gradient back-propagation through a weighted non-linear least squares solver, we are able to learn correspondences and confidences in an end-to-end manner such that they are optimal for the task of non-rigid tracking. 
+This repository contains the code for the NeurIPS 2020 paper [Neural Non-Rigid Tracking](https://arxiv.org/abs/2006.13240), where we introduce a novel, end-to-end learnable, differentiable non-rigid tracker that enables state-of-the-art non-rigid reconstruction.
+
+By enabling gradient back-propagation through a weighted non-linear least squares solver, we are able to learn correspondences and confidences in an end-to-end manner such that they are optimal for the task of non-rigid tracking.
 
 Under this formulation, correspondence confidences can be learned via self-supervision, informing a learned robust optimization, where outliers and wrong correspondences are automatically down-weighted to enable effective tracking.
 
-<p align="center">
-  <img width="100%" src="media/teaser.jpg"/>
-</p>
-
+![Neural Non-Rigid Tracking Pipeline Diagram](media/teaser.jpg)
 
 
 ## Installation
@@ -42,7 +65,7 @@ cd ..
 
 ### Use Docker
 
-#### Specify Repository Path To Mount 
+#### Specify Repository Path To Mount
 
 After cloning the repo, 'cd' into it and modify `start_nnrt.sh` with your repository absolute path for variable `LOCAL_SRC_DIR`.
 
@@ -67,7 +90,7 @@ If you just want to get a feeling of the whole approach at inference time, you c
 python example_viz.py
 ```
 
-to run inference on a couple of source and target frames that you can already find at [example_data](example_data). For this, you'll be using a model checkpoint that we lso provide at [checkpoints](checkpoints).
+to run inference on a couple of source and target frames that you can already find at [example_data](example_data). For this, you'll be using a model checkpoint that we also provide at [experiments](experiments).
 
 Within the [Open3D](http://www.open3d.org/) viewer, you can view the following by pressing these keys:
 
@@ -99,13 +122,13 @@ python create_graph_data.py
 
 ## Train
 
-You can run 
+You can run
 
 ```
 ./run_train.sh
 ```
 
-to train a model. Adapt `options.py` with the path to the dataset. You can initialize with a pretrained model by setting the `use_pretrained_model` flag. 
+to train a model. Adapt `options.py` with the path to the dataset. You can initialize with a pretrained model by setting the `use_pretrained_model` flag.
 
 To reproduce our complete approach, training proceeds in four stages. To this end, for each stage you will have to set the following variables in `options.py`:
 
@@ -119,7 +142,7 @@ Each stage should be run for around 30k iterations, which corresponds to about 1
 
 ## Evaluate
 
-You can run 
+You can run
 
 ```
 ./run_generate.sh
@@ -129,7 +152,7 @@ to run inference on a specified split (`train`, `val` or `test`). Within `./run_
 
 This script will predict both graph node deformation and dense deformation of the foreground object's points.
 
-Next, you can run 
+Next, you can run
 
 ```
 ./run_evaluate.sh
@@ -137,7 +160,7 @@ Next, you can run
 
 to compute the `Graph Error 3D` (graph node deformation) and `EPE 3D` (dense deformation).
 
-Or you can also run 
+Or you can also run
 
 ```
 ./run_generate_and_evaluate.sh
@@ -163,7 +186,7 @@ If you find our work useful in your research, please consider citing:
 	year={2020}
     }
 
-    
+
 
 ## Related work
 Some other related work on non-rigid tracking by our group:
@@ -173,4 +196,4 @@ Some other related work on non-rigid tracking by our group:
 
 ## License
 
-The code from this repository is released under the MIT license, except where otherwise stated (i.e., `pwcnet.py`, `Eigen`).
+The original code from the [Neural Non-Rigid Tracking Repository](https://github.com/DeformableFriends/NeuralTracking) is released under the [MIT license](alignment/LICENSE), except where otherwise stated (i.e., `pwcnet.py`, `Eigen`).

@@ -17,7 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 
-#include "utility/PlatformIndependence.h"
+#include "core/PlatformIndependence.h"
 #include "geometry/kernel/Defines.h"
 
 namespace nnrt {

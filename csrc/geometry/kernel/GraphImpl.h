@@ -24,7 +24,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/utility/Console.h>
 
-#include "utility/PlatformIndependence.h"
+#include "core/PlatformIndependence.h"
 #include "geometry/kernel/GraphUtilitiesImpl.h"
 #include "Graph.h"
 

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.18)
 ### Define switches
 # the user can use these to control the build
 option(WITH_OPENMP                "Use OpenMP multi-threading"               ON )
-option(DEVELOPER_BUILD      "Add +commit_hash to the project version number" ON )
+option(DEVELOPER_BUILD            "Add +commit_hash to the project version number" ON )
 option(USE_SYSTEM_EIGEN3          "Use system pre-installed eigen3"          OFF)
 option(USE_SYSTEM_FLANN           "Use system pre-installed flann"           OFF)
 option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF)
