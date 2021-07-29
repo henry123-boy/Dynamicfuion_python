@@ -1,26 +1,30 @@
-###################
-# For NNRT + Fusion
-###################
-#
 numpy>=1.15.2
 torch>=1.9.0
 torchvision>=0.10.0
 cupy>=9.0
 # Note: Open3D has to be built from source to use CUDA
 open3d>=0.13.0
-freetype-py
 scikit-image>=0.14.0
-opencv-python
-imageio
+opencv-python>=4.4.0.46
+imageio>=2.9.0
 # Mote: I found that the easiest way to install PyTorch3D w/ CUDA is from git
 -e git+https://github.com/facebookresearch/pytorch3d.git@stable
-#
-###################
-# For U-2-Net
-###################
-#
 pillow>=8.1.1
-paddlepaddle
-paddlehub
-gradio
-#
+nnrt>=0.1.1
+dq3d>=0.3.6
+vtk>=9.0.1
+typing>=3.7.4.3
+tensorboardX>=2.1
+tqdm>=4.51.0
+setuptools>=56.0.0
+multipledispatch>=0.6.0
+click>=8.0.1
+scipy>=1.7.0
+pytest>=6.2.3
+sklearn>=0.0
+scikit-learn>=0.24.1
+matplotlib>=3.4.2
+kornia>=0.4.1
+pynvml>=8.0.4
+numba>=0.53.1
+transformations>=2020.1.1

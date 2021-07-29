@@ -1,6 +1,5 @@
 import math
-from typing import  Tuple
-import os
+from typing import Tuple
 
 import numpy as np
 import open3d as o3d
@@ -8,11 +7,11 @@ import open3d.core as o3c
 import pytest
 from dq3d import quat, dualquat
 
-
 import nnrt
 
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
+
 
 def generate_xy_plane_depth_image(resolution: Tuple[int, int], depth: int) -> np.ndarray:
     image = np.ones(resolution, dtype=np.uint16) * depth
