@@ -18,18 +18,22 @@ LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output
 workspace = "."
 default_output_directory = os.path.join(workspace, "output")
 custom_paths_by_mac_address_hash = {
+    # Greg - ethernet
     "1121160f73049dc62efd5cd3ae58daec06185e2d330e680caa46e7f66504f2bf":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
-                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),  # ethernet
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+    # Greg - wifi usb card
     "d721c6dceb2f2795bdfc8ff9390adaa3a84ff8f56ddb25a1681b54f5496257e6":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
-                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),  # wifi usb card
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+    # Ahmed - wifi
     "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output"),  # Ahmed's
+                            output="/mnt/Data/NNRT/output"),
+    # Ahmed - ethernet
     "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output")  # Ahmed's
+                            output="/mnt/Data/NNRT/output")
 }
 try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]

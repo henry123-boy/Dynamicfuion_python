@@ -25,14 +25,16 @@ class FrameSequencePreset(Enum):
     BERLIN_50 = FrameSequenceDataset(70, DataSplit.TRAIN, frame_count=50, has_masks=False, far_clipping_distance=2.4)
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False, far_clipping_distance=2.4)
     BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False, far_clipping_distance=2.4)
+
     # SOD == salient object detection
-    # generate these masks like so:
-    # 1. Check out https://github.com/xuebinqin/U-2-Net
-    # 2. Download the pretrained alignment (.pth file, see README in above repo)
-    # 3. Run the saliency detector like so (condense into one line):
-    #    python3 u2net_test.py -m /mnt/Data/Checkpoints/u2net/u2net.pth
-    #       -i /mnt/Data/Datasets/deepdeform/train/seq070/color/
-    #       -o /mnt/Data/Datasets/deepdeform/train/seq070/sod
+    # To generate these masks, make sure CMake has been run to download the pretrained U^2 Net model, then
+    # run the U^2 Net salient object detector from the root of the repository like so:
+    #
+    # python3 run_sod.py -sp "train" -s 71 -o "sod"
+    #
+    # Replace the split (-sp) & sequence (-s) arguments above with those of the sequence you want to generate masks for,
+    # 'python3' with the name / path of your Python 3 executable. "-o" argument is the output folder and is "sod" by
+    # default.
 
     BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True, masks_subfolder="sod",
                                             mask_lower_threshold=254, far_clipping_distance=2.4)
@@ -54,9 +56,8 @@ class FrameSequencePreset(Enum):
                                                     far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
     BERLIN_150_200_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=150, frame_count=50,
                                                     far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
-    # TODO: set up SOD generation as a sub-repo, run SOD on the BLUE_MAN sequence
-    # BLUE_MAN_0_50_SOD_MASKS = FrameSequenceDataset(76, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
-    #                                               far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
+    BLUE_MAN_0_50_SOD_MASKS = FrameSequenceDataset(76, DataSplit.TRAIN, start_frame_index=0, frame_count=50,
+                                                   far_clipping_distance=2.4, has_masks=True, masks_subfolder="sod")
 
     # The BERLIN OFFSET, ROTATION, SCALE, ETC. sequences can be generated from the BERLIN_0 sequence using scripts
     # such as tsdf_management/data_generation/animate_berlin_x_offset.py

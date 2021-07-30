@@ -25,13 +25,13 @@ endif()
 message(STATUS "Using Python version: ${PYTHON_VERSION}")
 
 set(PIP_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/pip_package")
-set(STUBS_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/stubs")
+#set(STUBS_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/stubs")
 
 
 ### ================== Output directory prep ==================
 
 file(MAKE_DIRECTORY ${PIP_PACKAGE_DST_DIR})
-file(MAKE_DIRECTORY ${STUBS_PACKAGE_DST_DIR})
+# file(MAKE_DIRECTORY ${STUBS_PACKAGE_DST_DIR})
 
 
 # ==================== set up NNRT C++ library ============================
@@ -145,24 +145,25 @@ add_custom_target(install-pip-package
     DEPENDS pip-package
 )
 
-set(PYBIND_STUBGEN_IN_PATH)
-
-add_custom_target(python-stubs
-    COMMAND ${PYBIND11_STUBGEN_EXECUTABLE} nnrt -o ${STUBS_PACKAGE_DST_DIR}
-    COMMAND echo "pybind11 stubs package created at ${STUBS_PACKAGE_DST_DIR}"
-    COMMAND cp -r ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs ${PYTHON_LOCAL_PACKAGES_DIR}
-    COMMAND echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs to ${PYTHON_LOCAL_PACKAGES_DIR}"
-    DEPENDS install-pip-package
-)
-
-
-if(PATH_TO_IDE_STUBS_FILE)
-    add_custom_target(python-ide-stubs
-        COMMAND mv ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs/__init__.pyi ${PATH_TO_IDE_STUBS_FILE}
-        COMMAND echo "pybind11 stubs replaced at ${PATH_TO_IDE_STUBS_FILE}"
-        DEPENDS python-stubs
-    )
-endif()
+# TODO: fix stub generation
+#set(PYBIND_STUBGEN_IN_PATH)
+#
+#add_custom_target(python-stubs
+#    COMMAND ${PYBIND11_STUBGEN_EXECUTABLE} nnrt -o ${STUBS_PACKAGE_DST_DIR}
+#    COMMAND echo "pybind11 stubs package created at ${STUBS_PACKAGE_DST_DIR}"
+#    COMMAND cp -r ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs ${PYTHON_LOCAL_PACKAGES_DIR}
+#    COMMAND echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs to ${PYTHON_LOCAL_PACKAGES_DIR}"
+#    DEPENDS install-pip-package
+#)
+#
+#
+#if(PATH_TO_IDE_STUBS_FILE)
+#    add_custom_target(python-ide-stubs
+#        COMMAND mv ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs/__init__.pyi ${PATH_TO_IDE_STUBS_FILE}
+#        COMMAND echo "pybind11 stubs replaced at ${PATH_TO_IDE_STUBS_FILE}"
+#        DEPENDS python-stubs
+#    )
+#endif()
 
 
 add_subdirectory(tests)

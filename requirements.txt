@@ -1,9 +1,9 @@
-numpy>=1.15.2
-torch>=1.9.0
-torchvision>=0.10.0
-cupy>=9.0
 # Note: Open3D has to be built from source to use CUDA
 open3d>=0.13.0
+torch>=1.9.0
+torchvision>=0.10.0
+numpy>=1.15.2
+cupy>=9.0
 scikit-image>=0.14.0
 opencv-python>=4.4.0.46
 imageio>=2.9.0

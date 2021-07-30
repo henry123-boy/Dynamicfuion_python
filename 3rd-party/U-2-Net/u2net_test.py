@@ -1,5 +1,8 @@
 import os
+import os.path
 import argparse
+
+import sys
 from skimage import io, transform
 import torch
 import torchvision
@@ -8,10 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms  # , image_processing
-# import torch.optim as optim
 
 import numpy as np
-from PIL import Image
+from PIL import Image  # , ImageOps
 import glob
 
 from data_loader import RescaleT
@@ -38,7 +40,7 @@ def save_output(image_name, pred, d_dir):
     predict = predict.squeeze()
     predict_np = predict.cpu().data.numpy()
 
-    im = Image.fromarray(predict_np * 255).convert('RGB')
+    im = Image.fromarray(predict_np * 255).convert('L')  # .convert('RGB')) -- if you need 3-channel output
     img_name = image_name.split(os.sep)[-1]
     image = io.imread(image_name)
     imo = im.resize((image.shape[1], image.shape[0]), resample=Image.BILINEAR)
@@ -61,7 +63,7 @@ def main():
 
     image_dir_0 = os.path.join(os.getcwd(), 'test_data', 'test_images')
     prediction_dir_0 = os.path.join(os.getcwd(), 'test_data', model_name + '_results' + os.sep)
-    model_dir_0 = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
+    model_dir_0 = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'saved_models', model_name + '.pth')
 
     parser = argparse.ArgumentParser()
 
@@ -79,7 +81,13 @@ def main():
 
     image_dir = args.input_path
     prediction_dir = args.output_path
-    model_dir = args.model_path
+    pretrained_model_path = args.model_path
+
+    if not os.path.exists(pretrained_model_path):
+        print(f"Could not find pretrained U^2 Net model at {pretrained_model_path}. "
+              f"Please run CMake to download the default pretrained model or specify path to the pretrained model"
+              f" as the -m argument to the u2net_test script.")
+        return -1
 
     img_name_list = glob.glob(image_dir + os.sep + '*')
     print(img_name_list)
@@ -97,18 +105,20 @@ def main():
                                         num_workers=1)
 
     # --------- 3. model define ---------
-    if (model_name == 'u2net'):
+    if model_name == 'u2net':
         print("...load U2NET---173.6 MB")
         net = U2NET(3, 1)
-    elif (model_name == 'u2netp'):
+    elif model_name == 'u2netp':
         print("...load U2NEP---4.7 MB")
         net = U2NETP(3, 1)
+    else:
+        raise ValueError(f"Unsuppored model name: {model_name}")
 
     if torch.cuda.is_available():
-        net.load_state_dict(torch.load(model_dir))
+        net.load_state_dict(torch.load(pretrained_model_path))
         net.cuda()
     else:
-        net.load_state_dict(torch.load(model_dir, map_location='cpu'))
+        net.load_state_dict(torch.load(pretrained_model_path, map_location='cpu'))
     net.eval()
 
     # --------- 4. inference for each image ---------
@@ -136,7 +146,8 @@ def main():
         save_output(img_name_list[i_test], pred, prediction_dir)
 
         del d1, d2, d3, d4, d5, d6, d7
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
