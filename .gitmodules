@@ -1,12 +1,12 @@
 [submodule "3rd-party/pybind11"]
 	path = 3rd-party/pybind11
-	url = git@github.com:pybind/pybind11.git
+	url = https://github.com/pybind/pybind11.git
 [submodule "3rd-party/Eigen"]
 	path = 3rd-party/Eigen
-	url = git@gitlab.com:libeigen/eigen.git
+	url = https://gitlab.com/libeigen/eigen.git
 [submodule "3rd-party/backward-cpp"]
 	path = 3rd-party/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
 [submodule "3rd-party/flann/flann"]
 	path = 3rd-party/flann/flann
-	url = git@github.com:flann-lib/flann.git
+	url = https://github.com/flann-lib/flann.git

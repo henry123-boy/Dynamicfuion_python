@@ -17,6 +17,10 @@ We are also currently experimenting with PyTorch3D in order to be able to render
 ## Setup Instructions ##
 #### (mostly, for fellow researchers & developers at this point) ####
 
+### Cloning The Repo ###
+
+Testing & working on the code requires `git`, since we didn't make any releases so far. In terminal or msys git shell for Windows, clone this repository [recursively](https://stackoverflow.com/a/4438292/844728).
+
 ### Dependencies ###
 
 **Important:** please follow the order of these topics during setup.
