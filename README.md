@@ -40,7 +40,7 @@ Python 3.8 or above is required. Check out the official [website](https://www.py
 Stock PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally).
 
 #### Open3D ####
-Unlkine PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, download [version 0.13.0](https://github.com/isl-org/Open3D/releases/tag/v0.13.0) Source Code from official GitHub releases or clone the [repository](https://github.com/isl-org/Open3D) and checkout the v0.13.0 tag.
+Unlkine PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, download [version 0.13.0](https://github.com/isl-org/Open3D/releases/tag/v0.13.0) Source Code from official GitHub releases or clone the [repository](https://github.com/isl-org/Open3D) and checkout the v0.13.0 tag. Be sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 

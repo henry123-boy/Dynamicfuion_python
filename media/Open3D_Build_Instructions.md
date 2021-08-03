@@ -2,6 +2,8 @@
 
 ## Ubuntu / MacOS ##
 
+### Configuring CMake
+
 From the source/repository root, make & enter a build folder:
 ```shell
 mkdir build && cd build
@@ -20,7 +22,19 @@ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX={
 
 Alternatively, the `cmake-gui ..`command can be used to graphically configure the parameters. We highly recommend using that with the "Grouped" and "Advanced" options checked if you're new to CMake or are trying to resolve any CMake configuration errors.
 
-Now, you can build and install. You'll want to build the Open3D C++ library _and_ the Python `pip` package. Modify `-j4` to reflect however many cores you would like to use for the build.
+### Ubuntu CMake CPPABI_LIBRARY Error ###
+If you're on Ubuntu, you might get a configuration error that looks like this:
+```
+Could not find CPPABI_LIBRARY using the following names: c++abi
+```
+This is a known issue documented [here](https://github.com/isl-org/Open3D/issues/2559). You can resolve it by running the following in the shell:
+```shell
+sudo apt install libc++-[YOUR ACTIVE GCC VERSION]-dev libc++abi-[YOUR ACTIVE GCC VERSION]-dev
+```
+
+### Building & Installing
+
+You'll want to build the Open3D C++ library _and_ the Python `pip` package. Modify `-j4` to reflect however many cores you would like to use for the build.
 
 Build the C++ library with:
 ```shell
