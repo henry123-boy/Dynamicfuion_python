@@ -16,7 +16,7 @@ On Ubuntu , you may have to pass the (full) path to your Python 3 executable to 
 
 If you'd like to install to a custom folder {install_folder} (recommended), don't forget to add `-DCMAKE_INSTALL_PREFIX={install_folder}` to the list above.
 
-**Note:** if you choose to install to a custom folder, you'll later have to provide the location of the `Open3DConfig.cmake` file to the CMake script of the NNRT project, by adding `-DOpen3D_DIR={install folder}/lib/cmake` to CMake arguments.
+**Note:** if you choose to install to a custom folder, you'll later have to provide the location of the `Open3DConfig.cmake` file to the CMake script of the NNRT project, by adding `-DOpen3D_DIR={install folder}/lib/cmake/Open3D` to CMake arguments.
 
 Alternatively, the `cmake-gui ..`command can be used to graphically configure the parameters. We highly recommend using that with the "Grouped" and "Advanced" options checked if you're new to CMake or are trying to resolve any CMake configuration errors.
 

@@ -37,22 +37,22 @@ The build requires CMake 3.18 or above. You may find [these instructions](media/
 Python 3.8 or above is required. Check out the official [website](https://www.python.org/downloads/) for a distributive for your platform, if needed. In addition, working `pip` package is required to set up other dependencies (typically, included with the Python installation; if not, the [get-pip.py](https://pip.pypa.io/en/stable/installation/) is the recommended way to obtain it, even for Ubuntu users.) 
 
 #### PyTorch ####
-Stock PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally).
+PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally).
 
 #### Open3D ####
-Unlkine PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, download [version 0.13.0](https://github.com/isl-org/Open3D/releases/tag/v0.13.0) Source Code from official GitHub releases or clone the [repository](https://github.com/isl-org/Open3D) and checkout the v0.13.0 tag. Be sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
+Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, download [version 0.13.0](https://github.com/isl-org/Open3D/releases/tag/v0.13.0) Source Code from official GitHub releases or clone the [repository](https://github.com/isl-org/Open3D) and checkout the v0.13.0 tag. Be sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 
-#### Other Python Dependencies ####
-
-The rest of the dependencies can be installed by simply running ```pip install -r requirements.txt```. Some (like `CuPy`) may take a while to build.
-
 ### Building the C++ Open3D extension ###
 
-This should be relatively simple as it follows the general pattern of [building Open3D](media/Open3D_Build_Instructions.md). The `BUILD_CUDA_MODULE` CMake option is set by default to `ON`, but we recommend setting `-DBUILD_CPP_TESTS=ON` as well, to be able to run C++ tests and write your own tests for debugging purposes.
+This should be relatively simple as it follows the general pattern of [building Open3D](media/Open3D_Build_Instructions.md). For the CMake options, the `BUILD_CUDA_MODULE` option is set by default to `ON`, but we recommend setting `-DBUILD_CPP_TESTS=ON` as well to be able to run C++ tests and write your own tests for debugging purposes.
 
-As far as CMake build targets go, the `nnrt_cpp` target is only necessary to build tests. The `install-pip-package` target is the one you'll want to try out the rest of the code with the `nnrt` python package. 
+As far as CMake build targets go, the `nnrt_cpp` target is only necessary to build the tests. The `install-pip-package` target is the one you'll want to have built to try out the rest of the code with the `nnrt` python package.
+
+#### Other Python Dependencies ####
+
+The rest of the dependencies can normally be installed by simply running ```pip install -r requirements.txt```. Some (like `CuPy`) may take a while to build.
 
 ### Preparing the Data ###
 
