@@ -38,11 +38,13 @@ Build the C++ library with:
 ```shell
 make -j4
 ```
+(Replace "4" with desired number of processes to launch the build with.)
+
 Install with:
 ```shell
 make install
 ```
--or (Ubuntu only)-
+-or (Ubuntu only, recommended only if you aren't installing to a custom folder)-
 ```shell
 checkinstall --exclude=/home
 ```
@@ -51,9 +53,9 @@ Prepend with `sudo` as needed. `checkinstall` allows you to package the library 
 sudo apt install checkinstall
 ```
 
-Build and install the pip package with:
+Next, build and install the pip package with:
 ```shell
-cmake --build . --target install_pip_package -- -j4
+cmake --build . --target install-pip-package -- -j4
 ```
 
 ## Windows ##
