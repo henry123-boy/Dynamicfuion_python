@@ -17,12 +17,12 @@ We are also currently experimenting with PyTorch3D in order to be able to render
 ## Setup Instructions ##
 #### (mostly, for fellow researchers & developers at this point) ####
 
-**Important:** Please follow the order of these topics during setup.
-
 ### Dependencies ###
 
+**Important:** please follow the order of these topics during setup.
+
 #### CUDA ####
-Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1-11.3 installed on your platform. The rest of the instructions assume you followed this recommendation, otherwise please adjust accordingly.
+Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1-11.3 installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of the instructions assume you followed this recommendation, otherwise please adjust accordingly.
 
 #### CMake ####
 
@@ -50,17 +50,38 @@ This should be relatively simple as it follows the general pattern of [building 
 
 As far as CMake build targets go, the `nnrt_cpp` target is only necessary to build tests. The `install-pip-package` target is the one you'll want to try out the rest of the code with the `nnrt` python package. 
 
-### Generating Masks using Salient Object Detection ###
+### Preparing the Data ###
 
-_(TODO)_
+**Note**: make sure to prepend the `PYTHONPATH` environment variable with the repository root before running any of the scripts! 
 
-### Running Python Unit Tests ###
+Although, in theory, the code is designed to handle arbitrary 640x480 RGB-D sequences, we recommend trying out the code on the [DeepDeform dataset](https://github.com/AljazBozic/DeepDeform). Graph data is also necessary to train/retrain the alignment prediction models and to run the fusion code with certain settings that use pre-generated data. 
 
-_(TODO)_
+DeepDeform Graph data should already be included by default within DeepDeform V2 dataset, but can also be obtained [here](http://kaldir.vc.in.tum.de/download/deepdeform_graph_v1.7z) and merged into the DeepDeform dataset using the `data/add_in_graph_data.py` script (see `--help` of this script for usage.) Alternatively, the graph data can be generated using the `apps/create_graph_data.py` script for arbitrary sequences after the C++ pip package is built (see main method in the script for parameter configuration).
+
+On the first run of `apps/fusuion/pipeline.py`, you'll see some errors pop up. One of them will occur in `settings/settings_general.py`, and you'll see that it's asking you to add in an entry keyed by the hash of your machine's MAC address into the `custom_paths_by_mac_address_hash` dictionary. Follow the instructions in the error report: this will allow you to configure the path to the dataset and to your preferred output directory on your specific machine.
+
+Some other errors may be due to missing "sod" folders for some presets in the `data/presets.py`. This is about missing salient-object-detection masks, which can be used to refine the background subtraction during fusion. You can either comment those presets out and use the alternatives in `settings/settings_fusion.py`, or you can run the included U^2 Net script to generate the masks (see instructions [here](media/SOD_Generation_Instructions.md)).   
+
+### Running Unit Tests ###
+
+**Note**: make sure to prepend the `PYTHONPATH` environment variable with the repository root before running any python tests.
+
+We include both C++ and Python unit tests, within the `csrc/tests` and `tests` folders, respectively. The tests lack coverage (especially of the code that we didn't write ourselves, e.g. the original NNRT repository code), but should serve as a good sanity check and checkpoint for future development, and also provide examples for future unit tests.
+
+Please refer to guides on [pytest](https://docs.pytest.org/en/6.2.x/example/simple.html) for how to run the Python tests. The C++ tests use Catch2 and can be run as executables if `-DBUILD_CPP_TESTS=ON` was used in CMake configuration. 
 
 ### Configuring & Running the Fusion Pipeline ###
 
-_(TODO)_
+Settings dealing with running the fusion pipeline can be found in
+`settings/settings_fusion.py`. As you will discover, some setting combinations don't work by design. Most of the settings should be self-explanatory, please refer to their usage in `apps/fusion/pipeline.py` for details.
+
+**Note**: make sure to prepend the `PYTHONPATH` environment variable with the repository root before running any of the scripts!
+
+The fusion pipeline can be run using:
+
+```shell
+python3 apps/fusion/pipeline.py
+```
 
 ## License Information ##
 
@@ -109,20 +130,6 @@ Within the [Open3D](http://www.open3d.org/) viewer, you can view the following b
 * `;`: move the camera around while visualizing the correspondences from different angles
 * `Z`: reset source object after having aligned with `A`
 
-
-
-## Data
-
-The raw image data and flow alignments can be obtained at the [DeepDeform](https://github.com/AljazBozic/DeepDeform) repository.
-
-The additionally generated graph data can be downloaded using this [link](http://kaldir.vc.in.tum.de/download/deepdeform_graph_v1.7z).
-
-Both archives are supposed to be extracted in the same directory.
-
-If you want to generate data on your own, also for a new sequence, you can specify frame pair and run:
-```
-python create_graph_data.py
-```
 
 ## Train
 

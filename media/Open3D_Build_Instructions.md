@@ -16,9 +16,9 @@ Or, if you'd like to install to a custom folder {install_folder}:
 cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX={install_folder}..
 ```
 
-Alternatively, the `cmake-gui ..`command can be used to graphically configure the parameters. 
-
 **Note:** if you choose to install to a custom folder, you'll later have to provide the location of the `Open3DConfig.cmake` file to the CMake script of the NNRT project, by adding `-DOpen3D_DIR={install folder}/lib/cmake` to CMake arguments.
+
+Alternatively, the `cmake-gui ..`command can be used to graphically configure the parameters. We highly recommend using that with the "Grouped" and "Advanced" options checked if you're new to CMake or are trying to resolve any CMake configuration errors.
 
 Now, you can build and install. You'll want to build the Open3D C++ library _and_ the Python `pip` package. Modify `-j4` to reflect however many cores you would like to use for the build.
 

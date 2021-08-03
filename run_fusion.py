@@ -2,7 +2,7 @@ import argparse
 import cProfile
 import sys
 
-from apps.fusion.fusion_pipeline import FusionPipeline
+from apps.fusion.pipeline import FusionPipeline
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Basic Fusion Pipeline based on Neural Non-Rigid Tracking + Fusion4D + Open3D spatial hashing")
