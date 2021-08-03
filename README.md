@@ -40,13 +40,15 @@ Python 3.8 or above is required. Check out the official [website](https://www.py
 PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally).
 
 #### Open3D ####
-Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, download [version 0.13.0](https://github.com/isl-org/Open3D/releases/tag/v0.13.0) Source Code from official GitHub releases or clone the [repository](https://github.com/isl-org/Open3D) and checkout the v0.13.0 tag. Be sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
+Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `9a49100bc` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 
 ### Building the C++ Open3D extension ###
 
 This should be relatively simple as it follows the general pattern of [building Open3D](media/Open3D_Build_Instructions.md). For the CMake options, the `BUILD_CUDA_MODULE` option is set by default to `ON`, but we recommend setting `-DBUILD_CPP_TESTS=ON` as well to be able to run C++ tests and write your own tests for debugging purposes.
+
+Note that you will currently need to install `ninja` on your platform to compile the NNRT python module. Setting it up should be [trivial](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages).
 
 As far as CMake build targets go, the `nnrt_cpp` target is only necessary to build the tests. The `install-pip-package` target is the one you'll want to have built to try out the rest of the code with the `nnrt` python package.
 
