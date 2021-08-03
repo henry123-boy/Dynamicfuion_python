@@ -1,11 +1,3 @@
-### ================== pybind11-stubgen configuration ==================
-# Stubgen is currently required for proper code completion in PyCharm and other IDEs
-
-find_package(Pybind11StubgenExecutable)
-if (NOT PYBIND11_STUBGEN_EXECUTABLE)
-    message(FATAL_ERROR "PYBIND11_STUBGEN_EXECUTABLE should be set (pybind11-stubgen command will be found if present in the path)")
-endif()
-
 ### ==================  Python configuration ========================
 # Required for building the python package and wheel for python pip
 
