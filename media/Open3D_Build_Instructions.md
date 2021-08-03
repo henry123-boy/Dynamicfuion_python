@@ -10,13 +10,11 @@ mkdir build && cd build
 ```
 Run CMake with the following arguments:
 ```shell
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON ..
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON 
 ```
-Or, if you'd like to install to a custom folder {install_folder}:
+On Ubuntu , you may have to pass the (full) path to your Python 3 executable to CMake, e.g. `-DPYTHON_EXECUTABLE=/usr/bin/python3.8` CMake option.
 
-```shell
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX={install_folder}..
-```
+If you'd like to install to a custom folder {install_folder} (recommended), don't forget to add `-DCMAKE_INSTALL_PREFIX={install_folder}` to the list above.
 
 **Note:** if you choose to install to a custom folder, you'll later have to provide the location of the `Open3DConfig.cmake` file to the CMake script of the NNRT project, by adding `-DOpen3D_DIR={install folder}/lib/cmake` to CMake arguments.
 
@@ -27,7 +25,7 @@ If you're on Ubuntu, you might get a configuration error that looks like this:
 ```
 Could not find CPPABI_LIBRARY using the following names: c++abi
 ```
-This is a known issue documented [here](https://github.com/isl-org/Open3D/issues/2559). You can resolve it by running the following in the shell:
+This is a known issue documented [here](https://github.com/isl-org/Open3D/issues/2559). You can resolve it by running the following in the shell, and then re-running CMake:
 ```shell
 sudo apt install libc++-[YOUR ACTIVE GCC VERSION]-dev libc++abi-[YOUR ACTIVE GCC VERSION]-dev
 ```
