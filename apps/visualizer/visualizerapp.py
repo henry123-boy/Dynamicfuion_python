@@ -7,7 +7,7 @@ import sys
 
 from apps.shared.screen_management import set_up_render_window_bounds
 from apps.visualizer import utilities
-from apps.visualizer.mesh import Mesh
+from apps.visualizer.mesh import Mesh, MeshColorMode
 from apps.visualizer.point_cloud import PointCloud
 
 
@@ -60,6 +60,7 @@ class VisualizerApp:
         self.warped_live_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Green"))
         self.shown_mesh_index = 0
 
+        self.mesh_color_mode: MeshColorMode = MeshColorMode.COLORED_AMBIENT
         self.meshes = [self.canonical_mesh, self.warped_live_mesh]
         self.mesh_names = ["canonical_mesh", "warped_live_mesh"]
 
@@ -119,11 +120,6 @@ class VisualizerApp:
 
         self.camera = camera = self.renderer.GetActiveCamera()
 
-        # front=[0, 0, -1],
-        # lookat=[0, 0, 1.5],
-        # up=[0, -1.0, 0],
-        # zoom=0.7
-
         camera.SetPosition(self.offset_cam[0], self.offset_cam[1], self.offset_cam[2])
         camera.SetPosition(0, 0, -1)
         camera.SetViewUp(0, 1.0, 0)
@@ -131,27 +127,22 @@ class VisualizerApp:
         camera.SetClippingRange(0.01, 10.0)
 
         self.render_window.Render()
-        # 2nd monitor from left
-        self.render_window.SetPosition(1281, 187)
-        # 4th monitor
-        # self.render_window.SetPosition(5121, 75)
-        # fullscreen
 
+        self.update_window(None, None)
         self.set_frame(self.current_frame)
         self.show_mesh_at_index(self.shown_mesh_index)
         self.show_point_cloud_at_index(self.shown_point_cloud_index)
 
-        # uncomment to start out with meshes invisible
-        # self.meshes[self.shown_mesh_index].toggle_visibility()
         self.render_window.Render()
-        self.update_window(None, None)
+
         self._pixel_labels_visible = False
 
     def load_frame_meshes(self, i_frame):
         canonical_path = os.path.join(self.output_path, f"{i_frame:06d}_canonical_mesh.ply")
-        warped_live_path = os.path.join(self.output_path, f"{i_frame:06d}_warped_mesh.ply")
         self.canonical_mesh.update(canonical_path)
+        warped_live_path = os.path.join(self.output_path, f"{i_frame:06d}_warped_mesh.ply")
         self.warped_live_mesh.update(warped_live_path)
+
 
     def load_frame_point_clouds(self, i_frame):
         i_gn_iteration = 0
@@ -175,6 +166,11 @@ class VisualizerApp:
             i_mesh += 1
         self.update_text()
         self.render_window.Render()
+
+    def cycle_mesh_color_mode(self):
+        self.mesh_color_mode = self.mesh_color_mode.next()
+        for mesh in self.meshes:
+            mesh.set_color_mode(self.mesh_color_mode)
 
     def show_point_cloud_at_index(self, i_point_cloud_to_show):
         if i_point_cloud_to_show < len(self.point_clouds):
@@ -376,9 +372,13 @@ class VisualizerApp:
                     self.update_text()
                     self.render_window.Render()
         elif key == "m":
-            self.meshes[self.shown_mesh_index].toggle_visibility()
-            self.update_text()
-            self.render_window.Render()
+            if self.__alt_pressed:
+                self.cycle_mesh_color_mode()
+                self.render_window.Render()
+            else:
+                self.meshes[self.shown_mesh_index].toggle_visibility()
+                self.update_text()
+                self.render_window.Render()
         elif key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = True
 
