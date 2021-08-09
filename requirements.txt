@@ -7,7 +7,7 @@ cupy>=9.2.0
 scikit-image>=0.14.0
 opencv-python>=4.4.0.46
 imageio>=2.9.0
-# Mote: I found that the easiest way to install PyTorch3D w/ CUDA is from git
+# Note: I found that the easiest way to install PyTorch3D w/ CUDA is from git
 git+https://github.com/facebookresearch/pytorch3d.git@stable
 pillow>=8.1.1
 nnrt>=0.1.1

@@ -5,6 +5,7 @@ from enum import Enum
 import vtk
 import sys
 
+from apps.shared.screen_management import set_up_render_window_bounds
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh
 from apps.visualizer.point_cloud import PointCloud
@@ -33,7 +34,26 @@ class VisualizerApp:
         # renderer & render window initialization
         self.renderer = vtk.vtkRenderer()
         self.render_window = vtk.vtkRenderWindow()
+        self.render_window.SetWindowName("Visualizer: " + output_path)
+        set_up_render_window_bounds(self.render_window, None, 1)
         self.render_window.AddRenderer(self.renderer)
+
+        self.text_mapper = vtk.vtkTextMapper()
+        self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
+                                  f"Mesh mode: canonical\n"
+                                  f"Gauss-Newton Iteration: 0")
+        text_lines = self.text_mapper.GetInput().splitlines()
+        self.number_of_text_lines = len(text_lines)
+
+        text_property = self.text_mapper.GetTextProperty()
+        self.font_size = 20
+        text_property.SetFontSize(self.font_size)
+        text_property.SetColor(colors.GetColor3d('Mint'))
+
+        self.text_actor = vtk.vtkActor2D()
+        self.text_actor.SetMapper(self.text_mapper)
+        self.last_window_width, self.last_window_height = 0, 0
+        self.renderer.AddActor(self.text_actor)
 
         # mesh setup
         self.canonical_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Peacock"))
@@ -61,8 +81,6 @@ class VisualizerApp:
             self.point_cloud_names.append(f"gn_point_cloud_iter_{i_point_cloud:03d}")
 
         self.renderer.SetBackground(colors.GetColor3d("Black"))
-        self.render_window.SetSize(1400, 900)
-        self.render_window.SetWindowName(output_path)
 
         # Interactor setup
         self.interactor = vtk.vtkRenderWindowInteractor()
@@ -70,6 +88,7 @@ class VisualizerApp:
         self.interactor.SetRenderWindow(self.render_window)
         self.interactor.Initialize()
 
+        self.interactor.AddObserver("ModifiedEvent", self.update_window)
         self.interactor.AddObserver("KeyPressEvent", self.keypress)
         self.interactor.AddObserver("KeyReleaseEvent", self.key_release)
         self.interactor.AddObserver("LeftButtonPressEvent", self.button_event)
@@ -125,6 +144,7 @@ class VisualizerApp:
         # uncomment to start out with meshes invisible
         # self.meshes[self.shown_mesh_index].toggle_visibility()
         self.render_window.Render()
+        self.update_window(None, None)
         self._pixel_labels_visible = False
 
     def load_frame_meshes(self, i_frame):
@@ -153,6 +173,7 @@ class VisualizerApp:
             else:
                 mesh.hide()
             i_mesh += 1
+        self.update_text()
         self.render_window.Render()
 
     def show_point_cloud_at_index(self, i_point_cloud_to_show):
@@ -166,6 +187,7 @@ class VisualizerApp:
                 else:
                     point_cloud.hide()
                 i_point_cloud += 1
+            self.update_text()
             self.render_window.Render()
 
     def set_frame(self, i_frame):
@@ -175,6 +197,7 @@ class VisualizerApp:
         self.load_frame_point_clouds(i_frame)
         self.current_frame = i_frame
 
+        self.update_text()
         self.render_window.Render()
 
     def advance_mesh(self):
@@ -350,9 +373,11 @@ class VisualizerApp:
             else:
                 if len(self.point_clouds) > 0:
                     self.point_clouds[self.shown_point_cloud_index].toggle_visibility()
+                    self.update_text()
                     self.render_window.Render()
         elif key == "m":
             self.meshes[self.shown_mesh_index].toggle_visibility()
+            self.update_text()
             self.render_window.Render()
         elif key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = True
@@ -361,3 +386,31 @@ class VisualizerApp:
         key = obj.GetKeySym()
         if key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = False
+
+    def update_window(self, obj, event):
+        (window_width, window_height) = self.render_window.GetSize()
+        if window_width != self.last_window_width or window_height != self.last_window_height:
+            self.text_actor.SetDisplayPosition(window_width - 400, window_height - (self.number_of_text_lines + 2) * self.font_size)
+            self.last_window_width = window_width
+            self.last_window_height = window_height
+
+    def update_text(self):
+        if self.canonical_mesh.is_visible():
+            mesh_mode = "canonical"
+        elif self.warped_live_mesh.is_visible():
+            mesh_mode = "warped live"
+        else:
+            mesh_mode = "none"
+        visible_point_cloud_index = -1
+        current_index = 0
+        for point_cloud in self.point_clouds:
+            if point_cloud.is_visible():
+                visible_point_cloud_index = current_index
+            current_index += 1
+        if visible_point_cloud_index == -1:
+            point_cloud_iteration_text = "not showing"
+        else:
+            point_cloud_iteration_text = str(visible_point_cloud_index)
+        self.text_mapper.SetInput(f"Frame: {self.current_frame:d}\n"
+                                  f"Mesh mode: {mesh_mode:s}\n"
+                                  f"Gauss-Newton Iteration: {point_cloud_iteration_text:s}")

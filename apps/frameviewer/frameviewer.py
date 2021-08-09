@@ -92,6 +92,7 @@ class FrameViewerApp:
         self.render_window.SetNumberOfLayers(2)
         self.render_window.AddRenderer(self.renderer_image)
         self.render_window.AddRenderer(self.renderer_highlights)
+        self.render_window.SetWindowName("Frameviewer: " + self.input_folder)
 
         self.renderer_image.AddActor2D(self.image_actor)
 
@@ -106,7 +107,6 @@ class FrameViewerApp:
         self.text_mapper.SetInput("Frame: {:d} | Scale: {:f}\nPixel: 0, 0\nDepth: 0 m\nColor: 0 0 0\n"
                                   "Camera-space: 0 0 0\nWorld-space: 0 0 0\nBlock-space: 0 0 0"
                                   .format(frame_index_to_start_with, self.scale))
-        self.text_mapper.GetInput()
         self.number_of_lines = len(self.text_mapper.GetInput().splitlines())
         text_property = self.text_mapper.GetTextProperty()
         self.font_size = 20

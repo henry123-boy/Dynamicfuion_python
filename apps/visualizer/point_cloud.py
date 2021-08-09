@@ -56,3 +56,6 @@ class PointCloud:
 
     def show(self):
         self.actor.SetVisibility(True)
+
+    def is_visible(self):
+        return self.actor.GetVisibility()
