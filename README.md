@@ -86,8 +86,30 @@ Settings dealing with running the fusion pipeline can be found in
 The fusion pipeline can be run using:
 
 ```shell
-python3 apps/fusion/pipeline.py
+python apps/fusion/pipeline.py
 ```
+
+### Visualizing the Results ###
+
+The output for each run will be stored in a new subfolder containing the date and time (in sortable format) of when the run was launched. The subfolder will be placed in your preferred output directory (see [Preparing the Data](https://github.com/Algomorph/NeuralTracking/#preparing-the-data) above).
+
+To visualize the output for a particular sequence saved at `<path_to_output_subfolder>`, run:
+
+```shell
+python run_visualizer.py -o <path_to_output_subfolder>/frame_output
+```
+
+In the visualizer, you can use the following key combinations to navigate the output:
+
+* `P`: toggle point cloud visibility for Gauss-Newton optimization
+* `]`: go to next frame
+* `[`: go to previous frame
+* `M`: toggle extracted mesh visibility
+* `->`: switch to warped (deformed) mesh or next frame & canonical (reference) mesh
+* `<-`: switch to canonical (reference) mesh or previous frame & warped (deformed mesh)
+* `Down Arrow`: advance _iteration_ of the Gauss-Newton optimization (updates the point cloud) or go to next frame if on last iteration
+* `Up Arrow`: go to previous _iteration_ of the Gauss-Newton optimization (updates the point cloud) or go to previous frame if on first iteration
+* `Q`: exit the visualizer
 
 ## License Information ##
 

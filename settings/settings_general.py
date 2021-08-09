@@ -26,6 +26,10 @@ custom_paths_by_mac_address_hash = {
     "d721c6dceb2f2795bdfc8ff9390adaa3a84ff8f56ddb25a1681b54f5496257e6":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
                             output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+    # Greg - wifi usb card #2
+    "54a5a819c01348a78be463816eb1818d956be1f57c247227bba49486a7230eac":
+        LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
     # Ahmed - wifi
     "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
