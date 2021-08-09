@@ -40,20 +40,22 @@ class FrameViewerApp:
     VOXEL_SIZE = 0.004
     VOXEL_BLOCK_SIZE_METERS = VOXEL_BLOCK_SIZE_VOXELS * VOXEL_SIZE
 
-    def __init__(self, output_folder, frame_index_to_start_with):
+    def __init__(self, input_folder, output_folder, frame_index_to_start_with):
         self.start_frame_index = frame_index_to_start_with
+        self.input_folder = input_folder
         self.output_folder = output_folder
 
-        path = os.path.join(self.output_folder, "frameviewer_state.txt")
+        state_path = os.path.join(self.output_folder, "frameviewer_state.txt")
         state = (20.0, 20.0, 2.0, frame_index_to_start_with)
-        if os.path.isfile(path):
-            loaded_state = np.loadtxt(path)
+        if os.path.isfile(state_path):
+            loaded_state = np.loadtxt(state_path)
             if len(loaded_state) < len(state):
-                os.unlink(path)
+                os.unlink(state_path)
             else:
                 state = loaded_state
 
-        self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_folder)
+        self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_folder, input_folder)
+
         self.current_camera_matrix = None
 
         self.image_masks_enabled = True
@@ -84,7 +86,7 @@ class FrameViewerApp:
         self.renderer_highlights = vtk.vtkRenderer()
         self.renderer_highlights.SetLayer(1)
         self.render_window = vtk.vtkRenderWindow()
-        set_up_render_window_bounds(self.render_window)
+        set_up_render_window_bounds(self.render_window, None, 2)
         self.render_window.SetNumberOfLayers(2)
         self.render_window.AddRenderer(self.renderer_image)
         self.render_window.AddRenderer(self.renderer_highlights)
@@ -205,12 +207,12 @@ class FrameViewerApp:
             print(self.current_camera_matrix)
 
         self.frame_index = frame_index
-        self.color_numpy_image = frameloading.load_color_numpy_image(frame_index)
-        self.depth_numpy_image = frameloading.load_depth_numpy_image(frame_index)
+        self.color_numpy_image = frameloading.load_color_numpy_image(frame_index, self.input_folder)
+        self.depth_numpy_image = frameloading.load_depth_numpy_image(frame_index, self.input_folder)
         self.image_size = np.array((self.color_numpy_image.shape[1], self.color_numpy_image.shape[0]))
 
         if self.image_masks_enabled:
-            mask_image = frameloading.load_mask_numpy_image(frame_index)
+            mask_image = frameloading.load_mask_numpy_image(frame_index, self.input_folder)
             self.color_numpy_image[mask_image == 0] = 0
             self.depth_numpy_image[mask_image == 0] = 0
 

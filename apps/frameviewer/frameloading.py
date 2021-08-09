@@ -9,32 +9,32 @@ class FrameImageType(Enum):
     MASK = 3
 
 
-def generate_frame_image_path(index, frame_image_type):
-    """
-    :type index int
-    :type frame_image_type FrameImageType
-    :rtype str
-    """
-    base_path = "/mnt/Data/Reconstruction/real_data/snoopy/frames"
+def generate_frame_image_path(index: int, frame_image_type: FrameImageType, input_folder: str) -> str:
     filename_prefix_by_frame_image_type = {
         FrameImageType.COLOR: "color",
         FrameImageType.DEPTH: "depth",
-        FrameImageType.MASK: "omask"
+        FrameImageType.MASK: "sod"
     }
-    return "{:s}/{:s}_{:06d}.png".format(base_path, filename_prefix_by_frame_image_type[frame_image_type], index)
+    extension_by_frame_image_type = {
+        FrameImageType.COLOR: "jpg",
+        FrameImageType.DEPTH: "png",
+        FrameImageType.MASK: "png"
+    }
+    return f"{input_folder:s}/{filename_prefix_by_frame_image_type[frame_image_type]:s}/{index:06d}.{extension_by_frame_image_type[frame_image_type]:s}"
 
 
-def load_frame_numpy_raw_image(index, frame_image_type):
-    return cv2.imread(generate_frame_image_path(index, frame_image_type), cv2.IMREAD_UNCHANGED)
+def load_frame_numpy_raw_image(index: int, frame_image_type: FrameImageType, input_folder: str) -> np.ndarray:
+    print(generate_frame_image_path(index, frame_image_type, input_folder))
+    return cv2.imread(generate_frame_image_path(index, frame_image_type, input_folder), cv2.IMREAD_UNCHANGED)
 
 
-def load_mask_numpy_image(index):
-    return load_frame_numpy_raw_image(index, FrameImageType.MASK).astype(bool)
+def load_mask_numpy_image(index: int, input_folder: str) -> np.ndarray:
+    return load_frame_numpy_raw_image(index, FrameImageType.MASK, input_folder).astype(bool)
 
 
-def load_depth_numpy_image(index, conversion_factor=0.001):
-    return load_frame_numpy_raw_image(index, FrameImageType.DEPTH).astype(np.float32) * conversion_factor
+def load_depth_numpy_image(index: int, input_folder: str, conversion_factor=0.001) -> np.ndarray:
+    return load_frame_numpy_raw_image(index, FrameImageType.DEPTH, input_folder).astype(np.float32) * conversion_factor
 
 
-def load_color_numpy_image(index):
-    return load_frame_numpy_raw_image(index, FrameImageType.COLOR)
+def load_color_numpy_image(index: int, input_folder: str) -> np.ndarray:
+    return load_frame_numpy_raw_image(index, FrameImageType.COLOR, input_folder)
