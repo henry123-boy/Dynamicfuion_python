@@ -8,7 +8,7 @@ import sys
 from apps.shared.screen_management import set_up_render_window_bounds
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh, MeshColorMode
-from apps.visualizer.point_cloud import PointCloud
+from apps.visualizer.point_cloud import PointCloud, PointColorMode
 
 
 class VisualizerApp:
@@ -38,32 +38,16 @@ class VisualizerApp:
         set_up_render_window_bounds(self.render_window, None, 1)
         self.render_window.AddRenderer(self.renderer)
 
-        self.text_mapper = vtk.vtkTextMapper()
-        self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
-                                  f"Mesh mode: canonical\n"
-                                  f"Gauss-Newton Iteration: 0")
-        text_lines = self.text_mapper.GetInput().splitlines()
-        self.number_of_text_lines = len(text_lines)
-
-        text_property = self.text_mapper.GetTextProperty()
-        self.font_size = 20
-        text_property.SetFontSize(self.font_size)
-        text_property.SetColor(colors.GetColor3d('Mint'))
-
-        self.text_actor = vtk.vtkActor2D()
-        self.text_actor.SetMapper(self.text_mapper)
-        self.last_window_width, self.last_window_height = 0, 0
-        self.renderer.AddActor(self.text_actor)
-
         # mesh setup
         self.canonical_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Peacock"))
         self.warped_live_mesh = Mesh(self.renderer, self.render_window, colors.GetColor3d("Green"))
         self.shown_mesh_index = 0
 
-        self.mesh_color_mode: MeshColorMode = MeshColorMode.COLORED_AMBIENT
         self.meshes = [self.canonical_mesh, self.warped_live_mesh]
         self.mesh_names = ["canonical_mesh", "warped_live_mesh"]
+        self.mesh_color_mode: MeshColorMode = MeshColorMode.COLORED_AMBIENT
 
+        # point cloud setup
         def get_gn_iteration_count():
             start_frame_ix_string = f"{start_frame_ix:06d}"
             first_frame_point_file_pattern = re.compile(start_frame_ix_string + r"_deformed_points_iter_(\d{3})[.]npy")
@@ -74,13 +58,34 @@ class VisualizerApp:
         self.shown_point_cloud_index = 0
 
         gn_iteration_count = get_gn_iteration_count()
-
+        self.point_color_mode = PointColorMode.UNIFORM
         self.point_clouds = []
         self.point_cloud_names = []
         for i_point_cloud in range(0, gn_iteration_count):
             self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("White")))
             self.point_cloud_names.append(f"gn_point_cloud_iter_{i_point_cloud:03d}")
 
+        # text set up
+        self.text_mapper = vtk.vtkTextMapper()
+        self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
+                                  f"Showing mesh: {self.mesh_names[self.shown_mesh_index]:s}\n"
+                                  f"Mesh color mode: f{self.mesh_color_mode.name:s}\n"
+                                  f"Gauss-Newton Iteration: {self.shown_point_cloud_index:d}\n"
+                                  f"Point color mode: f{self.point_color_mode.name:s}")
+
+        text_lines = self.text_mapper.GetInput().splitlines()
+        self.number_of_text_lines = len(text_lines)
+        text_property = self.text_mapper.GetTextProperty()
+        self.font_size = 20
+        text_property.SetFontSize(self.font_size)
+        text_property.SetColor(colors.GetColor3d('Mint'))
+
+        self.text_actor = vtk.vtkActor2D()
+        self.text_actor.SetMapper(self.text_mapper)
+        self.last_window_width, self.last_window_height = 0, 0
+        self.renderer.AddActor(self.text_actor)
+
+        # background
         self.renderer.SetBackground(colors.GetColor3d("Black"))
 
         # Interactor setup
@@ -143,7 +148,6 @@ class VisualizerApp:
         warped_live_path = os.path.join(self.output_path, f"{i_frame:06d}_warped_mesh.ply")
         self.warped_live_mesh.update(warped_live_path)
 
-
     def load_frame_point_clouds(self, i_frame):
         i_gn_iteration = 0
         for point_cloud in self.point_clouds:
@@ -171,6 +175,7 @@ class VisualizerApp:
         self.mesh_color_mode = self.mesh_color_mode.next()
         for mesh in self.meshes:
             mesh.set_color_mode(self.mesh_color_mode)
+        self.update_text()
 
     def show_point_cloud_at_index(self, i_point_cloud_to_show):
         if i_point_cloud_to_show < len(self.point_clouds):
@@ -185,6 +190,12 @@ class VisualizerApp:
                 i_point_cloud += 1
             self.update_text()
             self.render_window.Render()
+
+    def cycle_point_color_mode(self):
+        self.point_color_mode = self.point_color_mode.next()
+        for point_cloud in self.point_clouds:
+            point_cloud.set_color_mode(self.point_color_mode)
+        self.update_text()
 
     def set_frame(self, i_frame):
         print("Frame:", i_frame)
@@ -365,7 +376,8 @@ class VisualizerApp:
             self.advance_point_cloud()
         elif key == "p":
             if self.__alt_pressed:
-                print(self.render_window.GetPosition())
+                self.cycle_point_color_mode()
+                self.render_window.Render()
             else:
                 if len(self.point_clouds) > 0:
                     self.point_clouds[self.shown_point_cloud_index].toggle_visibility()
@@ -412,5 +424,7 @@ class VisualizerApp:
         else:
             point_cloud_iteration_text = str(visible_point_cloud_index)
         self.text_mapper.SetInput(f"Frame: {self.current_frame:d}\n"
-                                  f"Mesh mode: {mesh_mode:s}\n"
-                                  f"Gauss-Newton Iteration: {point_cloud_iteration_text:s}")
+                                  f"Showing mesh: {mesh_mode:s}\n"
+                                  f"Mesh color mode: {self.mesh_color_mode.name:s}\n"
+                                  f"Gauss-Newton Iteration: {point_cloud_iteration_text:s}\n"
+                                  f"Point color mode: {self.point_color_mode.name:s}\n")

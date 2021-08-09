@@ -34,7 +34,7 @@ class Mesh:
         self.actor.SetOrientation(0, 0.0, 180)
         self.renderer.AddActor(self.actor)
         self.color_mode = MeshColorMode.COLORED_AMBIENT
-        self.set_color_mode(MeshColorMode.COLORED_AMBIENT)
+        self.set_color_mode(self.color_mode)
 
     def set_color_mode(self, mode: MeshColorMode) -> None:
         if mode is MeshColorMode.COLORED_AMBIENT:
@@ -44,13 +44,16 @@ class Mesh:
             actor_properties.SetAmbient(1)
             actor_properties.SetDiffuse(0)
             self.actor.Modified()
-        else:
+        elif mode is MeshColorMode.UNIFORM_SHADED:
             self.mapper.ScalarVisibilityOff()
             self.mapper.Update()
             actor_properties = self.actor.GetProperty()
             actor_properties.SetAmbient(0)
             actor_properties.SetDiffuse(1)
             self.actor.Modified()
+        else:
+            raise ValueError("Unsupported color mode:" + mode.name)
+        self.color_mode = mode
 
     def update(self, path, render: bool = False) -> None:
         self.reader.SetFileName(path)

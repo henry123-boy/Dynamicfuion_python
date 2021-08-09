@@ -186,6 +186,7 @@ class DeformNet(torch.nn.Module):
         ########################################################################
         # Mask out invalid source points.
         source_points = source[:, 3:, :, :].clone()
+        source_colors = source[:, :3, :, :].clone()
         source_anchor_validity = torch.all(pixel_anchors >= 0.0, dim=3)
 
         # Sample target points at computed pixel locations.
@@ -338,6 +339,9 @@ class DeformNet(torch.nn.Module):
 
             source_points_filtered = source_points[i].permute(1, 2, 0)
             source_points_filtered = source_points_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
+            source_colors_filtered = source_colors[i].permute(1, 2, 0)
+            source_colors_filtered = source_colors_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
+
 
             target_matches_filtered = target_matches[i].permute(1, 2, 0)
             target_matches_filtered = target_matches_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
@@ -373,8 +377,8 @@ class DeformNet(torch.nn.Module):
 
             if num_matches > max_num_matches:
                 sampled_idxs = torch.randperm(num_matches)[:max_num_matches]
-
                 source_points_filtered = source_points_filtered[sampled_idxs]
+                source_colors_filtered = source_colors_filtered[sampled_idxs]
                 target_matches_filtered = target_matches_filtered[sampled_idxs]
                 xy_pixels_warped_filtered = xy_pixels_warped_filtered[sampled_idxs]
                 correspondence_weights_filtered = correspondence_weights_filtered[sampled_idxs]
@@ -453,6 +457,7 @@ class DeformNet(torch.nn.Module):
                         valid_corresp_mask = valid_corresp_mask & torch.all(source_anchors != node_id_for_removal, axis=1)
 
                     source_points_filtered = source_points_filtered[valid_corresp_mask]
+                    source_colors_filtered = source_colors_filtered[valid_corresp_mask]
                     target_matches_filtered = target_matches_filtered[valid_corresp_mask]
                     xy_pixels_warped_filtered = xy_pixels_warped_filtered[valid_corresp_mask]
                     correspondence_weights_filtered = correspondence_weights_filtered[valid_corresp_mask]
@@ -560,7 +565,7 @@ class DeformNet(torch.nn.Module):
                         deformed_points_k  # (num_matches, 3, 1)
 
                 if self.telemetry_generator is not None:
-                    self.telemetry_generator.process_gn_point_cloud(deformed_points, gn_i)
+                    self.telemetry_generator.process_gn_point_cloud(deformed_points, source_colors_filtered, gn_i)
 
                 # Get necessary components of deformed points.
                 eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage

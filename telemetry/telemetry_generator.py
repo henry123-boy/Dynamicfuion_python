@@ -179,9 +179,9 @@ class TelemetryGenerator:
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
 
-    def process_gn_point_cloud(self, deformed_points: torch.Tensor, gauss_newton_iteration):
+    def process_gn_point_cloud(self, deformed_points: torch.Tensor, source_colors: torch.Tensor, gauss_newton_iteration):
         if self.record_gn_point_clouds:
             path = os.path.join(self.frame_output_directory,
                                 f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
-            np.save(path, deformed_points.cpu().detach().numpy().reshape(-1, 3))
-
+            np.save(path, np.concatenate((deformed_points.cpu().detach().numpy().reshape(-1, 3),
+                                          source_colors.cpu().detach().numpy().reshape(-1, 3)), axis=1))
