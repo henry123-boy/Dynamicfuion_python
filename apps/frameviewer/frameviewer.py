@@ -46,7 +46,7 @@ class FrameViewerApp:
         self.output_folder = output_folder
 
         state_path = os.path.join(self.output_folder, "frameviewer_state.txt")
-        state = (20.0, 20.0, 2.0, frame_index_to_start_with)
+        state = (20.0, 20.0, 2.0, frame_index_to_start_with, 175)
         if os.path.isfile(state_path):
             loaded_state = np.loadtxt(state_path)
             if len(loaded_state) < len(state):
@@ -59,9 +59,11 @@ class FrameViewerApp:
         self.current_camera_matrix = None
 
         self.image_masks_enabled = True
+        self.image_mask_threshold = int(state[4])
 
         self.color_numpy_image = None
         self.depth_numpy_image = None
+        self.mask_image = None
         self.depth_numpy_image_uint8 = None
 
         self.scaled_color = None
@@ -198,6 +200,14 @@ class FrameViewerApp:
             self.viewing_mode = viewing_mode
             self.update_scaled_images()
 
+    def update_masking(self):
+        if self.image_masks_enabled:
+            self.color_numpy_image = frameloading.load_color_numpy_image(self.frame_index, self.input_folder)
+            self.depth_numpy_image = frameloading.load_depth_numpy_image(self.frame_index, self.input_folder)
+            self.color_numpy_image[self.mask_image < self.image_mask_threshold] = 0
+            self.depth_numpy_image[self.mask_image < self.image_mask_threshold] = 0
+            self.update_scaled_images()
+
     def set_frame(self, frame_index):
         print("Frame:", frame_index)
         self.current_camera_matrix = None if len(self.inverse_camera_matrices) <= frame_index \
@@ -212,9 +222,9 @@ class FrameViewerApp:
         self.image_size = np.array((self.color_numpy_image.shape[1], self.color_numpy_image.shape[0]))
 
         if self.image_masks_enabled:
-            mask_image = frameloading.load_mask_numpy_image(frame_index, self.input_folder)
-            self.color_numpy_image[mask_image == 0] = 0
-            self.depth_numpy_image[mask_image == 0] = 0
+            self.mask_image = frameloading.load_mask_numpy_image(self.frame_index, self.input_folder)
+            self.color_numpy_image[self.mask_image < self.image_mask_threshold] = 0
+            self.depth_numpy_image[self.mask_image < self.image_mask_threshold] = 0
 
         self.depth_numpy_image_uint8 = image_conversion.convert_to_viewable_depth(self.depth_numpy_image)
         self.update_scaled_images()
@@ -253,7 +263,7 @@ class FrameViewerApp:
         if key == "q" or key == "Escape":
             image_x, image_y = self.image_actor.GetPosition()
             path = os.path.join(self.output_folder, "frameviewer_state.txt")
-            np.savetxt(path, (image_x, image_y, self.scale, self.frame_index))
+            np.savetxt(path, (image_x, image_y, self.scale, self.frame_index, self.image_mask_threshold))
             obj.InvokeEvent("DeleteAllObjects")
             sys.exit()
         elif key == "bracketright":
@@ -268,6 +278,16 @@ class FrameViewerApp:
             pass
         elif key == "Left":
             pass
+        elif key == "Up":
+            if self.image_mask_threshold > 0:
+                self.image_mask_threshold -= 1
+                print("Image mask threshold:", self.image_mask_threshold)
+                self.update_masking()
+        elif key == "Down":
+            if self.image_mask_threshold < 255:
+                self.image_mask_threshold += 1
+                print("Image mask threshold:", self.image_mask_threshold)
+                self.update_masking()
 
     def mouse_move(self, obj, event):
         last_x_y_pos = self.interactor.GetLastEventPosition()
