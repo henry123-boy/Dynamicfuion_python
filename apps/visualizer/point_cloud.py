@@ -61,11 +61,12 @@ class PointCloud:
         points_np = np.load(path_to_npy)
         point_count = points_np.shape[0]
 
-        self.points.SetData(vtk_np.numpy_to_vtk(points_np[:, :3]))
-
         if points_np.shape[1] > 3:
-            self.scalars = vtk_np.numpy_to_vtk((points_np[:, 3:] * 255).astype(np.uint8))
+            self.points.SetData(vtk_np.numpy_to_vtk(points_np[:, 3:]))
+            self.scalars = vtk_np.numpy_to_vtk((points_np[:, :3] * 255).astype(np.uint8))
             self.scalars.SetName("Colors")
+        else:
+            self.points.SetData(vtk_np.numpy_to_vtk(points_np[:, :3]))
 
         cells_numpy = np.vstack([np.ones(point_count, dtype=np.int64),
                                  np.arange(point_count, dtype=np.int64)]).T.flatten()

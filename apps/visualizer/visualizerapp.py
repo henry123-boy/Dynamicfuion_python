@@ -44,33 +44,35 @@ class VisualizerApp:
         self.shown_mesh_index = 0
 
         self.meshes = [self.canonical_mesh, self.warped_live_mesh]
-        self.mesh_names = ["canonical_mesh", "warped_live_mesh"]
+        self.mesh_names = ["canonical", "warped live"]
         self.mesh_color_mode: MeshColorMode = MeshColorMode.COLORED_AMBIENT
-
-        # point cloud setup
-        def get_gn_iteration_count():
-            start_frame_ix_string = f"{start_frame_ix:06d}"
-            first_frame_point_file_pattern = re.compile(start_frame_ix_string + r"_deformed_points_iter_(\d{3})[.]npy")
-            first_frame_point_files_in_output_path = [file for file in os.listdir(self.output_path) if
-                                                      first_frame_point_file_pattern.match(file) is not None]
-            return len(first_frame_point_files_in_output_path)
 
         self.shown_point_cloud_index = 0
 
-        gn_iteration_count = get_gn_iteration_count()
+        # point cloud setup
+        self.have_source_and_target_point_clouds = utilities.source_and_target_point_clouds_are_present(self.start_frame_ix, output_path)
+        gn_iteration_count = utilities.get_gn_iteration_count(self.start_frame_ix, output_path)
         self.point_color_mode = PointColorMode.UNIFORM
         self.point_clouds = []
         self.point_cloud_names = []
+        if self.have_source_and_target_point_clouds:
+            self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("Blue")))
+            self.point_cloud_names.append("source")
+
         for i_point_cloud in range(0, gn_iteration_count):
             self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("White")))
-            self.point_cloud_names.append(f"gn_point_cloud_iter_{i_point_cloud:03d}")
+            self.point_cloud_names.append(f"GN iteration {i_point_cloud:03d}")
 
-        # text set up
+        if self.have_source_and_target_point_clouds:
+            self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("Red")))
+            self.point_cloud_names.append("target")
+
+        # text setup
         self.text_mapper = vtk.vtkTextMapper()
         self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
                                   f"Showing mesh: {self.mesh_names[self.shown_mesh_index]:s}\n"
                                   f"Mesh color mode: f{self.mesh_color_mode.name:s}\n"
-                                  f"Gauss-Newton Iteration: {self.shown_point_cloud_index:d}\n"
+                                  f"Showing point cloud: {self.point_cloud_names[self.shown_point_cloud_index]:s}\n"
                                   f"Point color mode: f{self.point_color_mode.name:s}")
 
         text_lines = self.text_mapper.GetInput().splitlines()
@@ -125,6 +127,7 @@ class VisualizerApp:
 
         self.camera = camera = self.renderer.GetActiveCamera()
 
+        # set up camera
         camera.SetPosition(self.offset_cam[0], self.offset_cam[1], self.offset_cam[2])
         camera.SetPosition(0, 0, -1)
         camera.SetViewUp(0, 1.0, 0)
@@ -136,7 +139,12 @@ class VisualizerApp:
         self.update_window(None, None)
         self.set_frame(self.current_frame)
         self.show_mesh_at_index(self.shown_mesh_index)
-        self.show_point_cloud_at_index(self.shown_point_cloud_index)
+        self.show_point_cloud_at_index(self.shown_point_cloud_index)  # hide all but one GN point cloud
+
+        # start with GN point cloud hidden
+        if len(self.point_clouds) > self.shown_point_cloud_index:
+            self.point_clouds[self.shown_point_cloud_index].hide()
+            self.update_text()
 
         self.render_window.Render()
 
@@ -150,9 +158,16 @@ class VisualizerApp:
 
     def load_frame_point_clouds(self, i_frame):
         i_gn_iteration = 0
+        i_point_cloud_index = 0
         for point_cloud in self.point_clouds:
-            point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_deformed_points_iter_{i_gn_iteration:03d}.npy"))
-            i_gn_iteration += 1
+            if self.have_source_and_target_point_clouds and i_point_cloud_index == 0:
+                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_source_rgbxyz.npy"))
+            elif self.have_source_and_target_point_clouds and i_point_cloud_index == len(self.point_clouds) - 1:
+                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_target_rgbxyz.npy"))
+            else:
+                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_deformed_points_iter_{i_gn_iteration:03d}.npy"))
+                i_gn_iteration += 1
+            i_point_cloud_index += 1
 
     def launch(self):
         # Start the event loop.
@@ -413,18 +428,13 @@ class VisualizerApp:
             mesh_mode = "warped live"
         else:
             mesh_mode = "none"
-        visible_point_cloud_index = -1
-        current_index = 0
-        for point_cloud in self.point_clouds:
-            if point_cloud.is_visible():
-                visible_point_cloud_index = current_index
-            current_index += 1
-        if visible_point_cloud_index == -1:
-            point_cloud_iteration_text = "not showing"
+
+        if self.point_clouds[self.shown_point_cloud_index].is_visible():
+            point_cloud_iteration_text = self.point_cloud_names[self.shown_point_cloud_index]
         else:
-            point_cloud_iteration_text = str(visible_point_cloud_index)
+            point_cloud_iteration_text = "none"
         self.text_mapper.SetInput(f"Frame: {self.current_frame:d}\n"
                                   f"Showing mesh: {mesh_mode:s}\n"
                                   f"Mesh color mode: {self.mesh_color_mode.name:s}\n"
-                                  f"Gauss-Newton Iteration: {point_cloud_iteration_text:s}\n"
+                                  f"Showing point cloud: {point_cloud_iteration_text:s}\n"
                                   f"Point color mode: {self.point_color_mode.name:s}\n")

@@ -23,6 +23,7 @@ class TelemetryGenerator:
                  record_framewise_warped_mesh: bool,
                  record_rendered_warped_mesh: bool,
                  record_gn_point_clouds: bool,
+                 record_source_and_target_point_clouds: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
@@ -38,6 +39,7 @@ class TelemetryGenerator:
         self.record_framewise_warped_mesh = record_framewise_warped_mesh
         self.record_rendered_mesh = record_rendered_warped_mesh
         self.record_gn_point_clouds = record_gn_point_clouds
+        self.record_source_and_target_point_clouds = record_source_and_target_point_clouds
         self.visualization_mode = visualization_mode
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
         if not os.path.exists(self.output_directory):
@@ -183,5 +185,13 @@ class TelemetryGenerator:
         if self.record_gn_point_clouds:
             path = os.path.join(self.frame_output_directory,
                                 f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
-            np.save(path, np.concatenate((deformed_points.cpu().detach().numpy().reshape(-1, 3),
-                                          source_colors.cpu().detach().numpy().reshape(-1, 3)), axis=1))
+            np.save(path, np.concatenate((source_colors.cpu().detach().numpy().reshape(-1, 3),
+                                          deformed_points.cpu().detach().numpy().reshape(-1, 3)), axis=1))
+
+    def process_source_and_target_point_clouds(self, source_rgbxyz, target_rgbxyz):
+        if self.record_source_and_target_point_clouds:
+            source_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_source_rgbxyz.npy")
+            np.save(source_path, source_rgbxyz.reshape(6, -1).T)
+            target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
+            np.save(target_path, target_rgbxyz.reshape(6, -1).T)
+

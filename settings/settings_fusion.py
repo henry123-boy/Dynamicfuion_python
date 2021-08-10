@@ -70,6 +70,7 @@ record_canonical_meshes_to_disk = True
 record_warped_meshes_to_disk = True
 record_rendered_warped_mesh = False
 record_gn_point_clouds = True
+record_source_and_target_point_clouds = True
 
 # **** DATASET *****
 

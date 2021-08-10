@@ -49,6 +49,7 @@ class FusionPipeline:
                                                       po.record_warped_meshes_to_disk,
                                                       po.record_rendered_warped_mesh,
                                                       po.record_gn_point_clouds,
+                                                      po.record_source_and_target_point_clouds,
                                                       po.print_cuda_memory_info,
                                                       po.print_frame_info,
                                                       po.visualization_mode, settings_general.output_directory)
@@ -228,6 +229,7 @@ class FusionPipeline:
                     settings_general.alignment_image_height, settings_general.alignment_image_width,
                     cropper=cropper
                 )
+                self.telemetry_generator.process_source_and_target_point_clouds(source_rgbxyz, target_rgbxyz)
                 if device.get_type() == o3c.Device.CUDA:
                     target_normal_map = cuda_compute_normal(target_point_image)
                 else:

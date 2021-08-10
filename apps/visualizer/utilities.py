@@ -18,3 +18,20 @@ def get_output_frame_count(output_path):
         if canonical_mesh_filename_pattern.match(item) is not None:
             count += 1
     return count
+
+
+def get_gn_iteration_count(start_frame_ix, output_path):
+    # point cloud setup
+    start_frame_ix_string = f"{start_frame_ix:06d}"
+    first_frame_point_file_pattern = re.compile(start_frame_ix_string + r"_deformed_points_iter_(\d{3})[.]npy")
+    first_frame_point_files_in_output_path = [file for file in os.listdir(output_path) if
+                                              first_frame_point_file_pattern.match(file) is not None]
+    return len(first_frame_point_files_in_output_path)
+
+
+def source_and_target_point_clouds_are_present(start_frame_ix, output_path):
+    start_frame_source_pc_filename = f"{start_frame_ix:06d}_source_rgbxyz.npy"
+    start_frame_target_pc_filename = f"{start_frame_ix:06d}_target_rgbxyz.npy"
+    all_filenames = os.listdir(output_path)
+    return start_frame_source_pc_filename in all_filenames and start_frame_target_pc_filename in all_filenames
+
