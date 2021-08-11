@@ -1,11 +1,13 @@
 import os
+import typing
+
 import torch
 from alignment.deform_net import DeformNet
 from settings import settings_general
 from telemetry.telemetry_generator import TelemetryGenerator
 
 
-def load_default_nnrt_network(telemetry_generator: TelemetryGenerator) -> DeformNet:
+def load_default_nnrt_network(telemetry_generator: typing.Union[TelemetryGenerator, None] = None) -> DeformNet:
     saved_model = settings_general.saved_model
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."

@@ -45,10 +45,10 @@ class TelemetryGenerator:
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
         if save_all_parameters_to_file:
-            options_path = os.path.join(self.output_directory, "options.txt")
-            settings_general.save_hyperparameters_to_file(options_path)
-            pipeline_options_path = os.path.join(self.output_directory, "pipeline_options.txt")
-            po.save_pipeline_options_to_file(pipeline_options_path)
+            general_settings_path = os.path.join(self.output_directory, "settings_general.txt")
+            settings_general.save_hyperparameters_to_file(general_settings_path)
+            fusion_settings_path = os.path.join(self.output_directory, "settings_fusion.txt")
+            po.save_fusion_settings_to_file(fusion_settings_path)
 
         if self.record_visualization_to_disk:
             # TODO fix recording, it currently doesn't seem to work. Perhaps use something other than Open3D for rendering,

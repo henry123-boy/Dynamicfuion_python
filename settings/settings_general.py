@@ -2,6 +2,7 @@ import os
 import hashlib
 import sys
 from collections import namedtuple
+from pathlib import Path
 
 #####################################################################################################################
 # DATA OPTIONS
@@ -15,7 +16,9 @@ LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output
 
 # to add your own root DeepDeform data directory, run the sha256 cypher on your MAC address and add the hash &
 # local directory as a key/value pair to the dict below
-workspace = "."
+workspace = Path(__file__).parent.parent.resolve().absolute()
+print(workspace)
+
 default_output_directory = os.path.join(workspace, "output")
 custom_paths_by_mac_address_hash = {
     # Greg - ethernet

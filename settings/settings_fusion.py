@@ -91,7 +91,7 @@ sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_50_SOD_MASKS.value
 # sequence: FrameSequenceDataset = FrameSequencePreset.BERLIN_150_200_SOD_MASKS.value
 
 
-def print_pipeline_options(stdout=sys.stdout):
+def print_fusion_settings(stdout=sys.stdout):
     original_stdout = sys.stdout
     sys.stdout = stdout
     print("PIPELINE OPTIONS (settings_fusion.py):")
@@ -129,6 +129,7 @@ def print_pipeline_options(stdout=sys.stdout):
     print("record_warped_meshes_to_disk:", record_warped_meshes_to_disk)
     print("record_rendered_warped_mesh:", record_rendered_warped_mesh)
     print("record_gn_point_clouds:", record_gn_point_clouds)
+    print("record_source_and_target_point_clouds", record_source_and_target_point_clouds)
 
     # **** DATASET *****
     print("sequence id:", sequence.sequence_id)
@@ -140,6 +141,6 @@ def print_pipeline_options(stdout=sys.stdout):
     sys.stdout = original_stdout
 
 
-def save_pipeline_options_to_file(file_path: str) -> None:
+def save_fusion_settings_to_file(file_path: str) -> None:
     with open(file_path, 'w') as file:
-        print_pipeline_options(file)
+        print_fusion_settings(file)

@@ -22,7 +22,7 @@ import tsdf_management.default_voxel_grid as default_tsdf
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
 from warp_field.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
-import settings.settings_fusion as po
+import settings.settings_fusion as sf
 from telemetry.telemetry_generator import TelemetryGenerator
 from apps.create_graph_data import build_deformation_graph_from_depth_image
 
@@ -34,25 +34,25 @@ class FusionPipeline:
     def __init__(self):
         # === preprocess options & initialize telemetry ===
         self.extracted_framewise_canonical_mesh_needed = \
-            po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
-            po.visualization_mode == po.VisualizationMode.CANONICAL_MESH or \
-            po.visualization_mode == po.VisualizationMode.WARPED_MESH or \
-            po.record_canonical_meshes_to_disk
+            sf.source_image_mode != sf.SourceImageMode.REUSE_PREVIOUS_FRAME or \
+            sf.visualization_mode == sf.VisualizationMode.CANONICAL_MESH or \
+            sf.visualization_mode == sf.VisualizationMode.WARPED_MESH or \
+            sf.record_canonical_meshes_to_disk
 
         self.framewise_warped_mesh_needed = \
-            po.source_image_mode != po.SourceImageMode.REUSE_PREVIOUS_FRAME or \
-            po.visualization_mode == po.VisualizationMode.WARPED_MESH or \
-            po.record_warped_meshes_to_disk or po.record_rendered_warped_mesh
+            sf.source_image_mode != sf.SourceImageMode.REUSE_PREVIOUS_FRAME or \
+            sf.visualization_mode == sf.VisualizationMode.WARPED_MESH or \
+            sf.record_warped_meshes_to_disk or sf.record_rendered_warped_mesh
 
-        self.telemetry_generator = TelemetryGenerator(po.record_visualization_to_disk,
-                                                      po.record_canonical_meshes_to_disk,
-                                                      po.record_warped_meshes_to_disk,
-                                                      po.record_rendered_warped_mesh,
-                                                      po.record_gn_point_clouds,
-                                                      po.record_source_and_target_point_clouds,
-                                                      po.print_cuda_memory_info,
-                                                      po.print_frame_info,
-                                                      po.visualization_mode, settings_general.output_directory)
+        self.telemetry_generator = TelemetryGenerator(sf.record_visualization_to_disk,
+                                                      sf.record_canonical_meshes_to_disk,
+                                                      sf.record_warped_meshes_to_disk,
+                                                      sf.record_rendered_warped_mesh,
+                                                      sf.record_gn_point_clouds,
+                                                      sf.record_source_and_target_point_clouds,
+                                                      sf.print_cuda_memory_info,
+                                                      sf.print_frame_info,
+                                                      sf.visualization_mode, settings_general.output_directory)
 
         # === load alignment network, configure device ===
         self.deform_net: DeformNet = load_default_nnrt_network(self.telemetry_generator)
@@ -65,7 +65,7 @@ class FusionPipeline:
         #####################################################################################################
         # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
         #####################################################################################################
-        self.sequence: FrameSequenceDataset = po.sequence
+        self.sequence: FrameSequenceDataset = sf.sequence
         first_frame = self.sequence.get_frame_at(0)
 
         intrinsics_open3d_cpu, self.intrinsic_matrix_np = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
@@ -73,7 +73,7 @@ class FusionPipeline:
         self.fx, self.fy, self.cx, self.cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
         self.intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
 
-        if po.print_intrinsics:
+        if sf.print_intrinsics:
             camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
 
         self.intrinsics_open3d_device = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix,
@@ -94,7 +94,7 @@ class FusionPipeline:
         warped_mesh: typing.Union[None, o3d.geometry.TriangleMesh] = None
         # TODO: perform topological graph update
         if self.framewise_warped_mesh_needed:
-            if po.transformation_mode == po.TransformationMode.QUATERNIONS:
+            if sf.transformation_mode == sf.TransformationMode.QUATERNIONS:
                 warped_mesh = self.graph.warp_mesh_dq(canonical_mesh, settings_general.node_coverage)
             else:
                 warped_mesh = self.graph.warp_mesh_mat(canonical_mesh, settings_general.node_coverage)
@@ -124,6 +124,8 @@ class FusionPipeline:
 
         precomputed_anchors = None
         precomputed_weights = None
+
+
 
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
@@ -166,18 +168,18 @@ class FusionPipeline:
                 volume.activate_sleeve_blocks()
 
                 # === Construct initial deformation graph
-                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRECOMPUTED:
+                if sf.pixel_anchor_computation_mode == sf.AnchorComputationMode.PRECOMPUTED:
                     precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
-                if po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
+                if sf.graph_generation_mode == sf.GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
                     canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, settings_general.node_coverage,
                                                                    erosion_iteration_count=10,
                                                                    neighbor_count=8)
-                elif po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
+                elif sf.graph_generation_mode == sf.GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
                     self.graph = sequence.get_current_frame_graph()
                     if self.graph is None:
                         raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
-                elif po.graph_generation_mode == po.GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
+                elif sf.graph_generation_mode == sf.GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
                     self.graph, _, precomputed_anchors, precomputed_weights = \
                         build_deformation_graph_from_depth_image(
                             depth_image_np, mask_image_np, intrinsic_matrix=self.intrinsic_matrix_np,
@@ -188,7 +190,7 @@ class FusionPipeline:
                             neighbor_count=settings_general.graph_neighbor_count, enforce_neighbor_count=settings_general.graph_enforce_neighbor_count
                         )
                 else:
-                    raise NotImplementedError(f"graph generation mode {po.graph_generation_mode.name} not implemented.")
+                    raise NotImplementedError(f"graph generation mode {sf.graph_generation_mode.name} not implemented.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
             else:
 
@@ -196,8 +198,8 @@ class FusionPipeline:
                 # region ===== prepare source point cloud & RGB image ====
                 #####################################################################################################
                 #  when we track 0-to-t, we force reusing original frame for the source.
-                if po.source_image_mode == po.SourceImageMode.REUSE_PREVIOUS_FRAME \
-                        or po.tracking_span_mode == po.TrackingSpanMode.ZERO_TO_T:
+                if sf.source_image_mode == sf.SourceImageMode.REUSE_PREVIOUS_FRAME \
+                        or sf.tracking_span_mode == sf.TrackingSpanMode.ZERO_TO_T:
                     source_depth = previous_depth_image_np
                     source_color = previous_color_image_np
                 else:
@@ -207,7 +209,7 @@ class FusionPipeline:
 
                     # flip channels, i.e. RGB<-->BGR
                     source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
-                    if po.source_image_mode == po.SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
+                    if sf.source_image_mode == sf.SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
                         # re-use pixel data from previous frame
                         source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
                         source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
@@ -236,24 +238,24 @@ class FusionPipeline:
                     target_normal_map = cpu_compute_normal(target_point_image)
                 target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
-                if po.pixel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
+                if sf.pixel_anchor_computation_mode == sf.AnchorComputationMode.EUCLIDEAN:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
                         self.graph.nodes, source_point_image, settings_general.node_coverage
                     )
-                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
+                elif sf.pixel_anchor_computation_mode == sf.AnchorComputationMode.SHORTEST_PATH:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
-                        source_point_image, self.graph.nodes, self.graph.edges, po.anchor_node_count, settings_general.node_coverage
+                        source_point_image, self.graph.nodes, self.graph.edges, sf.anchor_node_count, settings_general.node_coverage
                     )
-                elif po.pixel_anchor_computation_mode == po.AnchorComputationMode.PRECOMPUTED:
-                    if po.tracking_span_mode is not po.TrackingSpanMode.ZERO_TO_T:
-                        raise ValueError(f"Illegal value: {po.AnchorComputationMode.__name__:s} "
-                                         f"{po.AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
-                                         f"{po.TrackingSpanMode.__name__} is set to {po.TrackingSpanMode.ZERO_TO_T}")
+                elif sf.pixel_anchor_computation_mode == sf.AnchorComputationMode.PRECOMPUTED:
+                    if sf.tracking_span_mode is not sf.TrackingSpanMode.ZERO_TO_T:
+                        raise ValueError(f"Illegal value: {sf.AnchorComputationMode.__name__:s} "
+                                         f"{sf.AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
+                                         f"{sf.TrackingSpanMode.__name__} is set to {sf.TrackingSpanMode.ZERO_TO_T}")
                     pixel_anchors = precomputed_anchors
                     pixel_weights = precomputed_weights
                 else:
                     raise NotImplementedError(
-                        f"{po.AnchorComputationMode.__name__:s} '{po.pixel_anchor_computation_mode.name:s}' not "
+                        f"{sf.AnchorComputationMode.__name__:s} '{sf.pixel_anchor_computation_mode.name:s}' not "
                         f"implemented for pixel anchors."
                     )
 
@@ -286,14 +288,14 @@ class FusionPipeline:
                 # region === fuse alignment ====
                 #####################################################################################################
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations
-                if po.tracking_span_mode is po.TrackingSpanMode.ZERO_TO_T:
+                if sf.tracking_span_mode is sf.TrackingSpanMode.ZERO_TO_T:
                     self.graph.rotations_mat = rotations_pred
                     self.graph.translations_vec = translations_pred
 
                 for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-                    if po.tracking_span_mode is po.TrackingSpanMode.ZERO_TO_T:
+                    if sf.tracking_span_mode is sf.TrackingSpanMode.ZERO_TO_T:
                         self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
-                    elif po.tracking_span_mode is po.TrackingSpanMode.T_MINUS_ONE_TO_T:
+                    elif sf.tracking_span_mode is sf.TrackingSpanMode.T_MINUS_ONE_TO_T:
                         node_position = self.graph.nodes[i_node]
                         current_rotation = self.graph.rotations_mat[i_node] = \
                             rotation.dot(self.graph.rotations_mat[i_node])
@@ -302,7 +304,7 @@ class FusionPipeline:
                         translation_global = node_position + current_translation - current_rotation.dot(node_position)
                         self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
                     else:
-                        raise NotImplementedError(f"{po.TrackingSpanMode.__class__:s} {po.tracking_span_mode.name:s} "
+                        raise NotImplementedError(f"{sf.TrackingSpanMode.__class__:s} {sf.tracking_span_mode.name:s} "
                                                   f" post-processing not implemented.")
 
                 # prepare data for Open3D integration
@@ -311,54 +313,54 @@ class FusionPipeline:
 
                 # TODO: to eliminate some of the indirection here, see TODO above DeformationGraphOpen3D. Might be able to
                 #  condense the four variants here into a single function with two flag arguments controlling behavior.
-                if po.transformation_mode == po.TransformationMode.QUATERNIONS:
+                if sf.transformation_mode == sf.TransformationMode.QUATERNIONS:
                     # prepare quaternion data for Open3D integration
                     node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in self.graph.transformations_dq])
                     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-                    if po.voxel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
+                    if sf.voxel_anchor_computation_mode == sf.AnchorComputationMode.EUCLIDEAN:
                         cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                             nodes_o3d, node_dual_quaternions_o3d, settings_general.node_coverage,
-                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            anchor_count=sf.anchor_node_count, minimum_valid_anchor_count=sf.fusion_minimum_valid_anchor_count,
                             depth_scale=settings_general.depth_scale, depth_max=3.0)
-                    elif po.voxel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
+                    elif sf.voxel_anchor_computation_mode == sf.AnchorComputationMode.SHORTEST_PATH:
                         cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_dq(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                             nodes_o3d, edges_o3d, node_dual_quaternions_o3d, settings_general.node_coverage,
-                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            anchor_count=sf.anchor_node_count, minimum_valid_anchor_count=sf.fusion_minimum_valid_anchor_count,
                             depth_scale=settings_general.depth_scale, depth_max=3.0)
                     else:
                         raise NotImplementedError(
-                            f"{po.AnchorComputationMode.__name__} '{po.voxel_anchor_computation_mode.name:s}' not "
-                            f"implemented for TSDF voxel anchors using {po.transformation_mode.name:s} "
-                            f"'{po.TransformationMode.__name__}'")
-                elif po.transformation_mode == po.TransformationMode.MATRICES:
+                            f"{sf.AnchorComputationMode.__name__} '{sf.voxel_anchor_computation_mode.name:s}' not "
+                            f"implemented for TSDF voxel anchors using {sf.transformation_mode.name:s} "
+                            f"'{sf.TransformationMode.__name__}'")
+                elif sf.transformation_mode == sf.TransformationMode.MATRICES:
                     node_rotations_o3d = o3c.Tensor(self.graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
                     node_translations_o3d = o3c.Tensor(self.graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
-                    if po.voxel_anchor_computation_mode == po.AnchorComputationMode.EUCLIDEAN:
+                    if sf.voxel_anchor_computation_mode == sf.AnchorComputationMode.EUCLIDEAN:
                         cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                             nodes_o3d, node_rotations_o3d, node_translations_o3d, settings_general.node_coverage,
-                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            anchor_count=sf.anchor_node_count, minimum_valid_anchor_count=sf.fusion_minimum_valid_anchor_count,
                             depth_scale=settings_general.depth_scale, depth_max=3.0)
-                    elif po.voxel_anchor_computation_mode == po.AnchorComputationMode.SHORTEST_PATH:
+                    elif sf.voxel_anchor_computation_mode == sf.AnchorComputationMode.SHORTEST_PATH:
                         cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                             nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, settings_general.node_coverage,
-                            anchor_count=po.anchor_node_count, minimum_valid_anchor_count=po.fusion_minimum_valid_anchor_count,
+                            anchor_count=sf.anchor_node_count, minimum_valid_anchor_count=sf.fusion_minimum_valid_anchor_count,
                             depth_scale=settings_general.depth_scale, depth_max=3.0)
                     else:
                         raise NotImplementedError(
-                            f"{po.AnchorComputationMode.__name__:s} '{po.voxel_anchor_computation_mode.name:s}' not "
-                            f"implemented for TSDF voxel anchors using {po.transformation_mode.name:s} "
-                            f"'{po.TransformationMode.__name__:s}'")
+                            f"{sf.AnchorComputationMode.__name__:s} '{sf.voxel_anchor_computation_mode.name:s}' not "
+                            f"implemented for TSDF voxel anchors using {sf.transformation_mode.name:s} "
+                            f"'{sf.TransformationMode.__name__:s}'")
                 else:
                     raise NotImplementedError(
-                        f"Unsupported {po.TransformationMode.__name__:s} '{po.voxel_anchor_computation_mode.name:s}' "
+                        f"Unsupported {sf.TransformationMode.__name__:s} '{sf.voxel_anchor_computation_mode.name:s}' "
                         f"for motion blending of voxels during integration.")
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
                 #  Check BaldrLector's NeuralTracking fork code.
@@ -376,7 +378,7 @@ class FusionPipeline:
                 )
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
 
-            if po.tracking_span_mode is not po.TrackingSpanMode.ZERO_TO_T \
+            if sf.tracking_span_mode is not sf.TrackingSpanMode.ZERO_TO_T \
                     or current_frame.frame_index == sequence.start_frame_index:
                 previous_color_image_np = color_image_np
                 previous_depth_image_np = depth_image_np

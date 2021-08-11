@@ -1,0 +1,101 @@
+import os
+
+import random
+
+from alignment import DeformNet
+from alignment.default import load_default_nnrt_network
+
+import torch
+
+
+# This test is simply used to ensure (as much as possible) that things are not messed up while we overhaul
+# the forward method of DeformNet
+def test_alignment_holistic():
+    # make output deterministic
+    seed = 1234
+    torch.cuda.manual_seed(seed)
+    torch.manual_seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+
+    deform_net: DeformNet = load_default_nnrt_network()
+
+    test_data_path = "/home/algomorph/Workbench/NeuralTracking/tests/test_data"
+
+    # load inputs
+    output_path = os.path.join(test_data_path, "alignment_test_inputs")
+    source_cuda = torch.load(os.path.join(output_path, "source_cuda.pt"))
+    target_cuda = torch.load(os.path.join(output_path, "target_cuda.pt"))
+    graph_nodes_cuda = torch.load(os.path.join(output_path, "graph_nodes_cuda.pt"))
+    graph_edges_cuda = torch.load(os.path.join(output_path, "graph_edges_cuda.pt"))
+    graph_edges_weights_cuda = torch.load(os.path.join(output_path, "graph_edges_weights_cuda.pt"))
+    graph_clusters_cuda = torch.load(os.path.join(output_path, "graph_clusters_cuda.pt"))
+    pixel_anchors_cuda = torch.load(os.path.join(output_path, "pixel_anchors_cuda.pt"))
+    pixel_weights_cuda = torch.load(os.path.join(output_path, "pixel_weights_cuda.pt"))
+    node_count_cuda = torch.load(os.path.join(output_path, "node_count_cuda.pt"))
+    intrinsics_cuda = torch.load(os.path.join(output_path, "intrinsics_cuda.pt"))
+
+    # load ground truth
+    gt_flow2 = torch.load(os.path.join(output_path, "flow2.pt"))
+    gt_flow3 = torch.load(os.path.join(output_path, "flow3.pt"))
+    gt_flow4 = torch.load(os.path.join(output_path, "flow4.pt"))
+    gt_flow5 = torch.load(os.path.join(output_path, "flow5.pt"))
+    gt_flow6 = torch.load(os.path.join(output_path, "flow6.pt"))
+    gt_node_rotations = torch.load(os.path.join(output_path, "node_rotations.pt"))
+    gt_node_translations = torch.load(os.path.join(output_path, "node_translations.pt"))
+    gt_deformations_validity = torch.load(os.path.join(output_path, "deformations_validity.pt"))
+    gt_deformed_points_pred = torch.load(os.path.join(output_path, "deformed_points_pred.pt"))
+    gt_valid_solve = torch.load(os.path.join(output_path, "valid_solve.pt"))
+    gt_mask_pred = torch.load(os.path.join(output_path, "mask_pred.pt"))
+    gt_xy_coords_warped = torch.load(os.path.join(output_path, "xy_coords_warped.pt"))
+    gt_source_points = torch.load(os.path.join(output_path, "source_points.pt"))
+    gt_valid_source_points = torch.load(os.path.join(output_path, "valid_source_points.pt"))
+    gt_target_matches = torch.load(os.path.join(output_path, "target_matches.pt"))
+    gt_valid_target_matches = torch.load(os.path.join(output_path, "valid_target_matches.pt"))
+    gt_valid_correspondences = torch.load(os.path.join(output_path, "valid_correspondences.pt"))
+    gt_deformed_points_idxs = torch.load(os.path.join(output_path, "deformed_points_idxs.pt"))
+    gt_deformed_points_subsampled = torch.load(os.path.join(output_path, "deformed_points_subsampled.pt"))
+
+    with torch.no_grad():
+        deform_net_data = deform_net(
+            source_cuda, target_cuda,
+            graph_nodes_cuda, graph_edges_cuda, graph_edges_weights_cuda, graph_clusters_cuda,
+            pixel_anchors_cuda, pixel_weights_cuda,
+            node_count_cuda, intrinsics_cuda,
+            evaluate=True, split="test"
+        )
+
+    flow2, flow3, flow4, flow5, flow6 = tuple(deform_net_data["flow_data"])
+    node_rotations = deform_net_data["node_rotations"]
+    node_translations = deform_net_data["node_translations"]
+    deformations_validity = deform_net_data["deformations_validity"]
+    deformed_points_pred = deform_net_data["deformed_points_pred"]
+    valid_solve = deform_net_data["valid_solve"]
+    mask_pred = deform_net_data["mask_pred"]
+    # @formatter:off
+    xy_coords_warped, source_points, valid_source_points, target_matches, \
+        valid_target_matches, valid_correspondences, deformed_points_idxs, deformed_points_subsampled = \
+        tuple(deform_net_data["correspondence_info"])
+    # @formatter:on
+
+    assert torch.equal(flow2, gt_flow2)
+    assert torch.equal(flow3, gt_flow3)
+    assert torch.equal(flow4, gt_flow4)
+    assert torch.equal(flow5, gt_flow5)
+    assert torch.equal(flow6, gt_flow6)
+
+    assert torch.equal(node_rotations, gt_node_rotations)
+    assert torch.equal(node_translations, gt_node_translations)
+    assert torch.equal(deformations_validity, gt_deformations_validity)
+    assert torch.equal(deformed_points_pred, gt_deformed_points_pred)
+    assert torch.equal(valid_solve, gt_valid_solve)
+    assert torch.equal(mask_pred, gt_mask_pred)
+    assert torch.equal(xy_coords_warped, gt_xy_coords_warped)
+    assert torch.equal(source_points, gt_source_points)
+    assert torch.equal(valid_source_points, gt_valid_source_points)
+    assert torch.equal(target_matches, gt_target_matches)
+    assert torch.equal(valid_target_matches, gt_valid_target_matches)
+    assert torch.equal(valid_correspondences, gt_valid_correspondences)
+    assert torch.equal(deformed_points_idxs, gt_deformed_points_idxs)
+    assert torch.equal(deformed_points_subsampled, gt_deformed_points_subsampled)
+

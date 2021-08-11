@@ -19,7 +19,6 @@ def run_non_rigid_alignment(deform_net: DeformNet,
                             graph: DeformationGraphNumpy,
                             cropped_intrinsics: np.ndarray,
                             device: open3d.core.Device) -> dict:
-
     torch_device = torch.device(repr(device).lower())
 
     source_cuda = torch.from_numpy(source_rgbxyz).to(torch_device).unsqueeze(0)
@@ -36,10 +35,7 @@ def run_non_rigid_alignment(deform_net: DeformNet,
 
     node_count = np.array(graph.nodes.shape[0], dtype=np.int64)
     node_count_cuda = torch.from_numpy(node_count).to(torch_device).unsqueeze(0)
-    # endregion
-    #####################################################################################################
-    # region === run the motion prediction & optimization ====
-    #####################################################################################################
+
     with torch.no_grad():
         deform_net_data = deform_net(
             source_cuda, target_cuda,
@@ -48,6 +44,7 @@ def run_non_rigid_alignment(deform_net: DeformNet,
             node_count_cuda, intrinsics_cuda,
             evaluate=True, split="test"
         )
+
     return deform_net_data
 
 
@@ -60,7 +57,6 @@ def run_non_rigid_alignment(deform_net: DeformNet,
                             graph: DeformationGraphOpen3D,
                             cropped_intrinsics: np.ndarray,
                             device: open3d.core.Device) -> dict:
-
     torch_device = torch.device(repr(device).lower())
 
     source_cuda = torch.from_numpy(source_rgbxyz).to(torch_device).unsqueeze(0)
