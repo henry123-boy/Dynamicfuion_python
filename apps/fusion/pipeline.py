@@ -125,8 +125,6 @@ class FusionPipeline:
         precomputed_anchors = None
         precomputed_weights = None
 
-
-
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
             self.telemetry_generator.set_frame_index(current_frame.frame_index)
@@ -184,9 +182,11 @@ class FusionPipeline:
                         build_deformation_graph_from_depth_image(
                             depth_image_np, mask_image_np, intrinsic_matrix=self.intrinsic_matrix_np,
                             max_triangle_distance=settings_general.graph_max_triangle_distance, depth_scale_reciprocal=settings_general.depth_scale,
-                            erosion_num_iterations=settings_general.graph_erosion_num_iterations, erosion_min_neighbors=settings_general.graph_erosion_min_neighbors,
+                            erosion_num_iterations=settings_general.graph_erosion_num_iterations,
+                            erosion_min_neighbors=settings_general.graph_erosion_min_neighbors,
                             remove_nodes_with_too_few_neighbors=settings_general.graph_remove_nodes_with_too_few_neighbors,
-                            use_only_valid_vertices=settings_general.graph_use_only_valid_vertices, sample_random_shuffle=settings_general.graph_sample_random_shuffle,
+                            use_only_valid_vertices=settings_general.graph_use_only_valid_vertices,
+                            sample_random_shuffle=settings_general.graph_sample_random_shuffle,
                             neighbor_count=settings_general.graph_neighbor_count, enforce_neighbor_count=settings_general.graph_enforce_neighbor_count
                         )
                 else:
@@ -214,7 +214,8 @@ class FusionPipeline:
                         source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
                         source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
 
-                source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy, depth_scale=settings_general.depth_scale)  # (h, w, 3)
+                source_point_image = image_utils.backproject_depth(source_depth, fx, fy, cx, cy,
+                                                                   depth_scale=settings_general.depth_scale)  # (h, w, 3)
 
                 source_rgbxyz, _, cropper = DeformDataset.prepare_pytorch_input(
                     source_color, source_point_image, self.intrinsics_dict,
@@ -225,7 +226,8 @@ class FusionPipeline:
                 # region === prepare target point cloud, RGB image, normal map, pixel anchors, and pixel weights ====
                 #####################################################################################################
                 # TODO: replace options.depth_scale by a calibration/intrinsic property read from disk for each dataset, like InfiniTAM
-                target_point_image = image_utils.backproject_depth(depth_image_np, fx, fy, cx, cy, depth_scale=settings_general.depth_scale)  # (h, w, 3)
+                target_point_image = image_utils.backproject_depth(depth_image_np, fx, fy, cx, cy,
+                                                                   depth_scale=settings_general.depth_scale)  # (h, w, 3)
                 target_rgbxyz, _, _ = DeformDataset.prepare_pytorch_input(
                     color_image_np, target_point_image, self.intrinsics_dict,
                     settings_general.alignment_image_height, settings_general.alignment_image_width,
@@ -266,7 +268,8 @@ class FusionPipeline:
                 # region === adjust intrinsic / projection parameters due to cropping ====
                 #####################################################################################################
                 fx_cropped, fy_cropped, cx_cropped, cy_cropped = image_processing.image_processing2.modify_intrinsics_due_to_cropping(
-                    fx, fy, cx, cy, settings_general.alignment_image_height, settings_general.alignment_image_width, original_h=cropper.h, original_w=cropper.w
+                    fx, fy, cx, cy, settings_general.alignment_image_height, settings_general.alignment_image_width, original_h=cropper.h,
+                    original_w=cropper.w
                 )
                 cropped_intrinsics_numpy = np.array([fx_cropped, fy_cropped, cx_cropped, cy_cropped], dtype=np.float32)
                 # endregion
@@ -385,6 +388,3 @@ class FusionPipeline:
                 previous_mask_image_np = mask_image_np
 
         return PROGRAM_EXIT_SUCCESS
-
-
-

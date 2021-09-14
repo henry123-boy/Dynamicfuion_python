@@ -42,9 +42,6 @@ def main():
     target_frame_index = frame_pair_dataset.target_frame_index
     segment_name = frame_pair_dataset.segment_name
 
-    # We will overwrite the default value in settings_general.py / settings_general.py
-    settings_general.use_mask = True
-
     #####################################################################################################
     # Load alignment
     #####################################################################################################

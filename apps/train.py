@@ -13,8 +13,7 @@ from tensorboardX import SummaryWriter
 from alignment import evaluate, nn_utilities
 from data import DeformDataset
 from settings import settings_general
-from image_processing import SnapshotManager, TimeStatistics
-from alignment import DeformNet, DeformLoss
+from alignment import DeformNet, DeformLoss,  SnapshotManager, TimeStatistics
 
 if __name__ == "__main__":
     torch.set_num_threads(settings_general.num_threads)
@@ -249,11 +248,11 @@ if __name__ == "__main__":
 
                     print()
                     print("Train evaluation")
-                    train_losses, train_metrics = evaluate.evaluate(model, criterion, train_dataloader, num_eval_batches, "train")
+                    train_losses, train_metrics = evaluate(model, criterion, train_dataloader, num_eval_batches, "train")
 
                     print()
                     print("Val   evaluation")
-                    val_losses, val_metrics = evaluate.evaluate(model, criterion, val_dataloader, num_eval_batches, "val")
+                    val_losses, val_metrics = evaluate(model, criterion, val_dataloader, num_eval_batches, "val")
 
                     train_writer.add_scalar('Loss/Loss', train_losses["total"], iteration_number)
                     train_writer.add_scalar('Loss/Flow', train_losses["flow"], iteration_number)

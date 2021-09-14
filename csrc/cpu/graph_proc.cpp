@@ -572,7 +572,7 @@ void node_and_edge_clean_up(const py::array_t<int>& graph_edges, py::array_t<boo
 
 				++num_neighbors;
 			}
-
+			// TODO: should be a parameter
 			if (num_neighbors <= 1) {
 				// remove node
 				*valid_nodes_mask.mutable_data(node_id, 0) = false;

@@ -17,7 +17,6 @@ LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output
 # to add your own root DeepDeform data directory, run the sha256 cypher on your MAC address and add the hash &
 # local directory as a key/value pair to the dict below
 workspace = Path(__file__).parent.parent.resolve().absolute()
-print(workspace)
 
 default_output_directory = os.path.join(workspace, "output")
 custom_paths_by_mac_address_hash = {
@@ -59,10 +58,8 @@ alignment_image_width = 640
 alignment_image_height = 448
 # TODO: depth_scale should be part of dataset & loaded from disk!
 depth_scale = 1000
-num_worker_threads = 6
-num_threads = 4
 
-num_samples_eval = 700
+
 #####################################################################################################################
 # GRAPH OPTIONS
 #####################################################################################################################
@@ -81,28 +78,28 @@ graph_remove_nodes_with_too_few_neighbors = True
 # MODEL INFO
 #####################################################################################################################
 
-# Info for a saved alignment
+# Info for a saved DeformNet pre-trained model
 # - In train.py, this info is only used if use_pretrained_model=True
 # - In generate.py, evaluate.py or example_viz.py, it is used regardless of the value of use_pretrained_model
-
-use_pretrained_model = False  # used only in train.py
-
 model_module_to_load = "full_model"  # A: "only_flow_net", B: "full_model"
-model_name = "model_A"  # your alignment's name
-model_iteration = 0  # iteration number of the alignment you want to load
+model_name = "model_A"  # your trained model's name
+model_iteration = 0  # iteration number of the model you want to load
 
 saved_model = os.path.join(experiments_directory, "models", model_name, f"{model_name}_{model_iteration}.pt")
 
 #####################################################################################################################
 # TRAINING OPTIONS
 #####################################################################################################################
+use_pretrained_model = False  # used only in train.py
+
+# threading parameters for training
+# TODO: this should be determined dynamically
+num_worker_threads = 6
+num_threads = 4
+
+num_samples_eval = 700
 
 from settings.settings_flow import *
-# TODO: not sure if this system (together with settings_XXX files, except this file, settings_fusion, and settings_tsdf,
-#  is needed any longer. Pick one of these "mode" files and just add it in here. If we really need support for
-#  proper configuration files, just use ext_argparse from
-#  https://github.com/Algomorph/LevelSetFusion-Python/tree/46625cd185da4413f9afaf201096203ee72d3803/ext_argparse
-#  It would be best to better categorize and reorganize the settings as well.
 # mode = "0_flow"  # ["0_flow", "1_solver", "2_mask", "3_refine"]
 # if mode == "0_flow":
 #     from settings.settings_flow import *

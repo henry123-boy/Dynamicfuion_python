@@ -4,6 +4,7 @@ import random
 
 from alignment import DeformNet
 from alignment.default import load_default_nnrt_network
+import pathlib
 
 import torch
 
@@ -20,7 +21,8 @@ def test_alignment_holistic():
 
     deform_net: DeformNet = load_default_nnrt_network()
 
-    test_data_path = "/home/algomorph/Workbench/NeuralTracking/tests/test_data"
+    test_path = pathlib.Path(__file__).parent.resolve()
+    test_data_path = os.path.join(test_path, "test_data")
 
     # load inputs
     output_path = os.path.join(test_data_path, "alignment_test_inputs")
@@ -98,4 +100,3 @@ def test_alignment_holistic():
     assert torch.equal(valid_correspondences, gt_valid_correspondences)
     assert torch.equal(deformed_points_idxs, gt_deformed_points_idxs)
     assert torch.equal(deformed_points_subsampled, gt_deformed_points_subsampled)
-

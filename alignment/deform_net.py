@@ -520,7 +520,7 @@ class DeformNet(torch.nn.Module):
             # The parameters in GN solver are 3 parameters for rotation and 3 parameters for
             # translation for every node. All node rotation parameters are listed first, and
             # then all node translation parameters are listed.
-            #                        x = [w_current_all, t_current_all]
+            #                        x = [R_current_all, t_current_all]
             R_current = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 3, 3).repeat(opt_num_nodes_i, 1, 1)
             t_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=source.dtype, device=source.device)
 
