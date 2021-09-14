@@ -7,13 +7,14 @@ import numpy as np
 from timeit import default_timer as timer
 import math
 
+from alignment import evaluate, nn_utilities
+
 import torch
 from tensorboardX import SummaryWriter
 
-from alignment import evaluate, nn_utilities
 from data import DeformDataset
 from settings import settings_general
-from alignment import DeformNet, DeformLoss,  SnapshotManager, TimeStatistics
+from alignment import DeformNet, DeformLoss, SnapshotManager, TimeStatistics
 
 if __name__ == "__main__":
     torch.set_num_threads(settings_general.num_threads)
@@ -78,7 +79,7 @@ if __name__ == "__main__":
 
     # Copy the current options to the log directory.
     options_file_in = os.path.abspath(os.path.join(os.path.dirname(__file__), "../settings/settings_general.py"))
-    options_file_out = os.path.join(log_dir, "../settings/settings_general.py")
+    options_file_out = os.path.join(log_dir, "settings.py")
     copyfile(options_file_in, options_file_out)
 
     # Creation of alignment dir.
@@ -98,7 +99,8 @@ if __name__ == "__main__":
     model = DeformNet().cuda()
 
     if settings_general.use_pretrained_model:
-        assert os.path.isfile(saved_model), "\nModel {} does not exist. Please train a alignment from scratch or specify a valid path to a alignment.".format(
+        assert os.path.isfile(
+            saved_model), "\nModel {} does not exist. Please train a alignment from scratch or specify a valid path to a alignment.".format(
             saved_model)
         pretrained_dict = torch.load(saved_model)
 
@@ -122,7 +124,8 @@ if __name__ == "__main__":
                 exit()
 
     # Criterion.
-    criterion = DeformLoss(settings_general.lambda_flow, settings_general.lambda_graph, settings_general.lambda_warp, settings_general.lambda_mask, settings_general.flow_loss_type)
+    criterion = DeformLoss(settings_general.lambda_flow, settings_general.lambda_graph, settings_general.lambda_warp, settings_general.lambda_mask,
+                           settings_general.flow_loss_type)
 
     # Count parameters.
     n_all_model_params = int(sum([np.prod(p.size()) for p in model.parameters()]))
@@ -142,7 +145,8 @@ if __name__ == "__main__":
     if settings_general.use_adam:
         optimizer = torch.optim.Adam(model.parameters(), settings_general.learning_rate, weight_decay=settings_general.weight_decay)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=settings_general.learning_rate, momentum=settings_general.momentum, weight_decay=settings_general.weight_decay)
+        optimizer = torch.optim.SGD(model.parameters(), lr=settings_general.learning_rate, momentum=settings_general.momentum,
+                                    weight_decay=settings_general.weight_decay)
 
     # Initialize training.
     train_writer.add_text("/hyperparams",

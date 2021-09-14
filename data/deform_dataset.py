@@ -2,6 +2,7 @@ import os
 import json
 import typing
 
+from icecream import ic
 from torch.utils.data import Dataset
 import torch
 import numpy as np
@@ -68,10 +69,10 @@ class DeformDataset(Dataset):
         )
 
         # Load/compute graph.
-        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters = DeformDataset.load_graph_data(
-            graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path,
-            graph_clusters_path, pixel_anchors_path, pixel_weights_path, cropper
-        )
+        graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters = \
+            DeformDataset.load_graph_data(
+                graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path, graph_clusters_path
+            )
         pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
 
         # Compute groundtruth transformation for graph canonical_node_positions.
@@ -286,12 +287,10 @@ class DeformDataset(Dataset):
             if key == "graph_nodes" or key == "graph_edges" or \
                     key == "graph_edges_weights" or key == "graph_node_deformations" or \
                     key == "graph_clusters":
-
                 batched_sample = torch.zeros((batch_size, max_num_nodes, batch[0][key].shape[1]), dtype=torch.from_numpy(batch[0][key]).dtype)
                 for sample_idx in range(batch_size):
                     batched_sample[sample_idx, :batch[sample_idx][key].shape[0], :] = torch.from_numpy(batch[sample_idx][key])
                 batch_converted[key] = batched_sample
-
             else:
                 batched_sample = torch.zeros((batch_size, *batch[0][key].shape), dtype=torch.from_numpy(batch[0][key]).dtype)
                 for sample_idx in range(batch_size):

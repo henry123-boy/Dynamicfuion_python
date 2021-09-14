@@ -52,7 +52,7 @@ try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
     dataset_base_directory = paths.deep_deform_root
     output_directory = paths.output
-    nn_data_directory = paths.nn_models
+    nn_data_directory = paths.nn_data
 
 except KeyError as error:
     raise KeyError(f"Please update the hash at the top of settings_general.py"
