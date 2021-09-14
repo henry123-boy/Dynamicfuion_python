@@ -55,7 +55,7 @@ class FusionPipeline:
                                                       sf.visualization_mode, settings_general.output_directory)
 
         # === load alignment network, configure device ===
-        self.deform_net: DeformNet = load_default_nnrt_network(self.telemetry_generator)
+        self.deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA, self.telemetry_generator)
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===

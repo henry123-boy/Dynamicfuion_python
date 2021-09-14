@@ -1,7 +1,7 @@
-
+#!/bin/bash
 # Name of the train and val datasets
-train_dir="train"
-val_dir="val"
+train_dir="train_graphs"
+val_dir="val_graphs"
 
 # Give a name to your experiment
 experiment="debug_flownet"

@@ -1,4 +1,4 @@
-
+#!/bin/bash
 SPLIT="test"
 
 export PYTHONPATH="$(pwd):$PYTHONPATH"

@@ -2,18 +2,20 @@ import os
 import json
 import argparse
 
-from alignment import DeformNet # temporarily out-of-order here due to some CuPy 10 / CUDA 11.4 problems
+from alignment import DeformNet
 
 # 3rd-party
 import torch
 import numpy as np
 from tqdm import tqdm
+import open3d.core as o3c
 
 # local
+from alignment.default import load_default_nnrt_network
 from image_processing import image_processing2 as image_utils
 from data import DeformDataset
 import data.io
-from settings import settings_general as opt
+from settings import settings_general
 
 
 # TODO: alter the generate script such that the output is tucked into individual sequence folders in the dataset,
@@ -33,19 +35,19 @@ def main():
     split = args.split
 
     # Model checkpoint to use
-    saved_model = opt.saved_model
+    saved_model = settings_general.saved_model
     # Dataset dir
-    dataset_base_dir = opt.dataset_base_directory
+    dataset_base_dir = settings_general.dataset_base_directory
 
-    # Image dimensiones to which we crop the input images, such that they are divisible by 64
-    image_height = opt.alignment_image_height
-    image_width = opt.alignment_image_width
+    # Image dimensions to which we crop the input images, such that they are divisible by 64
+    image_height = settings_general.alignment_image_height
+    image_width = settings_general.alignment_image_width
 
-    if opt.gn_max_matches_eval != 100000:
-        opt.gn_max_matches_eval = 100000
+    if settings_general.gn_max_matches_eval != 100000:
+        raise ValueError(f"For whatever sunny reason, {settings_general.gn_max_matches_eval} must be exactly 100000")
 
-    if opt.threshold_mask_predictions:
-        opt.threshold_mask_predictions = False
+    if settings_general.threshold_mask_predictions:
+        raise ValueError(f"For whatever sunny reason, {settings_general.threshold_mask_predictions} must be set to False in generate")
 
     #####################################################################################################
     # Read labels and assert existance of output dir
@@ -59,7 +61,7 @@ def main():
         labels = json.loads(f.read())
 
     # Output dir
-    output_dir = os.path.join(opt.nn_data_directory, "models", opt.model_name)
+    output_dir = os.path.join(settings_general.nn_data_directory, "models", settings_general.model_name)
     output_dir = f"{output_dir}/evaluation/{split}"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -74,44 +76,23 @@ def main():
     pretrained_dict = torch.load(saved_model)
 
     # Construct alignment
-    model = DeformNet().cuda()
-
-    if "chairs_things" in saved_model:
-        model.flow_net.load_state_dict(pretrained_dict)
-    else:
-        if opt.model_module_to_load == "full_model":
-            # Load completely alignment
-            model.load_state_dict(pretrained_dict)
-        elif opt.model_module_to_load == "only_flow_net":
-            # Load only optical flow part
-            model_dict = model.state_dict()
-            # 1. filter out unnecessary keys
-            pretrained_dict = {k: v for k, v in pretrained_dict.items() if "flow_net" in k}
-            # 2. overwrite entries in the existing state dict
-            model_dict.update(pretrained_dict)
-            # 3. load the new state dict
-            model.load_state_dict(model_dict)
-        else:
-            print(opt.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
-            exit()
-
-    model.eval()
+    model = load_default_nnrt_network(o3c.Device.DeviceType.CUDA)
 
     #####################################################################################################
     # Go over dataset
     #####################################################################################################
 
     for label in tqdm(labels):
-        src_color_image_path = os.path.join(opt.dataset_base_directory, label["source_color"])
-        src_depth_image_path = os.path.join(opt.dataset_base_directory, label["source_depth"])
-        tgt_color_image_path = os.path.join(opt.dataset_base_directory, label["target_color"])
-        tgt_depth_image_path = os.path.join(opt.dataset_base_directory, label["target_depth"])
-        graph_nodes_path = os.path.join(opt.dataset_base_directory, label["graph_nodes"])
-        graph_edges_path = os.path.join(opt.dataset_base_directory, label["graph_edges"])
-        graph_edges_weights_path = os.path.join(opt.dataset_base_directory, label["graph_edges_weights"])
-        graph_clusters_path = os.path.join(opt.dataset_base_directory, label["graph_clusters"])
-        pixel_anchors_path = os.path.join(opt.dataset_base_directory, label["pixel_anchors"])
-        pixel_weights_path = os.path.join(opt.dataset_base_directory, label["pixel_weights"])
+        src_color_image_path = os.path.join(settings_general.dataset_base_directory, label["source_color"])
+        src_depth_image_path = os.path.join(settings_general.dataset_base_directory, label["source_depth"])
+        tgt_color_image_path = os.path.join(settings_general.dataset_base_directory, label["target_color"])
+        tgt_depth_image_path = os.path.join(settings_general.dataset_base_directory, label["target_depth"])
+        graph_nodes_path = os.path.join(settings_general.dataset_base_directory, label["graph_nodes"])
+        graph_edges_path = os.path.join(settings_general.dataset_base_directory, label["graph_edges"])
+        graph_edges_weights_path = os.path.join(settings_general.dataset_base_directory, label["graph_edges_weights"])
+        graph_clusters_path = os.path.join(settings_general.dataset_base_directory, label["graph_clusters"])
+        pixel_anchors_path = os.path.join(settings_general.dataset_base_directory, label["pixel_anchors"])
+        pixel_weights_path = os.path.join(settings_general.dataset_base_directory, label["pixel_weights"])
 
         intrinsics = label["intrinsics"]
 
@@ -131,7 +112,7 @@ def main():
         )
 
         # Graph
-        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters =  \
+        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = \
             DeformDataset.load_graph_data(
                 graph_nodes_path, graph_edges_path, graph_edges_weights_path, None, graph_clusters_path
             )

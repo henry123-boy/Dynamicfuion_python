@@ -10,8 +10,10 @@ import math
 from alignment import evaluate, nn_utilities
 
 import torch
+import open3d.core as o3c
 from tensorboardX import SummaryWriter
 
+from alignment.default import load_default_nnrt_network
 from data import DeformDataset
 from settings import settings_general
 from alignment import DeformNet, DeformLoss, SnapshotManager, TimeStatistics
@@ -96,32 +98,7 @@ if __name__ == "__main__":
 
     iteration_number = 0
 
-    model = DeformNet().cuda()
-
-    if settings_general.use_pretrained_model:
-        assert os.path.isfile(
-            saved_model), "\nModel {} does not exist. Please train a alignment from scratch or specify a valid path to a alignment.".format(
-            saved_model)
-        pretrained_dict = torch.load(saved_model)
-
-        if "chairs_things" in saved_model:
-            model.flow_net.load_state_dict(pretrained_dict)
-        else:
-            if settings_general.model_module_to_load == "full_model":
-                # Load completely alignment
-                model.load_state_dict(pretrained_dict)
-            elif settings_general.model_module_to_load == "only_flow_net":
-                # Load only optical flow part
-                model_dict = model.state_dict()
-                # 1. filter out unnecessary keys
-                pretrained_dict = {k: v for k, v in pretrained_dict.items() if "flow_net" in k}
-                # 2. overwrite entries in the existing state dict
-                model_dict.update(pretrained_dict)
-                # 3. load the new state dict
-                model.load_state_dict(model_dict)
-            else:
-                print(settings_general.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
-                exit()
+    model = load_default_nnrt_network(o3c.Device.CUDA)
 
     # Criterion.
     criterion = DeformLoss(settings_general.lambda_flow, settings_general.lambda_graph, settings_general.lambda_warp, settings_general.lambda_mask,

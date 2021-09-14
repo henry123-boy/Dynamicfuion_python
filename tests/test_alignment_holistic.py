@@ -7,6 +7,7 @@ from alignment.default import load_default_nnrt_network
 import pathlib
 
 import torch
+import open3d.core as o3c
 
 
 # This test is simply used to ensure (as much as possible) that things are not messed up while we overhaul
@@ -19,7 +20,7 @@ def test_alignment_holistic():
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-    deform_net: DeformNet = load_default_nnrt_network()
+    deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA)
 
     test_path = pathlib.Path(__file__).parent.resolve()
     test_data_path = os.path.join(test_path, "test_data")

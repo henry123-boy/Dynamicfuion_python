@@ -101,8 +101,6 @@ def print_fusion_settings(stdout=sys.stdout):
     # Tracking
     print("source_image_mode:", source_image_mode)
     # overridden from options
-    print("use_mask (overridden from settings_general.py):", settings_general.use_mask)
-    print("gn_max_nodes (overridden from settings_general.py):", settings_general.gn_max_nodes)
     print("graph_generation_mode:", graph_generation_mode)
     print("pixel_anchor_computation_mode:", pixel_anchor_computation_mode)
     print("tracking_span_mode:", tracking_span_mode)

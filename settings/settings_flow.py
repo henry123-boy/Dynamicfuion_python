@@ -56,14 +56,14 @@ gn_lm_factor = 0.1
 # Losses
 #####################################################################################################################
 # Architecture parameters
-use_flow_loss = True;
+use_flow_loss = True
 lambda_flow = 5.0
-use_graph_loss = False;
+use_graph_loss = False
 lambda_graph = 2.0
-use_warp_loss = False;
+use_warp_loss = False
 lambda_warp = 2.0
 use_mask = True
-use_mask_loss = False;
+use_mask_loss = False
 lambda_mask = 1000.0  # one of the baselines in the paper
 
 flow_loss_type = 'RobustL1'

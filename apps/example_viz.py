@@ -7,8 +7,10 @@ from alignment import DeformNet  # temporarily out-of-order here due to some CuP
 # 3rd party
 import torch
 import numpy as np
+import open3d.core as o3c
 
 # local
+from alignment.default import load_default_nnrt_network
 from data.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
 import image_processing.image_processing2
 from telemetry.visualization import tracking as tracking_viz
@@ -52,28 +54,7 @@ def main():
     pretrained_dict = torch.load(saved_model)
 
     # Construct alignment
-    model = DeformNet().cuda()
-
-    if "chairs_things" in saved_model:
-        model.flow_net.load_state_dict(pretrained_dict)
-    else:
-        if settings_general.model_module_to_load == "full_model":
-            # Load completely alignment
-            model.load_state_dict(pretrained_dict)
-        elif settings_general.model_module_to_load == "only_flow_net":
-            # Load only optical flow part
-            model_dict = model.state_dict()
-            # 1. filter out unnecessary keys
-            pretrained_dict = {k: v for k, v in pretrained_dict.items() if "flow_net" in k}
-            # 2. overwrite entries in the existing state dict
-            model_dict.update(pretrained_dict)
-            # 3. load the new state dict
-            model.load_state_dict(model_dict)
-        else:
-            print(settings_general.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
-            exit()
-
-    model.eval()
+    model = load_default_nnrt_network(o3c.Device.CUDA)
 
     #####################################################################################################
     # Load example dataset
