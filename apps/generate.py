@@ -59,7 +59,7 @@ def main():
         labels = json.loads(f.read())
 
     # Output dir
-    output_dir = os.path.join(opt.experiments_directory, "models", opt.model_name)
+    output_dir = os.path.join(opt.nn_data_directory, "models", opt.model_name)
     output_dir = f"{output_dir}/evaluation/{split}"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)

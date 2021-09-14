@@ -10,9 +10,7 @@ LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output
 REPOSITORY_ROOT = Path(__file__).parent.parent.resolve().absolute()
 
 DEFAULT_OUTPUT_DIRECTORY = os.path.join(REPOSITORY_ROOT, "output")
-# TODO: since we now have a more-legitimate output folder, rename the experiments to something better than the legacy
-#  "experiments". It's a folder holding trained neural network data.
-DEFAULT_EXPERIMENTS_DIRECTORY = os.path.join(REPOSITORY_ROOT, "experiments")
+DEFAULT_NN_DATA_DIRECTORY = os.path.join(REPOSITORY_ROOT, "nn_data")
 
 
 class PathParameters(ParameterEnum):
@@ -21,10 +19,10 @@ class PathParameters(ParameterEnum):
                   arg_help="Path to the base of the DeepDeform dataset root.")
     output_directory = \
         Parameter(default=DEFAULT_OUTPUT_DIRECTORY, arg_type=str,
-                  arg_help="Path to the directory where reconstruction output will be placed.")
-    experiments_directory = \
-        Parameter(default=DEFAULT_EXPERIMENTS_DIRECTORY, arg_type=str,
-                  arg_help="Path to the directory where trained DeformNet models are stored.")
+                  arg_help="Path to the directory where reconstruction output & telemetry will be placed.")
+    nn_data_directory = \
+        Parameter(default=DEFAULT_NN_DATA_DIRECTORY, arg_type=str,
+                  arg_help="Path to the directory where trained DeformNet models & other neural network data are stored.")
 
 
 

@@ -26,7 +26,7 @@ def main():
     split = args.split
 
     dataset_base_dir = opt.dataset_base_directory
-    experiments_dir = opt.experiments_directory
+    experiments_dir = opt.nn_data_directory
     model_name = opt.model_name
     gn_max_depth = opt.gn_max_depth
 

@@ -12,39 +12,47 @@ from pathlib import Path
 # add your mac address & directory to your base dir below
 from settings.hardware_id import get_mac_address
 
-LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output")
+LocalPathCollection = namedtuple("LocalPathCollection", "deep_deform_root output nn_data")
 
 # to add your own root DeepDeform data directory, run the sha256 cypher on your MAC address and add the hash &
 # local directory as a key/value pair to the dict below
 workspace = Path(__file__).parent.parent.resolve().absolute()
 
 default_output_directory = os.path.join(workspace, "output")
+default_nn_data_directory = os.path.join(workspace, "nn_data")
+
 custom_paths_by_mac_address_hash = {
     # Greg - ethernet
     "1121160f73049dc62efd5cd3ae58daec06185e2d330e680caa46e7f66504f2bf":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
-                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output",
+                            nn_data="/mnt/Data/Reconstruction/neural_networks/deform_net"),
     # Greg - wifi usb card
     "d721c6dceb2f2795bdfc8ff9390adaa3a84ff8f56ddb25a1681b54f5496257e6":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
-                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output",
+                            nn_data="/mnt/Data/Reconstruction/neural_networks/deform_net"),
     # Greg - wifi usb card #2
     "54a5a819c01348a78be463816eb1818d956be1f57c247227bba49486a7230eac":
         LocalPathCollection(deep_deform_root="/mnt/Data/Reconstruction/real_data/deepdeform",
-                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output"),
+                            output="/mnt/Data/Reconstruction/output/NerualTracking_experiment_output",
+                            nn_data="/mnt/Data/Reconstruction/neural_networks/deform_net"),
     # Ahmed - wifi
     "b30b1d8924b5397f69a8367dc4eb4c79e0de8d9000460541c3de0265c63f1414":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output"),
+                            output="/mnt/Data/NNRT/output",
+                            nn_data=default_nn_data_directory),
     # Ahmed - ethernet
     "39b8f926e29ac02e90bac6f7d0671f23d8115b4b42457973e38ed871e07b684c":
         LocalPathCollection(deep_deform_root="/mnt/Data/Datasets/deepdeform",
-                            output="/mnt/Data/NNRT/output")
+                            output="/mnt/Data/NNRT/output",
+                            nn_data=default_nn_data_directory)
 }
 try:
     paths = custom_paths_by_mac_address_hash[hashlib.sha256((get_mac_address()).encode('utf-8')).hexdigest()]
     dataset_base_directory = paths.deep_deform_root
     output_directory = paths.output
+    nn_data_directory = paths.nn_models
 
 except KeyError as error:
     raise KeyError(f"Please update the hash at the top of settings_general.py"
@@ -52,7 +60,6 @@ except KeyError as error:
                    "the tuple containing (path_to_your_DeepDeform_dataset_root, desired_output_directory) as value.") \
         from error
 
-experiments_directory = os.path.join(workspace, "experiments")
 
 alignment_image_width = 640
 alignment_image_height = 448
@@ -85,7 +92,7 @@ model_module_to_load = "full_model"  # A: "only_flow_net", B: "full_model"
 model_name = "model_A"  # your trained model's name
 model_iteration = 0  # iteration number of the model you want to load
 
-saved_model = os.path.join(experiments_directory, "models", model_name, f"{model_name}_{model_iteration}.pt")
+saved_model = os.path.join(nn_data_directory, "models", model_name, f"{model_name}_{model_iteration}.pt")
 
 #####################################################################################################################
 # TRAINING OPTIONS

@@ -63,7 +63,7 @@ if __name__ == "__main__":
     # Creating tf writer and folders 
     #####################################################################################
     # Writer initialization.
-    tf_runs = os.path.join(settings_general.experiments_directory, "tf_runs")
+    tf_runs = os.path.join(settings_general.nn_data_directory, "tf_runs")
     log_name = "{0}_{1}".format(date, experiment_name)
     log_dir = os.path.join(tf_runs, log_name)
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     copyfile(options_file_in, options_file_out)
 
     # Creation of alignment dir.
-    training_models = os.path.join(settings_general.experiments_directory, "models")
+    training_models = os.path.join(settings_general.nn_data_directory, "models")
     if not os.path.exists(training_models): os.mkdir(training_models)
     saving_model_dir = os.path.join(training_models, log_name)
     if not os.path.exists(saving_model_dir): os.mkdir(saving_model_dir)
