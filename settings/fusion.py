@@ -2,6 +2,9 @@ from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
 
 from data import FrameSequencePreset
+from settings.deform_net import DeformNetParameters
+from settings.model import ModelParameters
+from settings.path import PathParameters
 
 
 class VisualizationMode(Enum):
@@ -136,3 +139,6 @@ class FusionParameters(ParameterEnum):
     tracking = TrackingParameters
     integration = IntegrationParameters
     telemetry = TelemetryParameters
+    model = ModelParameters
+    deform_net = DeformNetParameters
+    path = PathParameters
