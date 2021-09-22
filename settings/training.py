@@ -1,9 +1,5 @@
 from ext_argparse import ParameterEnum, Parameter
 
-from settings.deform_net import DeformNetParameters
-from settings.model import ModelParameters
-from settings.path import PathParameters
-
 
 class LearningParameters(ParameterEnum):
     # TODO: replace with enum
@@ -120,6 +116,3 @@ class TrainingParameters(ParameterEnum):
     learning = LearningParameters
     loss = LossParameters
     baseline = BaselineComparisonParameters
-    model = ModelParameters
-    deform_net = DeformNetParameters
-    path = PathParameters

@@ -1,6 +1,6 @@
-import settings.settings_tsdf as tsdf_settings
 import open3d as o3d
 import nnrt
+from settings.tsdf import TsdfParameters
 
 
 def make_default_tsdf_voxel_grid(device: o3d.core.Device) -> nnrt.geometry.WarpableTSDFVoxelGrid:
@@ -10,8 +10,8 @@ def make_default_tsdf_voxel_grid(device: o3d.core.Device) -> nnrt.geometry.Warpa
             'weight': o3d.core.Dtype.UInt16,
             'color': o3d.core.Dtype.UInt16
         },
-        voxel_size=tsdf_settings.voxel_size,
-        sdf_trunc=tsdf_settings.sdf_truncation_distance,
-        block_resolution=tsdf_settings.block_resolution,
-        block_count=tsdf_settings.initial_block_count,
+        voxel_size=TsdfParameters.voxel_size.value,
+        sdf_trunc=TsdfParameters.sdf_truncation_distance.value,
+        block_resolution=TsdfParameters.block_resolution.value,
+        block_count=TsdfParameters.initial_block_count.value,
         device=device)

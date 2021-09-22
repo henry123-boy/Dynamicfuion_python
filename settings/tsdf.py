@@ -1,7 +1,7 @@
 from ext_argparse import ParameterEnum, Parameter
 
 
-class TSDFParameters(ParameterEnum):
+class TsdfParameters(ParameterEnum):
     voxel_size = Parameter(default=0.005, arg_type=float, arg_help="Voxel resolution, in meters.")
     sdf_truncation_distance = Parameter(default=0.025, arg_type=float, arg_help="SDF truncation distance, in meters.")
     block_resolution = Parameter(default=16, arg_type=int,

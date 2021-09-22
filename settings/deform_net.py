@@ -13,10 +13,12 @@ class DeformNetParameters(ParameterEnum):
                   arg_help="Far clipping distance for a point to be considered by the Gauss-Newton solver during alignment.")
     gn_min_nodes = \
         Parameter(default=4, arg_type=int,
-                  arg_help="The minimum number of nodes in graph required for the Gauss-Newton solver to work.")
+                  arg_help="The minimum number of nodes in graph required for the Gauss-Newton solver to work.",
+                  shorthand="maxnc")
     gn_max_nodes = \
         Parameter(default=300, arg_type=int,
-                  arg_help="Number of nodes in graph not to be exceeded for the Gauss-Newton solver to work.")
+                  arg_help="Number of nodes in graph not to be exceeded for the Gauss-Newton solver to work.",
+                  shorthand="minnc")
     gn_max_matches_train = \
         Parameter(default=10000, arg_type=int,
                   arg_help="Maximum number of matching points when working on a sequence in the 'train' split of the "

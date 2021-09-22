@@ -11,19 +11,19 @@ import sys
 import open3d as o3d
 import open3d.core as o3c
 import numpy as np
-from settings import settings_general
+
+from settings import process_arguments, PathParameters
+
 
 from data import camera
-from fusion2.default_voxel_grid import make_default_tsdf_voxel_grid
+from tsdf_management.default_voxel_grid import make_default_tsdf_voxel_grid
 
 PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-    # Options
-
+    process_arguments()
     use_mask = True
-    segment = None
 
     #####################################################################################################
     # === open3d device, image paths, camera intrinsics, volume ===
@@ -39,7 +39,9 @@ def main():
     sequence_number = 14
     frame_index = 200
     split = "val"
-    frames_directory = os.path.join(settings_general.dataset_base_directory, "{:s}/seq{:03d}/".format(split, sequence_number))
+    segment = None
+
+    frames_directory = os.path.join(PathParameters.dataset_base_directory.value, "{:s}/seq{:03d}/".format(split, sequence_number))
     color_image_filename_mask = frames_directory + "color/{:06d}.jpg"
     color_image_path = color_image_filename_mask.format(frame_index)
     depth_image_filename_mask = frames_directory + "depth/{:06d}.png"
@@ -52,7 +54,7 @@ def main():
 
     # === handle intrinsics ===
 
-    depth_intrinsics_path = os.path.join(settings_general.dataset_base_directory, "val/seq014/intrinsics.txt")
+    depth_intrinsics_path = os.path.join(PathParameters.dataset_base_directory.value, "val/seq014/intrinsics.txt")
     intrinsics_open3d_cpu, _ = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(depth_intrinsics_path, depth_image_path)
     intrinsics_open3d_gpu = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
 
@@ -92,8 +94,7 @@ def main():
 
     print(voxel_centers_np)
 
-    with open(os.path.join(settings_general.output_directory, "voxel_centers_000200_red_shorts.np"), 'wb') as file:
-        np.save(file, voxel_centers_np)
+    np.save(os.path.join(PathParameters.dataset_base_directory.value, "voxel_centers_000200_red_shorts.np"), voxel_centers_np)
 
     return PROGRAM_EXIT_SUCCESS
 

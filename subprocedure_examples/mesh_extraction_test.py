@@ -9,7 +9,7 @@ import re
 from data import camera
 from data.presets import StandaloneFramePreset, StandaloneFrameDataset
 from settings import settings_general
-from fusion2.default_voxel_grid import make_default_tsdf_voxel_grid
+from tsdf_management.default_voxel_grid import make_default_tsdf_voxel_grid
 
 PROGRAM_EXIT_SUCCESS = 0
 

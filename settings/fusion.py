@@ -1,10 +1,6 @@
 from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
-
-from data import FrameSequencePreset
-from settings.deform_net import DeformNetParameters
-from settings.model import ModelParameters
-from settings.path import PathParameters
+from data.presets import FrameSequencePreset
 
 
 class VisualizationMode(Enum):
@@ -73,7 +69,7 @@ class IntegrationParameters(ParameterEnum):
                            "fused in from an incoming RGBD image pair. Valid anchors for a specific voxel are graph "
                            "nodes that are closer than a specific distance threshold from this voxel.")
     transformation_mode = \
-        Parameter(default=TransformationMode.MATRICES, arg_type=TrackingSpanMode,
+        Parameter(default=TransformationMode.MATRICES, arg_type=TransformationMode,
                   arg_help="During fusion/integration, transformations (including rotations) can be handled in multiple "
                            "ways mathematically. Use this setting to dictate how.")
 
@@ -139,6 +135,3 @@ class FusionParameters(ParameterEnum):
     tracking = TrackingParameters
     integration = IntegrationParameters
     telemetry = TelemetryParameters
-    model = ModelParameters
-    deform_net = DeformNetParameters
-    path = PathParameters

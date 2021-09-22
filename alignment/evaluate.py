@@ -208,7 +208,3 @@ def evaluate(model, criterion, dataloader, batch_num, split):
     }
 
     return losses, metrics
-
-
-if __name__ == "__main__":
-    pass

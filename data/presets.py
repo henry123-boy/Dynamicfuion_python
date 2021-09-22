@@ -1,5 +1,6 @@
 from enum import Enum
-from data.frame import StandaloneFrameDataset, DatasetType, DataSplit
+
+from data.frame import StandaloneFrameDataset, DataSplit
 from data.frame_pair import FramePairDataset
 from data.frame_sequence import FrameSequenceDataset, StaticFrameSequenceDataset
 

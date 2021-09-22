@@ -30,6 +30,12 @@ class FramePairDataset(GenericDataset):
         """
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder)
         self.graph_filename = None
+        self.source_frame_index = source_frame_index
+        self.target_frame_index = target_frame_index
+        self.segment_name = segment_name
+
+    def load(self):
+        super(FramePairDataset, self).load()
         if self._base_dataset_type is not DatasetType.CUSTOM:
             # assumes add_in_graph_data.py script has already been successfully run on the sequence.
             # also assumes standard folder structure for DeepDeform & DeepDeformGraph datasets.
@@ -37,41 +43,44 @@ class FramePairDataset(GenericDataset):
             # TODO: make flexible-enough to load even when graph data is not available and signify this by storing some
             #  value in a field
             parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
-            if segment_name is None:
-                segment_name = parts[1]
-            if has_masks:
-                self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
-            self.graph_filename = f"{parts[0]:s}_{segment_name}_{source_frame_index:06d}_{target_frame_index:06d}_geodesic_0.05"
-
-        self.source_frame_index = source_frame_index
-        self.target_frame_index = target_frame_index
-        self.segment_name = segment_name
+            if self.segment_name is None:
+                self.segment_name = parts[1]
+            if self._has_masks:
+                self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + self.segment_name + ".png")
+            self.graph_filename = f"{parts[0]:s}_{self.segment_name}_{self.source_frame_index:06d}_{self.target_frame_index:06d}_geodesic_0.05"
 
     def get_source_color_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self._color_image_filename_mask.format(self.source_frame_index)
 
     def get_target_color_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self._color_image_filename_mask.format(self.target_frame_index)
 
     def get_source_depth_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self._depth_image_filename_mask.format(self.source_frame_index)
 
     def get_target_depth_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self._depth_image_filename_mask.format(self.target_frame_index)
 
     def get_source_mask_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.source_frame_index)
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")
 
     def get_target_mask_image_path(self) -> str:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         if self._has_masks:
             return self._mask_image_filename_mask.format(self.target_frame_index)
         else:
             raise ValueError("Trying to retrieve mask path, but the current dataset is defined to have no masks!")
-        
-
-
-
-
