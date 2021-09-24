@@ -2,11 +2,12 @@ import torch
 import math
 import sys
 
-from settings import settings_general as opt
+from settings import process_arguments, Parameters
 from alignment import nn_utilities
 
 
 def evaluate(model, criterion, dataloader, batch_num, split):
+    process_arguments()
     dataset_obj = dataloader.dataset
     dataset_batch_size = dataloader.batch_size
     total_size = len(dataset_obj)
@@ -70,11 +71,18 @@ def evaluate(model, criterion, dataloader, batch_num, split):
         intrinsics           = intrinsics.cuda()
 
         batch_size = source.shape[0]
+        
+        alignment_image_width = Parameters.deform_net.alignment_image_width.value
+        alignment_image_height = Parameters.deform_net.alignment_image_height.value
 
         # Build data for coarser level
-        assert opt.alignment_image_height % 64 == 0 and opt.alignment_image_width % 64 == 0
-        optical_flow_gt2 = torch.nn.functional.interpolate(input=optical_flow_gt.clone() / 20.0, size=(opt.alignment_image_height // 4, opt.alignment_image_width // 4), mode='nearest')
-        optical_flow_mask2 = torch.nn.functional.interpolate(input=optical_flow_mask.clone().float(), size=(opt.alignment_image_height // 4, opt.alignment_image_width // 4), mode='nearest').bool()
+        assert alignment_image_height % 64 == 0 and alignment_image_width % 64 == 0
+        optical_flow_gt2 = torch.nn.functional.interpolate(input=optical_flow_gt.clone() / 20.0,
+                                                           size=(alignment_image_height // 4, alignment_image_width // 4),
+                                                           mode='nearest')
+        optical_flow_mask2 = torch.nn.functional.interpolate(input=optical_flow_mask.clone().float(),
+                                                             size=(alignment_image_height // 4, alignment_image_width // 4),
+                                                             mode='nearest').bool()
         assert(torch.isfinite(optical_flow_gt2).all().item())
         assert(torch.isfinite(optical_flow_mask2).all().item())
 
@@ -88,7 +96,9 @@ def evaluate(model, criterion, dataloader, batch_num, split):
                 evaluate=True, split=split
             )
             optical_flow_pred2 = model_data["flow_data"][0]
-            optical_flow_pred = 20.0 * torch.nn.functional.interpolate(input=optical_flow_pred2, size=(opt.alignment_image_height, opt.alignment_image_width), mode='bilinear', align_corners=False)
+            optical_flow_pred = 20.0 * torch.nn.functional.interpolate(input=optical_flow_pred2,
+                                                                       size=(alignment_image_height, alignment_image_width),
+                                                                       mode='bilinear', align_corners=False)
             
             translations_pred = model_data["node_translations"]
 
@@ -105,7 +115,8 @@ def evaluate(model, criterion, dataloader, batch_num, split):
                 target_matches, valid_target_matches,
                 source_points, valid_source_points,
                 scene_flow_gt, scene_flow_mask, target_boundary_mask,
-                opt.max_pos_flowed_source_to_target_dist, opt.min_neg_flowed_source_to_target_dist
+                Parameters.training.baseline.max_pos_flowed_source_to_target_dist.value,
+                Parameters.training.baseline.min_neg_flowed_source_to_target_dist.value
             )
 
             # Compute deformed point gt
@@ -126,10 +137,10 @@ def evaluate(model, criterion, dataloader, batch_num, split):
             )
 
             loss_sum            += loss.item()
-            loss_flow_sum       += loss_flow.item()     if opt.use_flow_loss        else -1
-            loss_graph_sum      += loss_graph.item()    if opt.use_graph_loss       else -1
-            loss_warp_sum       += loss_warp.item()     if opt.use_warp_loss        else -1
-            loss_mask_sum       += loss_mask.item()     if opt.use_mask_loss        else -1
+            loss_flow_sum       += loss_flow.item()     if Parameters.training.loss.use_flow_loss.value        else -1
+            loss_graph_sum      += loss_graph.item()    if Parameters.training.loss.use_graph_loss.value       else -1
+            loss_warp_sum       += loss_warp.item()     if Parameters.training.loss.use_warp_loss.value        else -1
+            loss_mask_sum       += loss_mask.item()     if Parameters.training.loss.use_mask_loss.value        else -1
 
             # Metrics.
             # A.1) End Point Error in Optical Flow for FINEST level

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from settings import settings_general as opt
+from settings import settings_general
 import numpy as np
 
 
@@ -31,7 +31,7 @@ class DeformLoss(torch.nn.Module):
         d_total = torch.zeros((1), dtype=flow_preds[0].dtype, device=flow_preds[0].device)
 
         d_flow = None
-        if opt.use_flow_loss:
+        if settings_general.use_flow_loss:
             if len(flow_gts) == 1:
                 d_flow = self.flow_loss(flow_gts[0], flow_preds[0], flow_masks[0])
             elif len(flow_gts) > 1:
@@ -49,17 +49,17 @@ class DeformLoss(torch.nn.Module):
             d_total += self.lambda_flow * d_flow
 
         d_graph = None
-        if opt.use_graph_loss:
+        if settings_general.use_graph_loss:
             d_graph = self.graph_loss(deformations_gt, deformations_pred, valid_solve, deformations_validity)
             d_total += self.lambda_graph * d_graph
 
         d_warp = None
-        if opt.use_warp_loss:
+        if settings_general.use_warp_loss:
             d_warp = self.warp_loss(warped_points_gt, warped_points_pred, warped_points_mask)
             d_total += self.lambda_warp * d_warp
 
         d_mask = None
-        if opt.use_mask_loss:
+        if settings_general.use_mask_loss:
             d_mask = self.mask_bce_loss(mask_gt, mask_pred, valid_pixels)
             d_total += self.lambda_mask * d_mask
 
@@ -102,8 +102,8 @@ class DeformLoss(torch.nn.Module):
         assert positives_num + negatives_num == torch.sum(valid_pixels_float)
 
         # Compute weights
-        if opt.use_fixed_mask_loss_neg_wrt_pos_weight:
-            weights = (opt.mask_neg_wrt_pos_weight * positives_mask) + negatives_mask
+        if settings_general.use_fixed_mask_loss_neg_wrt_pos_weight:
+            weights = (settings_general.mask_neg_wrt_pos_weight * positives_mask) + negatives_mask
         else:
             # Compute relationship between number of negative with respect to number of positive samples
             relative_neg_wrt_pos = negatives_num / positives_num

@@ -8,7 +8,7 @@ import open3d as o3d
 import data.io as dio
 import skimage.io
 
-from settings import settings_general
+from settings import process_arguments, Parameters
 from image_processing import image_processing2
 from warp_field.graph import DeformationGraphNumpy
 
@@ -31,6 +31,12 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
                                              enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
                                              enable_visual_debugging: bool = False) -> \
         typing.Tuple[DeformationGraphNumpy, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
+    # options
+
+    node_coverage = Parameters.graph.node_coverage.value
+    graph_debug = Parameters.graph.graph_debug.value
+
+
     # extract intrinsic coefficients
 
     fx = intrinsic_matrix[0, 0]
@@ -109,8 +115,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     # Sample graph nodes.
     node_coords, node_indices = sample_nodes_c(
         vertices, valid_vertices,
-        settings_general.node_coverage,
-        use_only_valid_vertices,
+        node_coverage, use_only_valid_vertices,
         sample_random_shuffle
     )
 
@@ -143,7 +148,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = \
         compute_edges_shortest_path_c(
             vertices, visible_vertices, faces, node_indices,
-            neighbor_count, settings_general.node_coverage, enforce_neighbor_count
+            neighbor_count, Parameters.graph.node_coverage.value, enforce_neighbor_count
         )
 
     # Remove nodes 
@@ -157,10 +162,10 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
         node_id_black_list = np.where(valid_nodes_mask == False)[0].tolist()
     else:
         node_id_black_list = []
-        if settings_general.graph_debug:
+        if graph_debug:
             print("You're allowing nodes with not enough neighbors!")
 
-    if settings_general.graph_debug:
+    if graph_debug:
         print("Node filtering: initial num nodes", num_nodes, "| invalid nodes", len(node_id_black_list), "({})".format(node_id_black_list))
 
     #########################################################################
@@ -169,10 +174,10 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     pixel_anchors, pixel_weights = compute_pixel_anchors_shortest_path_c(
         node_to_vertex_distances, valid_nodes_mask,
         vertices, vertex_pixels,
-        width, height, settings_general.node_coverage
+        width, height, node_coverage
     )
 
-    if settings_general.graph_debug:
+    if graph_debug:
         print("Valid pixels:", np.sum(np.all(pixel_anchors != -1, axis=2)))
 
     if enable_visual_debugging:
@@ -308,18 +313,21 @@ def save_graph_data(seq_dir: str, pair_name: str, node_coords: np.ndarray, graph
                     node_deformations: typing.Union[None, np.ndarray] = None,
                     pixel_anchors: typing.Union[None, np.ndarray] = None,
                     pixel_weights: typing.Union[None, np.ndarray] = None):
+
+    node_coverage = Parameters.graph.node_coverage.value
+
     dst_graph_nodes_dir, dst_graph_edges_dir, dst_pixel_weights_dir, dst_graph_edges_weights_dir, dst_graph_clusters_dir, \
     dst_node_deformations_dir, dst_pixel_anchors_dir, dst_pixel_weights_dir = generate_paths(seq_dir)
 
-    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
-    output_graph_edges_path = os.path.join(dst_graph_edges_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_graph_edges_path = os.path.join(dst_graph_edges_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir,
-                                                   pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
-    output_node_deformations_path = os.path.join(dst_node_deformations_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
-    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                   pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_node_deformations_path = os.path.join(dst_node_deformations_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
 
-    output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
-    output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+    output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
 
     dio.save_graph_nodes(output_graph_nodes_path, node_coords)
     dio.save_graph_edges(output_graph_edges_path, graph_edges)
@@ -340,23 +348,25 @@ def check_graph_data_against_ground_truth(seq_dir: str, ground_truth_pair_name: 
                                           node_deformations: typing.Union[None, np.ndarray] = None,
                                           pixel_anchors: typing.Union[None, np.ndarray] = None,
                                           pixel_weights: typing.Union[None, np.ndarray] = None):
+    node_coverage = Parameters.graph.node_coverage.value
+
     dst_graph_nodes_dir, dst_graph_edges_dir, dst_pixel_weights_dir, dst_graph_edges_weights_dir, dst_graph_clusters_dir, \
     dst_node_deformations_dir, dst_pixel_anchors_dir, dst_pixel_weights_dir = generate_paths(seq_dir)
 
     gt_output_graph_nodes_path = os.path.join(dst_graph_nodes_dir,
-                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_graph_edges_path = os.path.join(dst_graph_edges_dir,
-                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir,
-                                                      ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                      ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_node_deformations_path = os.path.join(dst_node_deformations_dir,
-                                                    ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                    ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_graph_clusters_path = os.path.join(dst_graph_clusters_dir,
-                                                 ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                 ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir,
-                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     gt_output_pixel_weights_path = os.path.join(dst_pixel_weights_dir,
-                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", settings_general.node_coverage))
+                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
 
     assert np.array_equal(node_coords, dio.load_graph_nodes(gt_output_graph_nodes_path))
     assert np.array_equal(graph_edges, dio.load_graph_edges(gt_output_graph_edges_path))
@@ -412,7 +422,7 @@ def main():
     #########################################################################
     slice_name = "train"
     sequence_number = 70
-    seq_dir = os.path.join(settings_general.dataset_base_directory, slice_name, f"seq{sequence_number:03d}")
+    seq_dir = os.path.join(Parameters.path.dataset_base_directory.value, slice_name, f"seq{sequence_number:03d}")
 
     start_frame_number = 0
     end_frame_number = 100
