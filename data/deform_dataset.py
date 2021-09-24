@@ -2,7 +2,6 @@ import os
 import json
 import typing
 
-from icecream import ic
 from torch.utils.data import Dataset
 import torch
 import numpy as np

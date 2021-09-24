@@ -4,12 +4,12 @@ import typing
 import open3d.core as o3c
 import torch
 from alignment.deform_net import DeformNet
-from settings import settings_general
+from settings.model import get_saved_model, ModelParameters
 from telemetry.telemetry_generator import TelemetryGenerator
 
 
 def load_default_nnrt_network(device_type: o3c.Device.DeviceType, telemetry_generator: typing.Union[TelemetryGenerator, None] = None) -> DeformNet:
-    saved_model = settings_general.saved_model
+    saved_model = get_saved_model()
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
     pretrained_dict = torch.load(saved_model)
@@ -25,10 +25,10 @@ def load_default_nnrt_network(device_type: o3c.Device.DeviceType, telemetry_gene
     if "chairs_things" in saved_model:
         deform_net.flow_net.load_state_dict(pretrained_dict)
     else:
-        if settings_general.model_module_to_load == "full_model":
+        if ModelParameters.model_module_to_load.value == "full_model":
             # Load completely alignment
             deform_net.load_state_dict(pretrained_dict)
-        elif settings_general.model_module_to_load == "only_flow_net":
+        elif ModelParameters.model_module_to_load.value == "only_flow_net":
             # Load only optical flow part
             model_dict = deform_net.state_dict()
             # 1. filter out unnecessary keys
@@ -38,7 +38,7 @@ def load_default_nnrt_network(device_type: o3c.Device.DeviceType, telemetry_gene
             # 3. load the new state dict
             deform_net.load_state_dict(model_dict)
         else:
-            print(settings_general.model_module_to_load, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
+            print(ModelParameters.model_module_to_load.value, "is not a valid argument (A: 'full_model', B: 'only_flow_net')")
             exit()
 
     deform_net.eval()

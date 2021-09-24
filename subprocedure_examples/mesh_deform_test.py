@@ -14,7 +14,8 @@ import sys
 
 import open3d as o3d
 import numpy as np
-from settings import settings_general
+from settings import GraphParameters
+
 from data import DeformDataset
 from dq3d import quat, dualquat
 from dq3d import op
@@ -59,7 +60,7 @@ def main():
 
     # Compute vertex anchors & weights
     vertices = np.array(mesh200.vertices)
-    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, settings_general.node_coverage)
+    vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(graph_nodes, vertices, GraphParameters.node_coverage.value)
 
     i_vertex = 0
     deformed_vertices = np.zeros_like(vertices)

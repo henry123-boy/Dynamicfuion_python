@@ -8,8 +8,8 @@ import re
 
 from data import camera
 from data.presets import StandaloneFramePreset, StandaloneFrameDataset
-from settings import settings_general
 from tsdf_management.default_voxel_grid import make_default_tsdf_voxel_grid
+from settings import PathParameters
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -92,7 +92,8 @@ def main():
                                       lookat=[0, 0, 1.5],
                                       up=[0, -1.0, 0],
                                       zoom=0.7)
-    o3d.io.write_triangle_mesh(os.path.join(settings_general.output_directory, f"mesh_{dataset.frame_index:06d}_{dataset_name}.ply"), mesh)
+    o3d.io.write_triangle_mesh(os.path.join(PathParameters.output_directory.value,
+                                            f"mesh_{dataset.frame_index:06d}_{dataset_name}.ply"), mesh)
 
     return PROGRAM_EXIT_SUCCESS
 

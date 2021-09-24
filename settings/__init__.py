@@ -2,7 +2,7 @@ import os
 from typing import Type
 from pathlib import Path
 
-from ext_argparse import ParameterEnum
+from ext_argparse import ParameterEnum, Parameter
 
 from settings.deform_net import DeformNetParameters
 from settings.path import PathParameters
@@ -13,6 +13,8 @@ from settings.tsdf import TsdfParameters
 from settings.fusion import TrackingParameters, IntegrationParameters, VisualizationParameters, \
     LoggingParameters, TelemetryParameters, FusionParameters
 
+from settings.split import Split
+
 
 class Parameters(ParameterEnum):
     model: Type[ModelParameters] = ModelParameters
@@ -22,6 +24,8 @@ class Parameters(ParameterEnum):
     fusion: Type[FusionParameters] = FusionParameters
     training: Type[TrainingParameters] = TrainingParameters
     graph: Type[GraphParameters] = GraphParameters
+    generate_split = Parameter(default=Split.VALIDATION, arg_type=Split,
+                               arg_help="Specify the dataset split for which to generate predictions")
 
 
 def process_arguments(help_header="A Neural Non-Rigid Fusion Application"):
