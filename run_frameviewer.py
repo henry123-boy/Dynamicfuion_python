@@ -1,8 +1,11 @@
 #!/usr/bin/python3
+from pathlib import Path
+
 import sys
-import argparse
-from apps.frameviewer.frameviewer import FrameViewerApp
-from settings import settings_general
+from apps.frameviewer.frameviewer import FrameViewerApp, CameraProjection
+from data.camera import load_intrinsic_matrix_entries_from_text_4x4_matrix
+from settings.frameviewer import FrameviewerParameters
+from ext_argparse import process_arguments
 import os.path
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -10,20 +13,27 @@ PROGRAM_EXIT_FAILURE = -1
 
 
 def main():
-    parser = argparse.ArgumentParser("App for visualizing RGB-D frame data.")
-    parser.add_argument("--input", "-i", type=str, help="Path to folder with frame data",
-                        default=os.path.join(settings_general.dataset_base_directory, "train/seq070"))
-    parser.add_argument("--output", "-o", type=str, help="Path to output folder",
-                        default=settings_general.default_output_directory)
-    args = parser.parse_args()
-    print("Reading data from ", args.input)
+    default_configuration_path = os.path.join(Path(__file__).parent.resolve(), "configuration_files/frameviewer_parameters.yaml")
+    process_arguments(FrameviewerParameters, "An app to view a masked RGB-D sequence frame-by-frame and analyze target"
+                                             "hash blocks for the surface (in a spatially-hashed voxel volume)."
+                                             "Also allows to determine the optimal threshold for masking. ",
+                      default_settings_file=default_configuration_path,
+                      generate_default_settings_if_missing=True)
+    print("Reading data from ", FrameviewerParameters.input.value)
 
-    app = FrameViewerApp(args.input, args.output, 0)
+    FrameViewerApp.VOXEL_BLOCK_SIZE_METERS = \
+        FrameviewerParameters.tsdf.voxel_size.value * FrameviewerParameters.tsdf.block_resolution.value
+    FrameViewerApp.VOXEL_BLOCK_SIZE_VOXELS = FrameviewerParameters.tsdf.block_resolution.value
+    FrameViewerApp.VOXEL_SIZE = FrameviewerParameters.tsdf.voxel_size.value
+
+    fx, fy, cx, cy = load_intrinsic_matrix_entries_from_text_4x4_matrix(os.path.join(FrameviewerParameters.input.value, "intrinsics.txt"))
+    FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
+
+    app = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value, 0)
     app.launch()
 
     return PROGRAM_EXIT_SUCCESS
 
 
-# Warning: not currently supported and most-likely, broken!
 if __name__ == "__main__":
     sys.exit(main())

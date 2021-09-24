@@ -22,7 +22,7 @@ import ext_argparse
 from settings.model import get_saved_model
 
 if __name__ == "__main__":
-    process_arguments()
+    args = process_arguments()
     torch.set_num_threads(Parameters.training.num_threads.value)
     torch.backends.cudnn.benchmark = False
 
@@ -48,11 +48,6 @@ if __name__ == "__main__":
     print("validation_labels_name          ", validation_labels_name)
     print()
 
-    # use_current_hyper = query.query_yes_no("\nThe above hyperparameters will be used. Do you wish to continue?", "yes")
-    # if not use_current_hyper:
-    #     print("Exiting. Please modify settings_general.py and run this script again.")
-    #     exit()
-
     #####################################################################################
     # Creating tf writer and folders 
     #####################################################################################
@@ -71,8 +66,8 @@ if __name__ == "__main__":
     val_writer = SummaryWriter(val_log_dir)
 
     # Copy the current options to the log directory.
-    options_file_in = os.path.abspath(os.path.join(os.path.dirname(__file__), "../settings/settings_general.py"))
-    options_file_out = os.path.join(log_dir, "settings.py")
+    options_file_in = args.settings_file
+    options_file_out = os.path.join(log_dir, "settings.yaml")
     copyfile(options_file_in, options_file_out)
 
     # Creation of alignment dir.

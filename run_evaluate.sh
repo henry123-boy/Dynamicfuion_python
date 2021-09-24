@@ -1,6 +1,6 @@
 
 # Specify the dataset split for which to run evaluation
-SPLIT="val"
+SPLIT="VALIDATION"
 
 export PYTHONPATH="$(pwd):$PYTHONPATH"
-python3 apps/evaluate.py --split=${SPLIT}
+python3 apps/evaluate.py --evaluate_split=${SPLIT}
