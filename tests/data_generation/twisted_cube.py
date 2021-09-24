@@ -10,7 +10,6 @@ from scipy.spatial.transform.rotation import Rotation
 
 import data.io as dio
 from settings import settings_general
-from rendering import Camera
 from warp_field.graph import DeformationGraphOpen3D
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 
@@ -123,6 +122,7 @@ def main():
     clusters_o3d = o3c.Tensor(np.zeros((len(nodes), 1), dtype=int), device=device)
 
     # setup cameras and renderer
+    # FIXME
     camera = Camera(800, 800)
     intrinsics_open3d_cuda = o3c.Tensor(camera.get_intrinsic_matrix(), device=device)
     extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)

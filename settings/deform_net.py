@@ -88,6 +88,7 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=0.1, arg_type=float,
                   arg_help="Small damping factor applied to the A=J^TJ matrix during the optimization.")
 
+    # TODO: group the next three into DeformNetDataParameters subcategory
     alignment_image_width = \
         Parameter(default=640, arg_type=int,
                   arg_help="Input image/point cloud height for the non-rigid alignment portion of the algorithm. "
@@ -98,6 +99,12 @@ class DeformNetParameters(ParameterEnum):
                   arg_help="Input image/point cloud width for the non-rigid alignment portion of the algorithm. "
                            "The actual image / point cloud will be cropped down to this width and intrinsic matrix "
                            "adjusted accordingly.")
+    max_boundary_dist = \
+        Parameter(default=0.10, arg_type=float,
+                  arg_help="Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel "
+                           "points within the point cloud based on the depth image exceed this distance from each other, "
+                           "the boundaries are drawn along the break.")
+
     # TODO: depth_scale should be part of dataset & loaded from disk!
     depth_scale = \
         Parameter(default=1000.0, arg_type=float,
@@ -110,11 +117,7 @@ class DeformNetParameters(ParameterEnum):
                   arg_help="Freeze/disable MaskNet during alignment.")
     skip_solver = \
         Parameter(default=False, arg_type='bool_flag', arg_help="Skip Gauss-Newton optimization during alignment.")
-    max_boundary_dist = \
-        Parameter(default=0.10, arg_type=float,
-                  arg_help="Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel "
-                           "points within the point cloud based on the depth image exceed this distance from each other, "
-                           "the boundaries are drawn along the break.")
+
     # TODO: need to replace threshold_mask_predictions & patchwise_threshold_mask_predictions with an enum specifying
     #  masking mode (i.e. [NO_THRESHOLD, HARD_THRESHOLD, PATCHWISE_THRESHOLD].
     #  Original code had:
@@ -136,3 +139,9 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=False, arg_type='bool_flag',
                   arg_help="Mask patch size when the patch-wise threshold is used during mask application in "
                            "the alignment.")
+    use_mask = \
+        Parameter(default=True, arg_type='bool_flag',
+                  arg_help="DeformNet will use correspondence masking via MaskNet if enabled.")
+    use_batch_norm = \
+        Parameter(default=False, arg_type='bool_flag',
+                  arg_help="Use batch normalization.")

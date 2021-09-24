@@ -1,4 +1,5 @@
 import os
+from typing import Type
 from pathlib import Path
 
 from ext_argparse import ParameterEnum
@@ -14,13 +15,13 @@ from settings.fusion import TrackingParameters, IntegrationParameters, Visualiza
 
 
 class Parameters(ParameterEnum):
-
-    model = ModelParameters
-    deform_net = DeformNetParameters
-    path = PathParameters
-    tsdf = TsdfParameters
-    fusion = FusionParameters
-    training = TrainingParameters
+    model: Type[ModelParameters] = ModelParameters
+    deform_net: Type[DeformNetParameters] = DeformNetParameters
+    path: Type[PathParameters] = PathParameters
+    tsdf: Type[TsdfParameters] = TsdfParameters
+    fusion: Type[FusionParameters] = FusionParameters
+    training: Type[TrainingParameters] = TrainingParameters
+    graph: Type[GraphParameters] = GraphParameters
 
 
 def process_arguments(help_header="A Neural Non-Rigid Fusion Application"):

@@ -17,7 +17,7 @@ class DeformLoss(torch.nn.Module):
         elif flow_loss_type == 'L2':
             self.flow_loss = L2()
         else:
-            raise Exception("Loss type {} is not defined. Valid losses are 'RobustL1' or 'L2'".format(flow_loss_type))
+            raise Exception(f"Loss type {flow_loss_type} is not defined. Valid losses are 'RobustL1' or 'L2'")
 
         self.graph_loss = BatchGraphL2()
         self.warp_loss = L2_Warp()

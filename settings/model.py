@@ -1,3 +1,19 @@
+#  ================================================================
+#  Created by Gregory Kramida (https://github.com/Algomorph).
+#  Copyright (c) 2021 Gregory Kramida
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#  ================================================================
+
 from ext_argparse import ParameterEnum, Parameter
 
 
@@ -16,3 +32,11 @@ class ModelParameters(ParameterEnum):
     model_iteration = \
         Parameter(default=0, arg_type=int,
                   arg_help="Iteration number of the model to load.")
+
+
+def get_saved_model():
+    from settings.path import PathParameters
+    import os
+    return os.path.join(PathParameters.nn_data_directory.value, "models",
+                        ModelParameters.model_name.value,
+                        f"{ModelParameters.model_name.value}_{ModelParameters.model_iteration.value}.pt")

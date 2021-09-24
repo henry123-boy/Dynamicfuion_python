@@ -15,46 +15,37 @@ from tensorboardX import SummaryWriter
 
 from alignment.default import load_default_nnrt_network
 from data import DeformDataset
-from settings import settings_general
-from alignment import DeformNet, DeformLoss, SnapshotManager, TimeStatistics
+from alignment import DeformLoss, SnapshotManager, TimeStatistics
+from settings import process_arguments, Parameters
+import ext_argparse
+
+from settings.model import get_saved_model
 
 if __name__ == "__main__":
-    torch.set_num_threads(settings_general.num_threads)
+    process_arguments()
+    torch.set_num_threads(Parameters.training.num_threads.value)
     torch.backends.cudnn.benchmark = False
 
-    # Parse command line arguments.
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--train_dir', action='store', dest='train_dir', help='Provide a subfolder with training data')
-    parser.add_argument('--val_dir', action='store', dest='val_dir', help='Provide a subfolder with SPARSE validation data')
-    parser.add_argument('--experiment', action='store', dest='experiment', help='Provide an experiment name')
-    parser.add_argument('--date', action='store', dest='date', help='Provide a date in the format %Y-%m-%d (if you do not want current date)')
+    # Training set
+    train_labels_name = Parameters.training.train_labels_name.value
 
-    args = parser.parse_args()
+    # Validation set
+    validation_labels_name = Parameters.training.validation_labels_name.value
 
-    # Train set 
-    train_dir = args.train_dir
+    timestamp = Parameters.training.timestamp.value
 
-    # Val set
-    val_dir = args.val_dir
-
-    experiment_name = args.experiment
-    if not experiment_name:
-        clock = datetime.now().strftime('%H-%M-%S')
-        experiment_name = "{}_default".format(clock)
-
-    date = args.date
-    if not date:
-        date = datetime.now().strftime('%Y-%m-%d')
+    experiment_name = Parameters.training.experiment.value
 
     #####################################################################################
     # Ask user input regarding the use of data augmentation
     #####################################################################################
     # Confirm hyperparameters
-    settings_general.print_hyperparameters()
+    print("===== TRAINING HYPERPARAMETERS =====")
+    ext_argparse.dump(Parameters.training)
 
     print()
-    print("train_dir        ", train_dir)
-    print("val_dir          ", val_dir)
+    print("train_labels_name        ", train_labels_name)
+    print("validation_labels_name          ", validation_labels_name)
     print()
 
     # use_current_hyper = query.query_yes_no("\nThe above hyperparameters will be used. Do you wish to continue?", "yes")
@@ -66,12 +57,12 @@ if __name__ == "__main__":
     # Creating tf writer and folders 
     #####################################################################################
     # Writer initialization.
-    tf_runs = os.path.join(settings_general.nn_data_directory, "tf_runs")
-    log_name = "{0}_{1}".format(date, experiment_name)
+    tf_runs = os.path.join(Parameters.path.nn_data_directory.value, "tf_runs")
+    log_name = "{0}_{1}".format(timestamp, experiment_name)
     log_dir = os.path.join(tf_runs, log_name)
 
-    train_log_dir = log_dir + "/" + train_dir
-    val_log_dir = log_dir + "/" + val_dir
+    train_log_dir = log_dir + "/" + train_labels_name
+    val_log_dir = log_dir + "/" + validation_labels_name
     if train_log_dir == val_log_dir:
         train_log_dir = train_log_dir + "_0"
         val_log_dir = val_log_dir + "_1"
@@ -85,7 +76,7 @@ if __name__ == "__main__":
     copyfile(options_file_in, options_file_out)
 
     # Creation of alignment dir.
-    training_models = os.path.join(settings_general.nn_data_directory, "models")
+    training_models = os.path.join(Parameters.path.nn_data_directory.value, "models")
     if not os.path.exists(training_models): os.mkdir(training_models)
     saving_model_dir = os.path.join(training_models, log_name)
     if not os.path.exists(saving_model_dir): os.mkdir(saving_model_dir)
@@ -94,15 +85,16 @@ if __name__ == "__main__":
     # Initializing: alignment, criterion, optimizer, learning scheduler...
     #####################################################################################
     # Load alignment, loss and optimizer.
-    saved_model = settings_general.saved_model
+    saved_model = get_saved_model()
 
     iteration_number = 0
 
     model = load_default_nnrt_network(o3c.Device.CUDA)
 
     # Criterion.
-    criterion = DeformLoss(settings_general.lambda_flow, settings_general.lambda_graph, settings_general.lambda_warp, settings_general.lambda_mask,
-                           settings_general.flow_loss_type)
+    criterion = DeformLoss(Parameters.training.loss.lambda_flow.value, Parameters.training.loss.lambda_graph.value,
+                           Parameters.training.loss.lambda_warp.value, Parameters.training.loss.lambda_mask.value,
+                           Parameters.training.loss.flow_loss_type.value)
 
     # Count parameters.
     n_all_model_params = int(sum([np.prod(p.size()) for p in model.parameters()]))
@@ -118,22 +110,27 @@ if __name__ == "__main__":
     print("-> Mask network: {0} / {1}".format(n_trainable_masknet_params, n_all_masknet_params))
     print()
 
+    learning_parameters = Parameters.training.learning
+    loss_parameters = Parameters.training.loss
+
     # Set up optimizer.
-    if settings_general.use_adam:
-        optimizer = torch.optim.Adam(model.parameters(), settings_general.learning_rate, weight_decay=settings_general.weight_decay)
+    if Parameters.training.learning.use_adam.value:
+        optimizer = torch.optim.Adam(model.parameters(), learning_parameters.learning_rate.value,
+                                     weight_decay=learning_parameters.weight_decay.value)
     else:
-        optimizer = torch.optim.SGD(model.parameters(), lr=settings_general.learning_rate, momentum=settings_general.momentum,
-                                    weight_decay=settings_general.weight_decay)
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_parameters.learning_rate.value,
+                                    momentum=learning_parameters.momentum.value,
+                                    weight_decay=learning_parameters.weight_decay.value)
 
     # Initialize training.
     train_writer.add_text("/hyperparams",
-                          "Batch size: " + str(settings_general.batch_size)
-                          + ",\nLearning rate:" + str(settings_general.learning_rate)
-                          + ",\nEpochs: " + str(settings_general.epochs)
-                          + ",\nuse_flow_loss: " + str(settings_general.use_flow_loss)
-                          + ",\nuse_graph_loss: " + str(settings_general.use_graph_loss)
-                          + ",\nuse_mask: " + str(settings_general.use_mask)
-                          + ",\nuse_mask_loss: " + str(settings_general.use_mask_loss))
+                          "Batch size: " + str(learning_parameters.batch_size.value)
+                          + ",\nLearning rate:" + str(learning_parameters.learning_rate.value)
+                          + ",\nEpochs: " + str(learning_parameters.epochs.value)
+                          + ",\nuse_flow_loss: " + str(loss_parameters.use_flow_loss.value)
+                          + ",\nuse_graph_loss: " + str(loss_parameters.use_graph_loss.value)
+                          + ",\nuse_mask: " + str(Parameters.deform_net.use_mask.value)
+                          + ",\nuse_mask_loss: " + str(loss_parameters.use_mask_loss.value))
 
     # Initialize snaphost manager for alignment snapshot creation.
     snapshot_manager = SnapshotManager(log_name, saving_model_dir)
@@ -142,15 +139,15 @@ if __name__ == "__main__":
     time_statistics = TimeStatistics()
 
     # Learning rate scheduler.
-    if settings_general.use_lr_scheduler:
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=settings_general.step_lr, gamma=0.1, last_epoch=-1)
+    if learning_parameters.use_lr_scheduler.value:
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=learning_parameters.step_lr.value, gamma=0.1, last_epoch=-1)
         for i in range(iteration_number):
             scheduler.step()
 
     # Compute the number of worker threads for data loading.
     # 0 means that the base thread does all the job (that makes sense when hdf5 is already loaded into memory).
-    num_train_workers = settings_general.num_worker_threads
-    num_val_workers = settings_general.num_worker_threads
+    num_train_workers = Parameters.training.num_worker_threads.value
+    num_val_workers = Parameters.training.num_worker_threads.value
 
     #####################################################################################
     # Create datasets and dataloaders
@@ -161,22 +158,24 @@ if __name__ == "__main__":
     # VAL dataset
     #####################################################################################
     val_dataset = DeformDataset(
-        settings_general.dataset_base_directory, val_dir,
-        settings_general.alignment_image_width, settings_general.alignment_image_height, settings_general.max_boundary_dist
+        Parameters.path.dataset_base_directory.value, validation_labels_name,
+        Parameters.deform_net.alignment_image_width.value,
+        Parameters.deform_net.alignment_image_height.value,
+        Parameters.deform_net.max_boundary_dist.value
     )
 
     val_dataloader = torch.utils.data.DataLoader(
-        dataset=val_dataset, shuffle=settings_general.shuffle,
-        batch_size=settings_general.batch_size, num_workers=num_val_workers,
+        dataset=val_dataset, shuffle=Parameters.training.shuffle.value,
+        batch_size=learning_parameters.batch_size.value, num_workers=num_val_workers,
         collate_fn=DeformDataset.collate_with_padding, pin_memory=True
     )
 
     print("Num. validation samples: {0}".format(len(val_dataset)))
 
-    if len(val_dataset) < settings_general.batch_size:
+    if len(val_dataset) < learning_parameters.batch_size.value:
         print()
         print("Reduce the batch_size, since we only have {} validation samples but you indicated a batch_size of {}".format(
-            len(val_dataset), settings_general.batch_size)
+            len(val_dataset), learning_parameters.batch_size.value)
         )
         exit()
 
@@ -184,29 +183,31 @@ if __name__ == "__main__":
     # TRAIN dataset
     #####################################################################################
     train_dataset = DeformDataset(
-        settings_general.dataset_base_directory, train_dir,
-        settings_general.alignment_image_width, settings_general.alignment_image_height, settings_general.max_boundary_dist
+        Parameters.path.dataset_base_directory.value, train_labels_name,
+        Parameters.deform_net.alignment_image_width.value,
+        Parameters.deform_net.alignment_image_height.value,
+        Parameters.deform_net.max_boundary_dist.value
     )
 
     train_dataloader = torch.utils.data.DataLoader(
-        dataset=train_dataset, batch_size=settings_general.batch_size,
-        shuffle=settings_general.shuffle, num_workers=num_train_workers,
+        dataset=train_dataset, batch_size=learning_parameters.batch_size.value,
+        shuffle=Parameters.training.shuffle.value, num_workers=num_train_workers,
         collate_fn=DeformDataset.collate_with_padding, pin_memory=True
     )
 
     print("Num. training samples: {0}".format(len(train_dataset)))
     print()
 
-    if len(train_dataset) < settings_general.batch_size:
+    if len(train_dataset) < learning_parameters.batch_size.value:
         print()
         print("Reduce the batch_size, since we only have {} training samples but you indicated a batch_size of {}".format(
-            len(train_dataset), settings_general.batch_size)
+            len(train_dataset), learning_parameters.batch_size.value)
         )
         exit()
 
     # Execute training.
     try:
-        for epoch in range(0, settings_general.epochs):
+        for epoch in range(0, learning_parameters.epochs.value):
             print()
             print()
             print("Epoch: {0}".format(epoch))
@@ -218,14 +219,16 @@ if __name__ == "__main__":
                 #####################################################################################
                 # Validation.
                 #####################################################################################
-                if settings_general.do_validation and iteration_number % settings_general.evaluation_frequency == 0:
+                if Parameters.training.do_validation.value and \
+                        iteration_number % learning_parameters.evaluation_frequency.value == 0:
                     model.eval()
 
                     eval_start = timer()
 
                     # Compute train and validation metrics.
-                    num_samples = settings_general.num_samples_eval
-                    num_eval_batches = math.ceil(num_samples / settings_general.batch_size)  # We evaluate on approximately 1000 samples.
+                    num_samples = Parameters.training.num_samples_eval.value
+                    # We evaluate on approximately 1000 samples.
+                    num_eval_batches = math.ceil(num_samples / learning_parameters.batch_size.value)
 
                     print()
                     print("Train evaluation")
@@ -313,7 +316,8 @@ if __name__ == "__main__":
 
                 else:
                     sys.stdout.write("\r############# Train iteration: {0} / {1} (of Epoch {2}) - {3}".format(
-                        iteration_number % settings_general.evaluation_frequency + 1, settings_general.evaluation_frequency, epoch, experiment_name)
+                        iteration_number % learning_parameters.evaluation_frequency.value + 1,
+                        learning_parameters.evaluation_frequency.value, epoch, experiment_name)
                     )
                     sys.stdout.flush()
 
@@ -360,7 +364,7 @@ if __name__ == "__main__":
 
                 # Invalidate too for too far away estimations, since they can produce
                 # noisy gradient information.
-                if settings_general.gn_invalidate_too_far_away_translations:
+                if Parameters.training.gn_invalidate_too_far_away_translations.value:
                     with torch.no_grad():
                         batch_size = model_data["node_translations"].shape[0]
                         for i in range(batch_size):
@@ -373,14 +377,16 @@ if __name__ == "__main__":
                             epe = torch.norm(diff, p=2, dim=1)
                             mean_error = epe.sum().item() / num_nodes_i
 
-                            if mean_error > settings_general.gn_max_mean_translation_error:
+                            if mean_error > Parameters.training.gn_max_mean_translation_error.value:
                                 print("\t\tToo big mean translation error: {}".format(mean_error))
                                 model_data["valid_solve"][i] = 0
 
                 with torch.no_grad():
                     # Downscale groundtruth flow
                     flow_gts, flow_masks = nn_utilities.downscale_gt_flow(
-                        optical_flow_gt, optical_flow_mask, settings_general.alignment_image_height, settings_general.alignment_image_width
+                        optical_flow_gt, optical_flow_mask,
+                        Parameters.deform_net.alignment_image_height.value,
+                        Parameters.deform_net.alignment_image_width.value
                     )
 
                     # Compute mask gt for mask baseline
@@ -393,7 +399,8 @@ if __name__ == "__main__":
                         target_matches, valid_target_matches,
                         source_points, valid_source_points,
                         scene_flow_gt, scene_flow_mask, target_boundary_mask,
-                        settings_general.max_pos_flowed_source_to_target_dist, settings_general.min_neg_flowed_source_to_target_dist
+                        Parameters.training.baseline.max_pos_flowed_source_to_target_dist.value,
+                        Parameters.training.baseline.min_neg_flowed_source_to_target_dist.value
                     )
 
                     # Compute deformed point gt
@@ -425,12 +432,13 @@ if __name__ == "__main__":
                 train_batch_backprop = timer()
 
                 # We only backprop if any of the losses is non-zero.
-                if settings_general.use_flow_loss or settings_general.use_mask_loss or torch.sum(model_data["valid_solve"]) > 0:
+                if Parameters.training.loss.use_flow_loss.value or \
+                        Parameters.training.loss.use_mask_loss.value or torch.sum(model_data["valid_solve"]) > 0:
                     optimizer.zero_grad()
                     loss.backward()
-
                     optimizer.step()
-                    if settings_general.use_lr_scheduler: scheduler.step()
+                    if learning_parameters.use_lr_scheduler.value:
+                        scheduler.step()
 
                 else:
                     print("No valid loss, skipping backpropagation!")
@@ -439,7 +447,7 @@ if __name__ == "__main__":
 
                 time_statistics.train_duration += (timer() - train_batch_start)
 
-                if iteration_number % settings_general.evaluation_frequency == 0:
+                if iteration_number % learning_parameters.evaluation_frequency.value == 0:
                     # Store the latest alignment snapshot, if the required elased time has passed.
                     snapshot_manager.save_model(model, iteration_number)
 

@@ -17,10 +17,10 @@ from data.cropping import StaticCenterCrop
 
 
 class DeformDataset(Dataset):
-    def __init__(self, dataset_base_dir, data_version,
+    def __init__(self, dataset_base_dir, labels_filename,
                  input_width, input_height, max_boundary_dist):
         self.dataset_base_dir = dataset_base_dir
-        self.data_version_json = os.path.join(self.dataset_base_dir, data_version + ".json")
+        self.labels_path = os.path.join(self.dataset_base_dir, labels_filename + ".json")
 
         self.input_width = input_width
         self.input_height = input_height
@@ -32,7 +32,7 @@ class DeformDataset(Dataset):
         self._load()
 
     def _load(self):
-        with open(self.data_version_json) as f:
+        with open(self.labels_path) as f:
             self.labels = json.loads(f.read())
 
     def __len__(self):
