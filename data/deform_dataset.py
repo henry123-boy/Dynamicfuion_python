@@ -10,7 +10,7 @@ from multipledispatch import dispatch
 
 from data.io import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
     load_graph_clusters, load_int_image, load_float_image
-from image_processing import image_processing2 as image_utils
+import image_processing
 
 from data.cropping import StaticCenterCrop
 
@@ -86,7 +86,7 @@ class DeformDataset(Dataset):
         cx = data["intrinsics"]["cx"]
         cy = data["intrinsics"]["cy"]
 
-        fx, fy, cx, cy = image_utils.modify_intrinsics_due_to_cropping(
+        fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
             fx, fy, cx, cy, self.input_height, self.input_width, original_h=480, original_w=640
         )
 
@@ -126,9 +126,9 @@ class DeformDataset(Dataset):
             -> typing.Tuple[np.ndarray, typing.Union[np.ndarray, None], StaticCenterCrop]:
         # Backproject depth image.
         if len(depth_or_point_image.shape) == 2:
-            depth_or_point_image = image_utils.backproject_depth(depth_or_point_image,
-                                                                 intrinsics["fx"], intrinsics["fy"],
-                                                                 intrinsics["cx"], intrinsics["cy"])  # (h, w, 3)
+            depth_or_point_image = image_processing.backproject_depth(depth_or_point_image,
+                                                                      intrinsics["fx"], intrinsics["fy"],
+                                                                      intrinsics["cx"], intrinsics["cy"])  # (h, w, 3)
             point_image = depth_or_point_image.astype(np.float32)
         else:
             assert len(depth_or_point_image.shape) == 3 and depth_or_point_image.shape[2] == 3
@@ -156,7 +156,7 @@ class DeformDataset(Dataset):
             return image_rgbxyz, None, cropper
         else:
             assert max_boundary_dist
-            boundary_mask = image_utils.compute_boundary_mask(depth_or_point_image, max_boundary_dist)
+            boundary_mask = image_processing.compute_boundary_mask(depth_or_point_image, max_boundary_dist)
             return image_rgbxyz, boundary_mask, cropper
 
     @staticmethod

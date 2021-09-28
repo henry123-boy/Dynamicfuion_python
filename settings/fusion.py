@@ -16,6 +16,9 @@
 
 from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
+
+from typing import Type
+
 from data.presets import FrameSequencePreset
 
 
@@ -115,6 +118,7 @@ class VisualizationParameters(ParameterEnum):
                   arg_help="Controls extra visualization during the runtime of the fusion program.")
 
 
+# TODO: Remove the "_to_disk" suffixes where present
 class LoggingParameters(ParameterEnum):
     record_visualization_to_disk = \
         Parameter(default=False, arg_type='bool_flag',
@@ -139,15 +143,15 @@ class LoggingParameters(ParameterEnum):
 
 
 class TelemetryParameters(ParameterEnum):
-    verbosity = VerbosityParameters
-    visualization = VisualizationParameters
-    logging = LoggingParameters
+    verbosity: Type[VerbosityParameters] = VerbosityParameters
+    visualization: Type[VisualizationParameters] = VisualizationParameters
+    logging: Type[LoggingParameters] = LoggingParameters
 
 
 class FusionParameters(ParameterEnum):
     sequence_preset = \
         Parameter(default=FrameSequencePreset.BERLIN_50_SOD_MASKS, arg_type=FrameSequencePreset,
                   arg_help="Which sequence preset to use during the run.")
-    tracking = TrackingParameters
-    integration = IntegrationParameters
-    telemetry = TelemetryParameters
+    tracking: Type[TrackingParameters] = TrackingParameters
+    integration: Type[IntegrationParameters] = IntegrationParameters
+    telemetry: Type[TelemetryParameters] = TelemetryParameters

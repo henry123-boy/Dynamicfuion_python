@@ -9,7 +9,7 @@ import data.io as dio
 import skimage.io
 
 from settings import process_arguments, Parameters
-from image_processing import image_processing2
+import image_processing
 from warp_field.graph import DeformationGraphNumpy
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
@@ -56,7 +56,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     depth_image = depth_image * mask_image
 
     # Backproject depth images into 3D.
-    point_image = image_processing2.backproject_depth(depth_image, fx, fy, cx, cy, depth_scale=depth_scale_reciprocal)
+    point_image = image_processing.backproject_depth(depth_image, fx, fy, cx, cy, depth_scale=depth_scale_reciprocal)
     point_image = point_image.astype(np.float32)
 
     # Convert depth image into mesh, using pixel-wise connectivity.

@@ -37,7 +37,7 @@ The build requires CMake 3.18 or above. You may find [these instructions](media/
 Python 3.8 or above is required. Check out the official [website](https://www.python.org/downloads/) for a distributive for your platform, if needed. In addition, working `pip` package is required to set up other dependencies (typically, included with the Python installation; if not, the [get-pip.py](https://pip.pypa.io/en/stable/installation/) is the recommended way to obtain it, even for Ubuntu users.) 
 
 #### PyTorch ####
-PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally).
+PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Of note is that PyTorch for CUDA 11.1 seems to work fine with CUDA 11.1 _through_ 11.4.
 
 #### Open3D ####
 Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `9a49100bc` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
@@ -54,7 +54,7 @@ As far as CMake build targets go, the `nnrt_cpp` target is only necessary to bui
 
 #### Other Python Dependencies ####
 
-The rest of the dependencies can normally be installed by simply running ```pip install -r requirements.txt```. Some (like `CuPy`) may take a while to build.
+The only one that stands out is [CuPy](https://docs.cupy.dev/en/stable/install.html), which we recommend preinstalling via pip using the prebuilt-binary version matching your exact CUDA version, e.g. `pip install cupy-cuda111` for CUDA 11.1. Installing directly via `pip install cupy` will force CuPy to be built from source (which can take a long time) and also might produce a bug requiring you to reordering your imports, such that CuPy is always imported before PyTorch. The rest of the dependencies can normally be installed by simply running `pip install -r requirements.txt`.
 
 ### Preparing the Data ###
 

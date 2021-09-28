@@ -12,13 +12,11 @@ import open3d.core as o3c
 # local
 from alignment.default import load_default_nnrt_network
 from data.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
-import image_processing.image_processing2
-from settings.model import get_saved_model
-from telemetry.visualization import tracking as tracking_viz
-
-from settings import process_arguments, Parameters
-
 from data import FramePairDataset, FramePairPreset, DeformDataset
+from telemetry.visualization import tracking as tracking_viz
+import image_processing
+from settings import process_arguments, Parameters
+from settings.model import get_saved_model
 
 
 # TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
@@ -95,7 +93,7 @@ def main():
     num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
     # Update intrinsics to reflect the crops
-    fx, fy, cx, cy = image_processing.image_processing2.modify_intrinsics_due_to_cropping(
+    fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
         intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
         image_height, image_width, original_h=cropper.h, original_w=cropper.w
     )

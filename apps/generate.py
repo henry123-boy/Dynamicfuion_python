@@ -11,10 +11,9 @@ import open3d.core as o3c
 
 # local
 
-from image_processing import image_processing2 as image_utils
+import image_processing
 from data import DeformDataset
 import data.io
-# from settings import settings_general
 from settings import Parameters, process_arguments
 from settings.model import get_saved_model
 
@@ -117,7 +116,7 @@ def main():
         num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
         # Update intrinsics to reflect the crops
-        fx, fy, cx, cy = image_utils.modify_intrinsics_due_to_cropping(
+        fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
             intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
             image_height, image_width, original_h=cropper.h, original_w=cropper.w
         )
@@ -159,7 +158,7 @@ def main():
         node_translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
 
         # Warp source points with predicted graph deformation
-        warped_source_points = image_utils.warp_deform_3d(
+        warped_source_points = image_processing.warp_deform_3d(
             source, pixel_anchors, pixel_weights, graph_nodes, node_rotations_pred, node_translations_pred
         )
 
