@@ -80,6 +80,7 @@ class LossParameters(ParameterEnum):
     lambda_mask = \
         Parameter(default=1000.0, arg_type=float,
                   arg_help="Weight of the warp loss during neural network training.")
+
     use_fixed_mask_loss_neg_wrt_pos_weight = \
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Controls the behaviour of the weighting of the BCE loss on masks. "

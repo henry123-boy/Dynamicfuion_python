@@ -26,7 +26,7 @@ Testing & working on the code requires `git`, since we didn't make any releases 
 **Important:** please follow the order of these topics during setup.
 
 #### CUDA ####
-Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1-11.3 installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of the instructions assume you followed this recommendation, otherwise please adjust accordingly.
+Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of the instructions assume you followed this recommendation, otherwise please adjust accordingly.
 
 #### CMake ####
 
@@ -37,7 +37,7 @@ The build requires CMake 3.18 or above. You may find [these instructions](media/
 Python 3.8 or above is required. Check out the official [website](https://www.python.org/downloads/) for a distributive for your platform, if needed. In addition, working `pip` package is required to set up other dependencies (typically, included with the Python installation; if not, the [get-pip.py](https://pip.pypa.io/en/stable/installation/) is the recommended way to obtain it, even for Ubuntu users.) 
 
 #### PyTorch ####
-PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Of note is that PyTorch for CUDA 11.1 seems to work fine with CUDA 11.1 _through_ 11.4.
+PyTorch 1.9.0 or later for CUDA 11.1 should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Of note is that PyTorch for CUDA 11.1 seems to work fine with CUDA 11.1 _through_ 11.4, but won't cooperate well with CuPy for a later version of CUDA. Hence, if you're using a later version of CUDA than 11.1, it's best to upgrade to a nightly build of PyTorch or build it from source using standard procedure.
 
 #### Open3D ####
 Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `9a49100bc` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).

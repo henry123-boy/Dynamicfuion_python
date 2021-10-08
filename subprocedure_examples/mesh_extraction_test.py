@@ -8,8 +8,8 @@ import re
 
 from data import camera
 from data.presets import StandaloneFramePreset, StandaloneFrameDataset
-from tsdf_management.default_voxel_grid import make_default_tsdf_voxel_grid
-from settings import PathParameters
+from tsdf.default_voxel_grid import make_default_tsdf_voxel_grid
+from settings import PathParameters, process_arguments
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -30,9 +30,11 @@ def main():
 
     # === dataset ===
     # preset: StandaloneFramePreset = StandaloneFramePreset.BERLIN_0
-    preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_0
+    # preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_0
+    preset: StandaloneFramePreset = StandaloneFramePreset.RED_SHORTS_200
 
     dataset: StandaloneFrameDataset = preset.value
+    dataset.load()
     dataset_name = preset.name
     # remove digit from end & make lowercase
     match = re.search(r'\w+(_\d+)', dataset_name)
@@ -99,4 +101,5 @@ def main():
 
 
 if __name__ == "__main__":
+    process_arguments()
     sys.exit(main())

@@ -123,7 +123,7 @@ class TelemetryGenerator:
 
             # TODO: not sure what the mask prediction can be useful for except in visualization so far...
             mask_pred = deform_net_data["mask_pred"]
-            assert mask_pred is not None, "Make sure use_mask=True in settings_general.py"
+            assert mask_pred is not None, "Make sure use_mask is used / set to true in settings."
             mask_pred = mask_pred.view(-1, tracking_image_height, tracking_image_width).cpu().numpy()
             # Compute mask gt for mask baseline
             _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \

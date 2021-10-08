@@ -194,8 +194,8 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
     node_count = nodes.shape[0]
 
     graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
-        nnrt.compute_edges_geodesic(vertex_positions, triangle_vertex_indices, node_vertex_indices,
-                                    neighbor_count, node_coverage, True)
+        nnrt.compute_edges_shortest_path(vertex_positions, triangle_vertex_indices, node_vertex_indices,
+                                         neighbor_count, node_coverage, True)
 
     # ===== Remove nodes with not enough neighbors ===
     # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding C++ code

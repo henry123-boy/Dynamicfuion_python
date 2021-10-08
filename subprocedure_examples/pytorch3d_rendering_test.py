@@ -18,7 +18,7 @@ from pytorch3d.renderer.mesh import MeshRasterizer, RasterizationSettings, MeshR
 from pytorch3d.renderer.lighting import PointLights
 from pytorch3d.structures.meshes import Meshes
 
-from settings import settings_general
+from settings import Parameters, process_arguments
 from data import camera
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -27,8 +27,8 @@ PROGRAM_EXIT_SUCCESS = 0
 def main():
     use_direct_matrix_solution = True
 
-    mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(os.path.join(settings_general.output_directory, "mesh_000000_red_shorts.ply"))
-    depth_intrinsics_path = os.path.join(settings_general.dataset_base_directory, "val/seq014/intrinsics.txt")
+    mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(os.path.join(Parameters.path.output_directory.value, "mesh_000000_red_shorts.ply"))
+    depth_intrinsics_path = os.path.join(Parameters.path.dataset_base_directory.value, "val/seq014/intrinsics.txt")
 
     torch_device = torch.device("cuda:0")
 
@@ -121,26 +121,27 @@ def main():
     rendered_depth /= 4.0
     rendered_depth_uint8 = (rendered_depth * 255).astype(np.uint8)
 
-    depth_image_path = os.path.join(settings_general.dataset_base_directory, "val/seq014/depth/000000.png")
+    depth_image_path = os.path.join(Parameters.path.dataset_base_directory.value, "val/seq014/depth/000000.png")
     depth_image = cv2.imread(depth_image_path, cv2.IMREAD_UNCHANGED).astype(np.float32) / 4000
     depth_image_uint8 = (depth_image * 255).astype(np.uint8)
     cv2.imshow("source depth", depth_image_uint8)
     cv2.waitKey()
-    cv2.imwrite(os.path.join(settings_general.output_directory, os.path.join(settings_general.output_directory, "source_depth.png")), depth_image_uint8)
+    cv2.imwrite(os.path.join(Parameters.path.output_directory.value, "source_depth.png"), depth_image_uint8)
 
     images = renderer(meshes_torch3d)
     rendered_mesh = images[0, ..., :3].cpu().numpy()
     rendered_mesh_uint8 = (rendered_mesh * 255).astype(np.uint8)
     cv2.imshow("rendered mesh", rendered_mesh_uint8)
     cv2.waitKey()
-    cv2.imwrite(os.path.join(settings_general.output_directory, "rendered_mesh.png"), rendered_mesh_uint8)
+    cv2.imwrite(os.path.join(Parameters.path.output_directory.value, "rendered_mesh.png"), rendered_mesh_uint8)
 
     cv2.imshow("rendered depth", rendered_depth_uint8)
     cv2.waitKey()
-    cv2.imwrite(os.path.join(settings_general.output_directory, "rendered_depth.png"), rendered_depth_uint8)
+    cv2.imwrite(os.path.join(Parameters.path.output_directory.value, "rendered_depth.png"), rendered_depth_uint8)
 
     return PROGRAM_EXIT_SUCCESS
 
 
 if __name__ == "__main__":
+    process_arguments()
     sys.exit(main())

@@ -16,13 +16,12 @@ from settings import process_arguments, PathParameters
 
 
 from data import camera
-from tsdf_management.default_voxel_grid import make_default_tsdf_voxel_grid
+from tsdf.default_voxel_grid import make_default_tsdf_voxel_grid
 
 PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-    process_arguments()
     use_mask = True
 
     #####################################################################################################
@@ -94,10 +93,11 @@ def main():
 
     print(voxel_centers_np)
 
-    np.save(os.path.join(PathParameters.dataset_base_directory.value, "voxel_centers_000200_red_shorts.np"), voxel_centers_np)
+    np.save(os.path.join(PathParameters.output_directory.value, "voxel_centers_000200_red_shorts.npy"), voxel_centers_np)
 
     return PROGRAM_EXIT_SUCCESS
 
 
 if __name__ == "__main__":
+    process_arguments()
     sys.exit(main())

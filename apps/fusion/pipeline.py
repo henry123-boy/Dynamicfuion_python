@@ -24,7 +24,7 @@ from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
 import image_processing
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
-import tsdf_management.default_voxel_grid as default_tsdf
+import tsdf.default_voxel_grid as default_tsdf
 from warp_field.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, TransformationMode, \
     AnchorComputationMode, TrackingSpanMode, GraphGenerationMode
@@ -77,7 +77,8 @@ class FusionPipeline:
         #####################################################################################################
         # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
         #####################################################################################################
-        self.sequence: FrameSequenceDataset = Parameters.fusion.sequence_preset.value
+        self.sequence: FrameSequenceDataset = Parameters.fusion.sequence_preset.value.value
+        self.sequence.load()
         first_frame = self.sequence.get_frame_at(0)
 
         intrinsics_open3d_cpu, self.intrinsic_matrix_np = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
@@ -116,9 +117,6 @@ class FusionPipeline:
         return canonical_mesh, warped_mesh
 
     def run(self) -> int:
-        viz_parameters = Parameters.fusion.telemetry.visualization
-        log_parameters = Parameters.fusion.telemetry.logging
-        verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
         integration_parameters = Parameters.fusion.integration
         deform_net_parameters = Parameters.deform_net
@@ -282,7 +280,7 @@ class FusionPipeline:
                         integration_parameters.anchor_node_count.value, node_coverage
                     )
                 elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
-                    if tracking_parameters.tracking_span_mode is not TrackingSpanMode.ZERO_TO_T:
+                    if tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.ZERO_TO_T:
                         raise ValueError(f"Illegal value: {AnchorComputationMode.__name__:s} "
                                          f"{AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
                                          f"{TrackingSpanMode.__name__} is set to {TrackingSpanMode.ZERO_TO_T}")

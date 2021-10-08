@@ -14,18 +14,18 @@ import os
 import numpy as np
 from dq3d import quat, dualquat
 
-from settings import settings_general
-import graph
+from settings import Parameters, process_arguments
 from data import StandaloneFramePreset, StandaloneFrameDataset
 
-from fusion2.numba_cuda.fusion_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
+from tsdf.numba_cuda.host_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
+from warp_field import graph
 
 PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-    with open(os.path.join(settings_general.output_directory, "voxel_centers_000200_red_shorts.np"), 'rb') as file:
-        voxel_centers = np.load(file)
+
+    voxel_centers = np.load(os.path.join(Parameters.path.output_directory.value, "voxel_centers_000200_red_shorts.npy"))
 
     # TODO: is the original pre-generated graph radically different due to some camera frustum offset during generation?
     # graph_nodes = image_processing.load_graph_nodes(
@@ -33,15 +33,14 @@ def main():
     #                  "val/seq014/graph_nodes/5db1b1dcfce4e1021deb83dc_shorts_000200_000400_geodesic_0.05.bin"))
 
     mesh200: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000200_red_shorts.ply")
-    graph200 = graph.build_deformation_graph_from_mesh(mesh200, node_coverage=settings_general.node_coverage)
+    print(np.array(mesh200.vertices))
+    graph200 = graph.build_deformation_graph_from_mesh(mesh200, node_coverage=Parameters.graph.node_coverage.value)
     graph_nodes = graph200.nodes
 
     # Load graph transformation
-    with open(os.path.join(settings_general.output_directory, "red_shorts_shorts_000200_000400_rotations.np"), 'rb') as file:
-        rotations = np.load(file)
+    rotations = np.load(os.path.join(Parameters.path.output_directory.value, "red_shorts_shorts_000200_000400_rotations.np"))
 
-    with open(os.path.join(settings_general.output_directory, "red_shorts_shorts_000200_000400_translations.np"), 'rb') as file:
-        translations = np.load(file)
+    translations = np.load(os.path.join(Parameters.path.output_directory.value, "red_shorts_shorts_000200_000400_translations.np"))
 
     node_transformations_dual_quaternions = [dualquat(quat(rotation), translation) for rotation, translation in
                                              zip(rotations, translations)]
@@ -52,7 +51,8 @@ def main():
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
 
     voxel_center_anchors, voxel_center_weights = \
-        cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes, camera_rotation, camera_translation, settings_general.node_coverage)
+        cuda_compute_voxel_center_anchors(voxel_centers, graph_nodes, camera_rotation, camera_translation,
+                                          Parameters.graph.node_coverage.value)
 
     red_shorts_400_frame: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_400.value
 
@@ -71,4 +71,5 @@ def main():
 
 
 if __name__ == "__main__":
+    process_arguments()
     sys.exit(main())

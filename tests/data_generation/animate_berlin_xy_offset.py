@@ -10,7 +10,7 @@ import numpy as np
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 from data.frame import StandaloneFrameDataset
 import data.presets as presets
-import tsdf_management.default_voxel_grid
+import tsdf.default_voxel_grid
 import data.camera
 from settings import DeformNetParameters, PathParameters, process_arguments
 
@@ -22,7 +22,7 @@ def main():
     frame_dataset: StandaloneFrameDataset = presets.StandaloneFramePreset.BERLIN_0.value
 
     device = o3c.Device("cuda:0")
-    volume: o3d.t = tsdf_management.default_voxel_grid.make_default_tsdf_voxel_grid(device)
+    volume: o3d.t = tsdf.default_voxel_grid.make_default_tsdf_voxel_grid(device)
 
     depth_image = frame_dataset.load_depth_image_open3d(device)
     color_image = frame_dataset.load_color_image_open3d(device)

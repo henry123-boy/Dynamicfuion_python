@@ -5,7 +5,7 @@ import sys
 import argparse
 import subprocess
 
-import settings.settings_general as opt
+from settings import Parameters, process_arguments
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -30,7 +30,7 @@ def main():
     else:
         if args.split not in possible_splits:
             raise ValueError(f"--split should be one of one of {str(possible_splits)}, got {args.split}")
-        sequence_folder = os.path.join(opt.dataset_base_directory, args.split, f"seq{args.sequence:03d}")
+        sequence_folder = os.path.join(Parameters.path.dataset_base_directory.value, args.split, f"seq{args.sequence:03d}")
         absolute_input_folder = os.path.join(sequence_folder, "color")
         absolute_output_folder = os.path.join(sequence_folder, args.output_folder)
 
@@ -46,4 +46,5 @@ def main():
 
 
 if __name__ == "__main__":
+    process_arguments()
     sys.exit(main())
