@@ -246,7 +246,7 @@ def cupy_kernel(strFunction, objectVariables):
     strKernel = globals()[strFunction]
 
     while True:
-        objectMatch = re.search('(SIZE_)([0-4])(\()([^\)]*)(\))', strKernel)
+        objectMatch = re.search('(SIZE_)([0-4])([(])([^)]*)([)])', strKernel)
 
         if objectMatch is None:
             break
@@ -261,7 +261,7 @@ def cupy_kernel(strFunction, objectVariables):
     # end
 
     while True:
-        objectMatch = re.search('(VALUE_)([0-4])(\()([^\)]+)(\))', strKernel)
+        objectMatch = re.search('(VALUE_)([0-4])([(])([^)]+)([)])', strKernel)
 
         if objectMatch is None:
             break
@@ -355,9 +355,9 @@ class _FunctionCorrelation(torch.autograd.Function):
         assert (gradOutput.is_contiguous())
 
         grad_first = first.new_zeros([first.size(0), first.size(1), first.size(2), first.size(3)]) if \
-        self.needs_input_grad[0] else None
+            self.needs_input_grad[0] else None
         grad_second = first.new_zeros([first.size(0), first.size(1), first.size(2), first.size(3)]) if \
-        self.needs_input_grad[1] else None
+            self.needs_input_grad[1] else None
 
         if first.is_cuda:
             if grad_first is not None:

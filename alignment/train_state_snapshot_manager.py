@@ -40,7 +40,3 @@ class SnapshotManager():
         print()
 
         self.previous_snapshot_time = timer()
-    
-
-if __name__ == "__main__":
-    pass

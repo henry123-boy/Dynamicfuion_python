@@ -110,11 +110,9 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=1000.0, arg_type=float,
                   arg_help="Scale factor to multiply depth units in the depth image with in order to get meters.")
     freeze_optical_flow_net = \
-        Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Freeze/disable OpticalFlowNet during alignment.")
+        Parameter(default=False, arg_type='bool_flag', arg_help="Freeze/disable OpticalFlowNet during alignment.")
     freeze_mask_net = \
-        Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Freeze/disable MaskNet during alignment.")
+        Parameter(default=False, arg_type='bool_flag', arg_help="Freeze/disable MaskNet during alignment.")
     skip_solver = \
         Parameter(default=False, arg_type='bool_flag', arg_help="Skip Gauss-Newton optimization during alignment.")
 
@@ -143,5 +141,4 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="DeformNet will use correspondence masking via MaskNet if enabled.")
     use_batch_norm = \
-        Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Use batch normalization.")
+        Parameter(default=False, arg_type='bool_flag', arg_help="Use batch normalization.")
