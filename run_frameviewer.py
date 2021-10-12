@@ -2,9 +2,9 @@
 from pathlib import Path
 
 import sys
-from apps.frameviewer.frameviewer import FrameViewerApp, CameraProjection
+from apps.frameviewer.app import FrameViewerApp, CameraProjection
 from data.camera import load_intrinsic_matrix_entries_from_text_4x4_matrix
-from settings.frameviewer import FrameviewerParameters
+from apps.frameviewer.parameters import FrameviewerParameters
 from ext_argparse import process_arguments
 import os.path
 

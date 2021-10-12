@@ -26,7 +26,7 @@ Testing & working on the code requires `git`, since we didn't make any releases 
 **Important:** please follow the order of these topics during setup.
 
 #### CUDA ####
-Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of the instructions assume you followed this recommendation, otherwise please adjust accordingly.
+Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 (or the latest version of cuda supported by both PyTorch and CuPy) installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of these instructions assume you followed this recommendation, otherwise please adjust accordingly.
 
 #### CMake ####
 
@@ -54,7 +54,7 @@ As far as CMake build targets go, the `nnrt_cpp` target is only necessary to bui
 
 #### Other Python Dependencies ####
 
-The only one that stands out is [CuPy](https://docs.cupy.dev/en/stable/install.html), which we recommend preinstalling via pip using the prebuilt-binary version matching your exact CUDA version, e.g. `pip install cupy-cuda111` for CUDA 11.1. Installing directly via `pip install cupy` will force CuPy to be built from source (which can take a long time) and also might produce a bug requiring you to reordering your imports, such that CuPy is always imported before PyTorch. The rest of the dependencies can normally be installed by simply running `pip install -r requirements.txt`.
+The only one that stands out is [CuPy](https://docs.cupy.dev/en/stable/install.html), which we recommend preinstalling via pip using the prebuilt-binary version matching your exact CUDA version, e.g. `pip install cupy-cuda111` for CUDA 11.1. Installing directly via `pip install cupy` will force CuPy to be built from source (which can take a long time). The rest of the dependencies can normally be installed by simply running `pip install -r requirements.txt`.
 
 ### Preparing the Data ###
 
@@ -64,7 +64,7 @@ Although, in theory, the code is designed to handle arbitrary 640x480 RGB-D sequ
 
 DeepDeform Graph data should already be included by default within DeepDeform V2 dataset, but can also be obtained [here](http://kaldir.vc.in.tum.de/download/deepdeform_graph_v1.7z) and merged into the DeepDeform dataset using the `data/add_in_graph_data.py` script (see `--help` of this script for usage.) Alternatively, the graph data can be generated using the `apps/create_graph_data.py` script for arbitrary sequences after the C++ pip package is built (see main method in the script for parameter configuration).
 
-On the first run of `apps/fusuion/pipeline.py`, you'll see some errors pop up. One of them will occur in `settings/settings_general.py`, and you'll see that it's asking you to add in an entry keyed by the hash of your machine's MAC address into the `custom_paths_by_mac_address_hash` dictionary. Follow the instructions in the error report: this will allow you to configure the path to the dataset and to your preferred output directory on your specific machine.
+On the first run of `run_fusion.py`, you'll see some errors pop up. One of them will undoubtedly relate to incorrect path to the DeepDeform dataset root in the auto-generated `nnrt_fusion_parameters.yaml` configuration file, which will appear inside `[repository_root]/configuration_files`. To fix this, modify the value of `path.dataset_base_directory` in the configuration file to point to the proper DeepDeform root. It may make sense to adjust other `path` parameters right away as you see fit, since the app will output a high volume of telemetry to disk.
 
 Some other errors may be due to missing "sod" folders for some presets in the `data/presets.py`. This is about missing salient-object-detection masks, which can be used to refine the background subtraction during fusion. You can either comment those presets out and use the alternatives in `settings/settings_fusion.py`, or you can run the included U^2 Net script to generate the masks (see instructions [here](media/SOD_Generation_Instructions.md)).   
 

@@ -1,4 +1,4 @@
-import cupy
+import cupy # temp hack around cupy-114 and torch==1.9.1+cu111 compatibility issue
 
 import cProfile
 import os

@@ -102,7 +102,7 @@ class CMakeBuild(build_ext):
 setup(
     name="nnrt",
     version="0.1.1",
-    author="Pablo Palafox, Aljaz Bozic, Gregory Kramida, Ahmed Abdelkader",
+    author="Pablo Palafox, Aljaz Bozic, Gregory Kramida",
     author_email="",
     description="Neural Non-Rigid Tracking & Fusion",
     long_description="",
