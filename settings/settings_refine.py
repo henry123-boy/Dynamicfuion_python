@@ -85,4 +85,4 @@ use_lr_scheduler = True
 step_lr = 10000
 weight_decay = 0.0
 momentum = 0.9
-margin = 1.0
+margin = 1.0  # not used anywhere
