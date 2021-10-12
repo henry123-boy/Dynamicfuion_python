@@ -4,7 +4,7 @@ import numpy as np
 import math
 import cmath
 import typing
-from tsdf_management.numba_cuda.device_functions import *
+from tsdf.numba_cuda.device_functions import *
 
 GRAPH_K = 4
 

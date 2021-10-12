@@ -12,7 +12,12 @@ import open3d.core as o3c
 
 # This test is simply used to ensure (as much as possible) that things are not messed up while we overhaul
 # the forward method of DeformNet
+from settings import read_settings_file
+
+
 def test_alignment_holistic():
+    read_settings_file()
+
     # make output deterministic
     seed = 1234
     torch.cuda.manual_seed(seed)

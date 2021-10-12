@@ -1,18 +1,30 @@
+#  ================================================================
+#  Created by Gregory Kramida (https://github.com/Algomorph).
+#  Copyright (c) 2021 Gregory Kramida
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#  ================================================================
+from datetime import datetime
+
 from ext_argparse import ParameterEnum, Parameter
-
-from settings.deform_net import DeformNetParameters
-from settings.model import ModelParameters
-from settings.path import PathParameters
+from typing import Type
 
 
+# TODO: distinction between "Training" & "Learning" is unclear. Rethink categories & reorganize.
 class LearningParameters(ParameterEnum):
     # TODO: replace with enum
     use_adam = \
         Parameter(default=False, arg_type='bool_flag',
                   arg_help="Use Adam to train instead of SGD.")
-    use_batch_norm = \
-        Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Use batch normalization.")
     batch_size = \
         Parameter(default=4, arg_type=int,
                   arg_help="Size of each batch during training")
@@ -68,6 +80,7 @@ class LossParameters(ParameterEnum):
     lambda_mask = \
         Parameter(default=1000.0, arg_type=float,
                   arg_help="Weight of the warp loss during neural network training.")
+
     use_fixed_mask_loss_neg_wrt_pos_weight = \
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Controls the behaviour of the weighting of the BCE loss on masks. "
@@ -93,33 +106,44 @@ class BaselineComparisonParameters(ParameterEnum):
 
 
 class TrainingParameters(ParameterEnum):
-    use_pretrained_model = Parameter(default=False, arg_type='bool_flag',
-                                     arg_help="Resume training from a pretrained model rather than from scratch.")
-    num_worker_threads = Parameter(default=6, arg_type=int,
-                                   arg_help="Passed to num_workers parameter of torch.utils.data.DataLoader constructor "
-                                            "during training.")
-    num_threads = Parameter(default=4, arg_type=int,
-                            arg_help="Number of threads used for intraop parallelism in PyTorch on the CPU "
-                                     "during training (passed to torch.set_num_threads).")
-    num_samples_eval = Parameter(default=700, arg_type=int,
-                                 arg_help="Number of samples used for evaluation (loss computation) during training.")
+    train_labels_name = \
+        Parameter(default="train_graphs", arg_type=str,
+                  arg_help="The name (sans extension) of the json file with labels for the training data.")
+    validation_labels_name = \
+        Parameter(default="val_graphs", arg_type=str,
+                  arg_help="The name (sans extension) of the json file with labels for the validation data.")
+    experiment = \
+        Parameter(default="debug_flow", arg_type=str,
+                  arg_help="Training experiment name.")
+    timestamp = \
+        Parameter(default=datetime.now().strftime('%y-%m-%d-%H-%M-%S'), arg_type=str,
+                  arg_help="Timestamp in the format \"%y-%m-%d-%H-%M-%S\" (if you do not want to use the current time).")
+    use_pretrained_model = \
+        Parameter(default=False, arg_type='bool_flag',
+                  arg_help="Resume training from a pretrained model rather than from scratch.")
+    num_worker_threads = \
+        Parameter(default=6, arg_type=int,
+                  arg_help="Passed to num_workers parameter of torch.utils.data.DataLoader constructor during training.")
+    num_threads = \
+        Parameter(default=4, arg_type=int,
+                  arg_help="Number of threads used for intraop parallelism in PyTorch on the CPU "
+                           "during training (passed to torch.set_num_threads).")
+    num_samples_eval = \
+        Parameter(default=700, arg_type=int,
+                  arg_help="Number of samples used for evaluation (loss computation) during training.")
+    # TODO: probably should be grouped with evaluation_frequency and the above 'num_samples_eval' in something like ValidationParameters
     do_validation = \
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Evaluate trained model on validation split and print metrics during training.")
-
-    shuffle = Parameter(default=False, arg_type='bool_flag', arg_help="Shuffle each batch during training.")
-
+    shuffle = \
+        Parameter(default=False, arg_type='bool_flag', arg_help="Shuffle each batch during training.")
     gn_invalidate_too_far_away_translations = \
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Invalidate for too-far-away estimations, since they can produce noisy gradient information.")
-
     gn_max_mean_translation_error = \
         Parameter(default=0.5, arg_type=float,
                   arg_help="What kind of estimation (point match) is considered too far away during the training.")
 
-    learning = LearningParameters
-    loss = LossParameters
-    baseline = BaselineComparisonParameters
-    model = ModelParameters
-    deform_net = DeformNetParameters
-    path = PathParameters
+    learning: Type[LearningParameters] = LearningParameters
+    loss: Type[LossParameters] = LossParameters
+    baseline: Type[BaselineComparisonParameters] = BaselineComparisonParameters

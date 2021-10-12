@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from settings import settings_general as opt
+from settings import Parameters
 import numpy as np
 
 
@@ -17,7 +17,7 @@ class DeformLoss(torch.nn.Module):
         elif flow_loss_type == 'L2':
             self.flow_loss = L2()
         else:
-            raise Exception("Loss type {} is not defined. Valid losses are 'RobustL1' or 'L2'".format(flow_loss_type))
+            raise Exception(f"Loss type {flow_loss_type} is not defined. Valid losses are 'RobustL1' or 'L2'")
 
         self.graph_loss = BatchGraphL2()
         self.warp_loss = L2_Warp()
@@ -31,7 +31,7 @@ class DeformLoss(torch.nn.Module):
         d_total = torch.zeros((1), dtype=flow_preds[0].dtype, device=flow_preds[0].device)
 
         d_flow = None
-        if opt.use_flow_loss:
+        if Parameters.training.loss.use_flow_loss.value:
             if len(flow_gts) == 1:
                 d_flow = self.flow_loss(flow_gts[0], flow_preds[0], flow_masks[0])
             elif len(flow_gts) > 1:
@@ -49,17 +49,17 @@ class DeformLoss(torch.nn.Module):
             d_total += self.lambda_flow * d_flow
 
         d_graph = None
-        if opt.use_graph_loss:
+        if Parameters.training.loss.use_graph_loss.value:
             d_graph = self.graph_loss(deformations_gt, deformations_pred, valid_solve, deformations_validity)
             d_total += self.lambda_graph * d_graph
 
         d_warp = None
-        if opt.use_warp_loss:
+        if Parameters.training.loss.use_warp_loss.value:
             d_warp = self.warp_loss(warped_points_gt, warped_points_pred, warped_points_mask)
             d_total += self.lambda_warp * d_warp
 
         d_mask = None
-        if opt.use_mask_loss:
+        if Parameters.training.loss.use_mask_loss.value:
             d_mask = self.mask_bce_loss(mask_gt, mask_pred, valid_pixels)
             d_total += self.lambda_mask * d_mask
 
@@ -102,8 +102,8 @@ class DeformLoss(torch.nn.Module):
         assert positives_num + negatives_num == torch.sum(valid_pixels_float)
 
         # Compute weights
-        if opt.use_fixed_mask_loss_neg_wrt_pos_weight:
-            weights = (opt.mask_neg_wrt_pos_weight * positives_mask) + negatives_mask
+        if Parameters.training.loss.use_fixed_mask_loss_neg_wrt_pos_weight.value:
+            weights = (Parameters.training.loss.mask_neg_wrt_pos_weight.value * positives_mask) + negatives_mask
         else:
             # Compute relationship between number of negative with respect to number of positive samples
             relative_neg_wrt_pos = negatives_num / positives_num

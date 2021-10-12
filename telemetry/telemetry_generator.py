@@ -1,5 +1,6 @@
 import typing
 from datetime import datetime
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -10,10 +11,10 @@ from data import SequenceFrameDataset
 from warp_field.graph import DeformationGraphNumpy
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
 from pynvml import *
-from settings.settings_fusion import VisualizationMode
 import telemetry.visualization.tracking as tracking_viz
-import settings.settings_fusion as po
-from settings import settings_general
+from settings.fusion import VisualizationMode
+from settings import Parameters
+import ext_argparse
 
 
 class TelemetryGenerator:
@@ -45,10 +46,8 @@ class TelemetryGenerator:
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
         if save_all_parameters_to_file:
-            general_settings_path = os.path.join(self.output_directory, "settings_general.txt")
-            settings_general.save_hyperparameters_to_file(general_settings_path)
-            fusion_settings_path = os.path.join(self.output_directory, "settings_fusion.txt")
-            po.save_fusion_settings_to_file(fusion_settings_path)
+            settings_path = Path(os.path.join(self.output_directory, "settings.yaml"))
+            ext_argparse.dump(Parameters, settings_path)
 
         if self.record_visualization_to_disk:
             # TODO fix recording, it currently doesn't seem to work. Perhaps use something other than Open3D for rendering,
@@ -124,7 +123,7 @@ class TelemetryGenerator:
 
             # TODO: not sure what the mask prediction can be useful for except in visualization so far...
             mask_pred = deform_net_data["mask_pred"]
-            assert mask_pred is not None, "Make sure use_mask=True in settings_general.py"
+            assert mask_pred is not None, "Make sure use_mask is used / set to true in settings."
             mask_pred = mask_pred.view(-1, tracking_image_height, tracking_image_width).cpu().numpy()
             # Compute mask gt for mask baseline
             _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \

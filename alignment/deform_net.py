@@ -1,4 +1,5 @@
 from alignment import pwcnet
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -6,7 +7,8 @@ import math
 import kornia
 from timeit import default_timer as timer
 
-# from settings import settings_general
+
+from settings import DeformNetParameters
 from alignment.nn_utilities import make_conv_2d, ResBlock2d, Identity
 
 
@@ -76,101 +78,57 @@ class LinearSolverLU(torch.autograd.Function):
 
 
 class DeformNet(torch.nn.Module):
-    def __init__(self,
-
-                 alignment_image_width: int,
-                 alignment_image_height: int,
-
-                 skip_solver: bool,
-
-                 freeze_optical_flow_net: bool,
-                 freeze_mask_net: bool,
-
-                 gn_depth_sampling_mode: str,
-                 gn_max_depth: float,
-                 gn_min_nodes: int,
-                 gn_max_nodes: int,
-                 gn_max_matches_train: int,
-                 gn_max_matches_train_per_batch: int,
-                 gn_max_matches_eval: int,
-                 gn_max_warped_points: int,
-                 gn_debug: bool,
-                 gn_print_timings: bool,
-
-                 gn_use_edge_weighting: bool,
-                 gn_check_condition_num: bool,
-                 gn_break_on_condition_num: bool,
-                 gn_max_condition_num: float,
-
-                 gn_remove_clusters_with_few_matches: bool,
-                 gn_min_num_correspondences_per_cluster: int,
-
-                 gn_num_iter: int,
-                 gn_data_flow: float,
-                 gn_data_depth: float,
-                 gn_arap: float,
-                 gn_lm_factor: float,
-
-                 use_mask: bool,
-
-                 threshold_mask_predictions: bool,
-                 threshold: float,
-                 patchwise_threshold_mask_predictions: bool,
-                 patch_size: int,
-
-                 use_batch_norm: bool,
-
-                 telemetry_generator=None):
+    def __init__(self, telemetry_generator=None):
         super().__init__()
 
-        self.skip_solver = skip_solver
+        self.skip_solver = DeformNetParameters.skip_solver.value
 
-        self.gn_depth_sampling_mode = gn_depth_sampling_mode
-        self.gn_max_depth = gn_max_depth
-        self.gn_min_nodes = gn_min_nodes
-        self.gn_max_nodes = gn_max_nodes
-        self.gn_max_matches_train = gn_max_matches_train
-        self.gn_max_matches_train_per_batch = gn_max_matches_train_per_batch
-        self.gn_max_matches_eval = gn_max_matches_eval
-        self.gn_max_warped_points = gn_max_warped_points
-        self.gn_debug = gn_debug
-        self.gn_print_timings = gn_print_timings
+        self.gn_depth_sampling_mode = DeformNetParameters.gn_depth_sampling_mode.value
+        self.gn_max_depth = DeformNetParameters.gn_max_depth.value
+        self.gn_min_nodes = DeformNetParameters.gn_min_nodes.value
+        self.gn_max_nodes = DeformNetParameters.gn_max_nodes.value
+        self.gn_max_matches_train = DeformNetParameters.gn_max_matches_train.value
+        self.gn_max_matches_train_per_batch = DeformNetParameters.gn_max_matches_train_per_batch.value
+        self.gn_max_matches_eval = DeformNetParameters.gn_max_matches_eval.value
+        self.gn_max_warped_points = DeformNetParameters.gn_max_warped_points.value
+        self.gn_debug = DeformNetParameters.gn_debug.value
+        self.gn_print_timings = DeformNetParameters.gn_print_timings.value
 
-        self.gn_use_edge_weighting = gn_use_edge_weighting
-        self.gn_check_condition_num = gn_check_condition_num
-        self.gn_break_on_condition_num = gn_break_on_condition_num
-        self.gn_max_condition_num = gn_max_condition_num
+        self.gn_use_edge_weighting = DeformNetParameters.gn_use_edge_weighting.value
+        self.gn_check_condition_num = DeformNetParameters.gn_check_condition_num.value
+        self.gn_break_on_condition_num = DeformNetParameters.gn_break_on_condition_num.value
+        self.gn_max_condition_num = DeformNetParameters.gn_max_condition_num.value
 
-        self.gn_remove_clusters_with_few_matches = gn_remove_clusters_with_few_matches
-        self.gn_min_num_correspondences_per_cluster = gn_min_num_correspondences_per_cluster
+        self.gn_remove_clusters_with_few_matches = DeformNetParameters.gn_remove_clusters_with_few_matches.value
+        self.gn_min_num_correspondences_per_cluster = DeformNetParameters.gn_min_num_correspondences_per_cluster.value
 
-        self.gn_num_iter = gn_num_iter
-        self.gn_data_flow = gn_data_flow
-        self.gn_data_depth = gn_data_depth
-        self.gn_arap = gn_arap
-        self.gn_lm_factor = gn_lm_factor
+        self.gn_num_iter = DeformNetParameters.gn_num_iter.value
+        self.gn_data_flow = DeformNetParameters.gn_data_flow.value
+        self.gn_data_depth = DeformNetParameters.gn_data_depth.value
+        self.gn_arap = DeformNetParameters.gn_arap.value
+        self.gn_lm_factor = DeformNetParameters.gn_lm_factor.value
 
-        self.alignment_image_width = alignment_image_width
-        self.alignment_image_height = alignment_image_height
+        self.alignment_image_width = DeformNetParameters.alignment_image_width.value
+        self.alignment_image_height = DeformNetParameters.alignment_image_height.value
 
-        self.use_mask = use_mask
-        self.threshold_mask_predictions = threshold_mask_predictions
-        self.threshold = threshold
-        self.patchwise_threshold_mask_predictions = patchwise_threshold_mask_predictions
-        self.patch_size = patch_size
+        self.use_mask = DeformNetParameters.use_mask.value
+        self.threshold_mask_predictions = DeformNetParameters.threshold_mask_predictions.value
+        self.threshold = DeformNetParameters.threshold.value
+        self.patchwise_threshold_mask_predictions = DeformNetParameters.patchwise_threshold_mask_predictions.value
+        self.patch_size = DeformNetParameters.patch_size.value
 
         self.telemetry_generator = telemetry_generator
 
         # Optical flow network
         self.flow_net = pwcnet.PWCNet()
-        if freeze_optical_flow_net:
+        if DeformNetParameters.freeze_optical_flow_net.value:
             # Freeze
             for param in self.flow_net.parameters():
                 param.requires_grad = False
 
         # Weight prediction network
-        self.mask_net = MaskNet(use_batch_norm)
-        if freeze_mask_net:
+        self.mask_net = MaskNet(DeformNetParameters.use_batch_norm.value)
+        if DeformNetParameters.freeze_mask_net.value:
             # Freeze
             for param in self.mask_net.parameters():
                 param.requires_grad = False

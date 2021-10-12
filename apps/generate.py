@@ -1,8 +1,7 @@
 import os
 import json
-import argparse
 
-from alignment import DeformNet
+from alignment.default import load_default_nnrt_network
 
 # 3rd-party
 import torch
@@ -11,15 +10,13 @@ from tqdm import tqdm
 import open3d.core as o3c
 
 # local
-from alignment.default import load_default_nnrt_network
-from image_processing import image_processing2 as image_utils
+
+import image_processing
 from data import DeformDataset
 import data.io
-from settings import settings_general
+from settings import Parameters, process_arguments
+from settings.model import get_saved_model
 
-
-# TODO: alter the generate script such that the output is tucked into individual sequence folders in the dataset,
-#  NOT recorded here
 
 def main():
     #####################################################################################################
@@ -27,30 +24,29 @@ def main():
     #####################################################################################################
 
     # Parse command line arguments.
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--split', help='Data split', choices=['val', 'test'], required=True)
+    process_arguments()
 
-    args = parser.parse_args()
-
-    split = args.split
+    split = Parameters.generate_split.value.value  # the second value gets the lc string representation
 
     # Model checkpoint to use
-    saved_model = settings_general.saved_model
+    saved_model = get_saved_model()
     # Dataset dir
-    dataset_base_dir = settings_general.dataset_base_directory
+    dataset_base_dir = Parameters.path.dataset_base_directory.value
 
     # Image dimensions to which we crop the input images, such that they are divisible by 64
-    image_height = settings_general.alignment_image_height
-    image_width = settings_general.alignment_image_width
+    image_height = Parameters.deform_net.alignment_image_height.value
+    image_width = Parameters.deform_net.alignment_image_width.value
 
-    if settings_general.gn_max_matches_eval != 100000:
-        raise ValueError(f"For whatever sunny reason, {settings_general.gn_max_matches_eval} must be exactly 100000")
+    if Parameters.deform_net.gn_max_matches_eval.value != 100000:
+        raise ValueError(f"For whatever sunny reason (based on legacy code), "
+                         f"{Parameters.deform_net.gn_max_matches_eval.value} must be exactly 100000")
 
-    if settings_general.threshold_mask_predictions:
-        raise ValueError(f"For whatever sunny reason, {settings_general.threshold_mask_predictions} must be set to False in generate")
+    if Parameters.deform_net.threshold_mask_predictions.value:
+        raise ValueError(f"For whatever sunny reason (based on legacy code), "
+                         f"{Parameters.deform_net.threshold_mask_predictions.value} must be set to False for generate.py")
 
     #####################################################################################################
-    # Read labels and assert existance of output dir
+    # Read labels and assert existence of output dir
     #####################################################################################################
 
     labels_json = os.path.join(dataset_base_dir, f"{split}_graphs.json")
@@ -61,7 +57,7 @@ def main():
         labels = json.loads(f.read())
 
     # Output dir
-    output_dir = os.path.join(settings_general.nn_data_directory, "models", settings_general.model_name)
+    output_dir = os.path.join(Parameters.path.nn_data_directory.value, "models", Parameters.model.model_name.value)
     output_dir = f"{output_dir}/evaluation/{split}"
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -73,7 +69,6 @@ def main():
     #####################################################################################################
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
-    pretrained_dict = torch.load(saved_model)
 
     # Construct alignment
     model = load_default_nnrt_network(o3c.Device.DeviceType.CUDA)
@@ -83,16 +78,16 @@ def main():
     #####################################################################################################
 
     for label in tqdm(labels):
-        src_color_image_path = os.path.join(settings_general.dataset_base_directory, label["source_color"])
-        src_depth_image_path = os.path.join(settings_general.dataset_base_directory, label["source_depth"])
-        tgt_color_image_path = os.path.join(settings_general.dataset_base_directory, label["target_color"])
-        tgt_depth_image_path = os.path.join(settings_general.dataset_base_directory, label["target_depth"])
-        graph_nodes_path = os.path.join(settings_general.dataset_base_directory, label["graph_nodes"])
-        graph_edges_path = os.path.join(settings_general.dataset_base_directory, label["graph_edges"])
-        graph_edges_weights_path = os.path.join(settings_general.dataset_base_directory, label["graph_edges_weights"])
-        graph_clusters_path = os.path.join(settings_general.dataset_base_directory, label["graph_clusters"])
-        pixel_anchors_path = os.path.join(settings_general.dataset_base_directory, label["pixel_anchors"])
-        pixel_weights_path = os.path.join(settings_general.dataset_base_directory, label["pixel_weights"])
+        src_color_image_path = os.path.join(dataset_base_dir, label["source_color"])
+        src_depth_image_path = os.path.join(dataset_base_dir, label["source_depth"])
+        tgt_color_image_path = os.path.join(dataset_base_dir, label["target_color"])
+        tgt_depth_image_path = os.path.join(dataset_base_dir, label["target_depth"])
+        graph_nodes_path = os.path.join(dataset_base_dir, label["graph_nodes"])
+        graph_edges_path = os.path.join(dataset_base_dir, label["graph_edges"])
+        graph_edges_weights_path = os.path.join(dataset_base_dir, label["graph_edges_weights"])
+        graph_clusters_path = os.path.join(dataset_base_dir, label["graph_clusters"])
+        pixel_anchors_path = os.path.join(dataset_base_dir, label["pixel_anchors"])
+        pixel_weights_path = os.path.join(dataset_base_dir, label["pixel_weights"])
 
         intrinsics = label["intrinsics"]
 
@@ -121,7 +116,7 @@ def main():
         num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
         # Update intrinsics to reflect the crops
-        fx, fy, cx, cy = image_utils.modify_intrinsics_due_to_cropping(
+        fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
             intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
             image_height, image_width, original_h=cropper.h, original_w=cropper.w
         )
@@ -163,7 +158,7 @@ def main():
         node_translations_pred = model_data["node_translations"].view(num_nodes, 3).cpu().numpy()
 
         # Warp source points with predicted graph deformation
-        warped_source_points = image_utils.warp_deform_3d(
+        warped_source_points = image_processing.warp_deform_3d(
             source, pixel_anchors, pixel_weights, graph_nodes, node_rotations_pred, node_translations_pred
         )
 

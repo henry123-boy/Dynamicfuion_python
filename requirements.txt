@@ -3,7 +3,6 @@ open3d>=0.13.0
 torch>=1.9.0
 torchvision>=0.10.0
 numpy>=1.15.2
-cupy>=9.2.0
 scikit-image>=0.14.0
 opencv-python>=4.4.0.46
 imageio>=2.9.0
@@ -30,5 +29,5 @@ pynvml>=8.0.4
 numba>=0.53.1
 transformations>=2020.1.1
 pyglet>=1.5.18
-ext_argparse
+ext_argparse>=0.1.2
 icecream>=2.1.1

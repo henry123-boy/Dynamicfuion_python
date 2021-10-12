@@ -6,10 +6,13 @@ import nnrt
 import data.camera
 from data import StandaloneFrameDataset, StandaloneFramePreset
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
+from settings import read_settings_file
 
 
 def test_compute_normals():
+    read_settings_file()
     frame_data: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_200.value
+    frame_data.load()
     depth_image = np.array(o3d.io.read_image(frame_data.get_depth_image_path()))
     intrinsics, _ = \
         data.camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(frame_data.get_intrinsics_path(),

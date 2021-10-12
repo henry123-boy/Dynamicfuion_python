@@ -2,7 +2,7 @@ import math
 from numba import cuda
 import numpy as np
 
-from tsdf_management.numba_cuda.device_functions import cross, normalize
+from tsdf.numba_cuda.device_functions import cross, normalize
 
 
 @cuda.jit()

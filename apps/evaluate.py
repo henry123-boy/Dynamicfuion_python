@@ -8,7 +8,7 @@ import argparse
 from alignment.loss import EPE_3D_eval
 from data import DeformDataset
 
-from settings import settings_general as opt
+from settings import Parameters, process_arguments
 import data.io
 
 
@@ -18,21 +18,18 @@ def main():
     #####################################################################################################
 
     # Parse command line arguments.
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--split', help='Data split', choices=['val', 'test'], required=True)
+    process_arguments()
 
-    args = parser.parse_args()
+    split = Parameters.evaluate_split.value.value
 
-    split = args.split
-
-    dataset_base_dir = opt.dataset_base_directory
-    experiments_dir = opt.nn_data_directory
-    model_name = opt.model_name
-    gn_max_depth = opt.gn_max_depth
+    dataset_base_dir = Parameters.path.dataset_base_directory.value
+    experiments_dir = Parameters.path.nn_data_directory.value
+    model_name = Parameters.model.model_name.value
+    gn_max_depth = Parameters.deform_net.gn_max_depth.value
 
     # Image dimensions to which we crop the input images, such that they are divisible by 64
-    image_height = opt.alignment_image_height
-    image_width = opt.alignment_image_width
+    image_height = Parameters.deform_net.alignment_image_height.value
+    image_width = Parameters.deform_net.alignment_image_width.value
 
     #####################################################################################################
     # Read labels and check existence of output dir
@@ -188,12 +185,12 @@ def main():
     print(f"EPE 3D (mm):         {epe3d_avg * 1000.0}")
 
     # Write to file
-    with open(f"{model_base_dir}/{model_name}__ON__{args.split}.txt", "w") as f:
+    with open(f"{model_base_dir}/{model_name}__ON__{split}.txt", "w") as f:
         f.write("\n")
         f.write("Evaluation results:\n\n")
         f.write("\n")
         f.write("Model: {0}\n".format(model_name))
-        f.write("Split: {0}\n".format(args.split))
+        f.write("Split: {0}\n".format(split))
         f.write("\n")
         f.write("{:<40} {}\n".format("Graph Error 3D (mm)", graph_error_3d_avg * 1000.0))
         f.write("{:<40} {}\n".format("EPE 3D (mm)", epe3d_avg * 1000.0))

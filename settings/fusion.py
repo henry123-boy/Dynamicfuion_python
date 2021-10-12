@@ -1,10 +1,25 @@
+#  ================================================================
+#  Created by Gregory Kramida (https://github.com/Algomorph).
+#  Copyright (c) 2021 Gregory Kramida
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+
+#  http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#  ================================================================
+
 from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
 
-from data import FrameSequencePreset
-from settings.deform_net import DeformNetParameters
-from settings.model import ModelParameters
-from settings.path import PathParameters
+from typing import Type
+
+from data.presets import FrameSequencePreset
 
 
 class VisualizationMode(Enum):
@@ -73,7 +88,7 @@ class IntegrationParameters(ParameterEnum):
                            "fused in from an incoming RGBD image pair. Valid anchors for a specific voxel are graph "
                            "nodes that are closer than a specific distance threshold from this voxel.")
     transformation_mode = \
-        Parameter(default=TransformationMode.MATRICES, arg_type=TrackingSpanMode,
+        Parameter(default=TransformationMode.MATRICES, arg_type=TransformationMode,
                   arg_help="During fusion/integration, transformations (including rotations) can be handled in multiple "
                            "ways mathematically. Use this setting to dictate how.")
 
@@ -103,6 +118,7 @@ class VisualizationParameters(ParameterEnum):
                   arg_help="Controls extra visualization during the runtime of the fusion program.")
 
 
+# TODO: Remove the "_to_disk" suffixes where present
 class LoggingParameters(ParameterEnum):
     record_visualization_to_disk = \
         Parameter(default=False, arg_type='bool_flag',
@@ -127,18 +143,15 @@ class LoggingParameters(ParameterEnum):
 
 
 class TelemetryParameters(ParameterEnum):
-    verbosity = VerbosityParameters
-    visualization = VisualizationParameters
-    logging = LoggingParameters
+    verbosity: Type[VerbosityParameters] = VerbosityParameters
+    visualization: Type[VisualizationParameters] = VisualizationParameters
+    logging: Type[LoggingParameters] = LoggingParameters
 
 
 class FusionParameters(ParameterEnum):
     sequence_preset = \
         Parameter(default=FrameSequencePreset.BERLIN_50_SOD_MASKS, arg_type=FrameSequencePreset,
                   arg_help="Which sequence preset to use during the run.")
-    tracking = TrackingParameters
-    integration = IntegrationParameters
-    telemetry = TelemetryParameters
-    model = ModelParameters
-    deform_net = DeformNetParameters
-    path = PathParameters
+    tracking: Type[TrackingParameters] = TrackingParameters
+    integration: Type[IntegrationParameters] = IntegrationParameters
+    telemetry: Type[TelemetryParameters] = TelemetryParameters

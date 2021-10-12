@@ -1,0 +1,277 @@
+model:
+    # Must be set to one of ['only_flow_net', 'full_model']. Dictates whether the model will beloaded in full or only the
+    # flow_net part will be loaded.
+    model_module_to_load: full_model
+    # Name of the pre-trained model to use.
+    model_name: model_A
+    # Iteration number of the model to load.
+    model_iteration: 0
+deform_net:
+    # Sampling mode to use within the Gauss-Newton solver. Can be one of ['bilinear', 'nearest']
+    gn_depth_sampling_mode: bilinear
+    # Far clipping distance for a point to be considered by the Gauss-Newton solver during alignment.
+    gn_max_depth: 6.0
+    # The minimum number of nodes in graph required for the Gauss-Newton solver to work.
+    gn_min_nodes: 4
+    # Number of nodes in graph not to be exceeded for the Gauss-Newton solver to work.
+    gn_max_nodes: 300
+    # Maximum number of matching points when working on a sequence in the 'train' split of the DeepDeform dataset. If the
+    # actual number of matches exceeds, excess matches will be filtered out and discarded at random.
+    gn_max_matches_train: 10000
+    # Maximum number of matching points when working on a sequence in the 'val' or 'test' split of the DeepDeform dataset.
+    # If the actual number of matches exceeds, excess matches will be filtered out and discarded at random.
+    gn_max_matches_eval: 10000
+    # Maximum number of matching points per batch. If the actual number of matches exceeds, the program will terminate
+    # with an error.
+    gn_max_matches_train_per_batch: 100000
+    # Maximal number of deformed points. Usually at or greater than gn_max_matches_train_per_batch and
+    # gn_max_matches_train/gn_max_matches_eval. This actually dictates the total size of the tensor used to store the
+    # deformed points.
+    gn_max_warped_points: 100000
+    # Print telemetry info during the Gauss-Newton optimization.
+    gn_debug: false
+    # Print timing information for each term and the composite during the Gauss-Newton optimization.
+    gn_print_timings: false
+    # Use edge weight information within the ARAP energy term during the Gauss-Newton optimization.
+    gn_use_edge_weighting: false
+    # Check the determinant/condition number of the 'A' matrix after every optimization iteration. If the condition number
+    # is unstable, break the optimization (unless breaking is disabled bythe corresponding argument).
+    gn_check_condition_num: false
+    # Whether to break the optimization if the condition number is unstable (only used if--check_condition_num flag is
+    # passed in / set to 'True' in the configuration file). The exact threshold can be controlled by --max_condition_num
+    gn_break_on_condition_num: true
+    # Minimum value of the condition number considered unstable.
+    gn_max_condition_num: 1000000.0
+    # Remove clusters with too few matches during the Gauss-Newton optimization. Further tuned by the
+    # min_num_correspondences_per_cluster parameter.
+    gn_remove_clusters_with_few_matches: true
+    # When used in conjunction with the remove_clusters_with_few_matches parameter, defines the threshold below which the
+    # cluster is removed wholly from the rest of the computation.
+    gn_min_num_correspondences_per_cluster: 2000
+    # Total number of Gauss-Newton solver iterations to run.
+    gn_num_iter: 3
+    # Data term coefficient used in the 'flow' part of the Jacobian computations within the Gauss-Newton solver.
+    gn_data_flow: 0.001
+    # Data term coefficient used in the 'depth' part of the Jacobian computations within the Gauss-Newton solver.
+    gn_data_depth: 1.0
+    # ARAP term coefficient used in the Jacobian computations within the Gauss-Newton solver.
+    gn_arap: 1.0
+    # Small damping factor applied to the A=J^TJ matrix during the optimization.
+    gn_lm_factor: 0.1
+    # Input image/point cloud height for the non-rigid alignment portion of the algorithm. The actual image / point cloud
+    # will be cropped down to this height and intrinsic matrix adjusted accordingly.
+    alignment_image_width: 640
+    # Input image/point cloud width for the non-rigid alignment portion of the algorithm. The actual image / point cloud
+    # will be cropped down to this width and intrinsic matrix adjusted accordingly.
+    alignment_image_height: 448
+    # Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel points within the point
+    # cloud based on the depth image exceed this distance from each other, the boundaries are drawn along the break.
+    max_boundary_dist: 0.1
+    # Scale factor to multiply depth units in the depth image with in order to get meters.
+    depth_scale: 1000.0
+    # Freeze/disable OpticalFlowNet during alignment.
+    freeze_optical_flow_net: true
+    # Freeze/disable MaskNet during alignment.
+    freeze_mask_net: false
+    # Skip Gauss-Newton optimization during alignment.
+    skip_solver: false
+    # During alignment, keep only those matches for which the mask prediction is above a threshold (Only applies if
+    # evaluating, must be disabled for generation).
+    threshold_mask_predictions: false
+    # During alignment, keep only those matches for which the mask prediction is above this threshold (Only applies if
+    # evaluating, must be disabled for generation). Used only when threshold_mask_predictions is passed in / set to True
+    threshold: 0.3
+    # Use patch-wise threshold when applying mask during the alignment process instead of the hard threshold.
+    patchwise_threshold_mask_predictions: false
+    # Mask patch size when the patch-wise threshold is used during mask application in the alignment.
+    patch_size: false
+    # DeformNet will use correspondence masking via MaskNet if enabled.
+    use_mask: true
+path:
+    # Path to the base of the DeepDeform dataset root.
+    dataset_base_directory: /mnt/Data/Reconstruction/real_data/deepdeform
+    # Path to the directory where reconstruction output & telemetry will be placed.
+    output_directory: /mnt/Data/Reconstruction/output/NeuralTracking_experiment_output
+    # Path to the directory where trained DeformNet models & other neural network data are stored.
+    nn_data_directory: /mnt/Data/Reconstruction/neural_networks/deform_net
+tsdf:
+    # Voxel resolution, in meters.
+    voxel_size: 0.005
+    # SDF truncation distance, in meters.
+    sdf_truncation_distance: 0.025
+    # SDF voxel block size (in voxels) used in the spatial hash.
+    block_resolution: 16
+    # Initial number of blocks in the TSDF spatial hash.
+    initial_block_count: 1000
+fusion:
+    # Which sequence preset to use during the run.| Can be set to one of: ['RED_SHORTS_40', 'RED_SHORTS', 'BERLIN_50',
+    # 'BERLIN', 'BERLIN_STATIC', 'BERLIN_SOD_MASKS', 'BERLIN_50_SOD_MASKS', 'BERLIN_3_SOD_MASKS',
+    # 'RED_SHORTS_50_SOD_MASKS', 'BERLIN_50_100_SOD_MASKS', 'BERLIN_100_150_SOD_MASKS', 'BERLIN_150_200_SOD_MASKS',
+    # 'BLUE_MAN_0_50_SOD_MASKS']
+    sequence_preset: BERLIN_50_SOD_MASKS
+    tracking:
+        # How to generate the image source RGBD image pair for tracking/alignment toward the target image (next RGBD
+        # image pair in the sequence.)| Can be set to one of: ['REUSE_PREVIOUS_FRAME', 'RENDERED_ONLY',
+        # 'RENDERED_WITH_PREVIOUS_FRAME_OVERLAY']
+        source_image_mode: REUSE_PREVIOUS_FRAME
+        # Method used to generate the graph inside the moving structures in the scene (i.e. a motion proxy data
+        # structure that is used to store and play back the estimated surface motion).| Can be set to one of:
+        # ['FIRST_FRAME_EXTRACTED_MESH', 'FIRST_FRAME_DEPTH_IMAGE', 'FIRST_FRAME_LOADED_GRAPH']
+        graph_generation_mode: FIRST_FRAME_DEPTH_IMAGE
+        # Method used to assign graph nodes as anchors to each pixel and compute their weights, which control the
+        # influence of the graph on the estimated surface.| Can be set to one of: ['EUCLIDEAN', 'SHORTEST_PATH',
+        # 'PRECOMPUTED']
+        pixel_anchor_computation_mode: PRECOMPUTED
+        # Interval over which to perform alignment for tracking objects. ZERO_TO_T mode will make the program track
+        # between the first frame and each incoming sequence frame. T_MINUS_ONE_TO_T will make it track between each
+        # consecutive pair of frames.| Can be set to one of: ['ZERO_TO_T', 'T_MINUS_ONE_TO_T']
+        tracking_span_mode: ZERO_TO_T
+    integration:
+        # Number of nodes used as anchors for point on a surface.
+        anchor_node_count: 4
+        # TSDF voxels which have fewer than this number of valid anchors will not have any new data fused in from an
+        # incoming RGBD image pair. Valid anchors for a specific voxel are graph nodes that are closer than a specific
+        # distance threshold from this voxel.
+        fusion_minimum_valid_anchor_count: 3
+        # During fusion/integration, transformations (including rotations) can be handled in multiple ways
+        # mathematically. Use this setting to dictate how.| Can be set to one of: ['QUATERNIONS', 'MATRICES']
+        transformation_mode: MATRICES
+        # Stipulates how nodes are assigned as anchors to individual TSDF voxels. SHORTEST_PATH mode will add the
+        # euclidean distance from the voxel to the nearest node to the shortest path distance via this node to the
+        # target node.| Can be set to one of: ['EUCLIDEAN', 'SHORTEST_PATH', 'PRECOMPUTED']
+        voxel_anchor_computation_mode: EUCLIDEAN
+    telemetry:
+        verbosity:
+            # Print number and source (e.g. file paths) of the current RGBD frame in the sequence before
+            # processing it.
+            print_frame_info: true
+            # Print the camera intrinsic matrix before processing the sequence.
+            print_intrinsics: false
+            # Print CUDA memory information before processing each frame.
+            print_cuda_memory_info: false
+        visualization:
+            # Controls extra visualization during the runtime of the fusion program.| Can be set to one of:
+            # ['NONE', 'CANONICAL_MESH', 'WARPED_MESH', 'POINT_CLOUD_TRACKING', 'COMBINED']
+            visualization_mode: NONE
+        logging:
+            # Record the visualization result to disk (as a movie). [WARNING: CURRENTLY, BROKEN]
+            record_visualization_to_disk: false
+            # Record canonical (reference) meshes to disk, i.e. the TSDF with all acquired geometry in the
+            # time reference frame of the sequence start.
+            record_canonical_meshes_to_disk: true
+            # Record the warped (deformed) mesh to disk at each frame.
+            record_warped_meshes_to_disk: true
+            # Record the rendering of the warped (deformed) mesh to the camera plane at each frame.
+            record_rendered_warped_mesh: false
+            # Record the source point cloud being aligned at each Gauss-Newton iteration.
+            record_gn_point_clouds: true
+            # Record the point clouds generated from source and target RGB-D frame before processing each new
+            # frame in the sequence
+            record_source_and_target_point_clouds: true
+training:
+    # The name (sans extension) of the json file with labels for the training data.
+    train_labels_name: train_graphs
+    # The name (sans extension) of the json file with labels for the validation data.
+    validation_labels_name: val_graphs
+    # Training experiment name.
+    experiment: debug_flow
+    # Resume training from a pretrained model rather than from scratch.
+    use_pretrained_model: false
+    # Passed to num_workers parameter of torch.utils.data.DataLoader constructor during training.
+    num_worker_threads: 6
+    # Number of threads used for intraop parallelism in PyTorch on the CPU during training (passed to
+    # torch.set_num_threads).
+    num_threads: 4
+    # Number of samples used for evaluation (loss computation) during training.
+    num_samples_eval: 700
+    # Evaluate trained model on validation split and print metrics during training.
+    do_validation: true
+    # Shuffle each batch during training.
+    shuffle: false
+    # Invalidate for too-far-away estimations, since they can produce noisy gradient information.
+    gn_invalidate_too_far_away_translations: true
+    # What kind of estimation (point match) is considered too far away during the training.
+    gn_max_mean_translation_error: 0.5
+    learning:
+        # Use Adam to train instead of SGD.
+        use_adam: false
+        use_batch_norm: false
+        # Size of each batch during training
+        batch_size: 4
+        # Period of validations.
+        evaluation_frequency: 2000
+        # Total number of training epochs.
+        epochs: 15
+        # Learning rate during training.
+        learning_rate: 1e-05
+        # Whether to use the learning rate scheduler.
+        use_lr_scheduler: true
+        # Period of learning rate decay.
+        step_lr: 1000
+        # Weight decay used by the training optimizer.
+        weight_decay: 0.0
+        # Momentum used by the SGD training optimizer.
+        momentum: 0.9
+    loss:
+        # Switch that enables/disables flow loss during training.
+        use_flow_loss: false
+        # Type of flow loss to use during training. May be one of: ['RobustL1', 'L2']
+        flow_loss_type: RobustL1
+        # Weight of the flow loss during neural network training.
+        lambda_flow: 0.0
+        # Switch that enables/disables graph loss (BatchGraphL2 in alignment/loss.py).
+        use_graph_loss: true
+        # Weight of the graph loss during neural network training.
+        lambda_graph: 1000.0
+        # Switch that enables/disables warp loss (L2_Warp in alignment/loss.py).
+        use_warp_loss: true
+        # Weight of the warp loss during neural network training.
+        lambda_warp: 1000.0
+        # Switch that enables/disables the mask loss (weighted binary cross-entropy, see DeformLoss.mask_bce_loss in
+        # alignment/loss.py).
+        use_mask_loss: false
+        # Weight of the warp loss during neural network training.
+        lambda_mask: 1000.0
+        # Controls the behaviour of the weighting of the BCE loss on masks. If set to true, mask_neg_wrt_pos_weight is
+        # used for weighing as opposed to a dynamic weight based on ratio of positive & negative mask pixels. For
+        # details, see DeformLoss.mask_bce_loss in alignment/loss.py
+        use_fixed_mask_loss_neg_wrt_pos_weight: true
+        # Fixed weight for the negative mask values in the BCE loss on masks. To be used, 'mask_neg_wrt_pos_weight'
+        # has to be set to True. For details, see alignment/loss.py.
+        mask_neg_wrt_pos_weight: 0.05
+    baseline:
+        # (Minimal) threshold for distance between correspondence match and ground truth flow point for marking
+        # correspondence as 'negative'.
+        min_neg_flowed_source_to_target_dist: 0.3
+        # (Maximal) threshold for distance between correspondence match and ground truth flow point for marking
+        # correspondence as 'positive'.
+        max_pos_flowed_source_to_target_dist: 0.1
+graph:
+    # This is the maximum distance between any point in the source point cloud and at least one of the resulting graph
+    # nodes. Allows to control graph sparsity and influences a number of other operations that have to do with node
+    # influence over surrounding points.
+    node_coverage: 0.05
+    # Show & print debug output during graph generation.
+    graph_debug: false
+    # This is actually the maximum edge length allowed for any triangles generated from anRGB-D image pair / resulting
+    # point cloud during graph construction.
+    graph_max_triangle_distance: 0.05
+    # Number of erosion iterations applied to the graph during generation.
+    graph_erosion_num_iterations: 4
+    # While the graph is being eroded (during generation), the nodes not having the requiredminimum neighbor count will be
+    # removed.
+    graph_erosion_min_neighbors: 4
+    # Whether to use eroded nodes during sampling or not.
+    graph_use_only_valid_vertices: true
+    # Maximum possible number of neighbors each node in the graph has after generation. Corresponds to the width of the
+    # edge table/2d array.
+    graph_neighbor_count: 8
+    # Whether to enforce the neighbor count during graph generation. If set to true,even neighbors beyond the maximal edge
+    # influence (2*node_coverage) will be filled in the edge table, so that each node has exactly neighbor_count
+    # neighbors.
+    graph_enforce_neighbor_count: false
+    # Whether to use random node shuffling during node sampling for graph generation.
+    graph_sample_random_shuffle: false
+    # Whether to remove nodes with "too few" neighbors before rolling out the graph. Currently, the "too few" condition is
+    # hard-coded as "one or fewer".
+    graph_remove_nodes_with_too_few_neighbors: true

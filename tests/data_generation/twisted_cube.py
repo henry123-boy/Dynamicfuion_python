@@ -9,8 +9,7 @@ import open3d.core as o3c
 from scipy.spatial.transform.rotation import Rotation
 
 import data.io as dio
-from settings import settings_general
-from rendering import Camera
+from settings import PathParameters, process_arguments
 from warp_field.graph import DeformationGraphOpen3D
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 
@@ -18,7 +17,8 @@ NODE_COVERAGE = 0.05  # in meters
 
 
 def save_sensor_data(seq_name: str, i_frame: int, depth: np.ndarray, color: np.ndarray):
-    root_output_directory = os.path.join(settings_general.output_directory, seq_name)
+    process_arguments()
+    root_output_directory = os.path.join(PathParameters.output_directory.value, seq_name)
 
     depth_output_directory = os.path.join(root_output_directory, "depth")
     if not os.path.exists(depth_output_directory):
@@ -37,7 +37,7 @@ def save_sensor_data(seq_name: str, i_frame: int, depth: np.ndarray, color: np.n
 
 
 def save_graph_data(seq_name: str, i_frame: int, graph: DeformationGraphOpen3D):
-    root_output_directory = os.path.join(settings_general.output_directory, seq_name)
+    root_output_directory = os.path.join(PathParameters.output_directory.value, seq_name)
 
     dst_graph_nodes_dir = os.path.join(root_output_directory, "graph_nodes")
     if not os.path.exists(dst_graph_nodes_dir): os.makedirs(dst_graph_nodes_dir)
@@ -74,11 +74,12 @@ def save_graph_data(seq_name: str, i_frame: int, graph: DeformationGraphOpen3D):
 
 
 def main():
+    process_arguments()
     seq_name = "twisted_cube"
     visualize_results = True
     save_results = True
 
-    root_output_directory = os.path.join(settings_general.output_directory, seq_name)
+    root_output_directory = os.path.join(PathParameters.output_directory.value, seq_name)
     if not os.path.exists(root_output_directory):
         os.makedirs(root_output_directory)
 
@@ -123,6 +124,7 @@ def main():
     clusters_o3d = o3c.Tensor(np.zeros((len(nodes), 1), dtype=int), device=device)
 
     # setup cameras and renderer
+    # FIXME
     camera = Camera(800, 800)
     intrinsics_open3d_cuda = o3c.Tensor(camera.get_intrinsic_matrix(), device=device)
     extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)

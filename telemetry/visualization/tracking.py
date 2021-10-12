@@ -4,10 +4,9 @@ import numpy as np
 import open3d as o3d
 
 import telemetry.visualization.geometry.merge_meshes
-import image_processing.image_processing2
+import image_processing
 from telemetry.visualization import example_viewer, line_mesh as line_mesh_utils
 from telemetry.visualization.coordinate_transformations import transform_pointcloud_to_opengl_coords
-
 
 
 def draw_node_graph(graph_nodes, graph_edges):
@@ -90,13 +89,11 @@ def visualize_tracking(
     source_object_pcd.points = o3d.utility.Vector3dVector(valid_source_points)
     source_object_pcd.colors = o3d.utility.Vector3dVector(valid_source_colors)
 
-    # o3d.visualization.draw_geometries([source_pcd])
-    # o3d.visualization.draw_geometries([source_object_pcd])
     # endregion
     #####################################################################################################
     # region >>>> Warped Source Point Cloud<<<<
     #####################################################################################################
-    warped_deform_pred_3d_np = image_processing.image_processing2.warp_deform_3d(
+    warped_deform_pred_3d_np = image_processing.warp_deform_3d(
         source_rgbxyz, pixel_anchors, pixel_weights, graph_nodes, rotations_pred, translations_pred
     )
 

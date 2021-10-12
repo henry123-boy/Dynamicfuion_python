@@ -43,41 +43,49 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         """
         super().__init__(sequence_id, split, base_dataset_type, has_masks, custom_frame_directory, masks_subfolder,
                          far_clipping_distance, mask_lower_threshold)
+        self.segment_name = segment_name
+        self.start_frame_index = start_frame_index
+        self.frame_count = frame_count
+        self._next_frame_index = None
+        self._end_before_index = None
+        self._resolution = None
 
+    def load(self):
+        super(FrameSequenceDataset, self).load()
         if self._base_dataset_type is not DatasetType.CUSTOM:
             # assumes add_in_graph_data.py script has already been successfully run on the sequence.
             # also assumes standard folder structure for DeepDeform & DeepDeformGraph datasets.
             graph_edges_dir = os.path.join(self.get_sequence_directory(), "graph_edges")
             parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
-            if segment_name is None:
+            if self.segment_name is None:
                 segment_name = parts[1]
-            if has_masks:
+            if self.has_masks:
                 mask_filename_mask_with_segment = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
                 if os.path.isfile(mask_filename_mask_with_segment.format(0)):
                     self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
-        self.segment_name = segment_name
-        self.start_frame_index = start_frame_index
 
-        if frame_count is None:
+        if self.frame_count is None:
             frame_on_disk_count = 0
             depth_image_filename = self._depth_image_filename_mask.format(frame_on_disk_count)
             while os.path.isfile(depth_image_filename):
                 frame_on_disk_count += 1
                 depth_image_filename = self._depth_image_filename_mask.format(frame_on_disk_count)
-            if start_frame_index >= frame_on_disk_count:
-                raise ValueError(f"Specified sequence start, {start_frame_index:d}, is greater or equal than "
+            if self.start_frame_index >= frame_on_disk_count:
+                raise ValueError(f"Specified sequence start, {self.start_frame_index:d}, is greater or equal than "
                                  f"the total count of frames found on disk {frame_on_disk_count:d}")
-            self.frame_count = frame_on_disk_count - start_frame_index
-        else:
-            self.frame_count = frame_count
+            self.frame_count = frame_on_disk_count - self.start_frame_index
 
         self._next_frame_index = self.start_frame_index
         self._end_before_index = self.start_frame_index + self.frame_count
+
         first_frame_image = o3d.io.read_image(self._color_image_filename_mask.format(self.start_frame_index))
         image_dims = first_frame_image.get_max_bound()  # array([ width, height])
         self._resolution = (int(image_dims[1]), int(image_dims[0]))  # (height, width)
 
     def get_frame_at(self, index) -> SequenceFrameDataset:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(index)
 
         return SequenceFrameDataset(index,
@@ -86,12 +94,18 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
                                     mask_image_path)
 
     def get_next_frame(self) -> typing.Union[None, SequenceFrameDataset]:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         if self.has_more_frames():
             frame = self.get_frame_at(self._next_frame_index)
             self._next_frame_index += 1
             return frame
 
     def get_current_graph_name(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         graph_edges_dir = os.path.join(self.get_sequence_directory(), "graph_edges")
         graph_filename = None
         current_frame_index = self._next_frame_index - 1
@@ -105,6 +119,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         return graph_filename
 
     def get_current_pixel_anchors_and_weights(self, cropper: typing.Union[None, StaticCenterCrop] = None):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         graph_filename = self.get_current_graph_name()
         if graph_filename is None:
             return None, None
@@ -117,6 +134,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         return pixel_anchors, pixel_weights
 
     def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         if self._base_dataset_type == DatasetType.CUSTOM:
             return None
 
@@ -134,23 +154,35 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         return graph
 
     def get_next_frame_index(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         return self._next_frame_index
 
     def has_more_frames(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         return self._next_frame_index < self._end_before_index
 
     def rewind(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         self._next_frame_index = self.start_frame_index
 
     @property
     def resolution(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self._resolution
 
     def __len__(self):
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
         return self.frame_count
 
     def __repr__(self):
-        return f"<{self.__class__.__name__:s}. Sequence directory: " \
+        return f"<{self.__class__.__name__:s}. Loaded: {self._loaded}. Sequence directory: " \
                f"{self._sequence_directory:s}. From frame {self.start_frame_index}" \
                f" to frame {self._end_before_index - 1}. Next frame frame: {self._next_frame_index}>"
 
@@ -164,6 +196,9 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
 class StaticFrameSequenceDataset(FrameSequenceDataset):
     def get_frame_at(self, index) -> SequenceFrameDataset:
+        if not self._loaded:
+            raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
+
         mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(0)
         return SequenceFrameDataset(index,
                                     self._color_image_filename_mask.format(0),

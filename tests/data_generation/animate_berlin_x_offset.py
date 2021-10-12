@@ -10,18 +10,19 @@ import numpy as np
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 from data import StandaloneFrameDataset
 import data.presets as presets
-import fusion2.default_voxel_grid
+import tsdf.default_voxel_grid
 import data.camera
-from settings import settings_general
+from settings import process_arguments, PathParameters, DeformNetParameters
 
 PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
+    process_arguments()
     frame_dataset: StandaloneFrameDataset = presets.StandaloneFramePreset.BERLIN_0.value
 
     device = o3c.Device("cuda:0")
-    volume: o3d.t = fusion2.default_voxel_grid.make_default_tsdf_voxel_grid(device)
+    volume: o3d.t = tsdf.default_voxel_grid.make_default_tsdf_voxel_grid(device)
 
     depth_image = frame_dataset.load_depth_image_open3d(device)
     color_image = frame_dataset.load_color_image_open3d(device)
@@ -30,7 +31,7 @@ def main():
     intrinsics_open3d_cuda = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix, o3d.core.Dtype.Float32, device)
     extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
 
-    volume.integrate(depth_image, color_image, intrinsics_open3d_cuda, extrinsics_open3d_cuda, settings_general.depth_scale, 3.0)
+    volume.integrate(depth_image, color_image, intrinsics_open3d_cuda, extrinsics_open3d_cuda, DeformNetParameters.depth_scale.value, 3.0)
     original_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
     renderer = PyTorch3DRenderer((depth_image.rows, depth_image.columns), device, intrinsics_open3d_cuda)
 
@@ -45,7 +46,7 @@ def main():
         return _offset_mesh
 
     # prepare folders
-    root_output_directory = os.path.join(settings_general.output_directory, "berlin_x_offset_sequence")
+    root_output_directory = os.path.join(PathParameters.output_directory.value, "berlin_x_offset_sequence")
     depth_output_directory = os.path.join(root_output_directory, "depth")
     if not os.path.exists(depth_output_directory):
         os.makedirs(depth_output_directory)

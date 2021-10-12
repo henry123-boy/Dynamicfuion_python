@@ -12,12 +12,11 @@ import open3d.core as o3c
 # local
 from alignment.default import load_default_nnrt_network
 from data.camera import load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix
-import image_processing.image_processing2
-from telemetry.visualization import tracking as tracking_viz
-
-from settings import settings_general
-
 from data import FramePairDataset, FramePairPreset, DeformDataset
+from telemetry.visualization import tracking as tracking_viz
+import image_processing
+from settings import process_arguments, Parameters
+from settings.model import get_saved_model
 
 
 # TODO: all of the original NNRT code is suffering from major cases of the long-parameter-list code smell
@@ -29,6 +28,7 @@ from data import FramePairDataset, FramePairPreset, DeformDataset
 #  the ~700-line-long forward function in DeformNet and the like. These god-functions should be split up
 #  into sub-functions that "do only one thing"
 def main():
+    process_arguments()
     #####################################################################################################
     # Options
     #####################################################################################################
@@ -48,7 +48,7 @@ def main():
     # Load alignment
     #####################################################################################################
 
-    saved_model = settings_general.saved_model
+    saved_model = get_saved_model()
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
     pretrained_dict = torch.load(saved_model)
@@ -61,9 +61,9 @@ def main():
     #####################################################################################################
     intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(frame_pair_dataset.get_intrinsics_path())
 
-    image_height = settings_general.alignment_image_height
-    image_width = settings_general.alignment_image_width
-    max_boundary_distance = settings_general.max_boundary_dist
+    image_height = Parameters.deform_net.alignment_image_height.value
+    image_width = Parameters.deform_net.alignment_image_width.value
+    max_boundary_distance = Parameters.deform_net.max_boundary_dist.value
 
     src_color_image_path = frame_pair_dataset.get_source_color_image_path()
     src_depth_image_path = frame_pair_dataset.get_source_depth_image_path()
@@ -93,7 +93,7 @@ def main():
     num_nodes = np.array(graph_nodes.shape[0], dtype=np.int64)
 
     # Update intrinsics to reflect the crops
-    fx, fy, cx, cy = image_processing.image_processing2.modify_intrinsics_due_to_cropping(
+    fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
         intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
         image_height, image_width, original_h=cropper.h, original_w=cropper.w
     )
@@ -144,17 +144,17 @@ def main():
             np.save(file, translations_pred)
 
     mask_pred = model_data["mask_pred"]
-    assert mask_pred is not None, "Make sure use_mask=True in settings_general.py"
-    mask_pred = mask_pred.view(-1, settings_general.alignment_image_height, settings_general.alignment_image_width).cpu().numpy()
+    assert mask_pred is not None, "Make sure deform_net.use_mask is set to true in the configuration"
+    mask_pred = mask_pred.view(-1, image_height, image_width).cpu().numpy()
 
     # Compute mask gt for mask baseline
     _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
         = model_data["correspondence_info"]
 
-    target_matches = target_matches.view(-1, settings_general.alignment_image_height, settings_general.alignment_image_width).cpu().numpy()
-    valid_source_points = valid_source_points.view(-1, settings_general.alignment_image_height, settings_general.alignment_image_width).cpu().numpy()
-    valid_target_matches = valid_target_matches.view(-1, settings_general.alignment_image_height, settings_general.alignment_image_width).cpu().numpy()
-    valid_correspondences = valid_correspondences.view(-1, settings_general.alignment_image_height, settings_general.alignment_image_width).cpu().numpy()
+    target_matches = target_matches.view(-1, image_height, image_width).cpu().numpy()
+    valid_source_points = valid_source_points.view(-1, image_height, image_width).cpu().numpy()
+    valid_target_matches = valid_target_matches.view(-1, image_height, image_width).cpu().numpy()
+    valid_correspondences = valid_correspondences.view(-1, image_height, image_width).cpu().numpy()
 
     # Delete tensors to free up memory
     del source_rgbxyz_cuda
