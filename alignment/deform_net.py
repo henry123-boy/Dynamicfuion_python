@@ -786,8 +786,8 @@ class DeformNet(torch.nn.Module):
                 if self.gn_check_condition_num:
                     with torch.no_grad():
                         # Condition number.
-                        values, _ = torch.eig(A)
-                        real_values = values[:, 0]
+                        values = torch.linalg.eigvals(A)
+                        real_values = torch.view_as_real(values)[:, 0]
                         assert torch.isfinite(real_values).all(), real_values
                         max_eig_value = torch.max(torch.abs(real_values))
                         min_eig_value = torch.min(torch.abs(real_values))
