@@ -6,7 +6,7 @@ import numpy as np
 import math
 import kornia
 from timeit import default_timer as timer
-
+from typing import Tuple
 
 from settings import DeformNetParameters
 from alignment.nn_utilities import make_conv_2d, ResBlock2d, Identity
@@ -108,6 +108,10 @@ class DeformNet(torch.nn.Module):
         self.gn_arap = DeformNetParameters.gn_arap.value
         self.gn_lm_factor = DeformNetParameters.gn_lm_factor.value
 
+        self.lambda_data_flow = math.sqrt(self.gn_data_flow)
+        self.lambda_data_depth = math.sqrt(self.gn_data_depth)
+        self.lambda_arap = math.sqrt(self.gn_arap)
+
         self.alignment_image_width = DeformNetParameters.alignment_image_width.value
         self.alignment_image_height = DeformNetParameters.alignment_image_height.value
 
@@ -147,11 +151,11 @@ class DeformNet(torch.nn.Module):
         self.vec_to_skew_mat = torch.from_numpy(vec_to_skew_mat_np).to('cuda')
 
     def forward(
-            self, source, target,
-            graph_nodes, graph_edges, graph_edges_weights, graph_clusters,
-            pixel_anchors, pixel_weights,
-            num_nodes_vec, intrinsics,
-            evaluate=False, split="train"
+            self,
+            source: torch.Tensor, target: torch.Tensor,
+            graph_nodes: torch.Tensor, graph_edges: torch.Tensor, graph_edges_weights: torch.Tensor, graph_clusters: torch.Tensor,
+            pixel_anchors: torch.Tensor, pixel_weights: torch.Tensor, num_nodes_vec: torch.Tensor, intrinsics: torch.Tensor,
+            evaluate: bool = False, split: str = "train"
     ):
         batch_size = source.shape[0]
 
@@ -169,11 +173,13 @@ class DeformNet(torch.nn.Module):
                 "errors": []
             })
 
+        # clones avoid memory bugs here
+        source_color = torch.clone(source[:, :3, :, :])
+        target_color = torch.clone(target[:, :3, :, :])
+
         ########################################################################
         # region Compute dense flow from source to target.
         ########################################################################
-        source_color = torch.clone(source[:, :3, :, :])  # clones avoid memory bugs here
-        target_color = torch.clone(target[:, :3, :, :])
         flow2, flow3, flow4, flow5, flow6, features2 = self.flow_net.forward(source_color, target_color)
 
         assert torch.isfinite(flow2).all()
@@ -531,10 +537,10 @@ class DeformNet(torch.nn.Module):
             ###############################################################################################################
             # region Filter invalid edges.
             ###############################################################################################################
-            node_ids = torch.arange(opt_num_nodes_i, dtype=torch.int32, device=source.device).view(-1, 1).repeat(1,
-                                                                                                                 num_neighbors)  # (opt_num_nodes_i, num_neighbors)
-            graph_edge_pairs = torch.cat([node_ids.view(-1, num_neighbors, 1), graph_edges_i.view(-1, num_neighbors, 1)],
-                                         2)  # (opt_num_nodes_i, num_neighbors, 2)
+            node_ids = torch.arange(opt_num_nodes_i, dtype=torch.int32, device=source.device) \
+                .view(-1, 1).repeat(1, num_neighbors)  # (opt_num_nodes_i, num_neighbors)
+            graph_edge_pairs = torch.cat([node_ids.view(-1, num_neighbors, 1),
+                                          graph_edges_i.view(-1, num_neighbors, 1)], 2)  # (opt_num_nodes_i, num_neighbors, 2)
 
             valid_edges = graph_edges_i >= 0
             valid_edge_idxs = torch.where(valid_edges)
@@ -546,10 +552,9 @@ class DeformNet(torch.nn.Module):
             ###############################################################################################################
             # region Execute Gauss-Newton solver.
             ###############################################################################################################
-            num_gn_iter = self.gn_num_iter
-            lambda_data_flow = math.sqrt(self.gn_data_flow)
-            lambda_data_depth = math.sqrt(self.gn_data_depth)
-            lambda_arap = math.sqrt(self.gn_arap)
+            gauss_newton_iteration_count = self.gn_num_iter
+            lambda_data_flow = self.lambda_data_flow
+            lambda_data_depth = self.lambda_data_depth
             lm_factor = self.gn_lm_factor
 
             # The parameters in GN solver are 3 parameters for rotation and 3 parameters for
@@ -568,6 +573,10 @@ class DeformNet(torch.nn.Module):
             data_increment_vec_1_3 = torch.arange(1, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
             data_increment_vec_2_3 = torch.arange(2, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
 
+            arap_increment_vec_0_3 = None
+            arap_increment_vec_1_3 = None
+            arap_increment_vec_2_3 = None
+            arap_one_vec = None
             if num_edges_i > 0:
                 arap_increment_vec_0_3 = torch.arange(0, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
                 arap_increment_vec_1_3 = torch.arange(1, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
@@ -576,186 +585,21 @@ class DeformNet(torch.nn.Module):
 
             ill_posed_system = False
 
-            for gn_i in range(num_gn_iter):
-                timer_data_start = timer()
+            for i_iteration in range(gauss_newton_iteration_count):
+                res_data, jacobian_data = \
+                    self.compute_data_residual_and_jacobian(data_increment_vec_0_3, data_increment_vec_1_3, data_increment_vec_2_3,
+                                                            num_matches, opt_num_nodes_i, graph_nodes_i,
+                                                            source_anchors, source_weights, source_points_filtered, source_colors_filtered,
+                                                            correspondence_weights_filtered, xy_pixels_warped_filtered, target_matches_filtered,
+                                                            i_iteration, fx, fy, cx, cy, R_current, t_current)
 
-                ##########################################
-                # region Compute data residual and jacobian.
-                ##########################################
-                jacobian_data = torch.zeros((num_matches * 3, opt_num_nodes_i * 6), dtype=source.dtype,
-                                            device=source.device)  # (num_matches*3, opt_num_nodes_i*6)
-                deformed_points = torch.zeros((num_matches, 3, 1), dtype=source.dtype, device=source.device)
-
-                for k in range(4):  # Our data uses 4 anchors for every point
-                    node_idxs_k = source_anchors[:, k]  # (num_matches)
-                    nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
-
-                    # Compute deformed point contribution.
-                    # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
-                    rotated_points_k = torch.matmul(R_current[node_idxs_k],
-                                                    source_points_filtered - nodes_k)
-                    deformed_points_k = rotated_points_k + nodes_k + t_current[node_idxs_k]
-                    deformed_points += \
-                        source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * \
-                        deformed_points_k  # (num_matches, 3, 1)
-
-                if self.telemetry_generator is not None:
-                    self.telemetry_generator.process_gn_point_cloud(deformed_points, source_colors_filtered, gn_i)
-
-                # Get necessary components of deformed points.
-                eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage
-
-                deformed_x = deformed_points[:, 0, :].view(num_matches)  # (num_matches)
-                deformed_y = deformed_points[:, 1, :].view(num_matches)  # (num_matches)
-                deformed_z_inverse = torch.div(1.0, deformed_points[:, 2, :].view(num_matches) + eps)  # (num_matches)
-                fx_mul_x = fx * deformed_x  # (num_matches)
-                fy_mul_y = fy * deformed_y  # (num_matches)
-                fx_div_z = fx * deformed_z_inverse  # (num_matches)
-                fy_div_z = fy * deformed_z_inverse  # (num_matches)
-                fx_mul_x_div_z = fx_mul_x * deformed_z_inverse  # (num_matches)
-                fy_mul_y_div_z = fy_mul_y * deformed_z_inverse  # (num_matches)
-                minus_fx_mul_x_div_z_2 = -fx_mul_x_div_z * deformed_z_inverse  # (num_matches)
-                minus_fy_mul_y_div_z_2 = -fy_mul_y_div_z * deformed_z_inverse  # (num_matches)
-
-                for k in range(4):  # Our data uses 4 anchors for every point
-                    node_idxs_k = source_anchors[:, k]  # (num_matches)
-                    nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
-
-                    weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches) #TODO: check arm pixel correspondence_weights
-
-                    # Compute skew-symmetric part.
-                    rotated_points_k = torch.matmul(R_current[node_idxs_k],
-                                                    source_points_filtered - nodes_k)  # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
-                    weighted_rotated_points_k = weights_k.view(num_matches, 1, 1).repeat(1, 3, 1) * rotated_points_k  # (num_matches, 3, 1)
-                    skew_symetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k).view(num_matches, 3,
-                                                                                                                 3)  # (num_matches, 3, 3)
-
-                    # Compute jacobian wrt. TRANSLATION.
-                    # FLOW PART
-                    jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 0] += \
-                        lambda_data_flow * weights_k * fx_div_z  # (num_matches)
-                    jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
-                        lambda_data_flow * weights_k * minus_fx_mul_x_div_z_2  # (num_matches)
-                    jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 1] += \
-                        lambda_data_flow * weights_k * fy_div_z  # (num_matches)
-                    jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
-                        lambda_data_flow * weights_k * minus_fy_mul_y_div_z_2  # (num_matches)
-
-                    # DEPTH PART
-                    jacobian_data[data_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
-                        lambda_data_depth * weights_k  # (num_matches)
-
-                    # Compute jacobian wrt. ROTATION.
-                    # FLOW PART
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 0] += \
-                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 0] + \
-                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 0]
-
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 1] += \
-                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 1] + \
-                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 1]
-
-                    jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 2] += \
-                        lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 2] + \
-                        minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 2]
-
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 0] += \
-                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 0] + \
-                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 0]
-
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 1] += \
-                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 1] + \
-                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 1]
-
-                    jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 2] += \
-                        lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 2] + \
-                        minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 2]
-
-                    # DEPTH PART
-                    jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += lambda_data_depth * skew_symetric_mat_data[:, 2, 0]
-                    jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 1] += lambda_data_depth * skew_symetric_mat_data[:, 2, 1]
-                    jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 2] += lambda_data_depth * skew_symetric_mat_data[:, 2, 2]
-
-                    assert torch.isfinite(jacobian_data).all(), jacobian_data
-
-                res_data = torch.zeros((num_matches * 3, 1), dtype=source.dtype, device=source.device)
-
-                # FLOW PART
-                res_data[data_increment_vec_0_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                        fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(num_matches))
-                res_data[data_increment_vec_1_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                        fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(num_matches))
-
-                # DEPTH PART
-                res_data[data_increment_vec_2_3, 0] = lambda_data_depth * correspondence_weights_filtered * (
-                        deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(num_matches)
-
-                if self.gn_print_timings: print("\t\tData term: {:.3f} s".format(timer() - timer_data_start))
-                timer_arap_start = timer()
-                # endregion
-                ##########################################
-                # region Compute arap residual and jacobian.
-                ##########################################
+                res_arap = None
+                jacobian_arap = None
                 if num_edges_i > 0:
-                    jacobian_arap = torch.zeros((num_edges_i * 3, opt_num_nodes_i * 6), dtype=source.dtype,
-                                                device=source.device)  # (num_edges_i*3, opt_num_nodes_i*6)
-
-                    node_idxs_0 = graph_edge_pairs_filtered[:, 0]  # i node
-                    node_idxs_1 = graph_edge_pairs_filtered[:, 1]  # j node
-
-                    w = torch.ones_like(graph_edge_weights_pairs)
-                    if self.gn_use_edge_weighting:
-                        # Since graph edge weights sum up to 1 for all neighbors, we multiply
-                        # it by the number of neighbors to make the setting in the same scale
-                        # as in the case of not using edge weights (they are all 1 then).
-                        w = float(num_neighbors) * graph_edge_weights_pairs
-
-                    w_repeat = w.unsqueeze(-1).repeat(1, 3).unsqueeze(-1)
-                    w_repeat_repeat = w_repeat.repeat(1, 1, 3)
-
-                    nodes_0 = graph_nodes_i[node_idxs_0].view(num_edges_i, 3, 1)
-                    nodes_1 = graph_nodes_i[node_idxs_1].view(num_edges_i, 3, 1)
-
-                    # Compute residual.
-                    rotated_node_delta = torch.matmul(R_current[node_idxs_0], nodes_1 - nodes_0)  # (num_edges_i, 3)
-                    res_arap = lambda_arap * w_repeat * (rotated_node_delta + nodes_0 + t_current[node_idxs_0] - (nodes_1 + t_current[node_idxs_1]))
-                    res_arap = res_arap.view(num_edges_i * 3, 1)
-
-                    # Compute jacobian wrt. translations.
-                    jacobian_arap[
-                        arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 0] += lambda_arap * w * arap_one_vec  # (num_edges_i)
-                    jacobian_arap[
-                        arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 1] += lambda_arap * w * arap_one_vec  # (num_edges_i)
-                    jacobian_arap[
-                        arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 2] += lambda_arap * w * arap_one_vec  # (num_edges_i)
-
-                    jacobian_arap[
-                        arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 0] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
-                    jacobian_arap[
-                        arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 1] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
-                    jacobian_arap[
-                        arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 2] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
-
-                    # Compute jacobian wrt. rotations.
-                    # Derivative wrt. R_1 is equal to 0.
-                    skew_symetric_mat_arap = -lambda_arap * w_repeat_repeat * torch.matmul(self.vec_to_skew_mat, rotated_node_delta).view(num_edges_i,
-                                                                                                                                          3,
-                                                                                                                                          3)  # (num_edges_i, 3, 3)
-
-                    jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 0, 0]
-                    jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 0, 1]
-                    jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 0, 2]
-                    jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 1, 0]
-                    jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 1, 1]
-                    jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 1, 2]
-                    jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 2, 0]
-                    jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 2, 1]
-                    jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 2, 2]
-
-                    assert torch.isfinite(jacobian_arap).all(), jacobian_arap
-
-                if self.gn_print_timings: print("\t\tARAP term: {:.3f} s".format(timer() - timer_arap_start))
-                # endregion
+                    res_arap, jacobian_arap = \
+                        self.compute_arap_residual_and_jacobian(arap_increment_vec_0_3, arap_increment_vec_1_3, arap_increment_vec_2_3, arap_one_vec,
+                                                                graph_edge_pairs_filtered, graph_edge_weights_pairs,
+                                                                graph_nodes_i, num_edges_i, opt_num_nodes_i, num_neighbors, R_current, t_current)
                 ##########################################
                 # region Solve linear system.
                 ##########################################
@@ -851,10 +695,11 @@ class DeformNet(torch.nn.Module):
 
                 if self.gn_debug:
                     if num_edges_i > 0:
-                        print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \tarap = {2:.3f}, \ttotal = {3:.3f}".format(gn_i, loss_data, loss_arap,
+                        print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \tarap = {2:.3f}, \ttotal = {3:.3f}".format(i_iteration, loss_data,
+                                                                                                                          loss_arap,
                                                                                                                           loss_total))
                     else:
-                        print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \ttotal = {2:.3f}".format(gn_i, loss_data, loss_total))
+                        print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \ttotal = {2:.3f}".format(i_iteration, loss_data, loss_total))
                 # endregion
             # endregion
             ###############################################################################################################
@@ -953,3 +798,216 @@ class DeformNet(torch.nn.Module):
             "convergence_info": convergence_info,
             "weight_info": weight_info
         }
+
+    def compute_data_residual_and_jacobian(self,
+                                           data_increment_vec_0_3: torch.Tensor,
+                                           data_increment_vec_1_3: torch.Tensor,
+                                           data_increment_vec_2_3: torch.Tensor,
+                                           num_matches: int,
+                                           opt_num_nodes_i: int,
+                                           graph_nodes_i: torch.Tensor,
+                                           source_anchors: torch.Tensor,
+                                           source_weights: torch.Tensor,
+                                           source_points_filtered: torch.Tensor,
+                                           source_colors_filtered: torch.Tensor,
+                                           correspondence_weights_filtered: torch.Tensor,
+                                           xy_pixels_warped_filtered: torch.Tensor,
+                                           target_matches_filtered: torch.Tensor,
+                                           i_iteration: int,
+                                           fx: torch.Tensor, fy: torch.Tensor, cx: torch.Tensor, cy: torch.Tensor,
+                                           R_current: torch.Tensor,
+                                           t_current: torch.Tensor
+                                           ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        timer_data_start = timer()
+        jacobian_data = torch.zeros((num_matches * 3, opt_num_nodes_i * 6), dtype=R_current.dtype,
+                                    device=R_current.device)  # (num_matches*3, opt_num_nodes_i*6)
+        deformed_points = torch.zeros((num_matches, 3, 1), dtype=R_current.dtype, device=R_current.device)
+
+        for k in range(4):  # Our data uses 4 anchors for every point
+            node_idxs_k = source_anchors[:, k]  # (num_matches)
+            nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
+
+            # Compute deformed point contribution.
+            # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
+            rotated_points_k = torch.matmul(R_current[node_idxs_k],
+                                            source_points_filtered - nodes_k)
+            deformed_points_k = rotated_points_k + nodes_k + t_current[node_idxs_k]
+            deformed_points += \
+                source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * \
+                deformed_points_k  # (num_matches, 3, 1)
+
+        if self.telemetry_generator is not None:
+            self.telemetry_generator.process_gn_point_cloud(deformed_points, source_colors_filtered, i_iteration)
+
+        # Get necessary components of deformed points.
+        eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage
+
+        deformed_x = deformed_points[:, 0, :].view(num_matches)  # (num_matches)
+        deformed_y = deformed_points[:, 1, :].view(num_matches)  # (num_matches)
+        deformed_z_inverse = torch.div(1.0, deformed_points[:, 2, :].view(num_matches) + eps)  # (num_matches)
+        fx_mul_x = fx * deformed_x  # (num_matches)
+        fy_mul_y = fy * deformed_y  # (num_matches)
+        fx_div_z = fx * deformed_z_inverse  # (num_matches)
+        fy_div_z = fy * deformed_z_inverse  # (num_matches)
+        fx_mul_x_div_z = fx_mul_x * deformed_z_inverse  # (num_matches)
+        fy_mul_y_div_z = fy_mul_y * deformed_z_inverse  # (num_matches)
+        minus_fx_mul_x_div_z_2 = -fx_mul_x_div_z * deformed_z_inverse  # (num_matches)
+        minus_fy_mul_y_div_z_2 = -fy_mul_y_div_z * deformed_z_inverse  # (num_matches)
+
+        lambda_data_flow = self.lambda_data_flow
+        lambda_data_depth = self.lambda_data_depth
+
+        for k in range(4):  # Our data uses 4 anchors for every point
+            node_idxs_k = source_anchors[:, k]  # (num_matches)
+            nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
+
+            weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches) #TODO: check arm pixel correspondence_weights
+
+            # Compute skew-symmetric part.
+            rotated_points_k = torch.matmul(R_current[node_idxs_k],
+                                            source_points_filtered - nodes_k)  # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
+            weighted_rotated_points_k = weights_k.view(num_matches, 1, 1).repeat(1, 3, 1) * rotated_points_k  # (num_matches, 3, 1)
+            skew_symetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k).view(num_matches, 3,
+                                                                                                         3)  # (num_matches, 3, 3)
+
+            # Compute jacobian wrt. TRANSLATION.
+            # FLOW PART
+            jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 0] += \
+                lambda_data_flow * weights_k * fx_div_z  # (num_matches)
+            jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                lambda_data_flow * weights_k * minus_fx_mul_x_div_z_2  # (num_matches)
+            jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 1] += \
+                lambda_data_flow * weights_k * fy_div_z  # (num_matches)
+            jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                lambda_data_flow * weights_k * minus_fy_mul_y_div_z_2  # (num_matches)
+
+            # DEPTH PART
+            jacobian_data[data_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+                lambda_data_depth * weights_k  # (num_matches)
+
+            # Compute jacobian wrt. ROTATION.
+            # FLOW PART
+            jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 0] += \
+                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 0] + \
+                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+
+            jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 1] += \
+                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 1] + \
+                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+
+            jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 2] += \
+                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 2] + \
+                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 2]
+
+            jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 0] += \
+                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 0] + \
+                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+
+            jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 1] += \
+                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 1] + \
+                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+
+            jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 2] += \
+                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 2] + \
+                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 2]
+
+            # DEPTH PART
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += lambda_data_depth * skew_symetric_mat_data[:, 2, 0]
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 1] += lambda_data_depth * skew_symetric_mat_data[:, 2, 1]
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 2] += lambda_data_depth * skew_symetric_mat_data[:, 2, 2]
+
+            assert torch.isfinite(jacobian_data).all(), jacobian_data
+
+        res_data = torch.zeros((num_matches * 3, 1), dtype=R_current.dtype, device=R_current.device)
+
+        # FLOW PART
+        res_data[data_increment_vec_0_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
+                fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(num_matches))
+        res_data[data_increment_vec_1_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
+                fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(num_matches))
+
+        # DEPTH PART
+        res_data[data_increment_vec_2_3, 0] = lambda_data_depth * correspondence_weights_filtered * (
+                deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(num_matches)
+        if self.gn_print_timings:
+            print("\t\tData term: {:.3f} s".format(timer() - timer_data_start))
+        return res_data, jacobian_data
+
+    def compute_arap_residual_and_jacobian(self,
+                                           arap_increment_vec_0_3: torch.Tensor,
+                                           arap_increment_vec_1_3: torch.Tensor,
+                                           arap_increment_vec_2_3: torch.Tensor,
+                                           arap_one_vec: torch.Tensor,
+                                           graph_edge_pairs_filtered: torch.Tensor,
+                                           graph_edge_weights_pairs: torch.Tensor,
+                                           graph_nodes_i: torch.Tensor,
+                                           num_edges_i: int,
+                                           opt_num_nodes_i: int,
+                                           num_neighbors: int,
+                                           R_current: torch.Tensor,
+                                           t_current: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        timer_arap_start = timer()
+
+        jacobian_arap = torch.zeros((num_edges_i * 3, opt_num_nodes_i * 6), dtype=arap_one_vec.dtype,
+                                    device=arap_one_vec.device)  # (num_edges_i*3, opt_num_nodes_i*6)
+
+        node_idxs_0 = graph_edge_pairs_filtered[:, 0]  # i node
+        node_idxs_1 = graph_edge_pairs_filtered[:, 1]  # j node
+
+        w = torch.ones_like(graph_edge_weights_pairs)
+        if self.gn_use_edge_weighting:
+            # Since graph edge weights sum up to 1 for all neighbors, we multiply
+            # it by the number of neighbors to make the setting in the same scale
+            # as in the case of not using edge weights (they are all 1 then).
+            w = float(num_neighbors) * graph_edge_weights_pairs
+
+        w_repeat = w.unsqueeze(-1).repeat(1, 3).unsqueeze(-1)
+        w_repeat_repeat = w_repeat.repeat(1, 1, 3)
+
+        nodes_0 = graph_nodes_i[node_idxs_0].view(num_edges_i, 3, 1)
+        nodes_1 = graph_nodes_i[node_idxs_1].view(num_edges_i, 3, 1)
+
+        lambda_arap = self.lambda_arap
+
+        # Compute residual.
+        rotated_node_delta = torch.matmul(R_current[node_idxs_0], nodes_1 - nodes_0)  # (num_edges_i, 3)
+        res_arap = lambda_arap * w_repeat * (rotated_node_delta + nodes_0 + t_current[node_idxs_0]
+                                             - (nodes_1 + t_current[node_idxs_1]))
+        res_arap = res_arap.view(num_edges_i * 3, 1)
+
+        # Compute jacobian wrt. translations.
+        jacobian_arap[
+            arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 0] += lambda_arap * w * arap_one_vec  # (num_edges_i)
+        jacobian_arap[
+            arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 1] += lambda_arap * w * arap_one_vec  # (num_edges_i)
+        jacobian_arap[
+            arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 2] += lambda_arap * w * arap_one_vec  # (num_edges_i)
+
+        jacobian_arap[
+            arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 0] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
+        jacobian_arap[
+            arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 1] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
+        jacobian_arap[
+            arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 2] += -lambda_arap * w * arap_one_vec  # (num_edges_i)
+
+        # Compute jacobian wrt. rotations.
+        # Derivative wrt. R_1 is equal to 0.
+        skew_symetric_mat_arap = -lambda_arap * w_repeat_repeat * torch.matmul(self.vec_to_skew_mat, rotated_node_delta).view(num_edges_i,
+                                                                                                                              3,
+                                                                                                                              3)  # (num_edges_i, 3, 3)
+
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 0, 0]
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 0, 1]
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 0, 2]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 1, 0]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 1, 1]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 1, 2]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 2, 0]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 2, 1]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 2, 2]
+
+        assert torch.isfinite(jacobian_arap).all(), jacobian_arap
+
+        if self.gn_print_timings: print("\t\tARAP term: {:.3f} s".format(timer() - timer_arap_start))
+        return res_arap, jacobian_arap
