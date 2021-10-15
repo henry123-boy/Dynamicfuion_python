@@ -121,6 +121,7 @@ def test_alignment_holistic(parameters: AlignmentTestParameters):
         gt_deformed_points_idxs = torch.load(os.path.join(gt_path, "deformed_points_idxs.pt"))
         gt_deformed_points_subsampled = torch.load(os.path.join(gt_path, "deformed_points_subsampled.pt"))
 
+        # compare output to ground truth
         assert torch.equal(flow2, gt_flow2)
         assert torch.equal(flow3, gt_flow3)
         assert torch.equal(flow4, gt_flow4)
