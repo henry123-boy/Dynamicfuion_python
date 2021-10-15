@@ -6,7 +6,7 @@ import numpy as np
 import math
 import kornia
 from timeit import default_timer as timer
-from typing import Tuple
+from typing import Tuple, Union, List
 
 from settings import DeformNetParameters
 from alignment.nn_utilities import make_conv_2d, ResBlock2d, Identity
@@ -157,13 +157,13 @@ class DeformNet(torch.nn.Module):
             pixel_anchors: torch.Tensor, pixel_weights: torch.Tensor, num_nodes_vec: torch.Tensor, intrinsics: torch.Tensor,
             evaluate: bool = False, split: str = "train"
     ):
-        batch_size = source.shape[0]
+        batch_count = source.shape[0]
 
         image_width = source.shape[3]
         image_height = source.shape[2]
 
         convergence_info = []
-        for i in range(batch_size):
+        for i_batch in range(batch_count):
             convergence_info.append({
                 "total": [],
                 "arap": [],
@@ -204,7 +204,7 @@ class DeformNet(torch.nn.Module):
         y_coords = torch.arange(image_height, dtype=torch.float32, device=source.device).unsqueeze(1).expand(image_height, image_width).unsqueeze(0)
 
         xy_coords = torch.cat([x_coords, y_coords], 0)
-        xy_coords = xy_coords.unsqueeze(0).repeat(batch_size, 1, 1, 1)  # (bs, 2, 448, 640)
+        xy_coords = xy_coords.unsqueeze(0).repeat(batch_count, 1, 1, 1)  # (bs, 2, 448, 640)
 
         # Apply the flow to pixel coordinates.
         xy_coords_warped = xy_coords + flow
@@ -262,7 +262,7 @@ class DeformNet(torch.nn.Module):
         # We predict correspondence weights [0, 1], if we use mask network.
         mask_pred = None
         if self.use_mask:
-            mask_pred = self.mask_net(features2, mask_input).view(batch_size, image_height, image_width)
+            mask_pred = self.mask_net(features2, mask_input).view(batch_count, image_height, image_width)
 
         # Compute mask of valid correspondences
         valid_correspondences = valid_source_points & valid_target_matches
@@ -301,13 +301,13 @@ class DeformNet(torch.nn.Module):
         # We assume we always use 4 nearest anchors.
         assert pixel_anchors.shape[3] == 4
 
-        node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3).repeat(batch_size, num_nodes_total, 1, 1)
-        node_translations = torch.zeros((batch_size, num_nodes_total, 3), dtype=source.dtype, device=source.device)
-        deformations_validity = torch.zeros((batch_size, num_nodes_total), dtype=source.dtype, device=source.device)
-        valid_solve = torch.zeros((batch_size), dtype=torch.uint8, device=source.device)
-        deformed_points_pred = torch.zeros((batch_size, self.gn_max_warped_points, 3), dtype=source.dtype, device=source.device)
-        deformed_points_idxs = torch.zeros((batch_size, self.gn_max_warped_points), dtype=torch.int64, device=source.device)
-        deformed_points_subsampled = torch.zeros((batch_size), dtype=torch.uint8, device=source.device)
+        node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3).repeat(batch_count, num_nodes_total, 1, 1)
+        node_translations = torch.zeros((batch_count, num_nodes_total, 3), dtype=source.dtype, device=source.device)
+        deformations_validity = torch.zeros((batch_count, num_nodes_total), dtype=source.dtype, device=source.device)
+        valid_solve = torch.zeros((batch_count), dtype=torch.uint8, device=source.device)
+        deformed_points_pred = torch.zeros((batch_count, self.gn_max_warped_points, 3), dtype=source.dtype, device=source.device)
+        deformed_points_idxs = torch.zeros((batch_count, self.gn_max_warped_points), dtype=torch.int64, device=source.device)
+        deformed_points_subsampled = torch.zeros((batch_count), dtype=torch.uint8, device=source.device)
 
         # Optionally, skip the solver
         if not evaluate and self.skip_solver:
@@ -346,55 +346,55 @@ class DeformNet(torch.nn.Module):
 
         self.vec_to_skew_mat.to(source.device)
 
-        for i in range(batch_size):
+        for i_batch in range(batch_count):
             if self.gn_debug:
                 print()
-                print("--Sample", i, "in batch--")
+                print("--Sample", i_batch, "in batch--")
 
-            num_nodes_i = num_nodes_vec[i]
+            num_nodes_i = num_nodes_vec[i_batch]
             if num_nodes_i > self.gn_max_nodes or num_nodes_i < self.gn_min_nodes:
-                print("\tSolver failed: Invalid number of canonical_node_positions: {0}".format(num_nodes_i))
-                convergence_info[i]["errors"].append("Solver failed: Invalid number of canonical_node_positions: {0}".format(num_nodes_i))
+                print("\tSolver failed: Invalid number of nodes: {0}".format(num_nodes_i))
+                convergence_info[i_batch]["errors"].append("Solver failed: Invalid number of nodes: {0}".format(num_nodes_i))
                 continue
 
-            if not correspondences_exist[i]:
+            if not correspondences_exist[i_batch]:
                 print("\tSolver failed: No valid correspondences before filtering")
-                convergence_info[i]["errors"].append("Solver failed: No valid correspondences before filtering")
+                convergence_info[i_batch]["errors"].append("Solver failed: No valid correspondences before filtering")
                 continue
 
             timer_start = timer()
 
-            graph_nodes_i = graph_nodes[i, :num_nodes_i, :]  # (num_nodes_i, 3)
-            graph_edges_i = graph_edges[i, :num_nodes_i, :]  # (num_nodes_i, 8)
-            graph_edges_weights_i = graph_edges_weights[i, :num_nodes_i, :]  # (num_nodes_i, 8)
-            graph_clusters_i = graph_clusters[i, :num_nodes_i, :]  # (num_nodes_i, 1)
+            graph_nodes_i = graph_nodes[i_batch, :num_nodes_i, :]  # (num_nodes_i, 3)
+            graph_edges_i = graph_edges[i_batch, :num_nodes_i, :]  # (num_nodes_i, 8)
+            graph_edges_weights_i = graph_edges_weights[i_batch, :num_nodes_i, :]  # (num_nodes_i, 8)
+            graph_clusters_i = graph_clusters[i_batch, :num_nodes_i, :]  # (num_nodes_i, 1)
 
-            fx = intrinsics[i, 0]
-            fy = intrinsics[i, 1]
-            cx = intrinsics[i, 2]
-            cy = intrinsics[i, 3]
+            fx = intrinsics[i_batch, 0]
+            fy = intrinsics[i_batch, 1]
+            cx = intrinsics[i_batch, 2]
+            cy = intrinsics[i_batch, 3]
 
             ###############################################################################################################
             # region Filter invalid matches.
             ###############################################################################################################
-            valid_correspondences_idxs = torch.where(valid_correspondences[i])
+            valid_correspondences_idxs = torch.where(valid_correspondences[i_batch])
 
-            source_points_filtered = source_points[i].permute(1, 2, 0)
+            source_points_filtered = source_points[i_batch].permute(1, 2, 0)
             source_points_filtered = source_points_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
-            source_colors_filtered = source_colors[i].permute(1, 2, 0)
+            source_colors_filtered = source_colors[i_batch].permute(1, 2, 0)
             source_colors_filtered = source_colors_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
 
-            target_matches_filtered = target_matches[i].permute(1, 2, 0)
+            target_matches_filtered = target_matches[i_batch].permute(1, 2, 0)
             target_matches_filtered = target_matches_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
 
-            xy_pixels_warped_filtered = xy_pixels_warped[i].permute(1, 2, 0)  # (height, width, 2)
+            xy_pixels_warped_filtered = xy_pixels_warped[i_batch].permute(1, 2, 0)  # (height, width, 2)
             xy_pixels_warped_filtered = xy_pixels_warped_filtered[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 2, 1)
 
-            correspondence_weights_filtered = correspondence_weights[i, valid_correspondences_idxs[0], valid_correspondences_idxs[1]].view(
+            correspondence_weights_filtered = correspondence_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1]].view(
                 -1)  # (num_matches)
 
-            source_anchors = pixel_anchors[i, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
-            source_weights = pixel_weights[i, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
+            source_anchors = pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
+            source_weights = pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
 
             num_matches = source_points_filtered.shape[0]
             # endregion
@@ -429,8 +429,8 @@ class DeformNet(torch.nn.Module):
                 num_matches = max_num_matches
             # endregion
             ###############################################################################################################
-            # region Remove canonical_node_positions if their corresponding clusters don't have enough correspondences
-            # (Correspondences that have "bad" canonical_node_positions as anchors will also be removed)
+            # region Remove nodes if their corresponding clusters don't have enough correspondences
+            # (Correspondences that have "bad" nodes as anchors will also be removed)
             ###############################################################################################################
             map_opt_nodes_to_complete_nodes_i = list(range(0, num_nodes_i))
             opt_num_nodes_i = num_nodes_i
@@ -463,10 +463,10 @@ class DeformNet(torch.nn.Module):
 
                     total_match_weights += match_weights
 
-                # we'll build a mask that stores which canonical_node_positions will survive
+                # we'll build a mask that stores which nodes will survive
                 valid_nodes_mask_i = torch.ones((num_nodes_i), dtype=torch.bool, device=source.device)
 
-                # if not enough matches in a cluster, mark all cluster's canonical_node_positions for removal
+                # if not enough matches in a cluster, mark all cluster's nodes for removal
                 node_ids_for_removal = []
                 for cluster_id, cluster_match_weights in match_weights_per_cluster.items():
                     if self.gn_debug:
@@ -474,22 +474,22 @@ class DeformNet(torch.nn.Module):
 
                     if cluster_match_weights < self.gn_min_num_correspondences_per_cluster:
                         index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
-                        x = index_equals_cluster_id[0].tolist()
-                        node_ids_for_removal += x
+                        transform_delta = index_equals_cluster_id[0].tolist()
+                        node_ids_for_removal += transform_delta
 
                 if self.gn_debug:
                     print("node_ids_for_removal", node_ids_for_removal)
 
                 if len(node_ids_for_removal) > 0:
-                    # Mark invalid canonical_node_positions
+                    # Mark invalid nodes
                     valid_nodes_mask_i[node_ids_for_removal] = False
 
-                    # Kepp only canonical_node_positions and edges for valid canonical_node_positions
+                    # Kepp only nodes and edges for valid nodes
                     graph_nodes_i = graph_nodes_i[valid_nodes_mask_i.squeeze()]
                     graph_edges_i = graph_edges_i[valid_nodes_mask_i.squeeze()]
                     graph_edges_weights_i = graph_edges_weights_i[valid_nodes_mask_i.squeeze()]
 
-                    # Update number of canonical_node_positions
+                    # Update number of nodes
                     opt_num_nodes_i = graph_nodes_i.shape[0]
 
                     # Get mask of correspondences for which any one of their anchors is an invalid node
@@ -520,13 +520,13 @@ class DeformNet(torch.nn.Module):
             if num_matches == 0:
                 if self.gn_debug:
                     print("\tSolver failed: No valid correspondences")
-                convergence_info[i]["errors"].append("Solver failed: No valid correspondences after filtering")
+                convergence_info[i_batch]["errors"].append("Solver failed: No valid correspondences after filtering")
                 continue
 
             if opt_num_nodes_i > self.gn_max_nodes or opt_num_nodes_i < self.gn_min_nodes:
                 if self.gn_debug:
-                    print("\tSolver failed: Invalid number of canonical_node_positions: {0}".format(opt_num_nodes_i))
-                convergence_info[i]["errors"].append("Solver failed: Invalid number of canonical_node_positions: {0}".format(opt_num_nodes_i))
+                    print("\tSolver failed: Invalid number of nodes: {0}".format(opt_num_nodes_i))
+                convergence_info[i_batch]["errors"].append("Solver failed: Invalid number of nodes: {0}".format(opt_num_nodes_i))
                 continue
 
             # Since source anchor ids need to be long in order to be used as indices,
@@ -543,30 +543,27 @@ class DeformNet(torch.nn.Module):
                                           graph_edges_i.view(-1, num_neighbors, 1)], 2)  # (opt_num_nodes_i, num_neighbors, 2)
 
             valid_edges = graph_edges_i >= 0
-            valid_edge_idxs = torch.where(valid_edges)
-            graph_edge_pairs_filtered = graph_edge_pairs[valid_edge_idxs[0], valid_edge_idxs[1], :].type(torch.int64)
-            graph_edge_weights_pairs = graph_edges_weights_i[valid_edge_idxs[0], valid_edge_idxs[1]]
+            valid_edge_indices = torch.where(valid_edges)
+            graph_edge_pairs_filtered = graph_edge_pairs[valid_edge_indices[0], valid_edge_indices[1], :].type(torch.int64)
+            graph_edge_weights_pairs = graph_edges_weights_i[valid_edge_indices[0], valid_edge_indices[1]]
 
-            num_edges_i = graph_edge_pairs_filtered.shape[0]
+            batch_edge_count = graph_edge_pairs_filtered.shape[0]
             # endregion
             ###############################################################################################################
             # region Execute Gauss-Newton solver.
             ###############################################################################################################
             gauss_newton_iteration_count = self.gn_num_iter
-            lambda_data_flow = self.lambda_data_flow
-            lambda_data_depth = self.lambda_data_depth
-            lm_factor = self.gn_lm_factor
 
             # The parameters in GN solver are 3 parameters for rotation and 3 parameters for
             # translation for every node. All node rotation parameters are listed first, and
             # then all node translation parameters are listed.
             #                        x = [R_current_all, t_current_all]
-            R_current = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 3, 3).repeat(opt_num_nodes_i, 1, 1)
-            t_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=source.dtype, device=source.device)
+            rotations_current = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 3, 3).repeat(opt_num_nodes_i, 1, 1)
+            translations_current = torch.zeros((opt_num_nodes_i, 3, 1), dtype=source.dtype, device=source.device)
 
             if self.gn_debug:
-                print(
-                    "\tNum. matches: {0} || Num. canonical_node_positions: {1} || Num. edges: {2}".format(num_matches, opt_num_nodes_i, num_edges_i))
+                print("\tNum. matches: {0} || Num. nodes: {1} || Num. edges: {2}"
+                      .format(num_matches, opt_num_nodes_i, batch_edge_count))
 
             # Helper structures.
             data_increment_vec_0_3 = torch.arange(0, num_matches * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_matches)
@@ -577,150 +574,88 @@ class DeformNet(torch.nn.Module):
             arap_increment_vec_1_3 = None
             arap_increment_vec_2_3 = None
             arap_one_vec = None
-            if num_edges_i > 0:
-                arap_increment_vec_0_3 = torch.arange(0, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
-                arap_increment_vec_1_3 = torch.arange(1, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
-                arap_increment_vec_2_3 = torch.arange(2, num_edges_i * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
-                arap_one_vec = torch.ones((num_edges_i), dtype=source.dtype, device=source.device)
+            if batch_edge_count > 0:
+                arap_increment_vec_0_3 = torch.arange(0, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_increment_vec_1_3 = torch.arange(1, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_increment_vec_2_3 = torch.arange(2, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(), device=source.device)  # (num_edges_i)
+                arap_one_vec = torch.ones((batch_edge_count), dtype=source.dtype, device=source.device)
 
             ill_posed_system = False
 
             for i_iteration in range(gauss_newton_iteration_count):
-                res_data, jacobian_data = \
+                residual_data, jacobian_data = \
                     self.compute_data_residual_and_jacobian(data_increment_vec_0_3, data_increment_vec_1_3, data_increment_vec_2_3,
                                                             num_matches, opt_num_nodes_i, graph_nodes_i,
                                                             source_anchors, source_weights, source_points_filtered, source_colors_filtered,
                                                             correspondence_weights_filtered, xy_pixels_warped_filtered, target_matches_filtered,
-                                                            i_iteration, fx, fy, cx, cy, R_current, t_current)
+                                                            i_iteration, fx, fy, cx, cy, rotations_current, translations_current)
 
-                res_arap = None
-                jacobian_arap = None
-                if num_edges_i > 0:
+                if batch_edge_count > 0:
                     res_arap, jacobian_arap = \
                         self.compute_arap_residual_and_jacobian(arap_increment_vec_0_3, arap_increment_vec_1_3, arap_increment_vec_2_3, arap_one_vec,
                                                                 graph_edge_pairs_filtered, graph_edge_weights_pairs,
-                                                                graph_nodes_i, num_edges_i, opt_num_nodes_i, num_neighbors, R_current, t_current)
+                                                                graph_nodes_i, batch_edge_count, opt_num_nodes_i, num_neighbors,
+                                                                rotations_current, translations_current)
+                    residual = torch.cat((residual_data, res_arap), 0)
+                    jacobian = torch.cat((jacobian_data, jacobian_arap), 0)
+                else:
+                    residual = residual_data
+                    jacobian = jacobian_data
+
                 ##########################################
                 # region Solve linear system.
                 ##########################################
-                if num_edges_i > 0:
-                    res = torch.cat((res_data, res_arap), 0)
-                    jac = torch.cat((jacobian_data, jacobian_arap), 0)
-                else:
-                    res = res_data
-                    jac = jacobian_data
-
-                timer_system_start = timer()
-
-                # Compute A = J^TJ and b = -J^Tr.
-                jac_t = torch.transpose(jac, 0, 1)
-                A = torch.matmul(jac_t, jac)
-                b = torch.matmul(-jac_t, res)
-
-                # Solve linear system Ax = b.
-                A = A + torch.eye(A.shape[0], dtype=A.dtype, device=A.device) * lm_factor
-
-                assert torch.isfinite(A).all(), A
-
-                if self.gn_print_timings: print("\t\tSystem computation: {:.3f} s".format(timer() - timer_system_start))
-                timer_cond_start = timer()
-
-                # Check the determinant/condition number.
-                # If unstable, we break optimization.
-                if self.gn_check_condition_num:
-                    with torch.no_grad():
-                        # Condition number.
-                        values = torch.linalg.eigvals(A)
-                        real_values = torch.view_as_real(values)[:, 0]
-                        assert torch.isfinite(real_values).all(), real_values
-                        max_eig_value = torch.max(torch.abs(real_values))
-                        min_eig_value = torch.min(torch.abs(real_values))
-                        condition_number = max_eig_value / min_eig_value
-                        condition_number = condition_number.item()
-                        convergence_info[i]["condition_numbers"].append(condition_number)
-
-                        if self.gn_break_on_condition_num and (
-                                not math.isfinite(condition_number) or condition_number > self.gn_max_condition_num):
-                            print("\t\tToo high condition number: {0:e} (max: {1:.3f}, min: {2:.3f}). Discarding sample".format(condition_number,
-                                                                                                                                max_eig_value.item(),
-                                                                                                                                min_eig_value.item()))
-                            convergence_info[i]["errors"].append(
-                                "Too high condition number: {0:e} (max: {1:.3f}, min: {2:.3f}). Discarding sample".format(condition_number,
-                                                                                                                          max_eig_value.item(),
-                                                                                                                          min_eig_value.item()))
-                            ill_posed_system = True
-                            break
-                        elif self.gn_debug:
-                            print("\t\tCondition number: {0:e} (max: {1:.3f}, min: {2:.3f})".format(condition_number, max_eig_value.item(),
-                                                                                                    min_eig_value.item()))
-
-                if self.gn_print_timings: print("\t\tComputation of cond. num.: {:.3f} s".format(timer() - timer_cond_start))
-                timer_solve_start = timer()
-
-                linear_solver = LinearSolverLU.apply
-
-                try:
-                    x = linear_solver(A, b)
-
-                except RuntimeError as e:
-                    ill_posed_system = True
-                    print("\t\tSolver failed: Ill-posed system!", e)
-                    convergence_info[i]["errors"].append("Solver failed: Ill-posed system!")
+                success, transform_delta = self.solve_linear_system(residual, jacobian, convergence_info[i_batch])
+                ill_posed_system = not success
+                if ill_posed_system:
                     break
 
-                if not torch.isfinite(x).all():
-                    ill_posed_system = True
-                    print("\t\tSolver failed: Non-finite solution x!")
-                    convergence_info[i]["errors"].append("Solver failed: Non-finite solution x!")
-                    break
-
-                if self.gn_print_timings: print("\t\tLinear solve: {:.3f} s".format(timer() - timer_solve_start))
-
+                # endregion
                 # Increment the current rotation and translation.
-                R_inc = kornia.angle_axis_to_rotation_matrix(x[:opt_num_nodes_i * 3].view(opt_num_nodes_i, 3))
-                t_inc = x[opt_num_nodes_i * 3:].view(opt_num_nodes_i, 3, 1)
+                rotation_increments = kornia.angle_axis_to_rotation_matrix(transform_delta[:opt_num_nodes_i * 3].view(opt_num_nodes_i, 3))
+                translation_increments = transform_delta[opt_num_nodes_i * 3:].view(opt_num_nodes_i, 3, 1)
 
-                R_current = torch.matmul(R_inc, R_current)
-                t_current = t_current + t_inc
+                rotations_current = torch.matmul(rotation_increments, rotations_current)
+                translations_current = translations_current + translation_increments
 
-                loss_data = torch.norm(res_data).item()
-                loss_total = torch.norm(res).item()
+                loss_data = torch.norm(residual_data).item()
+                loss_total = torch.norm(residual).item()
 
-                convergence_info[i]["data"].append(loss_data)
-                convergence_info[i]["total"].append(loss_total)
+                convergence_info[i_batch]["data"].append(loss_data)
+                convergence_info[i_batch]["total"].append(loss_total)
 
-                if num_edges_i > 0:
+                if batch_edge_count > 0:
                     loss_arap = torch.norm(res_arap).item()
-                    convergence_info[i]["arap"].append(loss_arap)
+                    convergence_info[i_batch]["arap"].append(loss_arap)
 
                 if self.gn_debug:
-                    if num_edges_i > 0:
+                    if batch_edge_count > 0:
                         print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \tarap = {2:.3f}, \ttotal = {3:.3f}".format(i_iteration, loss_data,
                                                                                                                           loss_arap,
                                                                                                                           loss_total))
                     else:
                         print("\t\t-->Iteration: {0}. Loss: \tdata = {1:.3f}, \ttotal = {2:.3f}".format(i_iteration, loss_data, loss_total))
-                # endregion
+
             # endregion
             ###############################################################################################################
             # region Write the solutions.
             ###############################################################################################################
-            if not ill_posed_system and torch.isfinite(res).all():
-                node_rotations[i, map_opt_nodes_to_complete_nodes_i, :, :] = R_current.view(opt_num_nodes_i, 3, 3)
-                node_translations[i, map_opt_nodes_to_complete_nodes_i, :] = t_current.view(opt_num_nodes_i, 3)
-                deformations_validity[i, map_opt_nodes_to_complete_nodes_i] = 1
-                valid_solve[i] = 1
+            if not ill_posed_system and torch.isfinite(residual).all():
+                node_rotations[i_batch, map_opt_nodes_to_complete_nodes_i, :, :] = rotations_current.view(opt_num_nodes_i, 3, 3)
+                node_translations[i_batch, map_opt_nodes_to_complete_nodes_i, :] = translations_current.view(opt_num_nodes_i, 3)
+                deformations_validity[i_batch, map_opt_nodes_to_complete_nodes_i] = 1
+                valid_solve[i_batch] = 1
             # endregion
             ###############################################################################################################
             # region Warp all valid source points using estimated deformations.
             ###############################################################################################################
-            if valid_solve[i]:
+            if valid_solve[i_batch]:
                 # Filter out any invalid pixel anchors, and invalid source points.
-                source_points_i = source_points[i].permute(1, 2, 0)
+                source_points_i = source_points[i_batch].permute(1, 2, 0)
                 source_points_i = source_points_i[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(-1, 3, 1)
 
-                source_anchors_i = pixel_anchors[i, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
-                source_weights_i = pixel_weights[i, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
+                source_anchors_i = pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
+                source_weights_i = pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]  # (num_matches, 4)
 
                 num_points = source_points_i.shape[0]
 
@@ -734,17 +669,17 @@ class DeformNet(torch.nn.Module):
 
                     num_points = self.gn_max_warped_points
 
-                    deformed_points_idxs[i] = sampled_idxs
-                    deformed_points_subsampled[i] = 1
+                    deformed_points_idxs[i_batch] = sampled_idxs
+                    deformed_points_subsampled[i_batch] = 1
 
                 source_anchors_i = source_anchors_i.type(torch.int64)
 
                 # Now we deform all source points.
                 deformed_points_i = torch.zeros((num_points, 3, 1), dtype=source.dtype, device=source.device)
-                graph_nodes_complete_i = graph_nodes[i, :num_nodes_i, :]
+                graph_nodes_complete_i = graph_nodes[i_batch, :num_nodes_i, :]
 
-                R_final = node_rotations[i, :num_nodes_i, :, :].view(num_nodes_i, 3, 3)
-                t_final = node_translations[i, :num_nodes_i, :].view(num_nodes_i, 3, 1)
+                R_final = node_rotations[i_batch, :num_nodes_i, :, :].view(num_nodes_i, 3, 3)
+                t_final = node_translations[i_batch, :num_nodes_i, :].view(num_nodes_i, 3, 1)
 
                 for k in range(4):  # Our data uses 4 anchors for every point
                     node_idxs_k = source_anchors_i[:, k]  # (num_points)
@@ -759,27 +694,28 @@ class DeformNet(torch.nn.Module):
                     deformed_points_i += source_weights_i[:, k].view(num_points, 1, 1).repeat(1, 3, 1) * deformed_points_k
 
                 # Store the results.
-                deformed_points_pred[i, :num_points, :] = deformed_points_i.view(1, num_points, 3)
+                deformed_points_pred[i_batch, :num_points, :] = deformed_points_i.view(1, num_points, 3)
             # endregion
-            if valid_solve[i]:
+            if valid_solve[i_batch]:
                 total_num_matches_per_batch += num_matches
 
             if self.gn_debug:
-                if int(valid_solve[i].cpu().numpy()):
+                if int(valid_solve[i_batch].cpu().numpy()):
                     print("\t\tValid solve   ({:.3f} s)".format(timer() - timer_start))
                 else:
                     print("\t\tInvalid solve ({:.3f} s)".format(timer() - timer_start))
 
-            convergence_info[i]["valid"] = int(valid_solve[i].item())
+            convergence_info[i_batch]["valid"] = int(valid_solve[i_batch].item())
         # endregion
         ###############################################################################################################
         # region We invalidate complete batch if we have too many matches in total (otherwise backprop crashes)
         ###############################################################################################################
         if not evaluate and total_num_matches_per_batch > self.gn_max_matches_train_per_batch:
-            print("\t\tSolver failed: Too many matches per batch: {}".format(total_num_matches_per_batch))
-            for i in range(batch_size):
-                convergence_info[i]["errors"].append("Solver failed: Too many matches per batch: {}".format(total_num_matches_per_batch))
-                valid_solve[i] = 0
+            error_string = f"Solver failed: too many matches per batch: {total_num_matches_per_batch}"
+            print("\t\t" + error_string)
+            for i_batch in range(batch_count):
+                convergence_info[i_batch]["errors"].append(error_string)
+                valid_solve[i_batch] = 0
         # endregion
         return {
             "flow_data": [flow2, flow3, flow4, flow5, flow6],
@@ -799,6 +735,78 @@ class DeformNet(torch.nn.Module):
             "weight_info": weight_info
         }
 
+    def solve_linear_system(self,
+                            residual, jacobian,
+                            batch_convergence_info: dict):
+        lm_factor = self.gn_lm_factor
+
+        timer_system_start = timer()
+
+        # Compute A = J^TJ and b = -J^Tr.
+        jacobian_transpose = torch.transpose(jacobian, 0, 1)
+        A = torch.matmul(jacobian_transpose, jacobian)
+        b = torch.matmul(-jacobian_transpose, residual)
+
+        # Solve linear system Ax = b.
+        A = A + torch.eye(A.shape[0], dtype=A.dtype, device=A.device) * lm_factor
+
+        assert torch.isfinite(A).all(), A
+
+        if self.gn_print_timings:
+            print("\t\tSystem computation: {:.3f} s".format(timer() - timer_system_start))
+        timer_cond_start = timer()
+
+        # Check the determinant/condition number.
+        # If unstable, we break optimization.
+        if self.gn_check_condition_num:
+            with torch.no_grad():
+                # Condition number.
+                values = torch.linalg.eigvals(A)
+                real_values = torch.view_as_real(values)[:, 0]
+                assert torch.isfinite(real_values).all(), real_values
+                max_eig_value = torch.max(torch.abs(real_values))
+                min_eig_value = torch.min(torch.abs(real_values))
+                condition_number = max_eig_value / min_eig_value
+                condition_number = condition_number.item()
+                batch_convergence_info["condition_numbers"].append(condition_number)
+
+                if self.gn_break_on_condition_num and (
+                        not math.isfinite(condition_number) or condition_number > self.gn_max_condition_num):
+                    print("\t\tToo high condition number: {0:e} (max: {1:.3f}, min: {2:.3f}). Discarding sample".format(condition_number,
+                                                                                                                        max_eig_value.item(),
+                                                                                                                        min_eig_value.item()))
+                    batch_convergence_info["errors"].append(
+                        "Too high condition number: {0:e} (max: {1:.3f}, min: {2:.3f}). Discarding sample".format(condition_number,
+                                                                                                                  max_eig_value.item(),
+                                                                                                                  min_eig_value.item()))
+                    return False, None
+                elif self.gn_debug:
+                    print("\t\tCondition number: {0:e} (max: {1:.3f}, min: {2:.3f})".format(condition_number, max_eig_value.item(),
+                                                                                            min_eig_value.item()))
+
+        if self.gn_print_timings:
+            print("\t\tComputation of cond. num.: {:.3f} s".format(timer() - timer_cond_start))
+        timer_solve_start = timer()
+
+        linear_solver = LinearSolverLU.apply
+
+        try:
+            # transform_delta is x in Ax = b.
+            transform_delta = linear_solver(A, b)
+        except RuntimeError as e:
+            print("\t\tSolver failed: Ill-posed system!", e)
+            batch_convergence_info["errors"].append("Solver failed: ill-posed system!")
+            return False, None
+
+        if not torch.isfinite(transform_delta).all():
+            print("\t\tSolver failed: Non-finite solution x!")
+            batch_convergence_info["errors"].append("Solver failed: non-finite solution x!")
+            return False, None
+
+        if self.gn_print_timings:
+            print("\t\tLinear solve: {:.3f} s".format(timer() - timer_solve_start))
+        return True, transform_delta
+
     def compute_data_residual_and_jacobian(self,
                                            data_increment_vec_0_3: torch.Tensor,
                                            data_increment_vec_1_3: torch.Tensor,
@@ -815,8 +823,7 @@ class DeformNet(torch.nn.Module):
                                            target_matches_filtered: torch.Tensor,
                                            i_iteration: int,
                                            fx: torch.Tensor, fy: torch.Tensor, cx: torch.Tensor, cy: torch.Tensor,
-                                           R_current: torch.Tensor,
-                                           t_current: torch.Tensor
+                                           R_current: torch.Tensor, t_current: torch.Tensor
                                            ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         timer_data_start = timer()
@@ -1009,5 +1016,6 @@ class DeformNet(torch.nn.Module):
 
         assert torch.isfinite(jacobian_arap).all(), jacobian_arap
 
-        if self.gn_print_timings: print("\t\tARAP term: {:.3f} s".format(timer() - timer_arap_start))
+        if self.gn_print_timings:
+            print("\t\tARAP term: {:.3f} s".format(timer() - timer_arap_start))
         return res_arap, jacobian_arap
