@@ -266,12 +266,6 @@ def warp_deform_3d(image, pixel_anchors, pixel_weights, node_positions, node_rot
     w = image_copy.shape[2]
     num_pixels = h * w
 
-    # invalid_pixel_anchors = pixel_anchors < 0
-    # filtered_pixel_anchors = np.copy(pixel_anchors)
-    # filtered_pixel_anchors[invalid_pixel_anchors] = 0
-
-    # filtered_pixel_anchors[np.any(pixel_anchors == -1, axis=2)]
-
     # Warp the image pixels using graph poses.
     image_points = image_copy[3:, :, :]
     image_points = np.moveaxis(image_points, 0, -1).reshape(num_pixels, 3, 1)

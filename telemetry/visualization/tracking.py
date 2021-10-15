@@ -56,12 +56,7 @@ def visualize_tracking(
         mask_pred: np.ndarray,
         valid_source_points: np.ndarray,
         valid_correspondences: np.ndarray,
-        target_matches: np.ndarray,
-        # TODO: (1) utilize and pass on in the geometry dictionary to viewer, under keys such as
-        #  "geometry_1", "geometry_2", ..., "geometry_N"
-        #  (2) in the viewer, implement a key callback for each extra geometry in the dictionary up to #9, such
-        #     that, for example, key 1 toggles visibility of "geometry_1" when that's present in the geometry dictionary
-        additional_geometry: typing.List[o3d.geometry.Geometry3D] = []):
+        target_matches: np.ndarray):
     # Some params for coloring the predicted correspondence confidences
     weight_threshold = 0.3
     weight_scale = 1

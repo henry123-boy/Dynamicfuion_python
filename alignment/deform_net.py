@@ -336,6 +336,7 @@ class DeformNet(torch.nn.Module):
 
                 match_count = max_num_matches
             # endregion
+
             ###############################################################################################################
             # region Remove nodes if their corresponding clusters don't have enough correspondences
             # (Correspondences that have "bad" nodes as anchors will also be removed)
