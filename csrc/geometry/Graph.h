@@ -16,11 +16,17 @@
 #pragma once
 
 #include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/t/geometry/PointCloud.h>
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
 namespace nnrt {
 namespace geometry {
+
+open3d::t::geometry::PointCloud
+WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
+				  const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+				  int anchor_count, float node_coverage);
 
 open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
                                                       const open3d::core::Tensor& nodes,

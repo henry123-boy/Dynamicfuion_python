@@ -20,8 +20,12 @@ class VisualizerParameters(ParameterEnum):
     base_output_path = Parameter(arg_type=str,
                                  default="/mnt/Data/Reconstruction/output/NeuralTracking_experiment_output",
                                  arg_help="Path to the output folder for all fusion pipeline run outputs.")
-    experiment_folder = Parameter(arg_type=str, default="21-10-08-15-34-07",
-                                  arg_help="Folder (relative to base_output_path) for a single fusion pipeline app run.")
+    experiment_folder = Parameter(arg_type=str, default="!LATEST!",
+                                  arg_help="Folder (relative to base_output_path) with output from a single fusion pipeline app run."
+                                           "If \"!LATEST!\" is specified instead of a folder name, the app will retrieve the folder "
+                                           "that's using the latest date & time in it's name (or, if no folders have "
+                                           "such a name in the proper sortable timestamp format, the folder with the "
+                                           "latest modification date.)")
     start_frame = Parameter(arg_type=int, default=-1, shorthand="start",
                             arg_help="Frame in the sequence to start from. Passing '-1' will cause the program "
                                      "to automatically infer and utilize the entire available frame range by analyzing "

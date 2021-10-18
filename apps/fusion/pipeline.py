@@ -61,6 +61,7 @@ class FusionPipeline:
                                                       log_parameters.record_rendered_warped_mesh.value,
                                                       log_parameters.record_gn_point_clouds.value,
                                                       log_parameters.record_source_and_target_point_clouds.value,
+                                                      log_parameters.record_graph_transformations.value,
                                                       verbosity_parameters.print_cuda_memory_info.value,
                                                       verbosity_parameters.print_frame_info.value,
                                                       viz_parameters.visualization_mode.value,
@@ -186,6 +187,7 @@ class FusionPipeline:
 
             # endregion
             if current_frame.frame_index == sequence.start_frame_index:
+                # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                                  depth_scale, sequence.far_clipping_distance)
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
@@ -222,10 +224,11 @@ class FusionPipeline:
                 else:
                     raise NotImplementedError(f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
+                # endregion
             else:
 
                 #####################################################################################################
-                # region ===== prepare source point cloud & RGB image ====
+                # region ===== prepare source point cloud & RGB image for non-rigid alignment  ====
                 #####################################################################################################
                 #  when we track 0-to-t, we force reusing original frame for the source.
                 if tracking_parameters.source_image_mode.value == SourceImageMode.REUSE_PREVIOUS_FRAME \
@@ -308,7 +311,7 @@ class FusionPipeline:
                 # endregion
 
                 #####################################################################################################
-                # region === run the motion prediction & optimization ====
+                # region === run the motion prediction & optimization (non-rigid alignment) ====
                 #####################################################################################################
 
                 deform_net_data = run_non_rigid_alignment(deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
@@ -321,8 +324,9 @@ class FusionPipeline:
 
                 # endregion
                 #####################################################################################################
-                # region === fuse alignment ====
+                # region === fuse aligned data into the canonical/reference TSDF volume ====
                 #####################################################################################################
+
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
                     self.graph.rotations_mat = rotations_pred
@@ -344,6 +348,8 @@ class FusionPipeline:
                             raise NotImplementedError(f"{TrackingSpanMode.__class__:s} {tracking_parameters.tracking_span_mode.value.name:s} "
                                                       f" post-processing not implemented for f{TransformationMode.__class__:s} "
                                                       f"{integration_parameters.transformation_mode.value.name}.")
+                # handle logging/vis of the graph data
+                telemetry_generator.process_graph_transformation(self.graph)
 
                 # prepare data for Open3D integration
                 nodes_o3d = o3c.Tensor(self.graph.nodes, dtype=o3c.Dtype.Float32, device=device)

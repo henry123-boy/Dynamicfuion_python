@@ -140,6 +140,9 @@ class LoggingParameters(ParameterEnum):
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Record the point clouds generated from source and target RGB-D frame before processing "
                            "each new frame in the sequence")
+    record_graph_transformations = \
+        Parameter(default=True, arg_type='bool_flag',
+                  arg_help="Record node original positions, rotations, and translations at each frame after non-rigid alignment.")
 
 
 class TelemetryParameters(ParameterEnum):

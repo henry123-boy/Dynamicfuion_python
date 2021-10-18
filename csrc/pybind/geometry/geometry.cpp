@@ -178,6 +178,9 @@ void pybind_graph(pybind11::module& m) {
 
 	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
+
+	m.def("warp_point_cloud_mat", &WarpPointCloudMat, "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
+	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
 }
 
 } // namespace geometry

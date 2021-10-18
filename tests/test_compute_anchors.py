@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import math
 import open3d as o3d
 import open3d.core as o3c
@@ -5,9 +7,11 @@ import nnrt
 import pytest
 import numpy as np
 
+from data import StaticCenterCrop, DeformDataset
+
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_compute_anchors_euclidean(device):
+def test_compute_anchors_euclidean_nnrtf_vs_legacy_nnrt_cpp(device):
     mesh = o3d.geometry.TriangleMesh.create_box()
     # mesh = mesh.subdivide_midpoint(number_of_iterations=1)
     nodes = np.array([[0., 0., 0.],  # 0
@@ -172,3 +176,30 @@ def test_shortest_path_anchors(device: o3d.core.Device):
     assert np.allclose(weights.cpu().numpy().sum(axis=1), [[1.0], [1.0]])
     assert np.allclose(weights.cpu().numpy()[0], weights_s0_gt)
     assert np.allclose(weights.cpu().numpy()[1], weights_s1_gt)
+
+
+def test_legacy_nnrt_ccp_shortest_paths_vs_precomputed():
+    test_data_dir = Path("test_data/point_warping")
+    source_rgbxyz = np.load(test_data_dir / "000033_source_rgbxyz.npy")
+    nodes = np.load(test_data_dir / "000033_nodes.npy")
+    edges = np.load(test_data_dir / "000033_edges.npy")
+    cropper = StaticCenterCrop((480, 640), (448, 640))
+
+    pixel_anchors_precomputed, pixel_weights_precomputed = \
+        DeformDataset.load_anchors_and_weights(str(test_data_dir / "pixel_anchors.bin"), str(test_data_dir / "pixel_weights.bin"), cropper)
+
+    source_xyz = source_rgbxyz[:, 3:].copy().reshape(448, 640, 3)
+
+    pixel_anchors_sp_legacy, pixel_weights_sp_legacy = nnrt.compute_pixel_anchors_shortest_path(source_xyz, nodes, edges, 4, 0.05)
+
+    # print()
+    # print(pixel_anchors_precomputed.shape)
+    # print(pixel_anchors_sp_legacy.shape)
+    # print(pixel_anchors_precomputed.reshape(-1, 4)[:100])
+    # print(pixel_anchors_sp_legacy.reshape(-1, 4)[:100])
+    #
+    print()
+    print((pixel_anchors_precomputed == -1).sum())
+    print((pixel_anchors_sp_legacy == -1).sum())
+    # pixel_anchors_sp_legacy[pixel_anchors_precomputed == -1] = -1
+    # assert np.alltrue(pixel_anchors_sp_legacy == pixel_anchors_precomputed)

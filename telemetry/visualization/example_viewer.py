@@ -10,6 +10,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         self.added_target_pcd = False
         self.added_source_graph = False
         self.added_target_graph = False
+        self.added_warped_pcd = False
 
         self.added_both = False
 
@@ -27,6 +28,7 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         self.target_pcd = geometry_dict["target_pcd"]
         self.source_graph = geometry_dict["source_graph"]
         self.target_graph = geometry_dict["target_graph"]
+        self.warped_pcd = geometry_dict["warped_pcd"]
         self.mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.3, origin=[0, 0, 0])
 
         # align source to target
@@ -148,6 +150,20 @@ class CustomDrawGeometryWithKeyCallbackViewer():
                 self.added_source_pcd = True
                 self.added_source_obj = False
 
+            ctr = vis.get_view_control()
+            ctr.convert_from_pinhole_camera_parameters(param)
+
+            return False
+
+        def toggle_warped_pcd(vis):
+            param = vis.get_view_control().convert_to_pinhole_camera_parameters()
+
+            if self.added_warped_pcd:
+                vis.remove_geometry(self.warped_pcd)
+                self.added_warped_pcd = False
+            else:
+                vis.add_geometry(self.warped_pcd)
+                self.added_warped_pcd = True
             ctr = vis.get_view_control()
             ctr.convert_from_pinhole_camera_parameters(param)
 
@@ -481,5 +497,6 @@ class CustomDrawGeometryWithKeyCallbackViewer():
         key_to_callback[ord("A")] = align
         key_to_callback[ord("Z")] = reload_source_object
         key_to_callback[ord("X")] = toggle_axes
+        key_to_callback[ord("Y")] = toggle_warped_pcd
 
         o3d.visualization.draw_geometries_with_key_callbacks([self.source_pcd], key_to_callback)

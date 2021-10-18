@@ -37,6 +37,7 @@ def main():
     frame_pair_preset: FramePairPreset = FramePairPreset.RED_SHORTS_200_400
     frame_pair_name = frame_pair_preset.name.lower()
     frame_pair_dataset: FramePairDataset = frame_pair_preset.value
+    frame_pair_dataset.load()
 
     save_node_transformations = False
 

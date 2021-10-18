@@ -106,8 +106,6 @@ def visualize_tracking(
     warped_pcd = o3d.geometry.PointCloud()
     warped_pcd.points = o3d.utility.Vector3dVector(warped_points)
     warped_pcd.paint_uniform_color([1, 0.706, 0])  # warped_pcd.colors = o3d.utility.Vector3dVector(warped_colors)
-
-    # o3d.visualization.draw_geometries([source_object_pcd, warped_pcd])
     # endregion
     ####################################
     # region >>>> Target Point Cloud <<<<
@@ -258,7 +256,8 @@ def visualize_tracking(
         "source_obj": source_object_pcd,
         "target_pcd": target_pcd,
         "source_graph": source_graph,
-        "target_graph": target_graph
+        "target_graph": target_graph,
+        "warped_pcd": warped_pcd
     }
 
     alignment_dict = {

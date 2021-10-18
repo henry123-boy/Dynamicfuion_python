@@ -78,6 +78,10 @@ class LinearSolverLU(torch.autograd.Function):
 
 
 class DeformNet(torch.nn.Module):
+
+    # TODO: to provide looser coupling, instead of passing in a TelemetryGenerator here, have a boolean parameter to
+    #  optionally record the optimization-deformed point clouds at every step into the output dict from
+    #  the forward method.
     def __init__(self, telemetry_generator=None):
         super().__init__()
 

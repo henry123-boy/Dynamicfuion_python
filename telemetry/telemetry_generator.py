@@ -25,6 +25,7 @@ class TelemetryGenerator:
                  record_rendered_warped_mesh: bool,
                  record_gn_point_clouds: bool,
                  record_source_and_target_point_clouds: bool,
+                 record_graph_transformations: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
@@ -41,6 +42,7 @@ class TelemetryGenerator:
         self.record_rendered_mesh = record_rendered_warped_mesh
         self.record_gn_point_clouds = record_gn_point_clouds
         self.record_source_and_target_point_clouds = record_source_and_target_point_clouds
+        self.record_graph_transformations = record_graph_transformations
         self.visualization_mode = visualization_mode
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
         if not os.path.exists(self.output_directory):
@@ -193,4 +195,15 @@ class TelemetryGenerator:
             np.save(source_path, source_rgbxyz.reshape(6, -1).T)
             target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
             np.save(target_path, target_rgbxyz.reshape(6, -1).T)
+
+    def process_graph_transformation(self, graph: DeformationGraphNumpy):
+        if self.record_graph_transformations:
+            nodes_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_nodes.npy")
+            np.save(nodes_path, graph.nodes)
+            edges_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_edges.npy")
+            np.save(edges_path, graph.edges)
+            rotations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_rotations.npy")
+            np.save(rotations_path, graph.rotations_mat)
+            translations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_translations.npy")
+            np.save(translations_path, graph.translations_vec)
 
