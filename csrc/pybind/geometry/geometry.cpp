@@ -151,7 +151,7 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
 			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat),
 	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a,"node_rotations"_a, "node_translations"_a,
+	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a,
 	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
 	                             "depth_scale"_a, "depth_max"_a);
 	warpable_tsdf_voxel_grid.def("integrate_warped_shortest_path_mat", py::overload_cast<const Image&, const core::Tensor&,
@@ -159,7 +159,7 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
 			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat),
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a,"node_rotations"_a, "node_translations"_a,
+	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a,
 	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
 	                             "depth_scale"_a, "depth_max"_a);
 
@@ -179,8 +179,15 @@ void pybind_graph(pybind11::module& m) {
 	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
 
-	m.def("warp_point_cloud_mat", &WarpPointCloudMat, "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
+	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, int, float>(&WarpPointCloudMat),
+	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
+
+	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&>(&WarpPointCloudMat),
+	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
+	      "node_translations"_a, "anchors"_a, "anchor_weights"_a);
 }
 
 } // namespace geometry

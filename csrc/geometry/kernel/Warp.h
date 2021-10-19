@@ -29,10 +29,21 @@ void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor&
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations,
+				const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
+
 template<open3d::core::Device::DeviceType TDeviceType>
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations,
+                const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
 
 } // namespace warp
 } // namespace kernel

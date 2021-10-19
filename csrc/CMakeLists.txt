@@ -74,7 +74,7 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDA.h
     core/CUDA/HostHeapCUDAImpl.cuh
     core/CUDA/HostHeapCUDA.cu
-    core/CUDA/HostHeapCUDA.h)
+    core/CUDA/HostHeapCUDA.h geometry/AnchorComputationMethod.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

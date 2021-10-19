@@ -25,8 +25,13 @@ namespace geometry {
 
 open3d::t::geometry::PointCloud
 WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
-				  const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-				  int anchor_count, float node_coverage);
+                  const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                  int anchor_count, float node_coverage);
+
+open3d::t::geometry::PointCloud
+WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
+                  const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                  const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
 
 open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
                                                       const open3d::core::Tensor& nodes,
@@ -34,6 +39,7 @@ open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry:
                                                       const open3d::core::Tensor& node_translations,
                                                       int anchor_count,
                                                       float node_coverage);
+
 
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
