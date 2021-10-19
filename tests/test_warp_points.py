@@ -53,7 +53,10 @@ def test_warp_points_cpp_vs_legacy():
     node_rotations_o3d = o3c.Tensor(node_rotations, dtype=o3c.Dtype.Float32, device=device)
     node_translations_o3d = o3c.Tensor(node_translations, dtype=o3c.Dtype.Float32, device=device)
 
-    warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, 4, 0.05)
+    point_anchors = pixel_anchors.reshape(-1, 4)
+    point_weights = pixel_weights.reshape(-1, 4)
+
+    warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, point_anchors, point_weights)
     warped_points = warped_pc_o3d.point["points"].cpu().numpy()
 
     print(source_rgbxyz[:10, 3:])
@@ -62,3 +65,5 @@ def test_warp_points_cpp_vs_legacy():
     print(np.linalg.norm(warped_points[:10] - legacy_warped_points[:10], axis=1))
 
 
+if __name__ == "__main__":
+    test_warp_points_cpp_vs_legacy()

@@ -100,10 +100,18 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 	auto anchors_shape = anchors.GetShape();
 	auto anchor_weights_shape = anchor_weights.GetShape();
 	if (anchors_shape.size() != 2 ||  anchor_weights_shape.size() != 2) {
-		utility::LogError("Tensors `anchors` and `anchor_weights` need to have 2 and 2 dimensions,"
-		                  " respectively. Got {} and {}.", anchors_shape.size(),
+		utility::LogError("Tensors `anchors` and `anchor_weights` need to both have two dimensions."
+		                  "Got {} and {} dimensions, respectively.", anchors_shape.size(),
 		                  anchor_weights_shape.size());
 	}
+	if(anchors_shape[0] != anchor_weights_shape[0] || anchors_shape[1] != anchor_weights_shape[1]){
+		utility::LogError("Tensors `anchors` and `anchor_weights` need to have matching dimensions."
+						  "Got {} and {}, respectively.", anchors_shape,
+		                  anchor_weights_shape);
+	}
+	anchors.AssertDtype(core::Dtype::Int32);
+	anchor_weights.AssertDtype(core::Dtype::Float32);
+
 	PointCloud warped_point_cloud(device);
 
 	if (warped_point_cloud.HasPointColors()) {

@@ -56,7 +56,6 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
                 int anchor_count, const float node_coverage) {
 
 	const int64_t point_count = points.GetLength();
-	const int64_t node_count = nodes.GetLength();
 
 	float node_coverage_squared = node_coverage * node_coverage;
 
@@ -110,7 +109,6 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
                 const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights) {
 
 	const int64_t point_count = points.GetLength();
-	const int64_t node_count = nodes.GetLength();
 	const auto anchor_count = static_cast<int32_t>(anchors.GetShape(1));
 
 	// initialize output array
