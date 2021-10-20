@@ -1,0 +1,222 @@
+//  ================================================================
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
+//  Copyright (c) 2021 Gregory Kramida
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//  ================================================================
+#pragma once
+
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <Eigen/Dense>
+
+#include "geometry/kernel/Defines.h"
+#include "geometry/kernel/KnnUtilities.h"
+#include "core/DeviceHeap.h"
+#include "geometry/DualQuaternion.h"
+
+
+namespace o3c = open3d::core;
+using namespace open3d::t::geometry::kernel;
+
+namespace nnrt {
+namespace geometry {
+namespace kernel {
+namespace warp {
+
+/**
+ * \brief searches for anchor nodes within 2 * node_coverage of the specified point and computes their weights of influence on this point
+ * \tparam TDeviceType
+ * \param anchor_indices
+ * \param anchor_weights
+ * \param anchor_count
+ * \param minimum_valid_anchor_count
+ * \param node_count
+ * \param point
+ * \param node_indexer
+ * \param node_coverage_squared
+ * \return true if there are enough valid anchors within 2 * node_coverage, false otherwise
+ */
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
+inline bool
+FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                                 const int minimum_valid_anchor_count,
+                                                 const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+                                                 const float node_coverage_squared) {
+	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
+	// region ===================== FIND ANCHOR POINTS ================================
+	knn::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
+	                                                    node_count, point, node_indexer);
+	// endregion
+	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
+
+	float weight_sum = 0.0;
+	int valid_anchor_count = 0;
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		float squared_distance = squared_distances[i_anchor];
+		// note: equivalent to distance > 2 * node_coverage, avoids sqrtf
+		if (squared_distance > 4 * node_coverage_squared) {
+			anchor_indices[i_anchor] = -1;
+			continue;
+		}
+		float weight = expf(-squared_distance / (2 * node_coverage_squared));
+		weight_sum += weight;
+		anchor_weights[i_anchor] = weight;
+		valid_anchor_count++;
+	}
+	if (valid_anchor_count < minimum_valid_anchor_count) {
+		return false;
+	}
+	if (weight_sum > 0.0f) {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] /= weight_sum;
+		}
+	} else if (valid_anchor_count > 0) {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
+		}
+	}
+	// endregion
+	return true;
+}
+
+
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
+inline void
+FindAnchorsAndWeightsForPointEuclidean(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                       const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+                                       const float node_coverage_squared) {
+	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
+	// region ===================== FIND ANCHOR POINTS ================================
+	knn::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
+	                                                    node_count, point, node_indexer);
+	// endregion
+	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
+
+	float weight_sum = 0.0;
+	int valid_anchor_count = 0;
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		float squared_distance = squared_distances[i_anchor];
+		float weight = expf(-squared_distance / (2 * node_coverage_squared));
+		weight_sum += weight;
+		anchor_weights[i_anchor] = weight;
+		valid_anchor_count++;
+	}
+
+	if (weight_sum > 0.0f) {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] /= weight_sum;
+		}
+	} else {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
+		}
+	}
+	// endregion
+}
+
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
+inline void
+FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                          const int node_count, const Eigen::Vector3f& point,
+                                          const NDArrayIndexer& node_indexer,
+                                          const NDArrayIndexer& edge_indexer,
+                                          const float node_coverage_squared) {
+	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
+	knn::FindShortestPathKNNAnchors<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer, edge_indexer);
+	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
+
+	float weight_sum = 0.0;
+	int valid_anchor_count = 0;
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		float distance = distances[i_anchor];
+		float weight = expf(-(distance * distance) / (2 * node_coverage_squared));
+		weight_sum += weight;
+		anchor_weights[i_anchor] = weight;
+		valid_anchor_count++;
+	}
+
+	if (weight_sum > 0.0f) {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] /= weight_sum;
+		}
+	} else {
+		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
+		}
+	}
+
+	// endregion
+}
+
+
+template<typename TPoint>
+inline NNRT_DEVICE_WHEN_CUDACC
+void BlendWarpDualQuaternions(
+		TPoint& warped_point,
+		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+		const NDArrayIndexer& node_transform_indexer, const Eigen::Vector3f& source_point
+) {
+	// *** linearly blend the anchor nodes' dual quaternions ***
+	float coefficients[8];
+	for (float& coefficient: coefficients) {
+		coefficient = 0.0f;
+	}
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		int anchor_node_index = anchor_indices[i_anchor];
+		if (anchor_node_index != -1) {
+			float anchor_weight = anchor_weights[i_anchor];
+			auto node_transform = node_transform_indexer.GetDataPtr<float>(anchor_node_index);
+			for (int i_coefficient = 0; i_coefficient < 8; i_coefficient++) {
+				coefficients[i_coefficient] += anchor_weight * node_transform[i_coefficient];
+			}
+		}
+	}
+	Eigen::DualQuaternion<float> voxel_transformation(
+			Eigen::Quaternion<float>(coefficients[0], coefficients[1], coefficients[2], coefficients[3]),
+			Eigen::Quaternion<float>(coefficients[4], coefficients[5], coefficients[6], coefficients[7])
+	);
+
+	voxel_transformation.normalize();
+	warped_point = voxel_transformation.transformPoint(source_point);
+}
+
+template<typename TPoint>
+inline NNRT_DEVICE_WHEN_CUDACC
+void BlendWarpMatrices(
+		TPoint& warped_point,
+		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+		const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
+		const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& source_point
+) {
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		int anchor_node_index = anchor_indices[i_anchor];
+		if (anchor_node_index != -1) {
+			float anchor_weight = anchor_weights[i_anchor];
+			auto node_rotation_data = node_rotation_indexer.GetDataPtr<float>(anchor_node_index);
+			auto node_translation_data = node_translation_indexer.GetDataPtr<float>(anchor_node_index);
+			Eigen::Matrix3f node_rotation(node_rotation_data);
+			Eigen::Vector3f node_translation(node_translation_data);
+			auto node_pointer = node_indexer.GetDataPtr<float>(anchor_node_index);
+			Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
+			warped_point += anchor_weight * (node + node_rotation * (source_point - node) + node_translation);
+		}
+	}
+}
+
+
+} // namespace graph
+} // namespace kernel
+} // namespace geometry
+} // namespace nnrt

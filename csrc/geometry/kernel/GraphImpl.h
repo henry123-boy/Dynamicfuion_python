@@ -25,7 +25,7 @@
 #include <open3d/utility/Console.h>
 
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/GraphUtilitiesImpl.h"
+#include "geometry/kernel/WarpUtilities.h"
 #include "Graph.h"
 
 
@@ -75,11 +75,11 @@ void ComputeAnchorsAndWeightsEuclidean
 				auto anchor_indices = anchor_indexer.template GetDataPtr<int32_t>(workload_idx);
 				auto anchor_weights = weight_indexer.template GetDataPtr<float>(workload_idx);
 				if (TUseValidAnchorThreshold) {
-					graph::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+					warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
 					                                                                     minimum_valid_anchor_count, node_count,
 					                                                                     point, node_indexer, node_coverage_squared);
 				} else {
-					graph::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+					warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
 					                                                           point, node_indexer, node_coverage_squared);
 				}
 				// endregion
@@ -122,7 +122,7 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 				auto anchor_indices = anchor_indexer.template GetDataPtr<int32_t>(workload_idx);
 				auto anchor_weights = weight_indexer.template GetDataPtr<float>(workload_idx);
 
-				graph::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
+				warp::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
 				                                                              point, node_indexer, edge_indexer, node_coverage_squared);
 				// endregion
 			}

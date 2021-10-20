@@ -203,3 +203,5 @@ def test_legacy_nnrt_ccp_shortest_paths_vs_precomputed():
     print((pixel_anchors_sp_legacy == -1).sum())
     # pixel_anchors_sp_legacy[pixel_anchors_precomputed == -1] = -1
     # assert np.alltrue(pixel_anchors_sp_legacy == pixel_anchors_precomputed)
+
+    # TODO: still don't know how to generate exactly the same anchors/weights as the ones in the author's data.

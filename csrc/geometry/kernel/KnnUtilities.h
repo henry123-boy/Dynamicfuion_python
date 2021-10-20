@@ -28,7 +28,7 @@ using namespace open3d::t::geometry::kernel;
 namespace nnrt {
 namespace geometry {
 namespace kernel {
-namespace graph {
+namespace knn {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
@@ -105,98 +105,6 @@ inline void FindEuclideanKNNAnchorsBruteForce_ExcludingSet(int32_t* anchor_indic
 	}
 }
 
-/**
- * \brief searches for anchor nodes within 2 * node_coverage of the specified point and computes their weights of influence on this point
- * \tparam TDeviceType
- * \param anchor_indices
- * \param anchor_weights
- * \param anchor_count
- * \param minimum_valid_anchor_count
- * \param node_count
- * \param point
- * \param node_indexer
- * \param node_coverage_squared
- * \return true if there are enough valid anchors within 2 * node_coverage, false otherwise
- */
-template<o3c::Device::DeviceType TDeviceType>
-NNRT_DEVICE_WHEN_CUDACC
-inline bool
-FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                                                 const int minimum_valid_anchor_count,
-                                                 const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-                                                 const float node_coverage_squared) {
-	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
-	// region ===================== FIND ANCHOR POINTS ================================
-	graph::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
-	                                                      node_count, point, node_indexer);
-	// endregion
-	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
-
-	float weight_sum = 0.0;
-	int valid_anchor_count = 0;
-	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-		float squared_distance = squared_distances[i_anchor];
-		// note: equivalent to distance > 2 * node_coverage, avoids sqrtf
-		if (squared_distance > 4 * node_coverage_squared) {
-			anchor_indices[i_anchor] = -1;
-			continue;
-		}
-		float weight = expf(-squared_distance / (2 * node_coverage_squared));
-		weight_sum += weight;
-		anchor_weights[i_anchor] = weight;
-		valid_anchor_count++;
-	}
-	if (valid_anchor_count < minimum_valid_anchor_count) {
-		return false;
-	}
-	if (weight_sum > 0.0f) {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] /= weight_sum;
-		}
-	} else if (valid_anchor_count > 0) {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
-		}
-	}
-	// endregion
-	return true;
-}
-
-
-template<o3c::Device::DeviceType TDeviceType>
-NNRT_DEVICE_WHEN_CUDACC
-inline void
-FindAnchorsAndWeightsForPointEuclidean(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                                       const int node_count, const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
-                                       const float node_coverage_squared) {
-	auto squared_distances = anchor_weights; // repurpose the anchor weights array to hold squared distances
-	// region ===================== FIND ANCHOR POINTS ================================
-	graph::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(anchor_indices, squared_distances, anchor_count,
-	                                                      node_count, point, node_indexer);
-	// endregion
-	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
-
-	float weight_sum = 0.0;
-	int valid_anchor_count = 0;
-	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-		float squared_distance = squared_distances[i_anchor];
-		float weight = expf(-squared_distance / (2 * node_coverage_squared));
-		weight_sum += weight;
-		anchor_weights[i_anchor] = weight;
-		valid_anchor_count++;
-	}
-
-	if (weight_sum > 0.0f) {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] /= weight_sum;
-		}
-	} else {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
-		}
-	}
-	// endregion
-}
 
 /**
  * \brief find K nearest neighbors by shortest path distance within the provided graph.
@@ -270,42 +178,6 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 		}
 	}
 }
-
-template<o3c::Device::DeviceType TDeviceType>
-NNRT_DEVICE_WHEN_CUDACC
-inline void
-FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                                          const int node_count, const Eigen::Vector3f& point,
-                                          const NDArrayIndexer& node_indexer,
-                                          const NDArrayIndexer& edge_indexer,
-                                          const float node_coverage_squared) {
-	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
-	graph::FindShortestPathKNNAnchors<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer, edge_indexer);
-	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
-
-	float weight_sum = 0.0;
-	int valid_anchor_count = 0;
-	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-		float distance = distances[i_anchor];
-		float weight = expf(-(distance * distance) / (2 * node_coverage_squared));
-		weight_sum += weight;
-		anchor_weights[i_anchor] = weight;
-		valid_anchor_count++;
-	}
-
-	if (weight_sum > 0.0f) {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] /= weight_sum;
-		}
-	} else {
-		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
-		}
-	}
-
-	// endregion
-}
-
 
 } // namespace graph
 } // namespace kernel

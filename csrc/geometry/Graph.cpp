@@ -93,7 +93,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 
 PointCloud
 WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes, const core::Tensor& node_rotations,
-                            const core::Tensor& node_translations, const core::Tensor& anchors, const core::Tensor& anchor_weights) {
+                  const core::Tensor& node_translations, const core::Tensor& anchors, const core::Tensor& anchor_weights) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeData(device, nodes, node_rotations, node_translations);
