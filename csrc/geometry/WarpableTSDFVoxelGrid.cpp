@@ -114,7 +114,11 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanDQ(const Ima
 	extrinsics.AssertDtype(core::Dtype::Float32);
 
 	if (anchor_count < 0 || anchor_count > MAX_ANCHOR_COUNT) {
-		utility::LogError("anchor_count is {}, but is required to satisfy 0 < anchor_count < {}", anchor_count, MAX_ANCHOR_COUNT);
+		utility::LogError("`anchor_count` is {}, but is required to satisfy 0 < anchor_count <= {}", anchor_count, MAX_ANCHOR_COUNT);
+	}
+	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count){
+		utility::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {} ",
+						  minimum_valid_anchor_count, anchor_count);
 	}
 
 	// TODO note the difference from TSDFVoxelGrid::Integrate:

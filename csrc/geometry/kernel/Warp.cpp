@@ -25,17 +25,18 @@ namespace warp {
 
 void WarpPoints(open3d::core::Tensor& warped_vertices,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
-                const open3d::core::Tensor& node_translations, const int anchor_count, const float node_coverage) {
+                const open3d::core::Tensor& node_translations, const int anchor_count, const float node_coverage,
+				const int minimum_valid_anchor_count) {
 	core::Device::DeviceType device_type = nodes.GetDevice().GetType();
 	switch (device_type) {
 		case core::Device::DeviceType::CPU:
 			WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count);
 			break;
 		case core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
 			WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count);
 #else
 			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
@@ -49,17 +50,18 @@ void WarpPoints(open3d::core::Tensor& warped_vertices,
 void WarpPoints(open3d::core::Tensor& warped_vertices,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
                 const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights) {
+                const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
+				const int minimum_valid_anchor_count) {
 	core::Device::DeviceType device_type = nodes.GetDevice().GetType();
 	switch (device_type) {
 		case core::Device::DeviceType::CPU:
 			WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count);
 			break;
 		case core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
 			WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights);
+					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count);
 #else
 			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

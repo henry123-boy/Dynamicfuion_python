@@ -18,6 +18,7 @@
 #include <open3d/t/geometry/TriangleMesh.h>
 #include <open3d/t/geometry/PointCloud.h>
 #include <pybind11/pybind11.h>
+
 namespace py = pybind11;
 
 namespace nnrt {
@@ -26,12 +27,14 @@ namespace geometry {
 open3d::t::geometry::PointCloud
 WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
                   const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                  int anchor_count, float node_coverage);
+                  int anchor_count, float node_coverage,
+                  int minimum_valid_anchor_count = 0);
 
 open3d::t::geometry::PointCloud
 WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
                   const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                  const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
+                  const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
+                  int minimum_valid_anchor_count = 0);
 
 open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh,
                                                       const open3d::core::Tensor& nodes,
@@ -46,15 +49,14 @@ void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::co
                                        float node_coverage);
 
 py::tuple ComputeAnchorsAndWeightsEuclidean(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, int anchor_count,
-											int minimum_valid_anchor_count, float node_coverage);
+                                            int minimum_valid_anchor_count, float node_coverage);
 
 void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                           const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
                                           float node_coverage);
 
 py::tuple ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
-											   const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
-
+                                               const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
 
 
 } // namespace geometry

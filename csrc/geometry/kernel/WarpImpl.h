@@ -31,12 +31,30 @@ namespace geometry {
 namespace kernel {
 namespace warp {
 
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
+inline void AddAnchorInfluence(Eigen::Map<Eigen::Vector3f>& warped_point, const int anchor_index, const float weight,
+                               const Eigen::Vector3f& point,
+                               const NDArrayIndexer& node_indexer,
+                               const NDArrayIndexer& node_rotation_indexer,
+                               const NDArrayIndexer& node_translation_indexer) {
+	if (anchor_index != -1) {
+		auto node_data = node_indexer.template GetDataPtr<float>(anchor_index);
+		auto rotation_data = node_rotation_indexer.template GetDataPtr<float>(anchor_index);
+		auto translation_data = node_translation_indexer.template GetDataPtr<float>(anchor_index);
+		Eigen::Vector3f node(node_data);
+		Eigen::Vector3f translation(translation_data);
+		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotation(rotation_data);
+		warped_point += weight * (node + rotation * (point - node) + translation);
+	}
+}
+
 
 template<o3c::Device::DeviceType TDeviceType>
 void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
                 const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
                 const o3c::Tensor& node_translations,
-                int anchor_count, const float node_coverage) {
+                int anchor_count, const float node_coverage, int minimum_valid_anchor_count) {
 
 	const int64_t point_count = points.GetLength();
 	const int64_t node_count = nodes.GetLength();
@@ -69,12 +87,16 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                           point, node_indexer, node_coverage_squared);
+				if (!warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                         minimum_valid_anchor_count, node_count,
+				                                                                         point, node_indexer, node_coverage_squared)) {
+					return;
+				}
 
 				auto warped_point_data = warped_point_indexer.template GetDataPtr<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);
-				warp::BlendWarpMatrices(warped_point, anchor_indices, anchor_weights,anchor_count,node_indexer,node_rotation_indexer,node_translation_indexer, point);
+				warp::BlendWarpMatrices(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, node_rotation_indexer,
+				                        node_translation_indexer, point);
 			}
 	);
 
@@ -85,7 +107,8 @@ template<o3c::Device::DeviceType TDeviceType>
 void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
                 const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
                 const o3c::Tensor& node_translations,
-                const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights) {
+                const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
+                int minimum_valid_anchor_count) {
 
 	const int64_t point_count = points.GetLength();
 	const auto anchor_count = static_cast<int32_t>(anchors.GetShape(1));
@@ -120,7 +143,9 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);
 				const auto* node_anchors = anchor_indexer.template GetDataPtr<const int32_t>(workload_idx);
 				const auto* node_anchor_weights = anchor_weight_indexer.template GetDataPtr<const float>(workload_idx);
-				warp::BlendWarpMatrices(warped_point, node_anchors, node_anchor_weights, anchor_count, node_indexer, node_rotation_indexer, node_translation_indexer, point);
+				warp::BlendWarpMatrices_ValidAnchorCountThreshold(warped_point, node_anchors, node_anchor_weights,
+				                                                  anchor_count, minimum_valid_anchor_count, node_indexer, node_rotation_indexer,
+				                                                  node_translation_indexer, point);
 			}
 	);
 

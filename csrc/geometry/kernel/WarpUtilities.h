@@ -206,12 +206,31 @@ void BlendWarpMatrices(
 			float anchor_weight = anchor_weights[i_anchor];
 			auto node_rotation_data = node_rotation_indexer.GetDataPtr<float>(anchor_node_index);
 			auto node_translation_data = node_translation_indexer.GetDataPtr<float>(anchor_node_index);
-			Eigen::Matrix3f node_rotation(node_rotation_data);
+			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> node_rotation(node_rotation_data);
 			Eigen::Vector3f node_translation(node_translation_data);
 			auto node_pointer = node_indexer.GetDataPtr<float>(anchor_node_index);
 			Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
 			warped_point += anchor_weight * (node + node_rotation * (source_point - node) + node_translation);
 		}
+	}
+}
+
+template<typename TPoint>
+inline NNRT_DEVICE_WHEN_CUDACC
+void BlendWarpMatrices_ValidAnchorCountThreshold(
+		TPoint& warped_point,
+		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+		const int minimum_valid_anchor_count,
+		const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
+		const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& source_point
+) {
+	int valid_anchor_count = 0;
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		valid_anchor_count += static_cast<int>(anchor_indices[i_anchor] != -1);
+	}
+	if (valid_anchor_count >= minimum_valid_anchor_count) {
+		BlendWarpMatrices(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer,
+		                  node_rotation_indexer, node_translation_indexer, source_point);
 	}
 }
 

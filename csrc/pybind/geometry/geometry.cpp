@@ -180,14 +180,16 @@ void pybind_graph(pybind11::module& m) {
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
 
 	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
-			      const open3d::core::Tensor&, const open3d::core::Tensor&, int, float>(&WarpPointCloudMat),
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, int, float, int>(&WarpPointCloudMat),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
+	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
+		  "minimum_valid_anchor_count"_a);
 
 	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
-			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&>(&WarpPointCloudMat),
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, int>(&WarpPointCloudMat),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchors"_a, "anchor_weights"_a);
+	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
+		  "minimum_valid_anchor_count"_a);
 }
 
 } // namespace geometry

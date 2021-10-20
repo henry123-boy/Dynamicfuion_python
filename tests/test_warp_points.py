@@ -56,38 +56,7 @@ def test_warp_points_cpp_vs_legacy():
     point_anchors_o3d = o3c.Tensor(pixel_anchors.reshape(-1, 4), dtype=o3c.Dtype.Int32, device=device)
     point_weights_o3d = o3c.Tensor(pixel_weights.reshape(-1, 4), dtype=o3c.Dtype.Float32, device=device)
 
-    # warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, 4, 0.05)
-
-    warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, point_anchors_o3d, point_weights_o3d)
+    warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, point_anchors_o3d, point_weights_o3d, 4)
     warped_points = warped_pc_o3d.point["points"].cpu().numpy()
-
-    valid_point_count = len(np.nonzero(source_rgbxyz[:, 3:].sum(axis=1))[0])
-
-    # print(source_rgbxyz[:10, 3:])
-    # print(legacy_warped_points[:10])
-    # print(warped_points[:10])
-    distances = np.linalg.norm(warped_points - legacy_warped_points, axis=1)
-    absolute_tolerance = 1e-6
-    distances[distances < absolute_tolerance] = 0
-    indices_of_unmatched_points = np.nonzero(distances)[0]
-    indices_of_unmatched_pixels = np.unravel_index(indices_of_unmatched_points, (448, 640))
-    indices_of_unmatched_pixels = np.vstack((indices_of_unmatched_pixels[0], indices_of_unmatched_pixels[1])).T
-    print()
-    print("indices_of_unmatched_pixels (:30)")
-    print(indices_of_unmatched_pixels[:30])
-    source_unmatched_points = source_rgbxyz[:, 3:][indices_of_unmatched_points]
-    print("Source unmatched points XYZ (:10)")
-    print(source_unmatched_points[:10])
-    source_unmatched_colors = (source_rgbxyz[:, :3][indices_of_unmatched_points] * 255).astype(np.uint8)
-    print("Source unmatched points RGB")
-    print(source_unmatched_colors[:10])
-    print("Warped unmatched points")
-    print(warped_points[indices_of_unmatched_points][:10])
-    print("GT warped unmatched points")
-    print(legacy_warped_points[indices_of_unmatched_points][:10])
-
-    print(distances[indices_of_unmatched_points][:10])
-    print(indices_of_unmatched_points[:10])
-    print("Unmatched point ratio:")
-    print(len(indices_of_unmatched_points) / valid_point_count)
+    assert np.allclose(warped_points, legacy_warped_points, atol=1e-7)
 
