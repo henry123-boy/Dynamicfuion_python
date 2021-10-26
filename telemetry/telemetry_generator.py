@@ -1,4 +1,4 @@
-import typing
+from typing import Union, List
 from datetime import datetime
 from pathlib import Path
 
@@ -10,7 +10,8 @@ import torch
 from data import SequenceFrameDataset
 from warp_field.graph import DeformationGraphNumpy
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
-from pynvml import *
+import pynvml
+import os
 import telemetry.visualization.tracking as tracking_viz
 from settings.fusion import VisualizationMode
 from settings import Parameters
@@ -61,7 +62,7 @@ class TelemetryGenerator:
             )
         self.print_gpu_memory_info = print_cuda_memory_info
         if self.print_gpu_memory_info:
-            nvmlInit()
+            pynvml.nvmlInit()
         self.print_frame_info = print_frame_info
         self.frame_output_directory = os.path.join(self.output_directory, "frame_output")
         if not os.path.exists(self.frame_output_directory):
@@ -117,7 +118,7 @@ class TelemetryGenerator:
                               pixel_anchors: np.ndarray,
                               pixel_weights: np.ndarray,
                               graph: DeformationGraphNumpy,
-                              additional_geometry: typing.List = []):
+                              additional_geometry: List = []):
         if self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
             node_count = len(graph.nodes)
             rotations_pred = deform_net_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
@@ -147,8 +148,8 @@ class TelemetryGenerator:
             cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_depth.png"), depth_image)
 
     def process_result_visualization_and_logging(self,
-                                                 canonical_mesh: typing.Union[None, o3d.geometry.TriangleMesh],
-                                                 warped_mesh: typing.Union[None, o3d.geometry.TriangleMesh],
+                                                 canonical_mesh: Union[None, o3d.geometry.TriangleMesh],
+                                                 warped_mesh: Union[None, o3d.geometry.TriangleMesh],
                                                  deform_net_data: dict,
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
@@ -158,7 +159,7 @@ class TelemetryGenerator:
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
             self.process_warped_mesh(warped_mesh)
-        elif self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
+        elif self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING and deform_net_data is not None:
             self.process_alignment_viz(deform_net_data,
                                        tracking_image_height,
                                        tracking_image_width,
@@ -169,6 +170,10 @@ class TelemetryGenerator:
                                        graph)
         elif self.visualization_mode == VisualizationMode.COMBINED:
             raise NotImplementedError("TODO")
+
+    def record_meshes_to_disk_if_needed(self,
+                                        canonical_mesh: Union[None, o3d.geometry.TriangleMesh],
+                                        warped_mesh: Union[None, o3d.geometry.TriangleMesh]):
         if self.record_framewise_canonical_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
                                        canonical_mesh)
@@ -206,4 +211,3 @@ class TelemetryGenerator:
             np.save(rotations_path, graph.rotations_mat)
             translations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_translations.npy")
             np.save(translations_path, graph.translations_vec)
-

@@ -27,7 +27,5 @@ enum class AnchorComputationMethod : int {
 	SHORTEST_PATH
 };
 
-
-
 }// namespace geometry
 }// namespace nnrt

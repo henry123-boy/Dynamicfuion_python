@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/6/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/19/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,20 +14,18 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#include "pybind/nnrt_pybind.h"
 
+#include <pybind11/pybind11.h>
 
-namespace nnrt {
+namespace py = pybind11;
+
+namespace nnrt{
 namespace geometry {
 
-void pybind_geometry(py::module& m);
-void pybind_geometry_enums(py::module& m);
-void pybind_geometry_extended_tsdf_voxelgrid(py::module& m);
-void pybind_geometry_graph(py::module& m);
+enum class TransformationMode : int {
+	QUATERNIONS,
+	MATRICES
+};
 
-
-} // namespace geometry
-} //namespace nnrt
-
-
-
+}// namespace geometry
+}// namespace nnrt

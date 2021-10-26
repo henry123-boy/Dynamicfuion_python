@@ -142,6 +142,8 @@ if(BUILD_CUDA_MODULE)
 
     message(STATUS "CMAKE_CUDA_ARCHITECTURES: ${CMAKE_CUDA_ARCHITECTURES}")
     enable_language(CUDA)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif ()
 
 
@@ -159,9 +161,11 @@ else()
     set(NNRT_INSTALL_CMAKE_DIR CMake)
 endif()
 
-### project definition, build configuration
+### project definition, build configuration, compiler standard
 
 project(NNRT VERSION ${NNRT_VERSION} LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "NNRT ${NNRT_VERSION_FULL}")
 
 ### global functions

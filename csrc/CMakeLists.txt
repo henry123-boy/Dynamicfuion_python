@@ -61,6 +61,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
     geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
+    geometry/AnchorComputationMethod.h
+    geometry/TransformationMode.h
     core/KeyValuePair.h
     core/DeviceHeap.h
     core/CPU/DeviceHeapCPU.cpp
@@ -75,7 +77,7 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDA.h
     core/CUDA/HostHeapCUDAImpl.cuh
     core/CUDA/HostHeapCUDA.cu
-    core/CUDA/HostHeapCUDA.h geometry/AnchorComputationMethod.h)
+    core/CUDA/HostHeapCUDA.h string/split_string.h string/split_string.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -93,10 +95,12 @@ target_link_libraries(nnrt_cpp PUBLIC CUDA::toolkit)
 
 # ==================== set up NNRT Python binding library ============================
 set(PYBIND_SOURCE_FILES
+    3rd_party/magic_enum.hpp
     pybind/nnrt_pybind.h
     pybind/nnrt_pybind.cpp
     pybind/geometry/geometry.cpp
     pybind/geometry/geometry.h
+    pybind/enum_export.h
 )
 
 pybind11_add_module(nnrt

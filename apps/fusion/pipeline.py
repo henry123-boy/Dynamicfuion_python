@@ -225,6 +225,7 @@ class FusionPipeline:
                     raise NotImplementedError(f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
                 canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
+
             else:
 
                 #####################################################################################################
@@ -417,7 +418,7 @@ class FusionPipeline:
                 #  Check BaldrLector's NeuralTracking fork code.
                 # endregion
                 #####################################################################################################
-
+                canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 telemetry_generator.process_result_visualization_and_logging(
                     canonical_mesh, warped_mesh,
                     deform_net_data,
@@ -426,7 +427,7 @@ class FusionPipeline:
                     pixel_anchors, pixel_weights,
                     self.graph
                 )
-                canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
+                telemetry_generator.record_meshes_to_disk_if_needed(canonical_mesh, warped_mesh)
 
             if tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.ZERO_TO_T \
                     or current_frame.frame_index == sequence.start_frame_index:

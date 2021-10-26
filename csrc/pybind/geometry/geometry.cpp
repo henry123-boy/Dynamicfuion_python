@@ -18,7 +18,12 @@
 
 #include "geometry/WarpableTSDFVoxelGrid.h"
 #include "geometry/Graph.h"
+#include "geometry/AnchorComputationMethod.h"
+#include "geometry/TransformationMode.h"
 #include "geometry.h"
+
+
+#include "pybind/enum_export.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry;
@@ -30,11 +35,17 @@ void pybind_geometry(py::module& m) {
 	py::module m_submodule = m.def_submodule(
 			"geometry", "Open3D-tensor-based geometry defining module.");
 
-	pybind_extended_tsdf_voxelgrid(m_submodule);
-	pybind_graph(m_submodule);
+	pybind_geometry_enums(m_submodule);
+	pybind_geometry_extended_tsdf_voxelgrid(m_submodule);
+	pybind_geometry_graph(m_submodule);
 }
 
-void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
+void pybind_geometry_enums(pybind11::module& m){
+	nnrt::export_enum<nnrt::geometry::AnchorComputationMethod>(m);
+	nnrt::export_enum<nnrt::geometry::TransformationMode>(m);
+}
+
+void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 
 	py::class_<WarpableTSDFVoxelGrid, open3d::t::geometry::TSDFVoxelGrid> warpable_tsdf_voxel_grid(
 			m, "WarpableTSDFVoxelGrid", "A voxel grid for TSDF and/or color integration, extended with custom functions.");
@@ -167,7 +178,7 @@ void pybind_extended_tsdf_voxelgrid(pybind11::module& m) {
 	// endregion
 }
 
-void pybind_graph(pybind11::module& m) {
+void pybind_geometry_graph(pybind11::module& m) {
 	m.def("compute_anchors_and_weights_euclidean", py::overload_cast<const core::Tensor&, const core::Tensor&, int, int,
 			      float>(&ComputeAnchorsAndWeightsEuclidean), "points"_a, "nodes"_a, "anchor_count"_a,
 	      "minimum_valid_anchor_count"_a, "node_coverage"_a);

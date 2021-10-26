@@ -19,6 +19,7 @@
 
 #include "core/PlatformIndependence.h"
 #include "geometry/kernel/Defines.h"
+#include "geometry/AnchorComputationMethod.h"
 
 namespace nnrt {
 namespace geometry {

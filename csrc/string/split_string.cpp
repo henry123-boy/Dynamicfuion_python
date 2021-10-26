@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/6/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/22/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,21 +13,27 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
-#include "pybind/nnrt_pybind.h"
 
+#include <algorithm>
+#include <iostream>
+#include <string_view>
+#include <vector>
 
-namespace nnrt {
-namespace geometry {
+#include "split_string.h"
 
-void pybind_geometry(py::module& m);
-void pybind_geometry_enums(py::module& m);
-void pybind_geometry_extended_tsdf_voxelgrid(py::module& m);
-void pybind_geometry_graph(py::module& m);
+namespace nnrt::string{
 
+std::vector<std::string_view> split(std::string_view buffer,
+                                    const std::string_view delimiter) {
+	std::vector<std::string_view> ret{};
+	std::decay_t<decltype(std::string_view::npos)> pos{};
+	while ((pos = buffer.find(delimiter)) != std::string_view::npos) {
+		const auto match = buffer.substr(0, pos);
+		if (!match.empty()) ret.push_back(match);
+		buffer = buffer.substr(pos + delimiter.size());
+	}
+	if (!buffer.empty()) ret.push_back(buffer);
+	return ret;
+}
 
-} // namespace geometry
-} //namespace nnrt
-
-
-
+} // namespace nnrt
