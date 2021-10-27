@@ -34,8 +34,8 @@ def main():
     dataset_base_dir = Parameters.path.dataset_base_directory.value
 
     # Image dimensions to which we crop the input images, such that they are divisible by 64
-    image_height = Parameters.deform_net.alignment_image_height.value
-    image_width = Parameters.deform_net.alignment_image_width.value
+    image_height = Parameters.alignment.image_height.value
+    image_width = Parameters.alignment.image_width.value
 
     if Parameters.deform_net.gn_max_matches_eval.value != 100000:
         raise ValueError(f"For whatever sunny reason (based on legacy code), "
@@ -103,7 +103,7 @@ def main():
         # Target color and depth (and boundary mask)
         target, _, _ = DeformDataset.load_image(
             tgt_color_image_path, tgt_depth_image_path, intrinsics, image_height, image_width, cropper=cropper,
-            max_boundary_dist=None, compute_boundary_mask=False
+            max_boundary_distance=None, compute_boundary_mask=False
         )
 
         # Graph

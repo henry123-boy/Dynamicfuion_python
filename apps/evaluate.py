@@ -28,8 +28,8 @@ def main():
     gn_max_depth = Parameters.deform_net.gn_max_depth.value
 
     # Image dimensions to which we crop the input images, such that they are divisible by 64
-    image_height = Parameters.deform_net.alignment_image_height.value
-    image_width = Parameters.deform_net.alignment_image_width.value
+    alignment_image_height = Parameters.alignment.image_height.value
+    alignment_image_width = Parameters.alignment.image_width.value
 
     #####################################################################################################
     # Read labels and check existence of output dir
@@ -84,7 +84,7 @@ def main():
 
         # Source color and depth
         source, _, cropper = DeformDataset.load_image(
-            src_color_image_path, src_depth_image_path, intrinsics, image_height, image_width
+            src_color_image_path, src_depth_image_path, intrinsics, alignment_image_height, alignment_image_width
         )
         source_points = source[3:, :, :]
 

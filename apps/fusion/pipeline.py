@@ -121,13 +121,14 @@ class FusionPipeline:
         tracking_parameters = Parameters.fusion.tracking
         integration_parameters = Parameters.fusion.integration
         deform_net_parameters = Parameters.deform_net
+        alignment_parameters = Parameters.alignment
         graph_parameters = Parameters.graph
 
         node_coverage = graph_parameters.node_coverage.value
 
         depth_scale = deform_net_parameters.depth_scale.value
-        alignment_image_width = deform_net_parameters.alignment_image_width.value
-        alignment_image_height = deform_net_parameters.alignment_image_height.value
+        alignment_image_width = alignment_parameters.image_width.value
+        alignment_image_height = alignment_parameters.image_height.value
 
         telemetry_generator = self.telemetry_generator
         deform_net = self.deform_net

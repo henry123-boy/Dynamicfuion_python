@@ -154,9 +154,9 @@ if __name__ == "__main__":
     #####################################################################################
     val_dataset = DeformDataset(
         Parameters.path.dataset_base_directory.value, validation_labels_name,
-        Parameters.deform_net.alignment_image_width.value,
-        Parameters.deform_net.alignment_image_height.value,
-        Parameters.deform_net.max_boundary_dist.value
+        Parameters.alignment.image_width.value,
+        Parameters.alignment.image_height.value,
+        Parameters.alignment.max_boundary_distance.value
     )
 
     val_dataloader = torch.utils.data.DataLoader(
@@ -179,9 +179,9 @@ if __name__ == "__main__":
     #####################################################################################
     train_dataset = DeformDataset(
         Parameters.path.dataset_base_directory.value, train_labels_name,
-        Parameters.deform_net.alignment_image_width.value,
-        Parameters.deform_net.alignment_image_height.value,
-        Parameters.deform_net.max_boundary_dist.value
+        Parameters.alignment.image_width.value,
+        Parameters.alignment.image_height.value,
+        Parameters.alignment.max_boundary_distance.value
     )
 
     train_dataloader = torch.utils.data.DataLoader(
@@ -380,8 +380,8 @@ if __name__ == "__main__":
                     # Downscale groundtruth flow
                     flow_gts, flow_masks = nn_utilities.downscale_gt_flow(
                         optical_flow_gt, optical_flow_mask,
-                        Parameters.deform_net.alignment_image_height.value,
-                        Parameters.deform_net.alignment_image_width.value
+                        Parameters.alignment.image_height.value,
+                        Parameters.alignment.image_width.value
                     )
 
                     # Compute mask gt for mask baseline

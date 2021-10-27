@@ -62,9 +62,9 @@ def main():
     #####################################################################################################
     intrinsics = load_intrinsic_matrix_entries_as_dict_from_text_4x4_matrix(frame_pair_dataset.get_intrinsics_path())
 
-    image_height = Parameters.deform_net.alignment_image_height.value
-    image_width = Parameters.deform_net.alignment_image_width.value
-    max_boundary_distance = Parameters.deform_net.max_boundary_dist.value
+    alignment_image_height = Parameters.alignment.image_height.value
+    alignment_image_width = Parameters.alignment.image_width.value
+    max_boundary_distance = Parameters.alignment.max_boundary_distance.value
 
     src_color_image_path = frame_pair_dataset.get_source_color_image_path()
     src_depth_image_path = frame_pair_dataset.get_source_depth_image_path()
@@ -73,13 +73,13 @@ def main():
 
     # Source color and depth
     source_rgbxyz, _, cropper = DeformDataset.load_image(
-        src_color_image_path, src_depth_image_path, intrinsics, image_height, image_width
+        src_color_image_path, src_depth_image_path, intrinsics, alignment_image_height, alignment_image_width
     )
 
     # Target color and depth (and boundary mask)
     target_rgbxyz, target_boundary_mask, _ = DeformDataset.load_image(
-        tgt_color_image_path, tgt_depth_image_path, intrinsics, image_height, image_width, cropper=cropper,
-        max_boundary_dist=max_boundary_distance, compute_boundary_mask=True
+        tgt_color_image_path, tgt_depth_image_path, intrinsics, alignment_image_height, alignment_image_width, cropper=cropper,
+        max_boundary_distance=max_boundary_distance, compute_boundary_mask=True
     )
 
     # Graph
@@ -96,7 +96,7 @@ def main():
     # Update intrinsics to reflect the crops
     fx, fy, cx, cy = image_processing.modify_intrinsics_due_to_cropping(
         intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'],
-        image_height, image_width, original_h=cropper.h, original_w=cropper.w
+        alignment_image_height, alignment_image_width, original_h=cropper.h, original_w=cropper.w
     )
 
     intrinsics = np.zeros((4), dtype=np.float32)
@@ -146,16 +146,16 @@ def main():
 
     mask_pred = model_data["mask_pred"]
     assert mask_pred is not None, "Make sure deform_net.use_mask is set to true in the configuration"
-    mask_pred = mask_pred.view(-1, image_height, image_width).cpu().numpy()
+    mask_pred = mask_pred.view(-1, alignment_image_height, alignment_image_width).cpu().numpy()
 
     # Compute mask gt for mask baseline
     _, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, _, _ \
         = model_data["correspondence_info"]
 
-    target_matches = target_matches.view(-1, image_height, image_width).cpu().numpy()
-    valid_source_points = valid_source_points.view(-1, image_height, image_width).cpu().numpy()
-    valid_target_matches = valid_target_matches.view(-1, image_height, image_width).cpu().numpy()
-    valid_correspondences = valid_correspondences.view(-1, image_height, image_width).cpu().numpy()
+    target_matches = target_matches.view(-1, alignment_image_height, alignment_image_width).cpu().numpy()
+    valid_source_points = valid_source_points.view(-1, alignment_image_height, alignment_image_width).cpu().numpy()
+    valid_target_matches = valid_target_matches.view(-1, alignment_image_height, alignment_image_width).cpu().numpy()
+    valid_correspondences = valid_correspondences.view(-1, alignment_image_height, alignment_image_width).cpu().numpy()
 
     # Delete tensors to free up memory
     del source_rgbxyz_cuda

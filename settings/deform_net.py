@@ -1,16 +1,21 @@
 from ext_argparse import ParameterEnum, Parameter
+from enum import Enum
+
+
+class DepthSamplingMode(Enum):
+    BILINEAR = "bilinear"
+    NEAREST = "nearest"
 
 
 # TODO: figure out which DeformNet parameters *truly* refer to the GaussNewton solver,
 #  remove the prefix 'gn' and move the parameters to GaussNewtonParameters instead
 class DeformNetParameters(ParameterEnum):
-    # TODO: use Enum instead
-    gn_depth_sampling_mode = \
-        Parameter(default="bilinear", arg_type=str,
-                  arg_help="Sampling mode to use within the Gauss-Newton solver. Can be one of ['bilinear', 'nearest']")
+    depth_sampling_mode = \
+        Parameter(default="bilinear", arg_type=DepthSamplingMode,
+                  arg_help="Sampling mode to use within the Gauss-Newton solver")
     gn_max_depth = \
         Parameter(default=6.0, arg_type=float,
-                  arg_help="Far clipping distance for a point to be considered by the Gauss-Newton solver during alignment.")
+                  arg_help="Far clipping distance for a point to be considered during alignment.")
     gn_min_nodes = \
         Parameter(default=4, arg_type=int,
                   arg_help="The minimum number of nodes in graph required for the Gauss-Newton solver to work.",
@@ -87,23 +92,6 @@ class DeformNetParameters(ParameterEnum):
     gn_lm_factor = \
         Parameter(default=0.1, arg_type=float,
                   arg_help="Small damping factor applied to the A=J^TJ matrix during the optimization.")
-
-    # TODO: group the next three into DeformNetDataParameters subcategory
-    alignment_image_width = \
-        Parameter(default=640, arg_type=int,
-                  arg_help="Input image/point cloud height for the non-rigid alignment portion of the algorithm. "
-                           "The actual image / point cloud will be cropped down to this height and intrinsic matrix "
-                           "adjusted accordingly.")
-    alignment_image_height = \
-        Parameter(default=448, arg_type=int,
-                  arg_help="Input image/point cloud width for the non-rigid alignment portion of the algorithm. "
-                           "The actual image / point cloud will be cropped down to this width and intrinsic matrix "
-                           "adjusted accordingly.")
-    max_boundary_dist = \
-        Parameter(default=0.10, arg_type=float,
-                  arg_help="Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel "
-                           "points within the point cloud based on the depth image exceed this distance from each other, "
-                           "the boundaries are drawn along the break.")
 
     # TODO: depth_scale should be part of dataset & loaded from disk!
     depth_scale = \

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ext_argparse import ParameterEnum, Parameter
 
+from settings.alignment import AlignmentParameters
 from settings.deform_net import DeformNetParameters
 from settings.path import PathParameters
 from settings.graph import GraphParameters
@@ -18,6 +19,7 @@ from settings.split import Split
 
 class Parameters(ParameterEnum):
     model: Type[ModelParameters] = ModelParameters
+    alignment: Type[AlignmentParameters] = AlignmentParameters
     deform_net: Type[DeformNetParameters] = DeformNetParameters
     path: Type[PathParameters] = PathParameters
     tsdf: Type[TsdfParameters] = TsdfParameters

@@ -17,14 +17,14 @@ from data.cropping import StaticCenterCrop
 
 class DeformDataset(Dataset):
     def __init__(self, dataset_base_dir, labels_filename,
-                 input_width, input_height, max_boundary_dist):
+                 input_width, input_height, max_boundary_distance):
         self.dataset_base_dir = dataset_base_dir
         self.labels_path = os.path.join(self.dataset_base_dir, labels_filename + ".json")
 
         self.input_width = input_width
         self.input_height = input_height
 
-        self.max_boundary_dist = max_boundary_dist
+        self.max_boundary_distance = max_boundary_distance
 
         self.cropper = None
 
@@ -60,7 +60,7 @@ class DeformDataset(Dataset):
         )
         target, target_boundary_mask, _ = DeformDataset.load_image(
             tgt_color_image_path, tgt_depth_image_path, data["intrinsics"], self.input_height, self.input_width, cropper=cropper,
-            max_boundary_dist=self.max_boundary_dist, compute_boundary_mask=True
+            max_boundary_distance=self.max_boundary_distance, compute_boundary_mask=True
         )
 
         optical_flow_gt, optical_flow_mask, scene_flow_gt, scene_flow_mask = DeformDataset.load_flow(
@@ -163,13 +163,13 @@ class DeformDataset(Dataset):
     def load_image(
             color_image_path, depth_image_path,
             intrinsics, input_height, input_width, cropper=None,
-            max_boundary_dist=0.1, compute_boundary_mask=False):
+            max_boundary_distance=0.1, compute_boundary_mask=False):
         # Load images.
         color_image = skimage.io.imread(color_image_path)  # (h, w, 3)
         depth_image = skimage.io.imread(depth_image_path)  # (h, w)
         return DeformDataset.prepare_pytorch_input(
             color_image, depth_image, intrinsics, input_height, input_width, cropper,
-            max_boundary_dist, compute_boundary_mask)
+            max_boundary_distance, compute_boundary_mask)
 
     @staticmethod
     def load_flow(optical_flow_image_path, scene_flow_image_path, cropper):

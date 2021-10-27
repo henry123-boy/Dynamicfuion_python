@@ -6,9 +6,19 @@ model:
     model_name: model_A
     # Iteration number of the model to load.
     model_iteration: 0
+alignment:
+    # Input image/point cloud height for the non-rigid alignment portion of the algorithm. The actual image / point cloud
+    # will be cropped down to this height and intrinsic matrix adjusted accordingly.
+    image_width: 640
+    # Input image/point cloud width for the non-rigid alignment portion of the algorithm. The actual image / point cloud
+    # will be cropped down to this width and intrinsic matrix adjusted accordingly.
+    image_height: 448
+    # Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel points within the point
+    # cloud based on the depth image exceed this distance from each other, the boundaries are drawn along the break.
+    max_boundary_distance: 0.1
 deform_net:
     # Sampling mode to use within the Gauss-Newton solver. Can be one of ['bilinear', 'nearest']
-    gn_depth_sampling_mode: bilinear
+    depth_sampling_mode: BILINEAR
     # Far clipping distance for a point to be considered by the Gauss-Newton solver during alignment.
     gn_max_depth: 6.0
     # The minimum number of nodes in graph required for the Gauss-Newton solver to work.
@@ -60,15 +70,6 @@ deform_net:
     gn_arap: 1.0
     # Small damping factor applied to the A=J^TJ matrix during the optimization.
     gn_lm_factor: 0.1
-    # Input image/point cloud height for the non-rigid alignment portion of the algorithm. The actual image / point cloud
-    # will be cropped down to this height and intrinsic matrix adjusted accordingly.
-    alignment_image_width: 640
-    # Input image/point cloud width for the non-rigid alignment portion of the algorithm. The actual image / point cloud
-    # will be cropped down to this width and intrinsic matrix adjusted accordingly.
-    alignment_image_height: 448
-    # Used in marking up boundaries within an incoming RGB-D image pair. When neighboring pixel points within the point
-    # cloud based on the depth image exceed this distance from each other, the boundaries are drawn along the break.
-    max_boundary_dist: 0.1
     # Scale factor to multiply depth units in the depth image with in order to get meters.
     depth_scale: 1000.0
     # Freeze/disable OpticalFlowNet during alignment.

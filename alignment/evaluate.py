@@ -72,8 +72,8 @@ def evaluate(model, criterion, dataloader, batch_num, split):
 
         batch_size = source.shape[0]
         
-        alignment_image_width = Parameters.deform_net.alignment_image_width.value
-        alignment_image_height = Parameters.deform_net.alignment_image_height.value
+        alignment_image_width = Parameters.alignment.image_width.value
+        alignment_image_height = Parameters.alignment.image_height.value
 
         # Build data for coarser level
         assert alignment_image_height % 64 == 0 and alignment_image_width % 64 == 0
