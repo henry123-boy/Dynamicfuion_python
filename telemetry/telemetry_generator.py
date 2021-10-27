@@ -81,8 +81,8 @@ class TelemetryGenerator:
 
     def print_cuda_memory_info_if_needed(self):
         if self.print_gpu_memory_info:
-            device_handle = nvmlDeviceGetHandleByIndex(0)
-            info = nvmlDeviceGetMemoryInfo(device_handle)
+            device_handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            info = pynvml.nvmlDeviceGetMemoryInfo(device_handle)
             print(f'total    : {info.total}')
             print(f'free     : {info.free}')
             print(f'used     : {info.used}')
