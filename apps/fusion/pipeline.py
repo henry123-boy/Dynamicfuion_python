@@ -103,7 +103,7 @@ class FusionPipeline:
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: Union[None, o3d.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
-            canonical_mesh = self.volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
+            canonical_mesh = self.volume.extract_surface_mesh(-1, 0).to_legacy()
 
         warped_mesh: Union[None, o3d.geometry.TriangleMesh] = None
 
@@ -154,8 +154,12 @@ class FusionPipeline:
         precomputed_anchors = None
         precomputed_weights = None
 
+        check_for_end_frame = Parameters.fusion.run_until_frame.value != -1
+
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
+            if check_for_end_frame and current_frame.frame_index >= Parameters.fusion.run_until_frame.value:
+                break
             self.telemetry_generator.set_frame_index(current_frame.frame_index)
             #####################################################################################################
             # region ===== grab images, mask / clip if necessary, transfer to GPU versions for Open3D ===========
@@ -224,7 +228,8 @@ class FusionPipeline:
                         )
                 else:
                     raise NotImplementedError(f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
-                canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
+                # TODO: save initial meshes somehow specially maybe (line below will extract)?
+                # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
 
             else:

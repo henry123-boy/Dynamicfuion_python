@@ -31,3 +31,4 @@ transformations>=2020.1.1
 pyglet>=1.5.18
 ext_argparse>=0.1.2
 icecream>=2.1.1
+mypy>=0.9

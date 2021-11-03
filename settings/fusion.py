@@ -155,6 +155,10 @@ class FusionParameters(ParameterEnum):
     sequence_preset = \
         Parameter(default=FrameSequencePreset.BERLIN_50_SOD_MASKS, arg_type=FrameSequencePreset,
                   arg_help="Which sequence preset to use during the run.")
+    run_until_frame = \
+        Parameter(default=-1, arg_type=int, arg_help="Stop processing sequence before the specified frame index. "
+                                                     "When set to -1, processes sequence to the end.")
+
     tracking: Type[TrackingParameters] = TrackingParameters
     integration: Type[IntegrationParameters] = IntegrationParameters
     telemetry: Type[TelemetryParameters] = TelemetryParameters

@@ -13,49 +13,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
-from typing import Tuple, Union, List, Any
+from typing import Tuple, Union
 from timeit import default_timer as timer
 import math
 import numpy as np
 import torch
 import kornia
 
+from alignment.linear_solver_lu import LinearSolverLU
 from settings import DeformNetParameters
 
 
-class LinearSolverLU(torch.autograd.Function):
-    """
-    LU linear solver.
-    """
-
-    @staticmethod
-    def jvp(ctx: Any, *grad_inputs: Any) -> Any:
-        pass
-
-    @staticmethod
-    def forward(ctx, A, b):
-        A_LU, pivots = torch.lu(A)
-        x = torch.lu_solve(b, A_LU, pivots)
-
-        ctx.save_for_backward(A_LU, pivots, x)
-
-        return x
-
-    @staticmethod
-    def backward(ctx, grad_x):
-        A_LU, pivots, x = ctx.saved_tensors
-
-        # Math:
-        # A * grad_b = grad_x
-        # grad_A = -grad_b * x^T
-
-        grad_b = torch.lu_solve(grad_x, A_LU, pivots)
-        grad_A = -torch.matmul(grad_b, x.view(1, -1))
-
-        return grad_A, grad_b
-
-
-class GaussNewtonOptimizer:
+class PointCloudAlignmentOptimizer:
     def __init__(self, telemetry_generator=None):
         self.telemetry_generator = telemetry_generator
 
@@ -263,7 +232,7 @@ class GaussNewtonOptimizer:
                                            data_increment_vec_0_3: torch.Tensor,
                                            data_increment_vec_1_3: torch.Tensor,
                                            data_increment_vec_2_3: torch.Tensor,
-                                           num_matches: int,
+                                           match_count: int,
                                            opt_num_nodes_i: int,
                                            graph_nodes_i: torch.Tensor,
                                            source_anchors: torch.Tensor,
@@ -274,18 +243,19 @@ class GaussNewtonOptimizer:
                                            xy_pixels_warped_filtered: torch.Tensor,
                                            target_matches_filtered: torch.Tensor,
                                            i_iteration: int,
+                                           # camera projection parameters
                                            fx: torch.Tensor, fy: torch.Tensor, cx: torch.Tensor, cy: torch.Tensor,
                                            rotations_current: torch.Tensor, translations_current: torch.Tensor
                                            ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         timer_data_start = timer()
-        jacobian_data = torch.zeros((num_matches * 3, opt_num_nodes_i * 6), dtype=rotations_current.dtype,
+        jacobian_data = torch.zeros((match_count * 3, opt_num_nodes_i * 6), dtype=rotations_current.dtype,
                                     device=rotations_current.device)  # (num_matches*3, opt_num_nodes_i*6)
-        deformed_points = torch.zeros((num_matches, 3, 1), dtype=rotations_current.dtype, device=rotations_current.device)
+        deformed_points = torch.zeros((match_count, 3, 1), dtype=rotations_current.dtype, device=rotations_current.device)
 
         for k in range(4):  # Our data uses 4 anchors for every point
             node_idxs_k = source_anchors[:, k]  # (num_matches)
-            nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
+            nodes_k = graph_nodes_i[node_idxs_k].view(match_count, 3, 1)  # (num_matches, 3, 1)
 
             # Compute deformed point contribution.
             # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
@@ -293,7 +263,7 @@ class GaussNewtonOptimizer:
                                             source_points_filtered - nodes_k)
             deformed_points_k = rotated_points_k + nodes_k + translations_current[node_idxs_k]
             deformed_points += \
-                source_weights[:, k].view(num_matches, 1, 1).repeat(1, 3, 1) * \
+                source_weights[:, k].view(match_count, 1, 1).repeat(1, 3, 1) * \
                 deformed_points_k  # (num_matches, 3, 1)
 
         if self.telemetry_generator is not None:
@@ -302,9 +272,9 @@ class GaussNewtonOptimizer:
         # Get necessary components of deformed points.
         eps = 1e-7  # Just as good practice, although matches should all have valid depth at this stage
 
-        deformed_x = deformed_points[:, 0, :].view(num_matches)  # (num_matches)
-        deformed_y = deformed_points[:, 1, :].view(num_matches)  # (num_matches)
-        deformed_z_inverse = torch.div(1.0, deformed_points[:, 2, :].view(num_matches) + eps)  # (num_matches)
+        deformed_x = deformed_points[:, 0, :].view(match_count)  # (num_matches)
+        deformed_y = deformed_points[:, 1, :].view(match_count)  # (num_matches)
+        deformed_z_inverse = torch.div(1.0, deformed_points[:, 2, :].view(match_count) + eps)  # (num_matches)
         fx_mul_x = fx * deformed_x  # (num_matches)
         fy_mul_y = fy * deformed_y  # (num_matches)
         fx_div_z = fx * deformed_z_inverse  # (num_matches)
@@ -319,15 +289,15 @@ class GaussNewtonOptimizer:
 
         for k in range(4):  # Our data uses 4 anchors for every point
             node_idxs_k = source_anchors[:, k]  # (num_matches)
-            nodes_k = graph_nodes_i[node_idxs_k].view(num_matches, 3, 1)  # (num_matches, 3, 1)
+            nodes_k = graph_nodes_i[node_idxs_k].view(match_count, 3, 1)  # (num_matches, 3, 1)
 
             weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches) #TODO: check arm pixel correspondence_weights
 
             # Compute skew-symmetric part.
             rotated_points_k = torch.matmul(rotations_current[node_idxs_k],
                                             source_points_filtered - nodes_k)  # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
-            weighted_rotated_points_k = weights_k.view(num_matches, 1, 1).repeat(1, 3, 1) * rotated_points_k  # (num_matches, 3, 1)
-            skew_symetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k).view(num_matches, 3,
+            weighted_rotated_points_k = weights_k.view(match_count, 1, 1).repeat(1, 3, 1) * rotated_points_k  # (num_matches, 3, 1)
+            skew_symetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k).view(match_count, 3,
                                                                                                          3)  # (num_matches, 3, 3)
 
             # Compute jacobian wrt. TRANSLATION.
@@ -378,17 +348,20 @@ class GaussNewtonOptimizer:
 
             assert torch.isfinite(jacobian_data).all(), jacobian_data
 
-        residuals_data = torch.zeros((num_matches * 3, 1), dtype=rotations_current.dtype, device=rotations_current.device)
+        residuals_data = torch.zeros((match_count * 3, 1), dtype=rotations_current.dtype, device=rotations_current.device)
 
         # FLOW PART
-        residuals_data[data_increment_vec_0_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(num_matches))
-        residuals_data[data_increment_vec_1_3, 0] = lambda_data_flow * correspondence_weights_filtered * (
-                fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(num_matches))
+        # [projected deformed point u-coordinate] - [flow-warped source u-coordinate (u + Δu)]
+        residuals_data[data_increment_vec_0_3, 0] = \
+            lambda_data_flow * correspondence_weights_filtered * (fx_mul_x_div_z + cx - xy_pixels_warped_filtered[:, 0, :].view(match_count))
+        # [projected deformed point v-coordinate] - [flow-warped source v-coordinate (v + Δv)]
+        residuals_data[data_increment_vec_1_3, 0] = \
+            lambda_data_flow * correspondence_weights_filtered * (fy_mul_y_div_z + cy - xy_pixels_warped_filtered[:, 1, :].view(match_count))
 
         # DEPTH PART
-        residuals_data[data_increment_vec_2_3, 0] = lambda_data_depth * correspondence_weights_filtered * (
-                deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(num_matches)
+        # [projected deformed point u-coordinate] - [target matched point z-coordinate]
+        residuals_data[data_increment_vec_2_3, 0] = \
+            lambda_data_depth * correspondence_weights_filtered * (deformed_points[:, 2, :] - target_matches_filtered[:, 2, :]).view(match_count)
         if self.gn_print_timings:
             print("\t\tData term: {:.3f} s".format(timer() - timer_data_start))
         return residuals_data, jacobian_data

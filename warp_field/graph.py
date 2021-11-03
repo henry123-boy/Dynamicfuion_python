@@ -144,6 +144,15 @@ class DeformationGraphNumpy:
         mesh_warped.compute_vertex_normals()
         return mesh_warped
 
+    def dump_to_disk(self, path: str) -> None:
+        """
+        Save the current graph to disk.
+        Warning: does not save transformations_dq (
+        :param path: where to save
+        """
+        np.savez(path, nodes=self.nodes, edges=self.edges, edge_weights=self.edge_weights, clusters=self.clusters,
+                 rotations_mat=self.rotations_mat, translations_vec=self.translations_vec)
+
 
 # TODO: eventually, the idea is to first use this class instead of DeformationGraphNumpy, then make an Open3D-based
 #  C++ implementation of it (with a python port, of course, and could be something like WarpField instead of Graph to
@@ -178,6 +187,14 @@ class DeformationGraphOpen3D:
 
     def warp_mesh_dq(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
         raise NotImplemented("Dual-quaternion mesh warping hasn't yet been implemented.")
+
+
+def load_deformation_graph_from_disk(path: str) -> DeformationGraphNumpy:
+    container = np.load(path)
+    graph = DeformationGraphNumpy(container["nodes"], container["edges"], container["edge_weights"], container["clusters"])
+    graph.rotations_mat = container["rotations_mat"]
+    graph.translations_vec = container["translations_vec"]
+    return graph
 
 
 def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,

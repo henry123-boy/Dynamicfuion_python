@@ -1,3 +1,5 @@
+from icecream import ic
+
 from alignment import pwcnet
 
 import torch
@@ -8,7 +10,7 @@ import math
 from timeit import default_timer as timer
 from typing import Tuple, Union, List
 
-from alignment.gauss_newton_optimizer import GaussNewtonOptimizer
+from alignment.point_cloud_alignment_optimizer import PointCloudAlignmentOptimizer
 from settings import DeformNetParameters, AlignmentParameters
 from alignment.nn_utilities import make_conv_2d, ResBlock2d, Identity
 
@@ -82,7 +84,7 @@ class DeformNet(torch.nn.Module):
         self.patchwise_threshold_mask_predictions = DeformNetParameters.patchwise_threshold_mask_predictions.value
         self.patch_size = DeformNetParameters.patch_size.value
 
-        self.optimizer = GaussNewtonOptimizer(telemetry_generator)
+        self.optimizer = PointCloudAlignmentOptimizer(telemetry_generator)
 
         # Optical flow network
         self.flow_net = pwcnet.PWCNet()
@@ -523,6 +525,7 @@ class DeformNet(torch.nn.Module):
         assert torch.isfinite(flow2).all()
         assert torch.isfinite(features2).all()
 
+        # TODO: explain -- why is there a factor of 20 here?
         flow = 20.0 * torch.nn.functional.interpolate(input=flow2, size=(image_height, image_width), mode='bilinear', align_corners=False)
         # endregion
 
@@ -542,7 +545,7 @@ class DeformNet(torch.nn.Module):
         xy_pixels_warped = xy_coords_warped.clone()
 
         # Normalize to be between -1 and 1.
-        # Since we use "align_corners=False", the boundaries of corner pixels
+        # Since we use "align_corners=False" during interpolation above, the boundaries of corner pixels
         # are -1 and 1, not their centers.
         xy_coords_warped[:, 0, :, :] = (xy_coords_warped[:, 0, :, :]) / (image_width - 1)
         xy_coords_warped[:, 1, :, :] = (xy_coords_warped[:, 1, :, :]) / (image_height - 1)
@@ -550,6 +553,7 @@ class DeformNet(torch.nn.Module):
 
         # Permute the warped coordinates to fit the grid_sample format.
         xy_coords_warped = xy_coords_warped.permute(0, 2, 3, 1)
+
         # endregion
         return flow2, flow3, flow4, flow5, flow6, features2, xy_pixels_warped, xy_coords_warped
 

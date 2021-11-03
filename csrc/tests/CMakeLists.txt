@@ -14,7 +14,6 @@ if (BUILD_CPP_TESTS)
 
     add_library(
         test_utils STATIC
-
         test_utils/test_utils.hpp
         test_utils/test_utils.tpp
         test_utils/test_utils.cpp
@@ -24,7 +23,25 @@ if (BUILD_CPP_TESTS)
         test_utils/image_io/load_png.cpp
         test_utils/pixel.h
         test_utils/image_view.h
-        test_utils/image_io/dng_shared.h test_utils/image_io/load_dng.h test_utils/image_io/load_dng.cpp test_utils/enable_if.h test_utils/entropy_range_decoder.h test_utils/entropy_range_decoder.cpp test_utils/uintn.h test_utils/entropy_decoder_model.h test_utils/float_details.h test_utils/vectorstream.h test_utils/algs.h test_utils/image_io/save_png.h test_utils/image_io/save_png.cpp test_utils/array2d.h test_utils/image_io/save_dng.h test_utils/entropy_encoder_model.h test_utils/entropy_range_encoder.h test_utils/entropy_range_encoder.cpp)
+        test_utils/image_io/dng_shared.h
+        test_utils/image_io/load_dng.h
+        test_utils/image_io/load_dng.cpp
+        test_utils/enable_if.h
+        test_utils/entropy_range_decoder.h
+        test_utils/entropy_range_decoder.cpp
+        test_utils/uintn.h
+        test_utils/entropy_decoder_model.h
+        test_utils/float_details.h
+        test_utils/vectorstream.h
+        test_utils/algs.h
+        test_utils/image_io/save_png.h
+        test_utils/image_io/save_png.cpp
+        test_utils/array2d.h
+        test_utils/image_io/save_dng.h
+        test_utils/entropy_encoder_model.h
+        test_utils/entropy_range_encoder.h
+        test_utils/entropy_range_encoder.cpp
+    )
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)

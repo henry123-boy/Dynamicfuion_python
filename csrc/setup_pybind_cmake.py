@@ -19,20 +19,20 @@ PLAT_TO_CMAKE = {
 # The name must be the _single_ output extension from the CMake build.
 # If you need multiple extensions, see scikit-build.
 class CMakeExtension(Extension):
-    def __init__(self, name, sourcedir=""):
+    def __init__(self, name, source_directory=""):
         Extension.__init__(self, name, sources=[])
-        self.sourcedir = os.path.abspath(sourcedir)
+        self.source_directory = os.path.abspath(source_directory)
 
 
 class CMakeBuild(build_ext):
     def build_extension(self, ext):
-        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        extension_library_directory = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
 
         # required for auto-detection of auxiliary "native" libs
-        if not extdir.endswith(os.path.sep):
-            extdir += os.path.sep
+        if not extension_library_directory.endswith(os.path.sep):
+            extension_library_directory += os.path.sep
 
-        cfg = "Debug" if self.debug else "Release"
+        build_configuration = "Debug" if self.debug else "Release"
 
         # CMake lets you override the generator - we need to check this.
         # Can be set with Conda-Build, for example.
@@ -41,15 +41,15 @@ class CMakeBuild(build_ext):
         # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
         # from Python.
         cmake_args = [
-            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extdir),
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extension_library_directory),
             "-DPYTHON_EXECUTABLE={}".format(sys.executable),
-            "-DCMAKE_BUILD_TYPE={}".format(cfg),  # not used on MSVC, but no harm
+            "-DCMAKE_BUILD_TYPE={}".format(build_configuration),  # not used on MSVC, but no harm
         ]
         build_args = []
 
         if self.compiler.compiler_type != "msvc":
             # Using Ninja-build since it a) is available as a wheel and b)
-            # multithreads automatically. MSVC would require all variables be
+            # multi-threads automatically. MSVC would require all variables be
             # exported for Ninja to pick it up, which is a little tricky to do.
             # Users can override the generator with CMAKE_GENERATOR in CMake
             # 3.15+.
@@ -73,9 +73,9 @@ class CMakeBuild(build_ext):
             # Multi-config generators have a different way to specify configs
             if not single_config:
                 cmake_args += [
-                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}".format(cfg.upper(), extdir)
+                    "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}".format(build_configuration.upper(), extension_library_directory)
                 ]
-                build_args += ["--config", cfg]
+                build_args += ["--config", build_configuration]
 
         # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
         # across all generators.
@@ -90,7 +90,7 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
 
         subprocess.check_call(
-            ["cmake", ext.sourcedir] + cmake_args, cwd=self.build_temp
+            ["cmake", ext.source_directory] + cmake_args, cwd=self.build_temp
         )
         subprocess.check_call(
             ["cmake", "--build", "."] + build_args, cwd=self.build_temp
@@ -109,5 +109,8 @@ setup(
     ext_modules=[CMakeExtension("nnrt")],
     cmdclass={"build_ext": CMakeBuild},
     zip_safe=False,
-    requires=["numpy", "typing"]
+    requires=["numpy", "typing"],
+    package_data={
+        'nnrt': ['py.typed']
+    }
 )

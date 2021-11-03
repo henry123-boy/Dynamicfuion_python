@@ -19,13 +19,15 @@
 #include <open3d/t/geometry/TSDFVoxelGrid.h>
 #include <geometry/DualQuaternion.h>
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 
 class WarpableTSDFVoxelGrid : public open3d::t::geometry::TSDFVoxelGrid {
 
 public:
 	using TSDFVoxelGrid::TSDFVoxelGrid;
+
+	friend std::ostream& operator<< (std::ostream& out, const WarpableTSDFVoxelGrid& grid);
+
 
 /// Extract all indexed voxel centers.
 	open3d::core::Tensor ExtractVoxelCenters();
@@ -138,7 +140,6 @@ protected:
 	using TSDFVoxelGrid::attr_dtype_map_;
 };
 
-}// namespace nnrt
 }// namespace geometry
 
 

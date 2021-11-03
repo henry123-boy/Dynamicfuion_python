@@ -17,7 +17,8 @@ endif()
 message(STATUS "Using Python version: ${PYTHON_VERSION}")
 
 set(PIP_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/pip_package")
-#set(STUBS_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/stubs")
+set(PYTHON_PACKAGE_DIR "${CMAKE_BINARY_DIR}/python_package")
+set(STUBS_PACKAGE_DST_DIR "${CMAKE_BINARY_DIR}/stubs")
 
 
 ### ================== Output directory prep ==================
@@ -113,6 +114,11 @@ target_include_directories(nnrt PRIVATE
 
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
+#message(STATUS "NNRT_3RDPARTY_PUBLIC_TARGETS: ${NNRT_3RDPARTY_PUBLIC_TARGETS}")
+#get_property(prop TARGET Open3D::Open3D PROPERTY INTERFACE_LINK_LIBRARIES)
+#message(STATUS "Prop: ${prop}")
+#nnrt_link_3rdparty_libraries(nnrt)
+#nnrt_set_global_properties(nnrt)
 
 include(ProcessorCount)
 set(N_PROCESSORS 1)
@@ -128,7 +134,7 @@ endif()
 
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --dist-dir ${PIP_PACKAGE_DST_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --bdist-dir ${PYTHON_PACKAGE_DIR} --dist-dir ${PIP_PACKAGE_DST_DIR} --keep-temp
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
@@ -142,25 +148,23 @@ add_custom_target(install-pip-package
     DEPENDS pip-package
 )
 
-# TODO: fix stub generation
-#set(PYBIND_STUBGEN_IN_PATH)
-#
-#add_custom_target(python-stubs
-#    COMMAND ${PYBIND11_STUBGEN_EXECUTABLE} nnrt -o ${STUBS_PACKAGE_DST_DIR}
-#    COMMAND echo "pybind11 stubs package created at ${STUBS_PACKAGE_DST_DIR}"
-#    COMMAND cp -r ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs ${PYTHON_LOCAL_PACKAGES_DIR}
-#    COMMAND echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs to ${PYTHON_LOCAL_PACKAGES_DIR}"
-#    DEPENDS install-pip-package
-#)
-#
-#
-#if(PATH_TO_IDE_STUBS_FILE)
-#    add_custom_target(python-ide-stubs
-#        COMMAND mv ${STUBS_PACKAGE_DST_DIR}/nnrt-stubs/__init__.pyi ${PATH_TO_IDE_STUBS_FILE}
-#        COMMAND echo "pybind11 stubs replaced at ${PATH_TO_IDE_STUBS_FILE}"
-#        DEPENDS python-stubs
-#    )
-#endif()
+
+if(NOT DEFINED STUBGEN_EXECUTABLE)
+    set(STUBGEN_EXECUTABLE stubgen)
+endif()
+
+add_custom_target(python-stubs
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${STUBS_PACKAGE_DST_DIR}/nnrt
+    COMMAND ${STUBGEN_EXECUTABLE} -m nnrt -o ${STUBS_PACKAGE_DST_DIR}/nnrt WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
+    COMMAND ${CMAKE_COMMAND} -E cat ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi >> ${STUBS_PACKAGE_DST_DIR}/nnrt/__init__.pyi
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi
+    COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${STUBS_PACKAGE_DST_DIR}/nnrt ${PYTHON_LOCAL_PACKAGES_DIR}/nnrt
+    COMMAND ${CMAKE_COMMAND} -E echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt to ${PYTHON_LOCAL_PACKAGES_DIR}"
+    DEPENDS install-pip-package
+)
+
 
 
 add_subdirectory(tests)

@@ -17,6 +17,7 @@
 
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 #include <open3d/core/TensorKey.h>
+#include <open3d/core/Device.h>
 #include <utility>
 #include <geometry/kernel/Defines.h>
 
@@ -26,8 +27,7 @@
 using namespace open3d;
 using namespace open3d::t::geometry;
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 
 core::Tensor WarpableTSDFVoxelGrid::ExtractVoxelCenters() {
 	core::Tensor active_block_indices;
@@ -368,5 +368,22 @@ int64_t WarpableTSDFVoxelGrid::ActivateSleeveBlocks() {
 	return inactive_neighbor_of_active_blocks_coordinates.GetShape()[0];
 }
 
-} // namespace geometry
-} // namespace nnrt
+std::ostream& operator<<(std::ostream& out, const WarpableTSDFVoxelGrid& grid) {
+	// write header
+	out.write(reinterpret_cast<const char*>(&grid.voxel_size_), sizeof(float));
+	out.write(reinterpret_cast<const char*>(&grid.sdf_trunc_), sizeof(float));
+	out.write(reinterpret_cast<const char*>(&grid.block_resolution_), sizeof(int64_t));
+	out.write(reinterpret_cast<const char*>(&grid.block_count_), sizeof(int64_t));
+	// write device type members (since no serialization is provided for that)
+	int device_id = grid.device_.GetID();
+	out.write(reinterpret_cast<const char*>(&device_id), sizeof(int));
+	core::Device::DeviceType device_type = grid.device_.GetType();
+	out.write(reinterpret_cast<const char*>(&device_type), sizeof(core::Device::DeviceType));
+	//TODO
+	throw std::runtime_error("Not implemented.");
+
+	return out;
+}
+
+
+} // namespace nnrt::geometry
