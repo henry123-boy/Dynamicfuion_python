@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/19/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/4/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,16 +14,10 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-
-#include <pybind11/pybind11.h>
-
-namespace py = pybind11;
+#include <open3d/core/Tensor.h>
+#include <open3d/t/geometry/TriangleMesh.h>
 
 namespace nnrt::geometry {
+	open3d::core::Tensor ComputePointToPlaneDistances(open3d::t::geometry::TriangleMesh& mesh1, open3d::t::geometry::TriangleMesh& mesh2);
 
-enum class TransformationMode : int {
-	QUATERNIONS,
-	MATRICES
-};
-
-}// namespace nnrt::geometry
+} // namespace nnrt::geometry

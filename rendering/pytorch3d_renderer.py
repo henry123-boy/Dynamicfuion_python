@@ -1,11 +1,8 @@
-import sys
-import cv2
+from typing import Tuple, Union
+
 import numpy as np
 import torch
 import torch.utils.dlpack as torch_dlpack
-import os
-import typing
-
 import open3d as o3d
 import open3d.core as o3c
 
@@ -13,6 +10,11 @@ from pytorch3d.renderer.cameras import PerspectiveCameras
 from pytorch3d.renderer.mesh import MeshRasterizer, RasterizationSettings, MeshRenderer, SoftPhongShader, TexturesVertex
 from pytorch3d.renderer.lighting import PointLights
 from pytorch3d.structures.meshes import Meshes
+
+
+class RenderMaskCode:
+    DEPTH = 0b10
+    RGB = 0b01
 
 
 def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matrix: np.ndarray,
@@ -52,7 +54,7 @@ def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matr
 
 
 class PyTorch3DRenderer:
-    def __init__(self, image_size: typing.Tuple[int, int], device: o3c.Device, intrinsic_matrix: o3c.Tensor):
+    def __init__(self, image_size: Tuple[int, int], device: o3c.Device, intrinsic_matrix: o3c.Tensor):
         """
         Construct a renderer to render to the specified size using the specified device and projective camera intrinsics.
         :param image_size: tuple (height, width) for the rendered image size
@@ -93,9 +95,9 @@ class PyTorch3DRenderer:
             )
         )
 
-    def render_mesh(self, mesh: o3d.geometry.TriangleMesh,
-                    extrinsics: typing.Union[o3c.Tensor, None] = None,
-                    depth_scale=1000.0) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def render_mesh_legacy(self, mesh: o3d.geometry.TriangleMesh,
+                           extrinsics: Union[o3c.Tensor, None] = None,
+                           depth_scale=1000.0) -> Tuple[np.ndarray, np.ndarray]:
         """
         Render mesh to depth & color images compatible with typical RGB-D input depth & rgb images
         If the extrinsics matrix is provided, camera extrinsics are also updated for all subsequent renderings.
@@ -144,4 +146,67 @@ class PyTorch3DRenderer:
 
         images = self.renderer(meshes_torch3d)
         rendered_color = (images[0, ..., :3].cpu().numpy() * 255).astype(np.uint8)
+        return rendered_depth, rendered_color
+
+    def render_mesh(self, mesh: o3d.t.geometry.TriangleMesh,
+                    extrinsics: Union[o3c.Tensor, None] = None,
+                    depth_scale=1000.0, render_mask: int = RenderMaskCode.DEPTH | RenderMaskCode.COLOR) \
+            -> Tuple[Union[None,np.ndarray], Union[None, np.ndarray]]:
+        """
+        Render mesh to depth & color images compatible with typical RGB-D input depth & rgb images
+        If the extrinsics matrix is provided, camera extrinsics are also updated for all subsequent renderings.
+        Otherwise, the previous extrinsics are used. If no extrinsics were ever specified, uses an identity transform.
+        :param mesh: the mesh to render
+        :param extrinsics: an optional 4x4 camera transformation matrix.
+        :param depth_scale: factor to scale depth (meters) by, commonly 1,000 in off-the-shelf RGB-D sensors
+        :param render_mask: bitwise mask that specifies which passes to render (See RenderMaskCode).
+        :return:
+        """
+        vertices_o3d = mesh.vertex["positions"]
+        has_vertex_rgb = "colors" in mesh.vertex
+        faces_o3d = mesh.triangle["indices"]
+        vertices_torch = torch_dlpack.from_dlpack(vertices_o3d.to_dlpack()).unsqueeze(0)
+        faces_torch = torch_dlpack.from_dlpack(faces_o3d.to_dlpack()).unsqueeze(0)
+        if has_vertex_rgb:
+            vertices_rgb_o3d = mesh.triangle["colors"]
+            vertices_rgb_torch = torch_dlpack.from_dlpack(vertices_rgb_o3d.to_dlpack()).unsqueeze(0)
+            textures = TexturesVertex(verts_features=vertices_rgb_torch)
+            meshes_torch3d = Meshes(vertices_torch, faces_torch, textures)
+        else:
+            meshes_torch3d = Meshes(vertices_torch, faces_torch)
+
+        if extrinsics is not None:
+            extrinsics_torch: torch.Tensor = torch_dlpack.from_dlpack(extrinsics.to_dlpack())
+            camera_rotation = (extrinsics_torch[:3, :3]).unsqueeze(0)
+            camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3)).unsqueeze(0)
+
+            # when given extrinsics, reconstruct the camera
+            self.cameras: PerspectiveCameras \
+                = PerspectiveCameras(device=self.torch_device,
+                                     R=camera_rotation,
+                                     T=camera_translation,
+                                     K=self.K)
+            self.rasterizer = MeshRasterizer(self.cameras, raster_settings=self.rasterization_settings)
+
+            self.renderer = MeshRenderer(
+                rasterizer=self.rasterizer,
+                shader=SoftPhongShader(
+                    device=self.torch_device,
+                    cameras=self.cameras,
+                    lights=self.lights
+                )
+            )
+
+        rendered_depth = None
+        rendered_color = None
+
+        if render_mask & RenderMaskCode.DEPTH == 1:
+            fragments = self.rasterizer.forward(meshes_torch3d)
+            rendered_depth = fragments.zbuf.cpu().numpy().reshape(self.image_size[0], self.image_size[1])
+            rendered_depth[rendered_depth == -1.0] = 0.0
+            rendered_depth *= depth_scale
+
+        if render_mask & RenderMaskCode.RGB == 1:
+            images = self.renderer(meshes_torch3d)
+            rendered_color = (images[0, ..., :3].cpu().numpy() * 255).astype(np.uint8)
         return rendered_depth, rendered_color

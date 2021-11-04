@@ -62,7 +62,7 @@ def main():
     # record animation rendering output
     for i_frame in range(0, frame_count):
         rotated_mesh = rotate_mesh_z(original_mesh, rotation_center, rotation_increment * i_frame)
-        depth, color = renderer.render_mesh(rotated_mesh, depth_scale=1000.0)
+        depth, color = renderer.render_mesh_legacy(rotated_mesh, depth_scale=1000.0)
         color_path = os.path.join(color_output_directory, f"{i_frame:06d}.jpg")
         depth_path = os.path.join(depth_output_directory, f"{i_frame:06d}.png")
         cv2.imwrite(color_path, color)

@@ -29,8 +29,7 @@ using namespace open3d;
 using namespace open3d::t::geometry;
 using namespace open3d::core;
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 void pybind_geometry(py::module& m) {
 	py::module m_submodule = m.def_submodule(
 			"geometry", "Open3D-tensor-based geometry defining module.");
@@ -208,5 +207,4 @@ void pybind_geometry_graph(pybind11::module& m) {
 		  "minimum_valid_anchor_count"_a);
 }
 
-} // namespace geometry
-} //namespace nnrt
+} // namespace nnrt

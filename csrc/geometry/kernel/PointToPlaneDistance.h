@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/19/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/4/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@
 //  ================================================================
 #pragma once
 
-#include <pybind11/pybind11.h>
+namespace nnrt {
+namespace geometry {
+namespace kernel {
+namespace comparison {
 
-namespace py = pybind11;
 
-namespace nnrt::geometry {
-
-enum class TransformationMode : int {
-	QUATERNIONS,
-	MATRICES
-};
-
-}// namespace nnrt::geometry
+}
+}
+}
+}

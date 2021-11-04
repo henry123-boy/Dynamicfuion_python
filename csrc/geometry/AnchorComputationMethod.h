@@ -19,13 +19,11 @@
 
 namespace py = pybind11;
 
-namespace nnrt{
-namespace geometry {
+namespace nnrt::geometry {
 
 enum class AnchorComputationMethod : int {
 	EUCLIDEAN,
 	SHORTEST_PATH
 };
 
-}// namespace geometry
-}// namespace nnrt
+}// namespace nnrt::geometry

@@ -62,7 +62,7 @@ def main():
     # record animation rendering output
     for i_frame in range(0, frame_count):
         scaled_mesh = scale_mesh_y(original_mesh, 1.0 + scale_factor_increment * i_frame)
-        depth, color = renderer.render_mesh(scaled_mesh, depth_scale=1000.0)
+        depth, color = renderer.render_mesh_legacy(scaled_mesh, depth_scale=1000.0)
         color_path = os.path.join(color_output_directory, f"{i_frame:06d}.jpg")
         depth_path = os.path.join(depth_output_directory, f"{i_frame:06d}.png")
         cv2.imwrite(color_path, color)

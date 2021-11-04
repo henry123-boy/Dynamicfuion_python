@@ -20,8 +20,7 @@
 using namespace open3d;
 using namespace open3d::t::geometry;
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 
 void CheckNodeData(core::Device& device, const core::Tensor& nodes, const core::Tensor& node_rotations,
                    const core::Tensor& node_translations) {
@@ -231,6 +230,4 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const core::Tensor& points, const
 	return py::make_tuple(anchors, weights);
 }
 
-
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry

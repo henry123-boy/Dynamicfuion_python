@@ -243,7 +243,7 @@ class FusionPipeline:
                     source_depth = previous_depth_image_np
                     source_color = previous_color_image_np
                 else:
-                    source_depth, source_color = renderer.render_mesh(warped_mesh, depth_scale=depth_scale)
+                    source_depth, source_color = renderer.render_mesh_legacy(warped_mesh, depth_scale=depth_scale)
                     source_depth = source_depth.astype(np.uint16)
                     telemetry_generator.process_rendering_result(source_color, source_depth, current_frame.frame_index)
 

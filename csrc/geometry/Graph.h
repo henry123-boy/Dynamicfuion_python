@@ -21,8 +21,7 @@
 
 namespace py = pybind11;
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 
 open3d::t::geometry::PointCloud
 WarpPointCloudMat(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
@@ -59,5 +58,4 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& point
                                                const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
 
 
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry

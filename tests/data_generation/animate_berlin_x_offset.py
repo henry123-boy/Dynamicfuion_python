@@ -57,7 +57,7 @@ def main():
     # record animation rendering output
     for i_frame in range(0, frame_count):
         offset_mesh = offset_mesh_plus_x(original_mesh, offset_increment * i_frame)
-        depth, color = renderer.render_mesh(offset_mesh, depth_scale=1000.0)
+        depth, color = renderer.render_mesh_legacy(offset_mesh, depth_scale=1000.0)
         color_path = os.path.join(color_output_directory, f"{i_frame:06d}.jpg")
         depth_path = os.path.join(depth_output_directory, f"{i_frame:06d}.png")
         cv2.imwrite(color_path, color)

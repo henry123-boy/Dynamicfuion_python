@@ -165,7 +165,7 @@ def main():
     for i_frame in range(0, frame_count):
         i_angle = math.radians(rotation_increment)
         rotated_mesh = rotate_cube(rotated_mesh, i_angle)
-        depth, color = renderer.render_mesh(rotated_mesh, depth_scale=1000.0)
+        depth, color = renderer.render_mesh_legacy(rotated_mesh, depth_scale=1000.0)
         if save_results:
             save_sensor_data(seq_name, i_frame, depth, color)
             save_graph_data(seq_name, i_frame, graph_open3d)
