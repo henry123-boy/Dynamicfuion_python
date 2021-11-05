@@ -20,10 +20,7 @@
 #include "core/PlatformIndependence.h"
 #include "geometry/kernel/Defines.h"
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph{
+namespace nnrt::geometry::kernel::graph{
 
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
@@ -44,7 +41,4 @@ void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d:
                                           float node_coverage);
 
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

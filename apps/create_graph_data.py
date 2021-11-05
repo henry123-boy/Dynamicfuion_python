@@ -50,7 +50,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     width = depth_image.shape[1]
     height = depth_image.shape[0]
 
-    # Invalidate depth values outside object mask.
+    # Invalidate depth residuals outside object mask.
     # We only define graph over dynamic object (inside the object mask).
     mask_image[mask_image > 0] = 1
     depth_image = depth_image * mask_image
@@ -60,8 +60,8 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
     point_image = point_image.astype(np.float32)
 
     # Convert depth image into mesh, using pixel-wise connectivity.
-    # We also compute flow values, and invalidate any vertex with non-finite
-    # flow values.
+    # We also compute flow residuals, and invalidate any vertex with non-finite
+    # flow residuals.
 
     if scene_flow_path is None:
         vertices, vertex_pixels, faces = \

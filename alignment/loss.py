@@ -37,7 +37,7 @@ class DeformLoss(torch.nn.Module):
             elif len(flow_gts) > 1:
                 d_flow = []
                 for flow_gt, flow_pred, flow_mask in zip(flow_gts, flow_preds, flow_masks):
-                    # It can happen that flow_gt has no valid values for coarser levels.
+                    # It can happen that flow_gt has no valid residuals for coarser levels.
                     # In that case, that level is not constrained in the batch.
                     assert flow_pred is not None, flow_pred
                     f = self.flow_loss(flow_gt, flow_pred, flow_mask)
@@ -160,7 +160,7 @@ class BatchGraphL2(nn.Module):
 
 class RobustL1(nn.Module):
     """
-    Robust training loss for fine-tuning as defined in PWC-Net https://arxiv.org/pdf/1709.02371.pdf
+    Robust training linear_loss for fine-tuning as defined in PWC-Net https://arxiv.org/pdf/1709.02371.pdf
     """
 
     def __init__(self, epsilon=0.01, q=0.4):

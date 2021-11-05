@@ -26,10 +26,7 @@ using namespace open3d;
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace warp {
+namespace nnrt::geometry::kernel::warp {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
@@ -152,7 +149,4 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 }
 
 
-} // namespace warp
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::warp

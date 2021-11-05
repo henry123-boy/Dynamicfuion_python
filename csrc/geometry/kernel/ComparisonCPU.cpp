@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/4/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/5/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,11 +13,16 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
-#include <open3d/core/Tensor.h>
-#include <open3d/t/geometry/TriangleMesh.h>
+#include "geometry/kernel/Comparison.h"
+#include "open3d/core/kernel/CPULauncher.h"
+#include "geometry/kernel/ComparisonImpl.h"
 
-namespace nnrt::geometry {
-	open3d::core::Tensor ComputePointToPlaneDistances(open3d::t::geometry::TriangleMesh& mesh1, open3d::t::geometry::TriangleMesh& mesh2);
+namespace nnrt::geometry::kernel::comparison {
+template
+void ComputePointToPlaneDistances<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& distances,
+		const open3d::core::Tensor& normals1,
+		const open3d::core::Tensor& vertices1,
+		const open3d::core::Tensor& vertices2);
 
-} // namespace nnrt::geometry
+} // nnrt::geometry::kernel::comparison

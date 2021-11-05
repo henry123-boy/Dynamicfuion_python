@@ -80,7 +80,7 @@ py::array_t<float> compute_augmented_flow_from_rotation(py::array_t<float>& flow
 
 			// flow_sa2so should be dense and w/o any invalid value
 			if (!flow_sa2so.allFinite()) {
-				throw std::runtime_error("flow_sa2so should be dense and w/o any invalid values!");
+				throw std::runtime_error("flow_sa2so should be dense and w/o any invalid residuals!");
 			}
 
 			// compute warped location on source original (so we're going from source augmented to source original)
@@ -938,7 +938,7 @@ void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsig
 	// #pragma omp parallel for
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			// Get all values in the median window.
+			// Get all residuals in the median window.
 			int x_min = std::max(x - radius, 0);
 			int x_max = std::min(x + radius, int(width) - 1);
 			int y_min = std::max(y - radius, 0);
@@ -956,7 +956,7 @@ void filter_depth(py::array_t<unsigned short>& depth_image_in, py::array_t<unsig
 				}
 			}
 
-			// Sort the values and pick the median as the middle element.
+			// Sort the residuals and pick the median as the middle element.
 			unsigned element_count = window_values.size();
 			std::sort(window_values.begin(), window_values.end());
 
@@ -998,7 +998,7 @@ py::array_t<float> warp_flow(const py::array_t<float>& image, const py::array_t<
 		}
 	}
 
-	// Compute image values and interpolation weights.
+	// Compute image residuals and interpolation weights.
 	for (int v = 0; v < height; v++) {
 		for (int u = 0; u < width; u++) {
 			// Check if pixel is inside the mask.
@@ -1107,7 +1107,7 @@ py::array_t<float> warp_rigid(
 		}
 	}
 
-	// Compute image values and interpolation weights.
+	// Compute image residuals and interpolation weights.
 	for (int v = 0; v < height; v++) {
 		for (int u = 0; u < width; u++) {
 			// Compute the warped pixel.
@@ -1208,7 +1208,7 @@ warp_3d(const py::array_t<float>& rgbxyz_image, const py::array_t<float>& points
 		}
 	}
 
-	// Compute image values and interpolation weights.
+	// Compute image residuals and interpolation weights.
 	for (int v = 0; v < height; v++) {
 		for (int u = 0; u < width; u++) {
 			// Compute the warped pixel.

@@ -64,10 +64,10 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
     geometry/AnchorComputationMethod.h
     geometry/TransformationMode.h
-    geometry/PointToPlaneDistance.h
-    geometry/PointToPlaneDistance.cpp
-    geometry/kernel/PointToPlaneDistance.h
-    geometry/kernel/PointToPlaneDistance.cpp
+    geometry/Comparison.h
+    geometry/Comparison.cpp
+    geometry/kernel/Comparison.h
+    geometry/kernel/Comparison.cpp
     core/KeyValuePair.h
     core/DeviceHeap.h
     core/CPU/DeviceHeapCPU.cpp
@@ -85,7 +85,7 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDA.h
     string/split_string.h
     string/split_string.cpp
-    )
+    geometry/kernel/DeviceSelection.h geometry/kernel/ComparisonCPU.cpp geometry/kernel/ComparisonCUDA.cu geometry/kernel/ComparisonImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

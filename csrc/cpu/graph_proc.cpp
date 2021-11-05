@@ -787,9 +787,9 @@ py::tuple compute_pixel_anchors_shortest_path(
  * \param graph_nodes N X 3 graph node positions
  * \param point_image height x width x 3 point cloud
  * \param node_coverage the maximal distance of each point in the point cloud to the nearest node used to generate the graph
- * \param pixel_anchors [out] height x width x 4 array, where each 2d sampling with four values holds the indices of the nodes
+ * \param pixel_anchors [out] height x width x 4 array, where each 2d sampling with four residuals holds the indices of the nodes
  * chosen as (controlling) anchor points for the pixel at the same 2d location
- * \param pixel_weights [out] height x width x 4 array, where each 2d sampling with four values holds the
+ * \param pixel_weights [out] height x width x 4 array, where each 2d sampling with four residuals holds the
  * influence weights of the nodes assigned to the pixel in pixel_anchors
  */
 void compute_pixel_anchors_euclidean(
@@ -1178,7 +1178,7 @@ void construct_regular_graph(
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			// Initialize with invalid values.
+			// Initialize with invalid residuals.
 			for (int k = 0; k < 4; k++) {
 				*pixel_anchors.mutable_data(y, x, k) = -1;
 				*pixel_weights.mutable_data(y, x, k) = 0.f;

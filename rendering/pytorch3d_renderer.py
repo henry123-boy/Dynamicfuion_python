@@ -17,7 +17,7 @@ class RenderMaskCode:
     RGB = 0b01
 
 
-def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matrix: np.ndarray,
+def make_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_matrix: np.ndarray,
                               torch_device: torch.device) -> torch.Tensor:
     """
     Makes an intrinsic matrix in NDC (normalized device coordinates) coordinate system
@@ -40,8 +40,8 @@ def make_ndc_intrinsic_matrix(image_size: typing.Tuple[int, int], intrinsic_matr
     fy = fy_screen / half_image_height
     px = -(px_screen - half_image_width) / half_image_height
     py = -(py_screen - half_image_height) / half_image_height
-    # TODO due to what looks like a PyTorch3D bug, we have to use the 1.0 values here, not the below commented code
-    #  values, and then use the non-identity rotation matrix...
+    # TODO due to what looks like a PyTorch3D bug, we have to use the 1.0 residuals here, not the below commented code
+    #  residuals, and then use the non-identity rotation matrix...
     ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
                                           [0.0, fy, py, 0.0],
                                           [0.0, 0.0, 0.0, 1.0],
@@ -200,6 +200,7 @@ class PyTorch3DRenderer:
         rendered_depth = None
         rendered_color = None
 
+        # TODO: output Open3D or PyTorch Tensors instead of numpy arrays
         if render_mask & RenderMaskCode.DEPTH == 1:
             fragments = self.rasterizer.forward(meshes_torch3d)
             rendered_depth = fragments.zbuf.cpu().numpy().reshape(self.image_size[0], self.image_size[1])

@@ -53,45 +53,45 @@ class LearningParameters(ParameterEnum):
 
 class LossParameters(ParameterEnum):
     use_flow_loss = Parameter(default=True, arg_type='bool_flag',
-                              arg_help="Switch that enables/disables flow loss during training.")
+                              arg_help="Switch that enables/disables flow linear_loss during training.")
     # TODO: Change to Enum
     flow_loss_type = \
         Parameter(default="RobustL1", arg_type=str,
-                  arg_help="Type of flow loss to use during training. May be one of: ['RobustL1', 'L2']")
+                  arg_help="Type of flow linear_loss to use during training. May be one of: ['RobustL1', 'L2']")
     lambda_flow = \
         Parameter(default=5.0, arg_type=float,
-                  arg_help="Weight of the flow loss during neural network training.")
+                  arg_help="Weight of the flow linear_loss during neural network training.")
     use_graph_loss = \
         Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Switch that enables/disables graph loss (BatchGraphL2 in alignment/loss.py).")
+                  arg_help="Switch that enables/disables graph linear_loss (BatchGraphL2 in alignment/linear_loss.py).")
     lambda_graph = \
         Parameter(default=2.0, arg_type=float,
-                  arg_help="Weight of the graph loss during neural network training.")
+                  arg_help="Weight of the graph linear_loss during neural network training.")
     use_warp_loss = \
         Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Switch that enables/disables warp loss (L2_Warp in alignment/loss.py).")
+                  arg_help="Switch that enables/disables warp linear_loss (L2_Warp in alignment/linear_loss.py).")
     lambda_warp = \
         Parameter(default=2.0, arg_type=float,
-                  arg_help="Weight of the warp loss during neural network training.")
+                  arg_help="Weight of the warp linear_loss during neural network training.")
     use_mask_loss = \
         Parameter(default=False, arg_type='bool_flag',
-                  arg_help="Switch that enables/disables the mask loss (weighted binary cross-entropy, "
-                           "see DeformLoss.mask_bce_loss in alignment/loss.py).")
+                  arg_help="Switch that enables/disables the mask linear_loss (weighted binary cross-entropy, "
+                           "see DeformLoss.mask_bce_loss in alignment/linear_loss.py).")
     lambda_mask = \
         Parameter(default=1000.0, arg_type=float,
-                  arg_help="Weight of the warp loss during neural network training.")
+                  arg_help="Weight of the warp linear_loss during neural network training.")
 
     use_fixed_mask_loss_neg_wrt_pos_weight = \
         Parameter(default=True, arg_type='bool_flag',
-                  arg_help="Controls the behaviour of the weighting of the BCE loss on masks. "
+                  arg_help="Controls the behaviour of the weighting of the BCE linear_loss on masks. "
                            "If set to true, mask_neg_wrt_pos_weight is used for weighing as opposed "
                            "to a dynamic weight based on ratio of positive & negative mask pixels. "
-                           "For details, see DeformLoss.mask_bce_loss in alignment/loss.py")
+                           "For details, see DeformLoss.mask_bce_loss in alignment/linear_loss.py")
     mask_neg_wrt_pos_weight = \
         Parameter(default=0.05, arg_type=float,
-                  arg_help="Fixed weight for the negative mask values in the BCE loss on masks. "
+                  arg_help="Fixed weight for the negative mask residuals in the BCE linear_loss on masks. "
                            "To be used, 'mask_neg_wrt_pos_weight' has to be set to True. For details, see "
-                           "alignment/loss.py.")
+                           "alignment/linear_loss.py.")
 
 
 class BaselineComparisonParameters(ParameterEnum):
@@ -130,7 +130,7 @@ class TrainingParameters(ParameterEnum):
                            "during training (passed to torch.set_num_threads).")
     num_samples_eval = \
         Parameter(default=700, arg_type=int,
-                  arg_help="Number of samples used for evaluation (loss computation) during training.")
+                  arg_help="Number of samples used for evaluation (linear_loss computation) during training.")
     # TODO: probably should be grouped with evaluation_frequency and the above 'num_samples_eval' in something like ValidationParameters
     do_validation = \
         Parameter(default=True, arg_type='bool_flag',

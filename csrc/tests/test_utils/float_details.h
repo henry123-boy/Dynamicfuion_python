@@ -27,7 +27,7 @@ struct float_details {
 			a 64 bit mantissa and 16 bit exponent.  These are stored in the public
 			fields of the same names.
 
-			The main use of this object is to convert floating point values into a
+			The main use of this object is to convert floating point residuals into a
 			known uniform representation so they can be serialized to an output stream.
 			This allows dlib serialization code to work on any system, regardless of
 			the floating point representation used by the hardware.  It also means
@@ -37,11 +37,11 @@ struct float_details {
 
 			In more detail, this object represents a floating point value equal to
 			mantissa*pow(2,exponent), except when exponent takes on any of the
-			following special values:
+			following special residuals:
 				- is_inf
 				- is_ninf
 				- is_nan
-			These values are used to indicate that the floating point value should be
+			These residuals are used to indicate that the floating point value should be
 			either infinity, negative infinity, or not-a-number respectively.
 	!*/
 

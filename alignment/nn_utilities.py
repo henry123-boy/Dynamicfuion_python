@@ -189,7 +189,7 @@ def compute_baseline_mask_gt(
     mask_neg_gt = ((dist > min_neg_flowed_source_to_target_dist) & scene_flow_mask_0 & valid_source_points & valid_target_matches) \
             | (~target_matches_nonboundary_mask & scene_flow_mask_0 & valid_source_points & valid_target_matches)
 
-    # What remains is left undecided (masked out at loss).
+    # What remains is left undecided (masked out at linear_loss).
     # For groundtruth mask we set it to zero.
     valid_mask_pixels = mask_pos_gt | mask_neg_gt
     mask_gt = mask_pos_gt

@@ -58,8 +58,8 @@ class GenericDataset:
          Depth & color frames should be either at the root or in their respective subfolders.
         :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
         :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
-        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme values,
-        values below this threshold will be considered masked out.
+        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme residuals,
+        residuals below this threshold will be considered masked out.
         """
         self.sequence_id = sequence_id
         self.split = split
@@ -290,8 +290,8 @@ class StandaloneFrameDataset(FrameDataset, GenericDataset):
          Depth & color frames should be either at the root or in their respective subfolders.
         :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
         :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
-        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme values,
-        values below this threshold will be considered masked out.
+        :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme residuals,
+        residuals below this threshold will be considered masked out.
         """
         super(StandaloneFrameDataset, self).__init__(sequence_id, split, base_dataset_type, has_masks,
                                                      custom_frame_directory, masks_subfolder, far_clipping_distance,

@@ -19,7 +19,7 @@ from ext_argparse import ParameterEnum, Parameter
 class VisualizerParameters(ParameterEnum):
     base_output_path = Parameter(arg_type=str,
                                  default="/mnt/Data/Reconstruction/output/NeuralTracking_experiment_output",
-                                 arg_help="Path to the output folder for all fusion pipeline run outputs.")
+                                 arg_help="Path to the output folder for all fusion pipeline run linear_loss.")
     experiment_folder = Parameter(arg_type=str, default="!LATEST!",
                                   arg_help="Folder (relative to base_output_path) with output from a single fusion pipeline app run."
                                            "If \"!LATEST!\" is specified instead of a folder name, the app will retrieve the folder "

@@ -139,7 +139,7 @@ def flow_to_color(flow_uv, clip_flow=None, convert_to_bgr=False):
 
 def flow_to_color_safe(flow_image: np.ndarray) -> np.ndarray:
     """
-    Cleans the input flow image first of Inf and NaN values,
+    Cleans the input flow image first of Inf and NaN residuals,
     then converts to flow
     :param flow_image:
     :return:

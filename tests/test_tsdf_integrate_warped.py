@@ -170,7 +170,7 @@ def test_integrate_warped_simple_motion_dq(device):
                        center_plane_voxel_index + 64]
 
     # generated using the above function.
-    # Note: if anything about the reference implementation changes, these values need to be re-computed.
+    # Note: if anything about the reference implementation changes, these residuals need to be re-computed.
     # each array row contains:
     # u, v, cosine, tsdf, weight
     ground_truth_data = np.array([
@@ -282,7 +282,7 @@ def test_integrate_warped_simple_motion_mat(device):
                        center_plane_voxel_index + 64]
 
     # generated using the above function.
-    # Note: if anything about the reference implementation changes, these values need to be re-computed.
+    # Note: if anything about the reference implementation changes, these residuals need to be re-computed.
     # each array row contains:
     # u, v, cosine, tsdf, weight
     ground_truth_data = np.array([

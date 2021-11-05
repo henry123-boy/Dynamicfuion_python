@@ -20,6 +20,7 @@
 #include "geometry/Graph.h"
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
+#include "geometry/Comparison.h"
 #include "geometry.h"
 
 
@@ -37,6 +38,8 @@ void pybind_geometry(py::module& m) {
 	pybind_geometry_enums(m_submodule);
 	pybind_geometry_extended_tsdf_voxelgrid(m_submodule);
 	pybind_geometry_graph(m_submodule);
+	pybind_geometry_comparison(m_submodule);
+
 }
 
 void pybind_geometry_enums(pybind11::module& m){
@@ -45,11 +48,9 @@ void pybind_geometry_enums(pybind11::module& m){
 }
 
 void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
-	// py::object TSDFVoxelGridClass = (py::object) py::module_::import("open3d").attr("t").attr("geometry").attr("TSDFVoxelGrid");
-
+	// import has to be here in order to load the base class into python,
+	// otherwise there will be errors if the module isn't imported on the python end
 	py::module_::import("open3d.cuda.pybind.t.geometry");
-	// py::class_<WarpableTSDFVoxelGrid> warpable_tsdf_voxel_grid(
-	// 			m, "WarpableTSDFVoxelGrid", TSDFVoxelGridClass, "A voxel grid for TSDF and/or color integration, extended with custom functions.");
 	py::class_<WarpableTSDFVoxelGrid, open3d::t::geometry::TSDFVoxelGrid> warpable_tsdf_voxel_grid(
 			m, "WarpableTSDFVoxelGrid", "A voxel grid for TSDF and/or color integration, extended with custom functions.");
 
@@ -70,49 +71,7 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 			"block_resolution"_a = 16, "block_count"_a = 100,
 			"device"_a = core::Device("CPU:0"));
 	// endregion
-	// region  =============================== EXISTING BASE CLASS (TSDFVoxelGrid) FUNCTIONS  =============================
-	// warpable_tsdf_voxel_grid.def("integrate",
-	//                              py::overload_cast<const Image&, const core::Tensor&,
-	// 		                             const core::Tensor&, float, float>(
-	// 		                             &TSDFVoxelGrid::Integrate),
-	//                              "depth"_a, "intrinsics"_a, "extrinsics"_a,
-	//                              "depth_scale"_a, "depth_max"_a);
-	//
-	// warpable_tsdf_voxel_grid.def(
-	// 		"integrate",
-	// 		py::overload_cast<const Image&, const Image&, const core::Tensor&,
-	// 				const core::Tensor&, float, float>(
-	// 				&TSDFVoxelGrid::Integrate),
-	// 		"depth"_a, "color"_a, "intrinsics"_a, "extrinsics"_a,
-	// 		"depth_scale"_a, "depth_max"_a);
-	//
-	// warpable_tsdf_voxel_grid.def(
-	// 		"raycast", &TSDFVoxelGrid::RayCast, "intrinsics"_a, "extrinsics"_a,
-	// 		"width"_a, "height"_a, "depth_scale"_a = 1000.0,
-	// 		"depth_min"_a = 0.1f, "depth_max"_a = 3.0f,
-	// 		"weight_threshold"_a = 3.0f,
-	// 		"raycast_result_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::DepthMap |
-	// 		                          TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
-	// warpable_tsdf_voxel_grid.def(
-	// 		"extract_surface_points", &TSDFVoxelGrid::ExtractSurfacePoints,
-	// 		"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
-	// 		"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
-	// 		                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
-	// warpable_tsdf_voxel_grid.def(
-	// 		"extract_surface_mesh", &TSDFVoxelGrid::ExtractSurfaceMesh,
-	// 		"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
-	// 		"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
-	// 		                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap |
-	// 		                   TSDFVoxelGrid::SurfaceMaskCode::NormalMap);
-	//
-	// warpable_tsdf_voxel_grid.def("to", &TSDFVoxelGrid::To, "device"_a, "copy"_a = false);
-	// warpable_tsdf_voxel_grid.def("clone", &TSDFVoxelGrid::Clone);
-	// warpable_tsdf_voxel_grid.def("cpu", &TSDFVoxelGrid::CPU);
-	// warpable_tsdf_voxel_grid.def("cuda", &TSDFVoxelGrid::CUDA, "device_id"_a);
-	//
-	// warpable_tsdf_voxel_grid.def("get_block_hashmap", &TSDFVoxelGrid::GetBlockHashmap);
-	// warpable_tsdf_voxel_grid.def("get_device", &TSDFVoxelGrid::GetDevice);
-	// endregion
+
 	// region =============================== EXPOSE CUSTOM / NEW FUNCTIONS =======================================================
 
 	warpable_tsdf_voxel_grid.def("extract_voxel_centers", &WarpableTSDFVoxelGrid::ExtractVoxelCenters);
@@ -205,6 +164,15 @@ void pybind_geometry_graph(pybind11::module& m) {
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
 		  "minimum_valid_anchor_count"_a);
+}
+
+void pybind_geometry_comparison(pybind11::module& m) {
+	m.def("compute_point_to_plane_distances",
+		  py::overload_cast<const open3d::t::geometry::TriangleMesh&,const open3d::t::geometry::TriangleMesh&>
+		          (&ComputePointToPlaneDistances), "mesh1"_a, "mesh2"_a);
+	m.def("compute_point_to_plane_distances",
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&,const open3d::t::geometry::PointCloud&>
+			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
 }
 
 } // namespace nnrt

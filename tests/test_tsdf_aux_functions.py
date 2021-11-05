@@ -28,7 +28,7 @@ def test_tsdf_value_extraction(device):
                                      [1, 1, 1],
                                      [1, 1, 1]], dtype=np.float32)
 
-    # we take out the [1:4, 1:4] portion of the first & second slices because the border values
+    # we take out the [1:4, 1:4] portion of the first & second slices because the border residuals
     # will not be set (they are expected to be missed by rays projected from the camera)
     assert np.allclose(values_np[0, 1:4, 1:4], expected_first_slice, atol=1e-6)
 

@@ -17,10 +17,7 @@
 
 using namespace open3d;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph {
+namespace nnrt::geometry::kernel::graph {
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, const int anchor_count, const int minimum_valid_anchor_count,
                                        const float node_coverage) {
@@ -81,7 +78,4 @@ void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& w
 	}
 }
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

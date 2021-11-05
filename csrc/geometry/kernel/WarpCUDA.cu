@@ -19,10 +19,7 @@
 
 using namespace open3d;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace warp {
+namespace nnrt::geometry::kernel::warp {
 
 template
 void WarpPoints<o3c::Device::DeviceType::CUDA>(
@@ -42,7 +39,4 @@ void WarpPoints<o3c::Device::DeviceType::CUDA>(
 		int minimum_valid_anchor_count
 );
 
-} // namespace warp
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::warp

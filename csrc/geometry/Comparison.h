@@ -13,26 +13,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "PointToPlaneDistance.h"
+#pragma once
+#include <open3d/core/Tensor.h>
+#include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/t/geometry/PointCloud.h>
 
-using namespace open3d;
-using namespace open3d::t::geometry;
 
 namespace nnrt::geometry{
-open3d::core::Tensor
-ComputePointToPlaneDistances(open3d::t::geometry::TriangleMesh& mesh1, open3d::t::geometry::TriangleMesh& mesh2) {
+	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh1, const open3d::t::geometry::TriangleMesh& mesh2);
+	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh, const open3d::t::geometry::PointCloud& point_cloud);
 
-	if(mesh1.GetDevice() != mesh2.GetDevice()){
-		utility::LogError("Devices for two meshes need to match. Got: {} and {}.", mesh1.GetDevice().ToString(), mesh2.GetDevice().ToString());
-	}
-	if(!mesh1.HasVertexNormals()){
-		utility::LogError("Mesh1 needs to have vertex normals defined.");
-	}
-	auto vertices1 = mesh1.GetVertices();
-	auto vertices2 = mesh2.GetVertices();
-	auto normals1 = mesh1.GetVertexNormals();
-
-
-
-}
-} //namespace nnrt::geometry
+} // namespace nnrt::geometry

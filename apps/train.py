@@ -79,7 +79,7 @@ if __name__ == "__main__":
     #####################################################################################
     # Initializing: alignment, criterion, optimizer, learning scheduler...
     #####################################################################################
-    # Load alignment, loss and optimizer.
+    # Load alignment, linear_loss and optimizer.
     saved_model = get_saved_model()
 
     iteration_number = 0
@@ -436,7 +436,7 @@ if __name__ == "__main__":
                         scheduler.step()
 
                 else:
-                    print("No valid loss, skipping backpropagation!")
+                    print("No valid linear_loss, skipping backpropagation!")
 
                 time_statistics.backward_duration += (timer() - train_batch_backprop)
 

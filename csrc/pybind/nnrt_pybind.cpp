@@ -82,10 +82,10 @@ PYBIND11_MODULE(nnrt, m) {
 	// image filtering
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
 	      "depth_image_in"_a, "depth_image_out"_a, "radius"_a,
-	      "Run a median filter on input depth image, outputs to provided output image. Does not modify the original.");
+	      "Run a median filter on input depth image, linear_loss to provided output image. Does not modify the original.");
 	m.def("filter_depth", py::overload_cast<py::array_t<unsigned short>&, int>(&image_proc::filter_depth),
 	      "depth_image_in"_a, "radius"_a,
-	      "Run a median filter on provided depth image and outputs a new image with the result. Does not modify the original.");
+	      "Run a median filter on provided depth image and linear_loss a new image with the result. Does not modify the original.");
 
 
 

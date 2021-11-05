@@ -17,17 +17,16 @@
 #include "pybind/nnrt_pybind.h"
 
 
-namespace nnrt {
-namespace geometry {
+namespace nnrt::geometry {
 
 void pybind_geometry(py::module& m);
 void pybind_geometry_enums(py::module& m);
 void pybind_geometry_extended_tsdf_voxelgrid(py::module& m);
 void pybind_geometry_graph(py::module& m);
+void pybind_geometry_comparison(py::module& m);
 
 
-} // namespace geometry
-} //namespace nnrt
+} //namespace nnrt::geometry
 
 
 

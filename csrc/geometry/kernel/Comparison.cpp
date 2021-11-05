@@ -13,15 +13,22 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+#include "geometry/kernel/Comparison.h"
+#include "geometry/kernel/DeviceSelection.h"
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace comparison {
+using namespace open3d;
 
+namespace nnrt::geometry::kernel::comparison {
 
+void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
+                                  const open3d::core::Tensor& normals1,
+                                  const open3d::core::Tensor& vertices1,
+                                  const open3d::core::Tensor& vertices2) {
+	InferDeviceFromTensorAndExecute(
+			normals1,
+			[&] { ComputePointToPlaneDistances<core::Device::DeviceType::CPU>(distances, normals1, vertices1, vertices2); },
+			[&] { ComputePointToPlaneDistances<core::Device::DeviceType::CUDA>(distances, normals1, vertices1, vertices2); }
+	);
 }
-}
-}
-}
+
+} // nnrt::geometry::kernel::comparison

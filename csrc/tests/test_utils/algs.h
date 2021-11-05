@@ -19,7 +19,7 @@ namespace test {
 // region ============================================== tmax / tmin =================================================================================
 /*!A tmax
 
-	This is a template to compute the max of two values at compile time
+	This is a template to compute the max of two residuals at compile time
 
 	For example,
 		abs<4,7>::value == 7
@@ -35,7 +35,7 @@ struct tmax<x, y, typename enable_if_c<(y > x)>::type> {
 };
 /*!A tmin
 
-	This is a template to compute the min of two values at compile time
+	This is a template to compute the min of two residuals at compile time
 
 	For example,
 		abs<4,7>::value == 4

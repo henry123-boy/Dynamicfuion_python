@@ -444,7 +444,7 @@ constexpr std::size_t values_count(const bool (&valid)[N]) noexcept {
 
 template <typename E, bool IsFlags, int Min, std::size_t... I>
 constexpr auto values(std::index_sequence<I...>) noexcept {
-  static_assert(is_enum_v<E>, "magic_enum::detail::values requires enum type.");
+  static_assert(is_enum_v<E>, "magic_enum::detail::residuals requires enum type.");
   constexpr bool valid[sizeof...(I)] = {is_valid<E, value<E, Min, IsFlags>(I)>()...};
   constexpr std::size_t count = values_count(valid);
 
@@ -464,7 +464,7 @@ constexpr auto values(std::index_sequence<I...>) noexcept {
 
 template <typename E, bool IsFlags, typename U = std::underlying_type_t<E>>
 constexpr auto values() noexcept {
-  static_assert(is_enum_v<E>, "magic_enum::detail::values requires enum type.");
+  static_assert(is_enum_v<E>, "magic_enum::detail::residuals requires enum type.");
   constexpr auto min = reflected_min_v<E, IsFlags>;
   constexpr auto max = reflected_max_v<E, IsFlags>;
   constexpr auto range_size = max - min + 1;
@@ -670,7 +670,7 @@ template <typename E>
   return name;
 }
 
-// Returns number of enum values.
+// Returns number of enum residuals.
 template <typename E>
 [[nodiscard]] constexpr auto enum_count() noexcept -> detail::enable_if_enum_t<E, std::size_t> {
   using D = std::decay_t<E>;
@@ -679,7 +679,7 @@ template <typename E>
 }
 
 // Returns enum value at specified index.
-// No bounds checking is performed: the behavior is undefined if index >= number of enum values.
+// No bounds checking is performed: the behavior is undefined if index >= number of enum residuals.
 template <typename E>
 [[nodiscard]] constexpr auto enum_value(std::size_t index) noexcept -> detail::enable_if_enum_t<E, std::decay_t<E>> {
   using D = std::decay_t<E>;
@@ -702,7 +702,7 @@ template <typename E, std::size_t I>
   return detail::values_v<D>[I];
 }
 
-// Returns std::array with enum values, sorted by enum value.
+// Returns std::array with enum residuals, sorted by enum value.
 template <typename E>
 [[nodiscard]] constexpr auto enum_values() noexcept -> detail::enable_if_enum_t<E, detail::values_t<E>> {
   using D = std::decay_t<E>;
@@ -797,7 +797,7 @@ template <typename E>
   return static_cast<underlying_type_t<E>>(value);
 }
 
-// Obtains index in enum values from enum value.
+// Obtains index in enum residuals from enum value.
 // Returns optional with index.
 template <typename E>
 [[nodiscard]] constexpr auto enum_index(E value) noexcept -> detail::enable_if_enum_t<E, optional<std::size_t>> {
@@ -911,7 +911,7 @@ namespace flags {
 // Returns type name of enum.
 using magic_enum::enum_type_name;
 
-// Returns number of enum-flags values.
+// Returns number of enum-flags residuals.
 template <typename E>
 [[nodiscard]] constexpr auto enum_count() noexcept -> detail::enable_if_enum_t<E, std::size_t> {
   using D = std::decay_t<E>;
@@ -920,7 +920,7 @@ template <typename E>
 }
 
 // Returns enum-flags value at specified index.
-// No bounds checking is performed: the behavior is undefined if index >= number of enum-flags values.
+// No bounds checking is performed: the behavior is undefined if index >= number of enum-flags residuals.
 template <typename E>
 [[nodiscard]] constexpr auto enum_value(std::size_t index) noexcept -> detail::enable_if_enum_t<E, std::decay_t<E>> {
   using D = std::decay_t<E>;
@@ -945,7 +945,7 @@ template <typename E, std::size_t I>
   return detail::values_v<D, true>[I];
 }
 
-// Returns std::array with enum-flags values, sorted by enum-flags value.
+// Returns std::array with enum-flags residuals, sorted by enum-flags value.
 template <typename E>
 [[nodiscard]] constexpr auto enum_values() noexcept -> detail::enable_if_enum_t<E, detail::values_t<E, true>> {
   using D = std::decay_t<E>;
@@ -1074,7 +1074,7 @@ template <typename E>
 // Returns integer value from enum value.
 using magic_enum::enum_integer;
 
-// Obtains index in enum-flags values from enum-flags value.
+// Obtains index in enum-flags residuals from enum-flags value.
 // Returns optional with index.
 template <typename E>
 [[nodiscard]] constexpr auto enum_index(E value) noexcept -> detail::enable_if_enum_t<E, optional<std::size_t>> {
