@@ -21,9 +21,10 @@ import torch.utils.dlpack as torch_dlpack
 
 from warp_field.graph import DeformationGraphOpen3D
 from nnrt.geometry import WarpableTSDFVoxelGrid, compute_point_to_plane_distances
-from linear_solver_lu import LinearSolverLU
+from alignment.common import LinearSolverLU
 from settings import GraphParameters
 from rendering.pytorch3d_renderer import PyTorch3DRenderer, RenderMaskCode
+from alignment.render_to_input.loss_penalty_functions import apply_data_residual_penalty, apply_regularization_residual_penalty
 
 
 class RenderingAlignmentOptimizer:
@@ -44,10 +45,9 @@ class RenderingAlignmentOptimizer:
 
             point_to_plane_distances_o3d = compute_point_to_plane_distances(warped_mesh, target_points)
             point_to_plane_distances_torch = torch_dlpack.from_dlpack(point_to_plane_distances_o3d.to_dlpack())
-            # TODO apply tukey loss
-            # data_residuals =
+            data_residuals = apply_data_residual_penalty(point_to_plane_distances_torch)
+
+
+
 
             raise NotImplementedError("Not yet implemented")
-
-
-

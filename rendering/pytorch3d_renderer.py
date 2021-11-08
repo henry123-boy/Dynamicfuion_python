@@ -150,7 +150,7 @@ class PyTorch3DRenderer:
 
     def render_mesh(self, mesh: o3d.t.geometry.TriangleMesh,
                     extrinsics: Union[o3c.Tensor, None] = None,
-                    depth_scale=1000.0, render_mask: int = RenderMaskCode.DEPTH | RenderMaskCode.COLOR) \
+                    depth_scale=1000.0, render_mask: int = RenderMaskCode.DEPTH | RenderMaskCode.RGB) \
             -> Tuple[Union[None,np.ndarray], Union[None, np.ndarray]]:
         """
         Render mesh to depth & color images compatible with typical RGB-D input depth & rgb images

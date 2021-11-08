@@ -20,7 +20,7 @@ import numpy as np
 import torch
 import kornia
 
-from alignment.linear_solver_lu import LinearSolverLU
+from alignment.common.linear_solver_lu import LinearSolverLU
 from settings import DeformNetParameters
 
 

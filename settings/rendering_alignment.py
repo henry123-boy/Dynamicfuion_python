@@ -17,21 +17,26 @@ from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
 
 
-class PenaltyFunction(Enum):
+class DataTermPenaltyFunction(Enum):
     ROBUST_TUKEY = 1,
     ROBUST_TUKEY_GRADIENT = 2,
-    HUBER = 3,
-    HUBER_GRADIENT = 4
+
+
+class RegularizationTermPenaltyFunction(Enum):
+    HUBER = 1,
+    HUBER_GRADIENT = 2
 
 
 class RenderingAlignmentParameters(ParameterEnum):
     data_term_penalty = \
-        Parameter(default=PenaltyFunction.ROBUST_TUKEY_GRADIENT, arg_type=PenaltyFunction,
+        Parameter(default=DataTermPenaltyFunction.ROBUST_TUKEY, arg_type=DataTermPenaltyFunction,
                   arg_help="What penalty function to use for the energy of the data term (point-to-plane) energy.")
     tukey_penalty_constant = \
         Parameter(default=0.01, arg_type=float,
                   arg_help="Controls how quickly the tukey penalty function tapers off away from the origin.")
-
+    regularization_term_penalty = \
+        Parameter(default=RegularizationTermPenaltyFunction.HUBER, arg_type=RegularizationTermPenaltyFunction,
+                  arg_help="What penalty function to use for the energy of the data term (point-to-plane) energy.")
     huber_penalty_constant = \
         Parameter(default=0.0001, arg_type=float,
                   arg_help="Controls how quickly the huber penalty function tapers off away from the origin.")
