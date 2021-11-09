@@ -61,7 +61,7 @@ void CheckNodeData(core::Device& device, const core::Tensor& nodes, const core::
 PointCloud
 WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes, const core::Tensor& node_rotations,
                   const core::Tensor& node_translations, const int anchor_count, float node_coverage,
-				  int minimum_valid_anchor_count) {
+                  int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeData(device, nodes, node_rotations, node_translations);
@@ -71,7 +71,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 	if (anchor_count < 0 || anchor_count > MAX_ANCHOR_COUNT) {
 		utility::LogError("`anchor_count` is {}, but is required to satisfy 0 < anchor_count <= {}", anchor_count, MAX_ANCHOR_COUNT);
 	}
-	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count){
+	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count) {
 		utility::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {} ",
 		                  minimum_valid_anchor_count, anchor_count);
 	}
@@ -91,7 +91,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 		vertices.AssertDtype(core::Dtype::Float32);
 		core::Tensor warped_points;
 		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-								 minimum_valid_anchor_count);
+		                         minimum_valid_anchor_count);
 		warped_point_cloud.SetPoints(warped_points);
 	}
 
@@ -102,26 +102,26 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 PointCloud
 WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes, const core::Tensor& node_rotations,
                   const core::Tensor& node_translations, const core::Tensor& anchors, const core::Tensor& anchor_weights,
-				  int minimum_valid_anchor_count) {
+                  int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeData(device, nodes, node_rotations, node_translations);
 	auto anchors_shape = anchors.GetShape();
 	auto anchor_weights_shape = anchor_weights.GetShape();
-	if (anchors_shape.size() != 2 ||  anchor_weights_shape.size() != 2) {
+	if (anchors_shape.size() != 2 || anchor_weights_shape.size() != 2) {
 		utility::LogError("Tensors `anchors` and `anchor_weights` need to both have two dimensions."
 		                  "Got {} and {} dimensions, respectively.", anchors_shape.size(),
 		                  anchor_weights_shape.size());
 	}
-	if(anchors_shape[0] != anchor_weights_shape[0] || anchors_shape[1] != anchor_weights_shape[1]){
+	if (anchors_shape[0] != anchor_weights_shape[0] || anchors_shape[1] != anchor_weights_shape[1]) {
 		utility::LogError("Tensors `anchors` and `anchor_weights` need to have matching dimensions."
-						  "Got {} and {}, respectively.", anchors_shape,
+		                  "Got {} and {}, respectively.", anchors_shape,
 		                  anchor_weights_shape);
 	}
 	const int64_t anchor_count = anchors_shape[1];
-	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count){
+	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count) {
 		utility::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {}, "
-						  "where the upper bound is the second dimension of the input `anchors` tensor.",
+		                  "where the upper bound is the second dimension of the input `anchors` tensor.",
 		                  minimum_valid_anchor_count, anchor_count);
 	}
 	anchors.AssertDtype(core::Dtype::Int32);
@@ -141,7 +141,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 		vertices.AssertDtype(core::Dtype::Float32);
 		core::Tensor warped_points;
 		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchors, anchor_weights,
-								 minimum_valid_anchor_count);
+		                         minimum_valid_anchor_count);
 		warped_point_cloud.SetPoints(warped_points);
 	}
 
@@ -149,9 +149,10 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 }
 
 
-TriangleMesh
-WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, const core::Tensor& node_rotations,
-                    const core::Tensor& node_translations, const int anchor_count, float node_coverage) {
+open3d::t::geometry::TriangleMesh
+WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& nodes,
+                    const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                    int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
 	auto device = input_mesh.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeData(device, nodes, node_rotations, node_translations);
@@ -178,7 +179,13 @@ WarpTriangleMeshMat(const TriangleMesh& input_mesh, const core::Tensor& nodes, c
 		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
 		vertices.AssertDtype(core::Dtype::Float32);
 		core::Tensor warped_vertices;
-		kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage, 0);
+		if (threshold_nodes_by_distance) {
+			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+			                         minimum_valid_anchor_count);
+		} else {
+			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+		}
+
 		warped_mesh.SetVertices(warped_vertices);
 	}
 

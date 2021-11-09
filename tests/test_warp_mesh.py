@@ -151,8 +151,7 @@ def test_warp_mesh_open3d_mat(device, ground_truth_vertices):
     graph_open3d.rotations_mat = o3c.Tensor(np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
                                             device=device)
     translations = nodes_rotated - nodes
-    graph_open3d.translations_vec = o3c.Tensor(translations,
-                                               device=device)
+    graph_open3d.translations_vec = o3c.Tensor(translations, device=device)
 
     mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
 

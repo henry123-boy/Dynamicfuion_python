@@ -21,10 +21,11 @@
 #include "geometry/kernel/Defines.h"
 #include "geometry/AnchorComputationMethod.h"
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace warp {
+namespace nnrt::geometry::kernel::warp {
+
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
@@ -40,6 +41,11 @@ void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor&
 template<open3d::core::Device::DeviceType TDeviceType>
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage,
                 int minimum_valid_anchor_count);
 
@@ -50,7 +56,4 @@ void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor&
                 const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
                 int minimum_valid_anchor_count);
 
-} // namespace warp
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::warp

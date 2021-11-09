@@ -25,6 +25,13 @@ template
 void WarpPoints<o3c::Device::DeviceType::CPU>(
 		o3c::Tensor& warped_points, const o3c::Tensor& points,
 		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+		const o3c::Tensor& node_translations, int anchor_count, float node_coverage
+);
+
+template
+void WarpPoints<o3c::Device::DeviceType::CPU>(
+		o3c::Tensor& warped_points, const o3c::Tensor& points,
+		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
 		const o3c::Tensor& node_translations, int anchor_count, float node_coverage,
 		int minimum_valid_anchor_count
 );

@@ -74,6 +74,7 @@ FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float*
 		valid_anchor_count++;
 	}
 	if (valid_anchor_count < minimum_valid_anchor_count) {
+
 		return false;
 	}
 	if (weight_sum > 0.0f) {
@@ -82,7 +83,7 @@ FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float*
 		}
 	} else if (valid_anchor_count > 0) {
 		for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-			anchor_weights[i_anchor] = 1.0f / static_cast<float>(anchor_count);
+			anchor_weights[i_anchor] = 1.0f / static_cast<float>(valid_anchor_count);
 		}
 	}
 	// endregion
@@ -104,13 +105,11 @@ FindAnchorsAndWeightsForPointEuclidean(int32_t* anchor_indices, float* anchor_we
 	// region ===================== COMPUTE ANCHOR WEIGHTS ================================
 
 	float weight_sum = 0.0;
-	int valid_anchor_count = 0;
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		float squared_distance = squared_distances[i_anchor];
 		float weight = expf(-squared_distance / (2 * node_coverage_squared));
 		weight_sum += weight;
 		anchor_weights[i_anchor] = weight;
-		valid_anchor_count++;
 	}
 
 	if (weight_sum > 0.0f) {

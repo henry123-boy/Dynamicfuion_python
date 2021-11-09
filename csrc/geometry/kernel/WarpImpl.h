@@ -47,12 +47,11 @@ inline void AddAnchorInfluence(Eigen::Map<Eigen::Vector3f>& warped_point, const 
 }
 
 
-template<o3c::Device::DeviceType TDeviceType>
-void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
-                const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
-                const o3c::Tensor& node_translations,
-                int anchor_count, const float node_coverage, int minimum_valid_anchor_count) {
-
+template<o3c::Device::DeviceType TDeviceType, typename TFindAnchorsFunction>
+void WarpPoints_Generic(o3c::Tensor& warped_points, const o3c::Tensor& points,
+                        const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+                        const o3c::Tensor& node_translations,
+                        int anchor_count, const float node_coverage, TFindAnchorsFunction&& find_anchors) {
 	const int64_t point_count = points.GetLength();
 	const int64_t node_count = nodes.GetLength();
 
@@ -84,9 +83,8 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				if (!warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                                         minimum_valid_anchor_count, node_count,
-				                                                                         point, node_indexer, node_coverage_squared)) {
+				if (!find_anchors(anchor_indices, anchor_weights, node_count,
+				                  point, node_indexer, node_coverage_squared)) {
 					return;
 				}
 
@@ -96,9 +94,43 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 				                        node_translation_indexer, point);
 			}
 	);
-
 }
 
+template<o3c::Device::DeviceType TDeviceType>
+void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
+                const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+                const o3c::Tensor& node_translations,
+                int anchor_count, const float node_coverage, int minimum_valid_anchor_count) {
+	WarpPoints_Generic<TDeviceType>(
+			warped_points, points, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+			[=] NNRT_DEVICE_WHEN_CUDACC(
+					int32_t* anchor_indices, float* anchor_weights, const int node_count,
+					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+					const float node_coverage_squared) {
+				return warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                           minimum_valid_anchor_count, node_count,
+				                                                                           point, node_indexer, node_coverage_squared);
+			}
+	);
+}
+
+template<o3c::Device::DeviceType TDeviceType>
+void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
+                const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+                const o3c::Tensor& node_translations,
+                int anchor_count, const float node_coverage) {
+	WarpPoints_Generic<TDeviceType>(
+			warped_points, points, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+			[=] NNRT_DEVICE_WHEN_CUDACC(
+					int32_t* anchor_indices, float* anchor_weights, const int node_count,
+					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
+					const float node_coverage_squared) {
+				warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                          node_count, point, node_indexer, node_coverage_squared);
+				return true;
+			}
+	);
+}
 
 template<o3c::Device::DeviceType TDeviceType>
 void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,

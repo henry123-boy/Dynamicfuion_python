@@ -42,13 +42,14 @@ void pybind_geometry(py::module& m) {
 
 }
 
-void pybind_geometry_enums(pybind11::module& m){
+void pybind_geometry_enums(pybind11::module& m) {
 	nnrt::export_enum<nnrt::geometry::AnchorComputationMethod>(m);
 	nnrt::export_enum<nnrt::geometry::TransformationMode>(m);
 }
 
 
 #define USE_BASE_CLASS_TEMPLATE_PARAMETER
+
 void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 #ifdef USE_BASE_CLASS_TEMPLATE_PARAMETER
 	// import has to be here in order to load the base class into python,
@@ -205,27 +206,29 @@ void pybind_geometry_graph(pybind11::module& m) {
 	      "anchor_count"_a, "node_coverage"_a);
 
 	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a);
+	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a, "threshold_nodes_by_distance"_a = false,
+	      "minimum_valid_anchor_count"_a = 0);
 
 	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
 			      const open3d::core::Tensor&, const open3d::core::Tensor&, int, float, int>(&WarpPointCloudMat),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
-		  "minimum_valid_anchor_count"_a);
+	      "minimum_valid_anchor_count"_a);
 
 	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const open3d::core::Tensor&,
-			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, int>(&WarpPointCloudMat),
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, int>(
+			      &WarpPointCloudMat),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
-		  "minimum_valid_anchor_count"_a);
+	      "minimum_valid_anchor_count"_a);
 }
 
 void pybind_geometry_comparison(pybind11::module& m) {
 	m.def("compute_point_to_plane_distances",
-		  py::overload_cast<const open3d::t::geometry::TriangleMesh&,const open3d::t::geometry::TriangleMesh&>
-		          (&ComputePointToPlaneDistances), "mesh1"_a, "mesh2"_a);
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::TriangleMesh&>
+			      (&ComputePointToPlaneDistances), "mesh1"_a, "mesh2"_a);
 	m.def("compute_point_to_plane_distances",
-	      py::overload_cast<const open3d::t::geometry::TriangleMesh&,const open3d::t::geometry::PointCloud&>
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::PointCloud&>
 			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
 }
 
