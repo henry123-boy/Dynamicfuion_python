@@ -530,7 +530,11 @@ endif()
 
 
 # Python3
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+if(DEFINED Python3_VERSION)
+    find_package(Python3 ${Python3_VERSION} EXACT COMPONENTS Interpreter Development REQUIRED)
+else()
+    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+endif()
 
 
 # Flann

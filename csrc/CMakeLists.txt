@@ -85,7 +85,10 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDA.h
     string/split_string.h
     string/split_string.cpp
-    geometry/kernel/DeviceSelection.h geometry/kernel/ComparisonCPU.cpp geometry/kernel/ComparisonCUDA.cu geometry/kernel/ComparisonImpl.h)
+    geometry/kernel/DeviceSelection.h
+    geometry/kernel/ComparisonCPU.cpp
+    geometry/kernel/ComparisonCUDA.cu
+    geometry/kernel/ComparisonImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -121,11 +124,6 @@ target_include_directories(nnrt PRIVATE
 
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
-#message(STATUS "NNRT_3RDPARTY_PUBLIC_TARGETS: ${NNRT_3RDPARTY_PUBLIC_TARGETS}")
-#get_property(prop TARGET Open3D::Open3D PROPERTY INTERFACE_LINK_LIBRARIES)
-#message(STATUS "Prop: ${prop}")
-#nnrt_link_3rdparty_libraries(nnrt)
-#nnrt_set_global_properties(nnrt)
 
 include(ProcessorCount)
 set(N_PROCESSORS 1)
@@ -139,9 +137,15 @@ if(Open3D_DIR)
     set(Open3D_DIRECTIVE "Open3D_DIR=${Open3D_DIR}")
 endif()
 
+set(Python3_VERSION_DIRECTIVE)
+if(DEFINED Python3_VERSION)
+    set(Python3_VERSION_DIRECTIVE "Python3_VERSION=${Python3_VERSION}")
+endif()
+
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} ${Python3_VERSION_DIRECTIVE}
+    CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --bdist-dir ${PYTHON_PACKAGE_DIR} --dist-dir ${PIP_PACKAGE_DST_DIR} --keep-temp
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

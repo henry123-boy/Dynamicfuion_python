@@ -43,10 +43,14 @@ class CMakeBuild(build_ext):
         # Set Python_EXECUTABLE instead if you use PYBIND11_FINDPYTHON
         # from Python.
         cmake_args = [
-            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(extension_library_directory),
-            "-DPYTHON_EXECUTABLE={}".format(sys.executable),
-            "-DCMAKE_BUILD_TYPE={}".format(build_configuration),  # not used on MSVC, but no harm
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={extension_library_directory}",
+            f"-DPYTHON_EXECUTABLE={sys.executable}",
+            f"-DCMAKE_BUILD_TYPE={build_configuration}",  # not used on MSVC, but no harm
         ]
+
+        if "Python3_VERSION" in os.environ:
+            cmake_args.append(f"-DPython3_VERSION={os.environ['Python3_VERSION']}")
+
         build_args = []
 
         if self.compiler.compiler_type != "msvc":
