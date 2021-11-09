@@ -40,7 +40,7 @@ Python 3.8 or above is required. Check out the official [website](https://www.py
 PyTorch 1.9.0 or later should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Please use matching PyTorch and CuPy CUDA version support, even though PyTorch for older CUDA builds sometimes works with the newer ones. Otherwise, there will be import errors due library loading conflicts. 
 
 #### Open3D ####
-Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `3147bd1ba` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
+Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `9a49100bc` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 
@@ -117,7 +117,7 @@ Any original code in this repository that does not come from the original [Neura
 
 # [Based on] Neural Non-Rigid Tracking (NeurIPS 2020)
 
-The original Neural Non-Rigid Tracking `README` is still relevant for this repo and provided below.
+The original Neural Non-Rigid Tracking `README` is still relevant for this repo and provided below, with minor adjustments for accuracy.
 
 ### [Project Page](https://www.niessnerlab.org/projects/bozic2020nnrt.html) | [Paper](https://arxiv.org/abs/2006.13240) | [Video](https://www.youtube.com/watch?time_continue=1&v=nqYaxM6Rj8I&feature=emb_logo) | [Data](https://github.com/AljazBozic/DeepDeform)
 

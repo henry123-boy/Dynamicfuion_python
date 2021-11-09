@@ -208,7 +208,6 @@ inline void compute_edges_shortest_path_generic(
 	assert(graph_edges_distances_out.shape(0) == node_count);
 	assert(graph_edges_distances_out.shape(1) == max_neighbor_count);
 	assert(node_to_vertex_distances_out.shape(0) == node_count);
-	assert(graph_edges_distances_out.shape(1) == vertex_count);
 
 	float max_influence = 2.f * node_coverage;
 

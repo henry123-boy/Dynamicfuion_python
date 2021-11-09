@@ -33,6 +33,8 @@ class CMakeBuild(build_ext):
             extension_library_directory += os.path.sep
 
         build_configuration = "Debug" if self.debug else "Release"
+        if "CMAKE_BUILD_TYPE" in os.environ:
+            build_configuration = os.environ["CMAKE_BUILD_TYPE"]
 
         # CMake lets you override the generator - we need to check this.
         # Can be set with Conda-Build, for example.

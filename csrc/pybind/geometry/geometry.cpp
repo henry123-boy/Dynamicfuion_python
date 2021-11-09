@@ -47,6 +47,8 @@ void pybind_geometry_enums(pybind11::module& m){
 	nnrt::export_enum<nnrt::geometry::TransformationMode>(m);
 }
 
+
+#define USE_BASE_CLASS_TEMPLATE_PARAMETER
 void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 #ifdef USE_BASE_CLASS_TEMPLATE_PARAMETER
 	// import has to be here in order to load the base class into python,
@@ -87,6 +89,7 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 			                             &TSDFVoxelGrid::Integrate),
 	                             "depth"_a, "intrinsics"_a, "extrinsics"_a,
 	                             "depth_scale"_a, "depth_max"_a);
+
 
 	warpable_tsdf_voxel_grid.def(
 			"integrate",
