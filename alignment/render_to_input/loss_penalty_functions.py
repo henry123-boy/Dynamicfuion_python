@@ -17,24 +17,24 @@ import torch
 from settings.rendering_alignment import DataTermPenaltyFunction, RegularizationTermPenaltyFunction, RenderingAlignmentParameters
 
 
-def robust_tukey_penalty(linear_loss: torch.Tensor):
+def square_data_loss(linear_loss: torch.Tensor):
     return 0.5 * linear_loss * linear_loss
 
 
-def robust_tukey_penalty_derivative(linear_residuals: torch.Tensor):
+def linear_data_residuals(linear_residuals: torch.Tensor):
     return linear_residuals
 
 
-def huber_penalty(linear_loss: torch.Tensor):
+def square_regularization_penalty(linear_loss: torch.Tensor):
     return linear_loss.norm(dim=1) * 0.5
 
 
-def huber_penalty_derivative(linear_residuals: torch.Tensor):
+def linear_regularization_residuals(linear_residuals: torch.Tensor):
     return linear_residuals
 
 
 # for use on computing energies
-def robust_tukey_gradient_penalty(linear_loss: torch.Tensor):
+def robust_tukey_data_penalty(linear_loss: torch.Tensor):
     constant = RenderingAlignmentParameters.tukey_penalty_constant.value
     constant_factor = torch.tensor([constant * constant / 6.0], dtype=torch.float32, device=linear_loss.device)
     quotients: torch.Tensor = linear_loss / constant
@@ -43,7 +43,7 @@ def robust_tukey_gradient_penalty(linear_loss: torch.Tensor):
 
 
 # for use on computing energy residuals
-def robust_tukey_gradient_penalty_derivative(linear_residuals: torch.Tensor):
+def robust_tukey_data_penalty_derivative(linear_residuals: torch.Tensor):
     constant = RenderingAlignmentParameters.tukey_penalty_constant.value
     no_cutoff = linear_residuals / constant
     no_cutoff = 1.0 - no_cutoff * no_cutoff
@@ -52,21 +52,21 @@ def robust_tukey_gradient_penalty_derivative(linear_residuals: torch.Tensor):
     return torch.where(linear_residuals.abs() <= constant, no_cutoff, zero)
 
 
-def huber_gradient_penalty(linear_loss: torch.Tensor):
+def huber_regularization_penalty(linear_loss: torch.Tensor):
     constant = RenderingAlignmentParameters.huber_penalty_constant.value
     norms = linear_loss.norm(dim=1)
     return torch.where(norms < constant, norms * norms * 0.5, constant * (norms - constant * 0.5))
 
 
-def huber_gradient_penalty_derivative(linear_residuals: torch.Tensor):
+def huber_regularization_penalty_derivative(linear_residuals: torch.Tensor):
     constant = RenderingAlignmentParameters.huber_penalty_constant.value
     norms = linear_residuals.norm(dim=1)
     return torch.where(norms < constant, linear_residuals, linear_residuals * constant / norms)
 
 
 DATA_ENERGY_PENALTY_FUNCTION_MAP = {
-    DataTermPenaltyFunction.ROBUST_TUKEY: robust_tukey_penalty,
-    DataTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: robust_tukey_gradient_penalty
+    DataTermPenaltyFunction.NONE: square_data_loss,
+    DataTermPenaltyFunction.ROBUST_TUKEY: robust_tukey_data_penalty
 }
 
 
@@ -75,8 +75,8 @@ def apply_data_energy_penalty(linear_loss: torch.Tensor):
 
 
 DATA_RESIDUAL_PENALTY_FUNCTION_MAP = {
-    DataTermPenaltyFunction.ROBUST_TUKEY: robust_tukey_penalty_derivative,
-    DataTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: robust_tukey_gradient_penalty_derivative
+    DataTermPenaltyFunction.NONE: linear_data_residuals,
+    DataTermPenaltyFunction.ROBUST_TUKEY: robust_tukey_data_penalty_derivative
 }
 
 
@@ -85,8 +85,8 @@ def apply_data_residual_penalty(linear_residual: torch.Tensor):
 
 
 REGULARIZATION_ENERGY_PENALTY_FUNCTION_MAP = {
-    RegularizationTermPenaltyFunction.ROBUST_TUKEY: huber_penalty,
-    RegularizationTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: huber_gradient_penalty
+    RegularizationTermPenaltyFunction.ROBUST_TUKEY: square_regularization_penalty,
+    RegularizationTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: huber_regularization_penalty
 }
 
 
@@ -95,8 +95,8 @@ def apply_regularization_energy_penalty(linear_loss: torch.Tensor):
 
 
 REGULARIZATION_RESIDUAL_PENALTY_FUNCTION_MAP = {
-    RegularizationTermPenaltyFunction.ROBUST_TUKEY: huber_penalty_derivative,
-    RegularizationTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: huber_gradient_penalty_derivative
+    RegularizationTermPenaltyFunction.ROBUST_TUKEY: linear_regularization_residuals,
+    RegularizationTermPenaltyFunction.ROBUST_TUKEY_GRADIENT: huber_regularization_penalty_derivative
 }
 
 

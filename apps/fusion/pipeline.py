@@ -103,7 +103,9 @@ class FusionPipeline:
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: Union[None, o3d.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
+            x = self.volume2.extract_surface_mesh(-1, 0)
             canonical_mesh = self.volume.extract_surface_mesh(-1, 0).to_legacy()
+
 
         warped_mesh: Union[None, o3d.geometry.TriangleMesh] = None
 
@@ -134,6 +136,21 @@ class FusionPipeline:
         deform_net = self.deform_net
         device = self.device
         volume = self.volume
+        # __DEBUG
+        self.volume2 = o3d.t.geometry.TSDFVoxelGrid(
+            {
+                'tsdf': o3d.core.Dtype.Float32,
+                'weight': o3d.core.Dtype.UInt16,
+                'color': o3d.core.Dtype.UInt16
+            },
+            voxel_size=Parameters.tsdf.voxel_size.value,
+            sdf_trunc=Parameters.tsdf.sdf_truncation_distance.value,
+            block_resolution=Parameters.tsdf.block_resolution.value,
+            block_count=Parameters.tsdf.initial_block_count.value,
+            device=device
+        )
+        volume2 = self.volume2
+
         sequence = self.sequence
 
         fx, fy, cx, cy = self.fx, self.fy, self.cx, self.cy
@@ -195,6 +212,9 @@ class FusionPipeline:
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                                  depth_scale, sequence.far_clipping_distance)
+                # __DEBUG
+                volume2.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                                  depth_scale, sequence.far_clipping_distance)
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()

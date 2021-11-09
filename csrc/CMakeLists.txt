@@ -160,7 +160,7 @@ if(NOT DEFINED STUBGEN_EXECUTABLE)
     set(STUBGEN_EXECUTABLE stubgen)
 endif()
 
-add_custom_target(python-stubs
+add_custom_target(install-python-stubs
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${STUBS_PACKAGE_DST_DIR}/nnrt
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt -o ${STUBS_PACKAGE_DST_DIR}/nnrt WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi

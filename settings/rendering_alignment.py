@@ -18,13 +18,13 @@ from enum import Enum
 
 
 class DataTermPenaltyFunction(Enum):
-    ROBUST_TUKEY = 1,
-    ROBUST_TUKEY_GRADIENT = 2,
+    NONE = 1,
+    ROBUST_TUKEY = 2,
 
 
 class RegularizationTermPenaltyFunction(Enum):
-    HUBER = 1,
-    HUBER_GRADIENT = 2
+    NONE = 1,
+    HUBER = 2
 
 
 class RenderingAlignmentParameters(ParameterEnum):

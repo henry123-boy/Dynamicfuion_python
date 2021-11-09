@@ -46,8 +46,6 @@ class RenderingAlignmentOptimizer:
             point_to_plane_distances_o3d = compute_point_to_plane_distances(warped_mesh, target_points)
             point_to_plane_distances_torch = torch_dlpack.from_dlpack(point_to_plane_distances_o3d.to_dlpack())
             data_residuals = apply_data_residual_penalty(point_to_plane_distances_torch)
-
-
-
+            # TODO: hierarchical graph structures, regularization residuals, etc. (See #22 for full DF task list)
 
             raise NotImplementedError("Not yet implemented")

@@ -48,12 +48,19 @@ void pybind_geometry_enums(pybind11::module& m){
 }
 
 void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
+#ifdef USE_BASE_CLASS_TEMPLATE_PARAMETER
 	// import has to be here in order to load the base class into python,
 	// otherwise there will be errors if the module isn't imported on the python end
 	py::module_::import("open3d.cuda.pybind.t.geometry");
 	py::class_<WarpableTSDFVoxelGrid, open3d::t::geometry::TSDFVoxelGrid> warpable_tsdf_voxel_grid(
-			m, "WarpableTSDFVoxelGrid", "A voxel grid for TSDF and/or color integration, extended with custom functions.");
-
+			m, "WarpableTSDFVoxelGrid",
+			"A voxel grid for TSDF and/or color integration, extended with custom functions for applying a warp-field during integration.");
+#else
+	py::object tsdf_voxel_grid = (py::object) py::module_::import("open3d.cuda.pybind.t.geometry").attr("TSDFVoxelGrid");
+	py::class_<WarpableTSDFVoxelGrid> warpable_tsdf_voxel_grid(
+			m, "WarpableTSDFVoxelGrid", tsdf_voxel_grid,
+			"A voxel grid for TSDF and/or color integration, extended with custom functions for applying a warp-field during integration.");
+#endif
 	// TODO: we have to re-define all the TSDFVoxelGrid python aliases, because Open3D code doesn't use the
 	//  PYBIND11_EXPORT macro in the class definition. An issue should be raised in Open3D and a pull request proposed to
 	//  introduce PYBIND11_EXPORT to various classes and mitigate this problem.
@@ -70,8 +77,52 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 			"voxel_size"_a = 3.0 / 512, "sdf_trunc"_a = 0.04,
 			"block_resolution"_a = 16, "block_count"_a = 100,
 			"device"_a = core::Device("CPU:0"));
-	// endregion
 
+	// endregion
+	// region  =============================== EXISTING BASE CLASS (TSDFVoxelGrid) FUNCTIONS  ==========================
+	//TODO: figure out why do we still need to re-expose these via PyBind11
+	warpable_tsdf_voxel_grid.def("integrate",
+	                             py::overload_cast<const Image&, const core::Tensor&,
+			                             const core::Tensor&, float, float>(
+			                             &TSDFVoxelGrid::Integrate),
+	                             "depth"_a, "intrinsics"_a, "extrinsics"_a,
+	                             "depth_scale"_a, "depth_max"_a);
+
+	warpable_tsdf_voxel_grid.def(
+			"integrate",
+			py::overload_cast<const Image&, const Image&, const core::Tensor&,
+					const core::Tensor&, float, float>(
+					&TSDFVoxelGrid::Integrate),
+			"depth"_a, "color"_a, "intrinsics"_a, "extrinsics"_a,
+			"depth_scale"_a, "depth_max"_a);
+
+	warpable_tsdf_voxel_grid.def(
+			"raycast", &TSDFVoxelGrid::RayCast, "intrinsics"_a, "extrinsics"_a,
+			"width"_a, "height"_a, "depth_scale"_a = 1000.0,
+			"depth_min"_a = 0.1f, "depth_max"_a = 3.0f,
+			"weight_threshold"_a = 3.0f,
+			"raycast_result_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::DepthMap |
+			                          TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
+	warpable_tsdf_voxel_grid.def(
+			"extract_surface_points", &TSDFVoxelGrid::ExtractSurfacePoints,
+			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
+			"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
+			                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
+	warpable_tsdf_voxel_grid.def(
+			"extract_surface_mesh", &TSDFVoxelGrid::ExtractSurfaceMesh,
+			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
+			"surface_mask"_a = TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
+			                   TSDFVoxelGrid::SurfaceMaskCode::ColorMap |
+			                   TSDFVoxelGrid::SurfaceMaskCode::NormalMap);
+
+	warpable_tsdf_voxel_grid.def("to", &TSDFVoxelGrid::To, "device"_a, "copy"_a = false);
+	warpable_tsdf_voxel_grid.def("clone", &TSDFVoxelGrid::Clone);
+	warpable_tsdf_voxel_grid.def("cpu", &TSDFVoxelGrid::CPU);
+	warpable_tsdf_voxel_grid.def("cuda", &TSDFVoxelGrid::CUDA, "device_id"_a);
+
+	warpable_tsdf_voxel_grid.def("get_block_hashmap", &TSDFVoxelGrid::GetBlockHashmap);
+	warpable_tsdf_voxel_grid.def("get_device", &TSDFVoxelGrid::GetDevice);
+	// endregion
 	// region =============================== EXPOSE CUSTOM / NEW FUNCTIONS =======================================================
 
 	warpable_tsdf_voxel_grid.def("extract_voxel_centers", &WarpableTSDFVoxelGrid::ExtractVoxelCenters);
