@@ -40,7 +40,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
                        const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-					   const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+                       const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
                        const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
                        int minimum_valid_anchor_count, float depth_scale, float depth_max) {
 	InferDeviceFromTensorAndExecute(
@@ -65,48 +65,43 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
 
 // endregion ===================================================================
 // region ================== MATRIX VERSIONS ===================================
-void
-IntegrateWarpedEuclideanMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                            open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                            const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
-                            const open3d::core::Tensor& depth_normals,
-                            const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                            const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                            int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void
-IntegrateWarpedEuclideanMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                            open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                            const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
-                            const open3d::core::Tensor& depth_normals,
-                            const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-                            const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                            int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
+template<AnchorComputationMethod TAnchorComputationMethod, open3d::core::Device::DeviceType TDeviceType>
+void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                        const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+                        const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+                        int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
+template<AnchorComputationMethod TAnchorComputationMethod>
+void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                        const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+                        const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
+                        int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
+	InferDeviceFromTensorAndExecute(
+			block_keys,
+			[&] {
+				IntegrateWarpedMat<TAnchorComputationMethod, open3d::core::Device::DeviceType::CPU>(
+						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
+						node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+				);
+			},
+			[&] {
+				IntegrateWarpedMat<TAnchorComputationMethod, open3d::core::Device::DeviceType::CUDA>(
+						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
+						node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+				);
+			}
+	);
+}
 
-void
-IntegrateWarpedShortestPathMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                               open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
-                               float sdf_truncation_distance,
-                               const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
-                               const open3d::core::Tensor& depth_normals,
-                               const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-                               const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
-                               const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                               int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void
-IntegrateWarpedShortestPathMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                               open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
-                               float sdf_truncation_distance,
-                               const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
-                               const open3d::core::Tensor& depth_normals,
-                               const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-                               const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
-                               const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-                               int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 // endregion ==================================================================
 
 // TODO: implement (then, maybe, provide dual-quaternion version ?)

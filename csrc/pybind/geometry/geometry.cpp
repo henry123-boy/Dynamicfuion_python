@@ -149,35 +149,20 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 	                             "warp_graph_nodes"_a, "warp_graph_edges"_a,
 	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
 	                             "depth_scale"_a, "depth_max"_a, "compute_anchors_using"_a);
-	warpable_tsdf_voxel_grid.def("integrate_warped_euclidean_mat", py::overload_cast<const Image&, const Image&, const core::Tensor&,
+	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const Image&, const core::Tensor&,
 			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanMat),
-	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
-	                             "depth_scale"_a, "depth_max"_a);
-	warpable_tsdf_voxel_grid.def("integrate_warped_euclidean_mat", py::overload_cast<const Image&, const core::Tensor&,
-			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanMat),
-	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
-	                             "depth_scale"_a, "depth_max"_a);
-
-	warpable_tsdf_voxel_grid.def("integrate_warped_shortest_path_mat", py::overload_cast<const Image&, const Image&, const core::Tensor&,
-			                             const core::Tensor&, const core::Tensor&,
-			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat),
+			                             const core::Tensor&, float, int, int, float, float, AnchorComputationMethod>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
 	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a,
-	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
-	                             "depth_scale"_a, "depth_max"_a);
-	warpable_tsdf_voxel_grid.def("integrate_warped_shortest_path_mat", py::overload_cast<const Image&, const core::Tensor&,
-			                             const core::Tensor&, const core::Tensor&,
-			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
-			                             float, int, int, float, float>(&WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat),
+	                             "warp_graph_nodes"_a, "warp_graph_edges"_a,
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a,
+								 "minimum_valid_anchor_count"_a,"depth_scale"_a, "depth_max"_a, "compute_anchors_using"_a);
+	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const Image&, const core::Tensor&,
+			                             const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&, const core::Tensor&,
+			                             const core::Tensor&, float, int, int, float, float, AnchorComputationMethod>(&WarpableTSDFVoxelGrid::IntegrateWarpedMat),
 	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a,
-	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
-	                             "depth_scale"_a, "depth_max"_a);
+	                             "warp_graph_nodes"_a, "warp_graph_edges"_a,
+	                             "node_rotations"_a, "node_translations"_a, "node_coverage"_a, "anchor_count"_a,
+								 "minimum_valid_anchor_count"_a,"depth_scale"_a, "depth_max"_a, "compute_anchors_using"_a);
 
 	warpable_tsdf_voxel_grid.def("activate_sleeve_blocks", &WarpableTSDFVoxelGrid::ActivateSleeveBlocks);
 	// endregion

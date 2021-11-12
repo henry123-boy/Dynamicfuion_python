@@ -8,7 +8,7 @@ import pytest
 from dq3d import quat, dualquat
 
 import nnrt
-import nnrt.geometry as ngo
+import nnrt.geometry as nnrt_geom
 
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
@@ -144,13 +144,13 @@ def test_integrate_warped_simple_motion_dq(device):
     extrinsic_matrix_o3d = o3c.Tensor.eye(4, dtype=o3c.Dtype.Float32, device=device)
     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
-    node_edges_o3d = o3c.Tensor((1,1))
+    node_edges_o3d = o3c.Tensor((1, 1))
 
     cos_voxel_ray_to_normal = volume.integrate_warped_dq(
         depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_edges_o3d, node_dual_quaternions_o3d, node_coverage,
         anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0,
-        compute_anchors_using=ngo.AnchorComputationMethod.EUCLIDEAN)
+        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 
@@ -191,6 +191,7 @@ def test_integrate_warped_simple_motion_dq(device):
 
     for index, ground_truth in zip(indices_to_test, ground_truth_data):
         check_voxel_at(index, ground_truth)
+
 
 # __DEBUG
 # @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
@@ -259,11 +260,13 @@ def test_integrate_warped_simple_motion_mat(device):
     node_rotations_o3d = o3c.Tensor(node_rotations_mat, dtype=o3c.Dtype.Float32, device=device)
     node_translations_o3d = o3c.Tensor(node_translations_vec, dtype=o3c.Dtype.Float32, device=device)
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
+    edges_o3d = o3c.Tensor((1, 1))
 
-    cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
+    cos_voxel_ray_to_normal = volume.integrate_warped_mat(
         depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
-        nodes_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
-        anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0)
+        nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
+        anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0,
+        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 
@@ -282,7 +285,7 @@ def test_integrate_warped_simple_motion_mat(device):
     indices_to_test = [center_plane_voxel_index,
                        center_plane_voxel_index + 1,  # x + 1
                        center_plane_voxel_index + 8,  # y + 1
-                       center_plane_voxel_index + 16, # z + 1
+                       center_plane_voxel_index + 16,  # z + 1
                        center_plane_voxel_index + 64]
 
     # generated using the above function.
@@ -298,6 +301,7 @@ def test_integrate_warped_simple_motion_mat(device):
     ])
 
     print()
+
     def check_voxel_at(index, ground_truth):
         # TODO: fix (probs. due to either row-major matrix change or thresholding usage)
         # print(index, cos_voxel_ray_to_normal[int(ground_truth[0]), int(ground_truth[1])], ground_truth[2])

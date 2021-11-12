@@ -106,7 +106,8 @@ static void PrepareDepthAndColorForIntegration(core::Tensor& depth_tensor, core:
 open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedDQ(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
                                                               const open3d::core::Tensor& depth_normals,
                                                               const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-                                                              const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+                                                              const open3d::core::Tensor& warp_graph_nodes,
+                                                              const open3d::core::Tensor& warp_graph_edges,
                                                               const open3d::core::Tensor& node_dual_quaternion_transformations,
                                                               float node_coverage, int anchor_count, int minimum_valid_anchor_count,
                                                               float depth_scale, float depth_max,
@@ -137,6 +138,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedDQ(const open3d::t::g
 
 	//TODO: establish why we have the transfer to another device here here / confirm it is needed.
 	// Maybe we just need to change to double, but keep the device the same as block_keys?
+	// (also adjust in IntegrateWarpedMat)
 	static const core::Device host("CPU:0");
 	core::Tensor intrinsics_host_double =
 			intrinsics.To(host, core::Dtype::Float64).Contiguous();
@@ -183,12 +185,16 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedDQ(
 	                         node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
 }
 
-open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanMat(const Image& depth, const Image& color, const core::Tensor& depth_normals,
-                                                                        const core::Tensor& intrinsics, const core::Tensor& extrinsics,
-                                                                        const core::Tensor& warp_graph_nodes,
-                                                                        const core::Tensor& node_rotations, const core::Tensor& node_translations,
-                                                                        float node_coverage, int anchor_count, int minimum_valid_anchor_count,
-                                                                        float depth_scale, float depth_max) {
+open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
+                                                               const open3d::core::Tensor& depth_normals,
+                                                               const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+                                                               const open3d::core::Tensor& warp_graph_nodes,
+                                                               const open3d::core::Tensor& warp_graph_edges,
+                                                               const open3d::core::Tensor& node_rotations,
+                                                               const open3d::core::Tensor& node_translations,
+                                                               float node_coverage, int anchor_count, int minimum_valid_anchor_count,
+                                                               float depth_scale,
+                                                               float depth_max, AnchorComputationMethod compute_anchors_using) {
 	// TODO note the difference from TSDFVoxelGrid::Integrate:
 	//  IntegrateWarpedEuclideanDQ currently assumes that all of the relevant hash blocks have already been activated. This will probably change in the future.
 
@@ -228,80 +234,48 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanMat(const Im
 
 	core::Tensor cos_voxel_ray_to_normal;
 
-	kernel::tsdf::IntegrateWarpedEuclideanMat(
-			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
-			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
-			node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
-	);
+	static const core::Device host("CPU:0");
+	core::Tensor intrinsics_host_double = intrinsics.To(host, core::Dtype::Float64).Contiguous();
+	core::Tensor extrinsics_host_double = extrinsics.To(host, core::Dtype::Float64).Contiguous();
 
-	return cos_voxel_ray_to_normal;
-}
-
-
-open3d::core::Tensor
-WarpableTSDFVoxelGrid::IntegrateWarpedEuclideanMat(const Image& depth, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
-                                                   const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                                                   const core::Tensor& node_rotations, const core::Tensor& node_translations,
-                                                   float node_coverage, int anchor_count, int minimum_valid_anchor_count,
-                                                   float depth_scale, float depth_max) {
-	Image empty_color;
-	return IntegrateWarpedEuclideanMat(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, node_rotations, node_translations,
-	                                   node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
-}
-
-open3d::core::Tensor
-WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
-                                                      const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
-                                                      const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
-                                                      const open3d::core::Tensor& warp_graph_edges, const open3d::core::Tensor& node_rotations,
-                                                      const open3d::core::Tensor& node_translations, float node_coverage, int anchor_count,
-                                                      int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	// TODO: note the difference from TSDFVoxelGrid::Integrate:
-	//  IntegrateWarpedEuclideanDQ assumes that all of the relevant hash blocks have already been activated.
-
-	intrinsics.AssertDtype(core::Dtype::Float32);
-	extrinsics.AssertDtype(core::Dtype::Float32);
-
-	if (anchor_count < 0 || anchor_count > MAX_ANCHOR_COUNT) {
-		utility::LogError("anchor_count is {}, but is required to satisfy 0 < anchor_count < {}", anchor_count, MAX_ANCHOR_COUNT);
+	switch (compute_anchors_using) {
+		case AnchorComputationMethod::EUCLIDEAN:
+			kernel::tsdf::IntegrateWarpedMat<AnchorComputationMethod::EUCLIDEAN>(
+					active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
+					cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
+					depth_tensor, color_tensor, depth_normals, intrinsics_host_double, extrinsics_host_double, warp_graph_nodes, warp_graph_edges,
+					node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+			);
+			break;
+		case AnchorComputationMethod::SHORTEST_PATH:
+			kernel::tsdf::IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH>(
+					active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
+					cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
+					depth_tensor, color_tensor, depth_normals, intrinsics_host_double, extrinsics_host_double, warp_graph_nodes, warp_graph_edges,
+					node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+			);
+			break;
+		default:
+			utility::LogError("Unsupported AnchorComputationMethod value: {}", compute_anchors_using);
 	}
 
-	core::Tensor depth_tensor, color_tensor;
-	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->attr_dtype_map_);
-
-
-	// Query active blocks and their nearest neighbors to handle boundary cases.
-	core::Tensor active_block_addresses;
-	block_hashmap_->GetActiveIndices(active_block_addresses);
-
-	core::Tensor block_values = block_hashmap_->GetValueTensor();
-
-
-	core::Tensor cos_voxel_ray_to_normal;
-
-	kernel::tsdf::IntegrateWarpedShortestPathMat(
-			active_block_addresses.To(core::Dtype::Int64), block_hashmap_->GetKeyTensor(), block_values,
-			cos_voxel_ray_to_normal, block_resolution_, voxel_size_, sdf_trunc_,
-			depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
-			node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
-	);
-
 	return cos_voxel_ray_to_normal;
 }
 
 
 open3d::core::Tensor
-WarpableTSDFVoxelGrid::IntegrateWarpedShortestPathMat(const open3d::t::geometry::Image& depth, const open3d::core::Tensor& depth_normals,
-                                                      const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-                                                      const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
-                                                      const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                                                      float node_coverage, int anchor_count, int minimum_valid_anchor_count, float depth_scale,
-                                                      float depth_max) {
+WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::geometry::Image& depth, const open3d::core::Tensor& depth_normals,
+                                          const open3d::core::Tensor& intrinsics,
+                                          const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& warp_graph_nodes,
+                                          const open3d::core::Tensor& warp_graph_edges,
+                                          const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                                          float node_coverage, int anchor_count,
+                                          int minimum_valid_anchor_count, float depth_scale, float depth_max,
+                                          AnchorComputationMethod compute_anchors_using) {
 	Image empty_color;
-	return IntegrateWarpedShortestPathMat(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes,
-	                                      warp_graph_edges, node_rotations, node_translations,
-	                                      node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max);
+	return IntegrateWarpedMat(depth, empty_color, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges, node_rotations,
+	                          node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max,
+	                          compute_anchors_using);
 }
 
 open3d::core::Tensor WarpableTSDFVoxelGrid::BufferCoordinatesOfInactiveNeighborBlocks(const core::Tensor& active_block_addresses) {
