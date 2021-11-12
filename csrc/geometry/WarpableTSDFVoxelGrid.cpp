@@ -195,7 +195,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::
                                                                float node_coverage, int anchor_count, int minimum_valid_anchor_count,
                                                                float depth_scale,
                                                                float depth_max, AnchorComputationMethod compute_anchors_using) {
-	// TODO note the difference from TSDFVoxelGrid::Integrate:
+	// TODO note the difference from TSDFVoxelGrid::Integrate
 	//  IntegrateWarpedEuclideanDQ currently assumes that all of the relevant hash blocks have already been activated. This will probably change in the future.
 
 	intrinsics.AssertDtype(core::Dtype::Float32);
@@ -263,6 +263,7 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::
 }
 
 
+// TODO: add device & dimension checks for tensors (make separate function, call from both IntegrateWarpedDQ & IntegrateWarpedMat
 open3d::core::Tensor
 WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::geometry::Image& depth, const open3d::core::Tensor& depth_normals,
                                           const open3d::core::Tensor& intrinsics,
