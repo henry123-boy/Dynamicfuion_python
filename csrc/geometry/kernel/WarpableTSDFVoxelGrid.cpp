@@ -21,49 +21,7 @@
 
 using namespace open3d;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace tsdf {
-
-void IntegrateWarpedEuclideanDQ(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values, core::Tensor& cos_voxel_ray_to_normal,
-                                int64_t block_resolution, float voxel_size, float sdf_truncation_distance, const core::Tensor& depth_tensor,
-                                const core::Tensor& color_tensor, const core::Tensor& depth_normals, const core::Tensor& intrinsics,
-                                const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes, const core::Tensor& node_dual_quaternion_transformations,
-                                float node_coverage, int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	core::Device device = block_keys.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-
-	//TODO: establish why we have the conversion here / confirm it is needed
-	static const core::Device host("CPU:0");
-	core::Tensor intrinsics_d =
-			intrinsics.To(host, core::Dtype::Float64).Contiguous();
-	core::Tensor extrinsics_d =
-			extrinsics.To(host, core::Dtype::Float64).Contiguous();
-
-	if (device_type == core::Device::DeviceType::CPU) {
-		IntegrateWarpedEuclideanDQ<core::Device::DeviceType::CPU>(
-				block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-				depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d,
-				warp_graph_nodes, node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count,
-				depth_scale, depth_max
-		);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		IntegrateWarpedEuclideanDQ<core::Device::DeviceType::CUDA>(
-				block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-				depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d,
-				warp_graph_nodes, node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count,
-				depth_scale, depth_max
-		);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-}
+namespace nnrt::geometry::kernel::tsdf {
 
 void IntegrateWarpedEuclideanMat(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
                                  core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
@@ -94,47 +52,6 @@ void IntegrateWarpedEuclideanMat(const core::Tensor& block_indices, const core::
 				block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 				depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d,
 				warp_graph_nodes, node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
-		);
-#else
-		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-	} else {
-		utility::LogError("Unimplemented device");
-	}
-}
-
-
-void IntegrateWarpedShortestPathDQ(const core::Tensor& block_indices, const core::Tensor& block_keys, core::Tensor& block_values,
-                                   core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                                   const core::Tensor& depth_tensor, const core::Tensor& color_tensor, const core::Tensor& depth_normals,
-                                   const core::Tensor& intrinsics, const core::Tensor& extrinsics, const core::Tensor& warp_graph_nodes,
-                                   const core::Tensor& warp_graph_edges, const core::Tensor& node_dual_quaternion_transformations,
-                                   float node_coverage, int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	core::Device device = block_keys.GetDevice();
-
-	core::Device::DeviceType device_type = device.GetType();
-
-	//TODO: establish why we have the conversion here / confirm it is needed
-	static const core::Device host("CPU:0");
-	core::Tensor intrinsics_d =
-			intrinsics.To(host, core::Dtype::Float64).Contiguous();
-	core::Tensor extrinsics_d =
-			extrinsics.To(host, core::Dtype::Float64).Contiguous();
-
-	if (device_type == core::Device::DeviceType::CPU) {
-		IntegrateWarpedShortestPathDQ<core::Device::DeviceType::CPU>(
-				block_indices, block_keys, block_values,cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-				depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d,
-				warp_graph_nodes, warp_graph_edges, node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count,
-				depth_scale, depth_max
-		);
-	} else if (device_type == core::Device::DeviceType::CUDA) {
-#ifdef BUILD_CUDA_MODULE
-		IntegrateWarpedShortestPathDQ<core::Device::DeviceType::CUDA>(
-				block_indices, block_keys, block_values,cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-				depth_tensor, color_tensor, depth_normals, intrinsics_d, extrinsics_d,
-				warp_graph_nodes, warp_graph_edges, node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count,
-				depth_scale, depth_max
 		);
 #else
 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
@@ -213,7 +130,4 @@ void IntegrateWarpedShortestPathMat(const core::Tensor& block_indices, const cor
 // }
 
 
-} // namespace tsdf
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::tsdf

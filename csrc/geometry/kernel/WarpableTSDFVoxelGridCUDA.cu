@@ -27,24 +27,33 @@
 using namespace open3d;
 namespace o3c = open3d::core;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace tsdf {
+namespace nnrt::geometry::kernel::tsdf {
 
 
 template
-void IntegrateWarpedEuclideanDQ<o3c::Device::DeviceType::CUDA>(
+void IntegrateWarpedDQ<AnchorComputationMethod::EUCLIDEAN, o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
 		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
 		float sdf_truncation_distance,
 		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
 		const open3d::core::Tensor& depth_normals,
 		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-		const open3d::core::Tensor& warp_graph_nodes, 
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
 		const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
-		int anchor_count,
-		int minimum_valid_anchor_count, float depth_scale, float depth_max
+		int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
+);
+
+template
+void IntegrateWarpedDQ<AnchorComputationMethod::SHORTEST_PATH, o3c::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+		const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+		int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
 template
@@ -57,21 +66,7 @@ void IntegrateWarpedEuclideanMat<o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
 		const open3d::core::Tensor& graph_nodes,
 		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-		float node_coverage, int anchor_count,
-		int minimum_valid_anchor_count, float depth_scale, float depth_max
-);
-
-template
-void IntegrateWarpedShortestPathDQ<o3c::Device::DeviceType::CUDA>(
-		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
-		float sdf_truncation_distance,
-		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
-		const open3d::core::Tensor& depth_normals,
-		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
-		const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
-		int minimum_valid_anchor_count, float depth_scale, float depth_max
+		float node_coverage, int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
 template
@@ -84,8 +79,7 @@ void IntegrateWarpedShortestPathMat<o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
 		const open3d::core::Tensor& graph_nodes, const open3d::core::Tensor& warp_graph_edges,
 		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-		float node_coverage, int anchor_count,
-		int minimum_valid_anchor_count, float depth_scale, float depth_max
+		float node_coverage, int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
 // template
@@ -97,7 +91,4 @@ void IntegrateWarpedShortestPathMat<o3c::Device::DeviceType::CUDA>(
 // 		float node_coverage, int64_t block_resolution, float voxel_size, float sdf_truncation_distance
 // );
 
-} // namespace tsdf
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::tsdf
