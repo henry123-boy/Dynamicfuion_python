@@ -368,17 +368,31 @@ def vec3_dot(vec3_1, vec3_2):
 
 
 @cuda.jit(device=True)
-def vec3_elementwise_add(vec4_out, vec4_in):
-    vec4_out[0] = vec4_out[0] + vec4_in[0]
-    vec4_out[1] = vec4_out[1] + vec4_in[1]
-    vec4_out[2] = vec4_out[2] + vec4_in[2]
+def vec3_elementwise_add(vec3_out, vec3_in):
+    vec3_out[0] = vec3_out[0] + vec3_in[0]
+    vec3_out[1] = vec3_out[1] + vec3_in[1]
+    vec3_out[2] = vec3_out[2] + vec3_in[2]
 
 
 @cuda.jit(device=True)
-def vec3_elementwise_add_factor(vec4_out, vec4_in, factor):
-    vec4_out[0] = vec4_out[0] + vec4_in[0] * factor
-    vec4_out[1] = vec4_out[1] + vec4_in[1] * factor
-    vec4_out[2] = vec4_out[2] + vec4_in[2] * factor
+def vec3_elementwise_subtract(vec3_out, vec3_in):
+    vec3_out[0] = vec3_out[0] - vec3_in[0]
+    vec3_out[1] = vec3_out[1] - vec3_in[1]
+    vec3_out[2] = vec3_out[2] - vec3_in[2]
+
+
+@cuda.jit(device=True)
+def vec3_elementwise_add_factor(vec3_out, vec3_in, factor):
+    vec3_out[0] = vec3_out[0] + vec3_in[0] * factor
+    vec3_out[1] = vec3_out[1] + vec3_in[1] * factor
+    vec3_out[2] = vec3_out[2] + vec3_in[2] * factor
+
+
+@cuda.jit(device=True)
+def mat3_vec3_inner_product(vec3_out, mat3_in, vec3_in):
+    vec3_out[0] = mat3_in[0, 0] * vec3_in[0] + mat3_in[0, 1] * vec3_in[1] + mat3_in[0, 2] * vec3_in[2]
+    vec3_out[1] = mat3_in[1, 0] * vec3_in[0] + mat3_in[1, 1] * vec3_in[1] + mat3_in[1, 2] * vec3_in[2]
+    vec3_out[2] = mat3_in[2, 0] * vec3_in[0] + mat3_in[2, 1] * vec3_in[1] + mat3_in[2, 2] * vec3_in[2]
 
 
 # endregion
@@ -566,4 +580,30 @@ def transform_point_by_dual_quaternion(point_out, dual_quaternion,
     vec3_elementwise_add(added_vec, cross_real_dual_vecs)
     vec3_elementwise_add_factor(point_out, added_vec, 2.0)
 
+
 # endregion
+# region ==================== matrix blending ==========================================================================
+@cuda.jit(device=True)
+def linearly_blend_matrices(warped_point, temp1, temp2, source_point, nodes, node_translations, node_rotations, anchors, weights, workload_index):
+    # initialize
+    for i_element in range(3):
+        warped_point[i_element] = 0.0
+
+    # add up node influences
+    for i_anchor in range(anchors.shape[1]):
+        anchor = anchors[workload_index, i_anchor]
+        if anchor != -1:
+            weight = weights[workload_index, i_anchor]
+            node = nodes[anchor]  # vector3
+            node_rotation = node_rotations[anchor]  # matrix 3x3
+            node_translation = node_translations[anchor]  # vector3
+            temp1[0] = source_point[0]
+            temp1[1] = source_point[1]
+            temp1[2] = source_point[2]
+            vec3_elementwise_subtract(temp1, node)
+            mat3_vec3_inner_product(temp2, node_rotation, temp1)
+            vec3_elementwise_add(temp2, node)
+            vec3_elementwise_add(temp2, node_translation)
+            vec3_elementwise_add_factor(warped_point, temp2, weight)
+
+    return warped_point

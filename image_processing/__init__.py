@@ -9,6 +9,9 @@ from nnrt import backproject_depth_float as backproject_depth_float_c
 from nnrt import warp_flow as warp_flow_c
 from nnrt import warp_3d as warp_3d_c
 
+from image_processing.numba_cuda.preprocessing import cuda_compute_normal
+from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
+
 
 def in_bounds(point, h, w):
     return point[0] >= 0.0 and point[0] < w and point[1] >= 0.0 and point[1] < h
@@ -390,3 +393,11 @@ def compute_boundary_mask(point_image: np.ndarray, max_distance: float) -> np.nd
     # the slice with [None, ...] here reshapes the mask to shape ( 1, h, w )
     return boundary_mask[None, ...]
 
+
+def compute_normals(device: o3d.core.Device, vertex_map: np.ndarray) -> np.ndarray:
+    if device.get_type() == o3d.core.Device.DeviceType.CPU:
+        return cpu_compute_normal(vertex_map)
+    elif device.get_type() == o3d.core.Device.DeviceType.CUDA:
+        return cuda_compute_normal(vertex_map)
+    else:
+        raise ValueError(f"Unsupported device type: {device.get_type()}")

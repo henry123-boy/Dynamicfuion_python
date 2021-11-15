@@ -10,6 +10,7 @@ from dq3d import quat, dualquat
 import nnrt
 import nnrt.geometry as nnrt_geom
 
+from image_processing import compute_normals
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
 
@@ -133,7 +134,7 @@ def test_integrate_warped_simple_motion_dq(device):
     fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
 
     point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
-    normals = cuda_compute_normal(point_image)
+    normals = compute_normals(device, point_image)
 
     # ---- compute updates ----
     truncation_distance = 0.02  # same value as in construct_test_volume1
@@ -193,9 +194,7 @@ def test_integrate_warped_simple_motion_dq(device):
         check_voxel_at(index, ground_truth)
 
 
-# __DEBUG
-# @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-@pytest.mark.parametrize("device", [o3d.core.Device('cpu:0')])
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_integrate_warped_simple_motion_mat(device):
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
@@ -208,6 +207,7 @@ def test_integrate_warped_simple_motion_mat(device):
                       [0.00, -0.02, 0.05]],
                      dtype=np.float32)
 
+    # voxel size = 0.01 m
     volume = construct_test_volume1(device)
     voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
     voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights.cpu().numpy()
@@ -247,10 +247,9 @@ def test_integrate_warped_simple_motion_mat(device):
     fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
 
     point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
-    normals = cpu_compute_normal(point_image)
+    normals = compute_normals(device, point_image)
 
     # ---- compute updates ----
-    truncation_distance = 0.02  # same value as in construct_test_volume1
     node_coverage = 0.05
     depth_image_o3d = o3d.t.geometry.Image.from_legacy_image(o3d.geometry.Image(depth_image), device=device)
     color_image_o3d = o3d.t.geometry.Image.from_legacy_image(o3d.geometry.Image(color_image), device=device)
@@ -285,13 +284,13 @@ def test_integrate_warped_simple_motion_mat(device):
     indices_to_test = [center_plane_voxel_index,
                        center_plane_voxel_index + 1,  # x + 1
                        center_plane_voxel_index + 8,  # y + 1
-                       center_plane_voxel_index + 16,  # z + 1
-                       center_plane_voxel_index + 64]
+                       center_plane_voxel_index + 16,  # y + 2
+                       center_plane_voxel_index + 64]  # z + 1
 
     # generated using the above function.
     # Note: if anything about the reference implementation changes, these residuals need to be re-computed.
     # each array row contains:
-    # u, v, cosine, tsdf, weight
+    # v, u, cosine, tsdf, weight
     ground_truth_data = np.array([
         [50, 50, 0.4970065653324127, 0.0, 0.0],
         [71, 50, 0.9784621335214618, 0.06499883711342021, 2.0],
@@ -300,15 +299,10 @@ def test_integrate_warped_simple_motion_mat(device):
         [50, 50, 0.4970065653324127, 0.0, 0.0]
     ])
 
-    print()
-
     def check_voxel_at(index, ground_truth):
-        # TODO: fix (probs. due to either row-major matrix change or thresholding usage)
-        # print(index, cos_voxel_ray_to_normal[int(ground_truth[0]), int(ground_truth[1])], ground_truth[2])
-        # assert math.isclose(cos_voxel_ray_to_normal[int(ground_truth[0]), int(ground_truth[1])], ground_truth[2], abs_tol=1e-7)
+        assert math.isclose(cos_voxel_ray_to_normal[int(ground_truth[0]), int(ground_truth[1])], ground_truth[2], abs_tol=1e-7)
         if ground_truth[2] > 0.5:
-            print(index, voxel_tsdf_and_weights_np[index], ground_truth[3:])
-            # assert np.allclose(voxel_tsdf_and_weights_np[index], ground_truth[3:])
+            assert np.allclose(voxel_tsdf_and_weights_np[index], ground_truth[3:])
 
     for index, ground_truth in zip(indices_to_test, ground_truth_data):
         check_voxel_at(index, ground_truth)

@@ -144,6 +144,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 				Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
 
 				blend_motion(warped_voxel, voxel_camera, anchor_indices, anchor_weights, node_indexer);
+
 				if (warped_voxel.z() < 0) {
 					// voxel is behind camera
 					return;
@@ -164,7 +165,6 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 
 				float depth = (*depth_indexer.GetDataPtr<float>(u_rounded, v_rounded)) / depth_scale;
 
-
 				if (depth > 0.0f && depth < depth_max) {
 					float psdf = depth - warped_voxel.z();
 
@@ -174,7 +174,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 					// === compute normal ===
 					auto normal_pointer = normals_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 					Eigen::Vector3f normal(normal_pointer[0], normal_pointer[1], normal_pointer[2]);
-					float cosine = normal.dot(view_direction);
+					float cosine = view_direction.dot(normal);
 					auto cosine_pointer = cosine_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 					*cosine_pointer = cosine;
 
@@ -189,6 +189,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 								(psdf < sdf_truncation_distance ? psdf : sdf_truncation_distance) / sdf_truncation_distance;
 						auto voxel_ptr = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
 								x_voxel_local, y_voxel_local, z_voxel_local, block_index);
+
 						if (integrate_color) {
 							auto color_ptr = color_indexer.GetDataPtr<float>(u_rounded, v_rounded);
 							voxel_ptr->Integrate(tsdf_normalized, color_ptr[0], color_ptr[1], color_ptr[2]);

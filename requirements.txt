@@ -20,7 +20,6 @@ multipledispatch>=0.6.0
 click>=8.0.1
 scipy>=1.7.0
 pytest>=6.2.3
-sklearn>=0.0
 scikit-learn>=0.24.1
 matplotlib>=3.4.2
 kornia>=0.4.1

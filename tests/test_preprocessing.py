@@ -1,15 +1,16 @@
 import numpy as np
 import open3d as o3d
-from sklearn.preprocessing import normalize
+import pytest
 
 import nnrt
 import data.camera
 from data import StandaloneFrameDataset, StandaloneFramePreset
-from image_processing.numba_cuda.preprocessing import cuda_compute_normal
+from image_processing import compute_normals
 from settings import read_settings_file
 
 
-def test_compute_normals():
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_compute_normals(device):
     read_settings_file()
     frame_data: StandaloneFrameDataset = StandaloneFramePreset.RED_SHORTS_200.value
     frame_data.load()
@@ -23,7 +24,8 @@ def test_compute_normals():
     point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
     dv = ((point_image[2:, :] - point_image[:-2, :])[:, 1:-1]).reshape(-1, 3)
     du = ((point_image[:, 2:] - point_image[:, :-2])[1:-1, :]).reshape(-1, 3)
-    expected_normals = normalize(np.cross(du, dv), axis=1)
+    expected_normals = np.cross(du, dv)
+    expected_normals /= np.tile(np.linalg.norm(expected_normals, axis=1).reshape(-1, 1), (1, 3))
     expected_normals[expected_normals[:, 2] > 0] = -expected_normals[expected_normals[:, 2] > 0]
     expected_normals = expected_normals.reshape(478, 638, -1)
 
@@ -33,6 +35,6 @@ def test_compute_normals():
 
     expected_normals[mask] = 0
 
-    normals = cuda_compute_normal(point_image)[1:479, 1:639]
+    normals = compute_normals(device, point_image)[1:479, 1:639]
 
     assert np.allclose(expected_normals, normals, atol=1e-7)
