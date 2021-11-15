@@ -26,7 +26,7 @@
 namespace nnrt::geometry::kernel::tsdf {
 // region ================ DUAL QUATERNION VERSIONS ============================
 
-template<AnchorComputationMethod TAnchorComputationMethod, open3d::core::Device::DeviceType TDeviceType>
+template<AnchorComputationMethod TAnchorComputationMethod, bool TUseNodeDistanceThreshold, open3d::core::Device::DeviceType TDeviceType>
 void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
@@ -35,7 +35,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
                        const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
                        int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
-template<AnchorComputationMethod TAnchorComputationMethod>
+template<AnchorComputationMethod TAnchorComputationMethod, bool TUseNodeDistanceThreshold>
 void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
                        open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                        const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
@@ -46,14 +46,14 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
 	InferDeviceFromTensorAndExecute(
 			block_keys,
 			[&] {
-				IntegrateWarpedDQ<TAnchorComputationMethod, open3d::core::Device::DeviceType::CPU>(
+				IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(
 						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
 						node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
 				);
 			},
 			[&] {
-				IntegrateWarpedDQ<TAnchorComputationMethod, open3d::core::Device::DeviceType::CUDA>(
+				IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
 						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
 						node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
@@ -66,7 +66,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
 // endregion ===================================================================
 // region ================== MATRIX VERSIONS ===================================
 
-template<AnchorComputationMethod TAnchorComputationMethod, open3d::core::Device::DeviceType TDeviceType>
+template<AnchorComputationMethod TAnchorComputationMethod, bool TUseNodeDistanceThreshold, open3d::core::Device::DeviceType TDeviceType>
 void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
                         open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                         const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
@@ -75,7 +75,7 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
                         int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max);
 
-template<AnchorComputationMethod TAnchorComputationMethod>
+template<AnchorComputationMethod TAnchorComputationMethod, bool TUseNodeDistanceThreshold>
 void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
                         open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
                         const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
@@ -86,14 +86,14 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
 	InferDeviceFromTensorAndExecute(
 			block_keys,
 			[&] {
-				IntegrateWarpedMat<TAnchorComputationMethod, open3d::core::Device::DeviceType::CPU>(
+				IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(
 						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
 						node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
 				);
 			},
 			[&] {
-				IntegrateWarpedMat<TAnchorComputationMethod, open3d::core::Device::DeviceType::CUDA>(
+				IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
 						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
 						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
 						node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max

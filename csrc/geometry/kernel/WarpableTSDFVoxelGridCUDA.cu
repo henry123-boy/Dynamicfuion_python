@@ -28,10 +28,10 @@ using namespace open3d;
 namespace o3c = open3d::core;
 
 namespace nnrt::geometry::kernel::tsdf {
-
-
+// region =============== DUAL QUATERNION INTEGRATION VERSIONS =====================================
+// == with node distance thresholding
 template
-void IntegrateWarpedDQ<AnchorComputationMethod::EUCLIDEAN, o3c::Device::DeviceType::CUDA>(
+void IntegrateWarpedDQ<AnchorComputationMethod::EUCLIDEAN, true, o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
 		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
 		float sdf_truncation_distance,
@@ -44,7 +44,20 @@ void IntegrateWarpedDQ<AnchorComputationMethod::EUCLIDEAN, o3c::Device::DeviceTy
 );
 
 template
-void IntegrateWarpedDQ<AnchorComputationMethod::SHORTEST_PATH, o3c::Device::DeviceType::CUDA>(
+void IntegrateWarpedDQ<AnchorComputationMethod::SHORTEST_PATH, true, o3c::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+		const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+		int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
+);
+// == without node distance thresholding
+template
+void IntegrateWarpedDQ<AnchorComputationMethod::EUCLIDEAN, false, o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
 		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
 		float sdf_truncation_distance,
@@ -56,9 +69,23 @@ void IntegrateWarpedDQ<AnchorComputationMethod::SHORTEST_PATH, o3c::Device::Devi
 		int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
-
 template
-void IntegrateWarpedMat<AnchorComputationMethod::EUCLIDEAN, o3c::Device::DeviceType::CUDA>(
+void IntegrateWarpedDQ<AnchorComputationMethod::SHORTEST_PATH, false, o3c::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+		const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage,
+		int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max
+);
+// endregion
+// region =============== MATRIX INTEGRATION VERSIONS ==============================================
+// == with node distance thresholding
+template
+void IntegrateWarpedMat<AnchorComputationMethod::EUCLIDEAN, true, o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
 		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
 		float sdf_truncation_distance,
@@ -72,7 +99,7 @@ void IntegrateWarpedMat<AnchorComputationMethod::EUCLIDEAN, o3c::Device::DeviceT
 );
 
 template
-void IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH, o3c::Device::DeviceType::CUDA>(
+void IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH, true, o3c::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
 		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
 		float sdf_truncation_distance,
@@ -84,6 +111,37 @@ void IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH, o3c::Device::Dev
 		float node_coverage, int anchor_count,
 		int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
+// == without node distance thresholding
+
+template
+void IntegrateWarpedMat<AnchorComputationMethod::EUCLIDEAN, false, o3c::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		float node_coverage, int anchor_count,
+		int minimum_valid_anchor_count, float depth_scale, float depth_max
+);
+
+template
+void IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH, false, o3c::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size,
+		float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor,
+		const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+		const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
+		const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		float node_coverage, int anchor_count,
+		int minimum_valid_anchor_count, float depth_scale, float depth_max
+);
+
+// endregion 
 
 // template
 // void DetermineWhichBlocksToActivateWithWarp<o3c::Device::DeviceType::CUDA>(

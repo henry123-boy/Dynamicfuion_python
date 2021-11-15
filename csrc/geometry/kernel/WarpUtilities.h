@@ -147,6 +147,7 @@ FindAnchorsAndWeightsForPointShortestPath_Threshold(int32_t* anchor_indices, flo
 		return false;
 	}
 	NormalizeAnchorWeights<TDeviceType>(anchor_weights, weight_sum, anchor_count, anchor_count);
+	return true;
 }
 
 

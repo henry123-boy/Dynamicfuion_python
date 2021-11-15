@@ -150,7 +150,7 @@ def test_integrate_warped_simple_motion_dq(device):
         depth_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, node_edges_o3d, node_dual_quaternions_o3d, node_coverage,
         anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0,
-        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN)
+        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN, use_node_distance_thresholding=False)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 
@@ -266,7 +266,7 @@ def test_integrate_warped_simple_motion_mat(device):
         depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
         nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
         anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0,
-        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN)
+        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN, use_node_distance_thresholding=False)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 
