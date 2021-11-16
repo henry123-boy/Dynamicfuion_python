@@ -10,7 +10,7 @@ import skimage.io
 
 from settings import process_arguments, Parameters
 import image_processing
-from warp_field.graph import DeformationGraphNumpy
+from warp_field.graph_warp_field import GraphWarpFieldNumpy
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
@@ -23,14 +23,14 @@ from nnrt import compute_clusters as compute_clusters_c
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
 
-def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image: np.ndarray, intrinsic_matrix: np.ndarray,
-                                             max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
-                                             erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
-                                             remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
-                                             sample_random_shuffle: bool = False, neighbor_count: int = 8,
-                                             enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
-                                             enable_visual_debugging: bool = False) -> \
-        typing.Tuple[DeformationGraphNumpy, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
+def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image: np.ndarray, intrinsic_matrix: np.ndarray,
+                                            max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
+                                            erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
+                                            remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
+                                            sample_random_shuffle: bool = False, neighbor_count: int = 8,
+                                            enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
+                                            enable_visual_debugging: bool = False) -> \
+        typing.Tuple[GraphWarpFieldNumpy, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
     # options
 
     node_coverage = Parameters.graph.node_coverage.value
@@ -273,7 +273,7 @@ def build_deformation_graph_from_depth_image(depth_image: np.ndarray, mask_image
         if cluster_size <= 2:
             raise ValueError(f"Cluster is too small: {cluster_size}, it only has nodes: {str(np.where(graph_clusters == i)[0])}")
 
-    return DeformationGraphNumpy(node_coords, graph_edges, graph_edges_weights, graph_clusters), node_deformations, pixel_anchors, pixel_weights
+    return GraphWarpFieldNumpy(node_coords, graph_edges, graph_edges_weights, graph_clusters), node_deformations, pixel_anchors, pixel_weights
 
 
 def generate_paths(seq_dir: str):
@@ -459,10 +459,10 @@ def main():
     mask_image = skimage.io.imread(mask_image_path)
 
     graph, node_deformations, pixel_anchors, pixel_weights = \
-        build_deformation_graph_from_depth_image(depth_image, mask_image, intrinsic_matrix, MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL,
-                                                 EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS, REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS,
-                                                 USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NEIGHBOR_COUNT, ENFORCE_NEIGHBOR_COUNT,
-                                                 scene_flow_path, VISUAL_DEBUGGING)
+        build_graph_warp_field_from_depth_image(depth_image, mask_image, intrinsic_matrix, MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL,
+                                                EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS, REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS,
+                                                USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NEIGHBOR_COUNT, ENFORCE_NEIGHBOR_COUNT,
+                                                scene_flow_path, VISUAL_DEBUGGING)
 
     if SAVE_GRAPH_DATA:
         save_graph_data(seq_dir, pair_name, graph.nodes, graph.edges, graph.edge_weights, graph.clusters,

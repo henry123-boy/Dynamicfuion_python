@@ -23,15 +23,18 @@
 
 namespace nnrt::geometry::kernel::warp {
 
+// version not using node distance thresholding
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
+// version using node distance thresholding
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage,
                 int minimum_valid_anchor_count);
 
+// version using precomputed anchors
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations,

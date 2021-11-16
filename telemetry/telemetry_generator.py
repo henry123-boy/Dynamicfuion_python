@@ -8,7 +8,7 @@ import open3d as o3d
 import torch
 
 from data import SequenceFrameDataset
-from warp_field.graph import DeformationGraphNumpy
+from warp_field.graph_warp_field import GraphWarpFieldNumpy
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
 import pynvml
 import os
@@ -117,7 +117,7 @@ class TelemetryGenerator:
                               target_rgbxyz: np.ndarray,
                               pixel_anchors: np.ndarray,
                               pixel_weights: np.ndarray,
-                              graph: DeformationGraphNumpy,
+                              graph: GraphWarpFieldNumpy,
                               additional_geometry: List = []):
         if self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
             node_count = len(graph.nodes)
@@ -154,7 +154,7 @@ class TelemetryGenerator:
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
                                                  pixel_anchors: np.ndarray, pixel_weights: np.ndarray,
-                                                 graph: DeformationGraphNumpy):
+                                                 graph: GraphWarpFieldNumpy):
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
@@ -201,13 +201,13 @@ class TelemetryGenerator:
             target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
             np.save(target_path, target_rgbxyz.reshape(6, -1).T)
 
-    def process_graph_transformation(self, graph: DeformationGraphNumpy):
+    def process_graph_transformation(self, graph: GraphWarpFieldNumpy):
         if self.record_graph_transformations:
             nodes_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_nodes.npy")
             np.save(nodes_path, graph.nodes)
             edges_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_edges.npy")
             np.save(edges_path, graph.edges)
             rotations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_rotations.npy")
-            np.save(rotations_path, graph.rotations_mat)
+            np.save(rotations_path, graph.rotations)
             translations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_translations.npy")
-            np.save(translations_path, graph.translations_vec)
+            np.save(translations_path, graph.translations)

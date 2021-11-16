@@ -13,7 +13,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/Graph.h"
+#include "geometry/GraphWarpField.h"
+
+#include <utility>
+#include <Eigen/Core>
 #include "geometry/kernel/Graph.h"
 #include "geometry/kernel/Warp.h"
 
@@ -22,8 +25,8 @@ using namespace open3d::t::geometry;
 
 namespace nnrt::geometry {
 
-void CheckNodeData(core::Device& device, const core::Tensor& nodes, const core::Tensor& node_rotations,
-                   const core::Tensor& node_translations) {
+void CheckNodeMatrixTransformationData(core::Device& device, const core::Tensor& nodes, const core::Tensor& node_rotations,
+                                       const core::Tensor& node_translations) {
 	if (device != nodes.GetDevice() || device != node_rotations.GetDevice() || device != node_translations.GetDevice()) {
 		utility::LogError("Device not consistent among arguments.");
 	}
@@ -48,14 +51,33 @@ void CheckNodeData(core::Device& device, const core::Tensor& nodes, const core::
 		utility::LogError("Argument node_translations needs to have shape ({}, 3), where first dimension is the node count N"
 		                  ", but has shape {}", node_count, translations_shape);
 	}
-	if (device != nodes.GetDevice() ||
-	    device != node_rotations.GetDevice() ||
-	    device != node_translations.GetDevice()) {
-		utility::LogError("Inputs' devices don't match.", node_count, translations_shape);
-	}
+
 	nodes.AssertDtype(core::Dtype::Float32);
 	node_rotations.AssertDtype(core::Dtype::Float32);
 	node_translations.AssertDtype(core::Dtype::Float32);
+}
+
+void CheckNodeDualQuaternionTransformationData(core::Device& device, const core::Tensor& nodes, const core::Tensor& node_transformations) {
+	if (device != nodes.GetDevice() || device != node_transformations.GetDevice()) {
+		utility::LogError("Device not consistent among arguments.");
+	}
+	auto nodes_shape = nodes.GetShape();
+	auto transformations_shape = node_transformations.GetShape();
+	if (nodes_shape.size() != 2 || transformations_shape.size() != 2) {
+		utility::LogError("Arguments nodes and node_transformations need to have 2 dimensions,"
+		                  " respectively. Got {} and {}.", nodes_shape.size(), transformations_shape.size());
+	}
+
+	const int64_t node_count = nodes_shape[0];
+	if (nodes_shape[1] != 3) {
+		utility::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
+	}
+	if (transformations_shape[0] != node_count || transformations_shape[1] != 8) {
+		utility::LogError("Argument node_translations needs to have shape ({}, 8), where first dimension is the node count N"
+		                  ", but has shape {}", node_count, transformations_shape);
+	}
+	nodes.AssertDtype(core::Dtype::Float32);
+	node_transformations.AssertDtype(core::Dtype::Float32);
 }
 
 PointCloud
@@ -64,7 +86,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
                   int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
-	CheckNodeData(device, nodes, node_rotations, node_translations);
+	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
 	if (anchor_count < 1) {
 		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
@@ -105,7 +127,7 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
                   int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
-	CheckNodeData(device, nodes, node_rotations, node_translations);
+	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
 	auto anchors_shape = anchors.GetShape();
 	auto anchor_weights_shape = anchor_weights.GetShape();
 	if (anchors_shape.size() != 2 || anchor_weights_shape.size() != 2) {
@@ -148,21 +170,8 @@ WarpPointCloudMat(const PointCloud& input_point_cloud, const core::Tensor& nodes
 	return warped_point_cloud;
 }
 
-
-open3d::t::geometry::TriangleMesh
-WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& nodes,
-                    const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                    int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
-	auto device = input_mesh.GetDevice();
-	// region ================ INPUT CHECKS ======================================
-	CheckNodeData(device, nodes, node_rotations, node_translations);
-	if (anchor_count < 1) {
-		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
-	}
-	// endregion
-
-	TriangleMesh warped_mesh(device);
-
+inline
+void CopyWarpedTriangleMeshData(TriangleMesh& warped_mesh, const TriangleMesh& input_mesh) {
 	if (input_mesh.HasTriangles()) {
 		warped_mesh.SetTriangles(input_mesh.GetTriangles());
 	}
@@ -172,6 +181,23 @@ WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh, const o
 	if (input_mesh.HasTriangleColors()) {
 		warped_mesh.SetTriangleColors(input_mesh.GetTriangleColors());
 	}
+}
+
+open3d::t::geometry::TriangleMesh
+WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& nodes,
+                    const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+                    int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
+	auto device = input_mesh.GetDevice();
+	// region ================ INPUT CHECKS ======================================
+	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
+	if (anchor_count < 1) {
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+	}
+	// endregion
+
+	TriangleMesh warped_mesh(device);
+
+	CopyWarpedTriangleMeshData(warped_mesh, input_mesh);
 
 	if (input_mesh.HasVertices()) {
 		const auto& vertices = input_mesh.GetVertices();
@@ -184,6 +210,44 @@ WarpTriangleMeshMat(const open3d::t::geometry::TriangleMesh& input_mesh, const o
 			                         minimum_valid_anchor_count);
 		} else {
 			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+		}
+
+		warped_mesh.SetVertices(warped_vertices);
+	}
+
+
+	return warped_mesh;
+}
+
+
+open3d::t::geometry::TriangleMesh
+WarpTriangleMeshDQ(const TriangleMesh& input_mesh, const core::Tensor& nodes, const core::Tensor& node_transformations, int anchor_count,
+                   float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
+	auto device = input_mesh.GetDevice();
+	// region ================ INPUT CHECKS ======================================
+	CheckNodeDualQuaternionTransformationData(device, nodes, node_transformations);
+	if (anchor_count < 1) {
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+	}
+	// endregion
+
+	TriangleMesh warped_mesh(device);
+	CopyWarpedTriangleMeshData(warped_mesh, input_mesh);
+
+	if (input_mesh.HasVertices()) {
+		const auto& vertices = input_mesh.GetVertices();
+		// FIXME: not sure if this check is at all necessary. There seem to be some situations in pythonic context when np.array(mesh.vertices)
+		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
+		vertices.AssertDtype(core::Dtype::Float32);
+		core::Tensor warped_vertices;
+		utility::LogError("Not implemented.");
+		if (threshold_nodes_by_distance) {
+			//TODO:
+			// kernel::warp::WarpPointsDQ(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+			//                          minimum_valid_anchor_count);
+
+		} else {
+			// kernel::warp::WarpPointsDQ(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 		}
 
 		warped_mesh.SetVertices(warped_vertices);
@@ -236,5 +300,58 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const core::Tensor& points, const
 	ComputeAnchorsAndWeightsShortestPath(anchors, weights, points, nodes, edges, anchor_count, node_coverage);
 	return py::make_tuple(anchors, weights);
 }
+
+GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges,
+                               open3d::core::Tensor edge_weights, open3d::core::Tensor clusters) :
+		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
+		translations({nodes.GetLength(), 3}, core::Dtype::Float32, nodes.GetDevice()),
+		rotations({nodes.GetLength(), 3, 3}, core::Dtype::Float32, nodes.GetDevice()) {
+	auto device = this->nodes.GetDevice();
+	this->edges.AssertDevice(device);
+	this->edge_weights.AssertDevice(device);
+	this->clusters.AssertDevice(device);
+	auto nodes_shape = this->nodes.GetShape();
+	auto edges_shape = this->edges.GetShape();
+	auto edge_weights_shape = this->edge_weights.GetShape();
+	auto clusters_shape = this->clusters.GetShape();
+	if (nodes_shape.size() != 2 || edges_shape.size() != 2 || edge_weights_shape.size() != 2 || clusters_shape.size() != 1) {
+		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have 2 dimensions,"
+		                  " respectively. Got shapes {}, {}, {}, and {}, respectively.", nodes_shape.size(),
+		                  edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
+	}
+	const int64_t node_count = nodes_shape[0];
+	if (nodes_shape[1] != 3) {
+		utility::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
+	}
+	if (edges_shape[0] != node_count) {
+		utility::LogError("Argument `edges_shape` needs to have shape ({}, X), where first dimension is the node count N"
+		                  " and the second is the edge degree X, but has shape {}", node_count, edges_shape);
+	}
+	if (edge_weights_shape != edges_shape) {
+		utility::LogError("arguments `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
+		                  edge_weights_shape);
+	}
+	if (clusters_shape[0] != node_count) {
+		utility::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
+	}
+}
+
+open3d::core::Tensor GraphWarpField::GetWarpedNodes() const {
+	return nodes + this->translations;
+}
+
+open3d::core::TensorList GraphWarpField::GetNodeExtent() const {
+	auto max = nodes.Max({0});
+	auto min = nodes.Min({0});
+	return open3d::core::TensorList({min, max});
+}
+
+open3d::t::geometry::TriangleMesh
+GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, float node_coverage, int anchor_count, bool threshold_nodes_by_distance,
+                         int minimum_valid_anchor_count) const {
+	return WarpTriangleMeshMat(input_mesh, this->nodes, this->rotations, this->translations, anchor_count, node_coverage,
+	                           threshold_nodes_by_distance, minimum_valid_anchor_count);
+}
+
 
 } // namespace nnrt::geometry

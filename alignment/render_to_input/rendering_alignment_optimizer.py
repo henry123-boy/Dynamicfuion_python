@@ -19,7 +19,7 @@ import open3d.core as o3c
 from typing import Tuple
 import torch.utils.dlpack as torch_dlpack
 
-from warp_field.graph import DeformationGraphOpen3D
+from warp_field.graph_warp_field import GraphWarpFieldOpen3DPythonic
 from nnrt.geometry import WarpableTSDFVoxelGrid, compute_point_to_plane_distances
 from alignment.common import LinearSolverLU
 from settings import GraphParameters
@@ -35,11 +35,11 @@ class RenderingAlignmentOptimizer:
     def termination_condition_reached(self) -> bool:
         raise NotImplementedError("Not implemented")
 
-    def optimize_graph(self, graph: DeformationGraphOpen3D, tsdf: WarpableTSDFVoxelGrid,
+    def optimize_graph(self, graph: GraphWarpFieldOpen3DPythonic, tsdf: WarpableTSDFVoxelGrid,
                        target_points: o3d.t.geometry.PointCloud, target_rgb: o3d.t.geometry.Image):
         canonical_mesh: o3d.t.geometry.TriangleMesh = tsdf.extract_surface_mesh(-1, 0)
         while not self.termination_condition_reached():
-            warped_mesh = graph.warp_mesh_mat(canonical_mesh, GraphParameters.node_coverage.value)
+            warped_mesh = graph.warp_mesh(canonical_mesh, GraphParameters.node_coverage.value)
 
             _, rendered_color = self.renderer.render_mesh(warped_mesh, render_mask=RenderMaskCode.RGB)
 

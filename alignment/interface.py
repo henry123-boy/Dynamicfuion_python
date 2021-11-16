@@ -7,16 +7,16 @@ import numpy as np
 from multipledispatch import dispatch
 
 from alignment.deform_net import DeformNet
-from warp_field.graph import DeformationGraphNumpy, DeformationGraphOpen3D
+from warp_field.graph_warp_field import GraphWarpFieldNumpy, GraphWarpFieldOpen3DPythonic
 
 
-@dispatch(DeformNet, np.ndarray, np.ndarray, np.ndarray, np.ndarray, DeformationGraphNumpy, np.ndarray, open3d.core.Device)
+@dispatch(DeformNet, np.ndarray, np.ndarray, np.ndarray, np.ndarray, GraphWarpFieldNumpy, np.ndarray, open3d.core.Device)
 def run_non_rigid_alignment(deform_net: DeformNet,
                             source_rgbxyz: np.ndarray,
                             target_rgbxyz: np.ndarray,
                             pixel_anchors: np.ndarray,
                             pixel_weights: np.ndarray,
-                            graph: DeformationGraphNumpy,
+                            graph: GraphWarpFieldNumpy,
                             cropped_intrinsics: np.ndarray,
                             device: open3d.core.Device) -> dict:
     torch_device = torch.device(repr(device).lower())
@@ -48,13 +48,13 @@ def run_non_rigid_alignment(deform_net: DeformNet,
     return deform_net_data
 
 
-@dispatch(DeformNet, np.ndarray, np.ndarray, np.ndarray, np.ndarray, DeformationGraphOpen3D, np.ndarray, open3d.core.Device)
+@dispatch(DeformNet, np.ndarray, np.ndarray, np.ndarray, np.ndarray, GraphWarpFieldOpen3DPythonic, np.ndarray, open3d.core.Device)
 def run_non_rigid_alignment(deform_net: DeformNet,
                             source_rgbxyz: np.ndarray,
                             target_rgbxyz: np.ndarray,
                             pixel_anchors: np.ndarray,
                             pixel_weights: np.ndarray,
-                            graph: DeformationGraphOpen3D,
+                            graph: GraphWarpFieldOpen3DPythonic,
                             cropped_intrinsics: np.ndarray,
                             device: open3d.core.Device) -> dict:
     torch_device = torch.device(repr(device).lower())

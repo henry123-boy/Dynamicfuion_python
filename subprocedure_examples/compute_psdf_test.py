@@ -18,7 +18,7 @@ from settings import Parameters, process_arguments
 from data import StandaloneFramePreset, StandaloneFrameDataset
 
 from tsdf.numba_cuda.host_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
-from warp_field import graph
+from warp_field import graph_warp_field
 
 PROGRAM_EXIT_SUCCESS = 0
 

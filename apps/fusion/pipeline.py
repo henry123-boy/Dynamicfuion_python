@@ -17,7 +17,7 @@ import nnrt
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
 from alignment.interface import run_non_rigid_alignment  # temporarily out-of-order here due to some CuPy 10 / CUDA 11.4 problems
-from apps.create_graph_data import build_deformation_graph_from_depth_image
+from apps.create_graph_data import build_graph_warp_field_from_depth_image
 from data import camera
 from data import *
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
@@ -25,7 +25,7 @@ from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
 import image_processing
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
-from warp_field.graph import DeformationGraphNumpy, build_deformation_graph_from_mesh
+from warp_field.graph_warp_field import GraphWarpFieldNumpy, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, TransformationMode, \
     AnchorComputationMode, TrackingSpanMode, GraphGenerationMode
 from settings import Parameters
@@ -77,7 +77,7 @@ class FusionPipeline:
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===
-        self.graph: Union[DeformationGraphNumpy, None] = None
+        self.graph: Union[GraphWarpFieldNumpy, None] = None
         self.volume = default_tsdf.make_default_tsdf_voxel_grid(self.device)
 
         #####################################################################################################
@@ -120,7 +120,7 @@ class FusionPipeline:
             if Parameters.fusion.integration.transformation_mode.value == TransformationMode.QUATERNIONS:
                 warped_mesh = self.graph.warp_mesh_dq(canonical_mesh, node_coverage)
             else:
-                warped_mesh = self.graph.warp_mesh_mat(canonical_mesh, node_coverage)
+                warped_mesh = self.graph.warp_mesh(canonical_mesh, node_coverage)
         return canonical_mesh, warped_mesh
 
     def run(self) -> int:
@@ -221,7 +221,7 @@ class FusionPipeline:
                         raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
                 elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
                     self.graph, _, precomputed_anchors, precomputed_weights = \
-                        build_deformation_graph_from_depth_image(
+                        build_graph_warp_field_from_depth_image(
                             depth_image_np, mask_image_np, intrinsic_matrix=self.intrinsic_matrix_np,
                             max_triangle_distance=graph_parameters.graph_max_triangle_distance.value,
                             depth_scale_reciprocal=deform_net_parameters.depth_scale.value,
@@ -343,19 +343,19 @@ class FusionPipeline:
 
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
-                    self.graph.rotations_mat = rotations_pred
-                    self.graph.translations_vec = translations_pred
+                    self.graph.rotations = rotations_pred
+                    self.graph.translations = translations_pred
 
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
-                        if tracking_parameters.tracking_span_mode.value is tracking_parameters.TrackingSpanMode.ZERO_TO_T:
+                        if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
                             self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
                         elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.T_MINUS_ONE_TO_T:
                             node_position = self.graph.nodes[i_node]
-                            current_rotation = self.graph.rotations_mat[i_node] = \
-                                rotation.dot(self.graph.rotations_mat[i_node])
-                            current_translation = self.graph.translations_vec[i_node] = \
-                                translation + self.graph.translations_vec[i_node]
+                            current_rotation = self.graph.rotations[i_node] = \
+                                rotation.dot(self.graph.rotations[i_node])
+                            current_translation = self.graph.translations[i_node] = \
+                                translation + self.graph.translations[i_node]
                             translation_global = node_position + current_translation - current_rotation.dot(node_position)
                             self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
                         else:
@@ -371,7 +371,7 @@ class FusionPipeline:
 
                 # TODO: outsource integration logic to a separate function.
 
-                # TODO: to eliminate some of the indirection here, see TODO above DeformationGraphOpen3D. Might be able to
+                # TODO: to eliminate some of the indirection here, see TODO above GraphWarpFieldOpen3DPythonic. Might be able to
                 #  condense the four variants here into a single function with two flag arguments controlling behavior.
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     # prepare quaternion data for Open3D integration
@@ -387,8 +387,8 @@ class FusionPipeline:
                         compute_anchors_using=CPPAnchorComputationModeMap[integration_parameters.voxel_anchor_computation_mode.value],
                         use_node_distance_thresholding=False)
                 elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
-                    node_rotations_o3d = o3c.Tensor(self.graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
-                    node_translations_o3d = o3c.Tensor(self.graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
+                    node_rotations_o3d = o3c.Tensor(self.graph.rotations, dtype=o3c.Dtype.Float32, device=device)
+                    node_translations_o3d = o3c.Tensor(self.graph.translations, dtype=o3c.Dtype.Float32, device=device)
                     if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
                         cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,

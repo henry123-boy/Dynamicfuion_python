@@ -5,7 +5,7 @@ import open3d as o3d
 
 from data import DeformDataset, StaticCenterCrop
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
-from warp_field.graph import DeformationGraphNumpy
+from warp_field.graph_warp_field import GraphWarpFieldNumpy
 
 
 class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]):
@@ -133,7 +133,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
         return pixel_anchors, pixel_weights
 
-    def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
+    def get_current_frame_graph(self) -> typing.Union[None, GraphWarpFieldNumpy]:
         if not self._loaded:
             raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
 
@@ -149,7 +149,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
         graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = \
             DeformDataset.load_graph_data(self.get_sequence_directory(), graph_filename, False)
-        graph = DeformationGraphNumpy(graph_nodes, graph_edges, graph_edges_weights, graph_clusters)
+        graph = GraphWarpFieldNumpy(graph_nodes, graph_edges, graph_edges_weights, graph_clusters)
 
         return graph
 

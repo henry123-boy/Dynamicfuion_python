@@ -45,8 +45,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
     geometry/DualQuaternion.h
-    geometry/Graph.h
-    geometry/Graph.cpp
+    geometry/GraphWarpField.h
+    geometry/GraphWarpField.cpp
     geometry/kernel/Graph.h
     geometry/kernel/Graph.cpp
     geometry/kernel/GraphCPU.cpp

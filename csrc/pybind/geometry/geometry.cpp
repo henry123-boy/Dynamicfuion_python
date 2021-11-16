@@ -17,7 +17,7 @@
 #include <open3d/geometry/Image.h>
 
 #include "geometry/WarpableTSDFVoxelGrid.h"
-#include "geometry/Graph.h"
+#include "geometry/GraphWarpField.h"
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
 #include "geometry/Comparison.h"
@@ -37,7 +37,7 @@ void pybind_geometry(py::module& m) {
 
 	pybind_geometry_enums(m_submodule);
 	pybind_geometry_extended_tsdf_voxelgrid(m_submodule);
-	pybind_geometry_graph(m_submodule);
+	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
 
 }
@@ -171,7 +171,7 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 	// endregion
 }
 
-void pybind_geometry_graph(pybind11::module& m) {
+void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	m.def("compute_anchors_and_weights_euclidean", py::overload_cast<const core::Tensor&, const core::Tensor&, int, int,
 			      float>(&ComputeAnchorsAndWeightsEuclidean), "points"_a, "nodes"_a, "anchor_count"_a,
 	      "minimum_valid_anchor_count"_a, "node_coverage"_a);
@@ -196,6 +196,23 @@ void pybind_geometry_graph(pybind11::module& m) {
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
 	      "minimum_valid_anchor_count"_a);
+
+	py::class_<GraphWarpField> graph_warp_field(
+			m, "GraphWarpField",
+			"A warp (motion) field represented by a graph (i.e. using a bidirectional graph as the motion proxy)."
+			"Motion of a particular point within the field can be represented by a weighted function of the motions of "
+			"the graph nodes within the proximity of this point. Currently, only supports linear & rotational node motion "
+			"for a single transformation (not suitable for storing animation data all by itself)."
+	);
+	graph_warp_field.def(py::init<core::Tensor&, core::Tensor&, core::Tensor&, core::Tensor&>(),
+	                     "nodes"_a, "edges"_a, "edge_weights"_a, "clusters"_a);
+	graph_warp_field.def("get_warped_nodes", &GraphWarpField::GetWarpedNodes);
+	graph_warp_field.def("get_node_extent", &GraphWarpField::GetNodeExtent);
+	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
+						 "input_mesh"_a, "node_coverage"_a, "anchor_count"_a = 4,
+						 "threshold_nodes_by_distance"_a = false, "minimum_valid_anchor_count"_a = 0);
+	graph_warp_field.def_readwrite("translations", &GraphWarpField::translations);
+	graph_warp_field.def_readwrite("rotations", &GraphWarpField::rotations);
 }
 
 void pybind_geometry_comparison(pybind11::module& m) {
