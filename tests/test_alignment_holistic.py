@@ -8,6 +8,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+# SWAP THESE LINES IF YOU WANNA USE THE ORIGINAL AUTHORS' DEFORM-NET CODE (e.g. to save test data)
+# from alignment.deform_net_legacy import DeformNet
 from alignment import DeformNet
 from alignment.default import load_default_nnrt_network
 

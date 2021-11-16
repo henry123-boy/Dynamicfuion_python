@@ -26,16 +26,19 @@ import nnrt.geometry as ng
 def test_warp_points_cpp_vs_legacy():
     device = o3d.core.Device('cuda:0')
 
-    test_data_dir = Path("test_data/point_warping")
-    source_rgbxyz = np.load(test_data_dir / "000033_source_rgbxyz.npy")
-    nodes = np.load(test_data_dir / "000033_nodes.npy")
-    node_translations = np.load(test_data_dir / "000033_node_translations.npy")
-    node_rotations = np.load(test_data_dir / "000033_node_rotations.npy")
+    test_path = Path(__file__).parent.resolve()
+    test_data_path = test_path / "test_data"
+
+    point_warping_test_data_dir = test_data_path / "point_warping"
+    source_rgbxyz = np.load(point_warping_test_data_dir / "000033_source_rgbxyz.npy")
+    nodes = np.load(point_warping_test_data_dir / "000033_nodes.npy")
+    node_translations = np.load(point_warping_test_data_dir / "000033_node_translations.npy")
+    node_rotations = np.load(point_warping_test_data_dir / "000033_node_rotations.npy")
 
     cropper = StaticCenterCrop((480, 640), (448, 640))
 
     pixel_anchors, pixel_weights = \
-        DeformDataset.load_anchors_and_weights(str(test_data_dir / "pixel_anchors.bin"), str(test_data_dir / "pixel_weights.bin"), cropper)
+        DeformDataset.load_anchors_and_weights(str(point_warping_test_data_dir / "pixel_anchors.bin"), str(point_warping_test_data_dir / "pixel_weights.bin"), cropper)
 
     source_rgbxyz_reshaped = source_rgbxyz.T.reshape(-1, 448, 640)
 
