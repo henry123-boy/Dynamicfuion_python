@@ -32,7 +32,7 @@ def main():
         for folder in folders:
             match_result = sortable_timestamp_pattern.match(folder)
             if match_result is not None:
-                sortable_timestamp_named_folders.append(match_result[0])
+                sortable_timestamp_named_folders.append(folder)
         if len(sortable_timestamp_named_folders) > 0:
             sortable_timestamp_named_folders.sort(reverse=True)
             experiment_folder = sortable_timestamp_named_folders[0]
