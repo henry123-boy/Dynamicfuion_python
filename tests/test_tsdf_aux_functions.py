@@ -519,9 +519,6 @@ def test_update_voxel_center_values_simple_motion_mat(device):
         uv = uv_prime / uv_prime[2]
         return int(round(uv[0])), int(round(uv[1]))
 
-    # __DEBUG
-    print()
-
     def check_voxel_at(index):
         expected_point = np.array([0., 0., 0.])
         for node, node_rotation, node_translation, anchor, weight in \
@@ -542,7 +539,6 @@ def test_update_voxel_center_values_simple_motion_mat(device):
 
         if expected_depth > 0 and expected_psdf > -truncation_distance and cosine > 0.5:
             tsdf = min(1., expected_psdf / truncation_distance)
-            # __DEBUG
 
             tsdf_prev, weight_prev = voxel_tsdf_and_weights_np_originals[index]
             weight_new = 1

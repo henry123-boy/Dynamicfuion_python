@@ -34,6 +34,11 @@ from telemetry.telemetry_generator import TelemetryGenerator
 PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAIL = 1
 
+CPPAnchorComputationModeMap = {
+    AnchorComputationMode.EUCLIDEAN: nnrt.geometry.AnchorComputationMethod.EUCLIDEAN,
+    AnchorComputationMode.SHORTEST_PATH: nnrt.geometry.AnchorComputationMethod.SHORTEST_PATH
+}
+
 
 class FusionPipeline:
     def __init__(self):
@@ -105,7 +110,6 @@ class FusionPipeline:
         if self.extracted_framewise_canonical_mesh_needed:
             canonical_mesh_t = self.volume.extract_surface_mesh(-1, 0)
             canonical_mesh = canonical_mesh_t.to_legacy_triangle_mesh()
-
 
         warped_mesh: Union[None, o3d.geometry.TriangleMesh] = None
 
@@ -373,52 +377,28 @@ class FusionPipeline:
                     # prepare quaternion data for Open3D integration
                     node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in self.graph.transformations_dq])
                     node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-                    if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
-                        cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_dq(
-                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, node_dual_quaternions_o3d, node_coverage,
-                            anchor_count=integration_parameters.anchor_node_count.value,
-                            minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                            depth_scale=depth_scale, depth_max=3.0)
-                    elif integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
-                        cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_dq(
-                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, edges_o3d, node_dual_quaternions_o3d, node_coverage,
-                            anchor_count=integration_parameters.anchor_node_count.value,
-                            minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                            depth_scale=depth_scale, depth_max=3.0)
-                    else:
-                        raise NotImplementedError(
-                            f"{AnchorComputationMode.__name__} '{integration_parameters.voxel_anchor_computation_mode.value.name:s}' not "
-                            f"implemented for TSDF voxel anchors using {integration_parameters.transformation_mode.value.name:s} "
-                            f"'{TransformationMode.__name__}'")
+                    cos_voxel_ray_to_normal = volume.integrate_warped_dq(
+                        depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                        self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                        nodes_o3d, edges_o3d, node_dual_quaternions_o3d, node_coverage,
+                        anchor_count=integration_parameters.anchor_node_count.value,
+                        minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
+                        depth_scale=depth_scale, depth_max=3.0,
+                        compute_anchors_using=CPPAnchorComputationModeMap[integration_parameters.voxel_anchor_computation_mode.value],
+                        use_node_distance_thresholding=False)
                 elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
                     node_rotations_o3d = o3c.Tensor(self.graph.rotations_mat, dtype=o3c.Dtype.Float32, device=device)
                     node_translations_o3d = o3c.Tensor(self.graph.translations_vec, dtype=o3c.Dtype.Float32, device=device)
                     if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
-                        cos_voxel_ray_to_normal = volume.integrate_warped_euclidean_mat(
-                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
-                            anchor_count=integration_parameters.anchor_node_count.value,
-                            minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                            depth_scale=depth_scale, depth_max=3.0)
-                    elif integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
-                        cos_voxel_ray_to_normal = volume.integrate_warped_shortest_path_mat(
+                        cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
                             nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
                             anchor_count=integration_parameters.anchor_node_count.value,
                             minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                            depth_scale=depth_scale, depth_max=3.0)
-                    else:
-                        raise NotImplementedError(
-                            f"{AnchorComputationMode.__name__:s} "
-                            f"'{integration_parameters.voxel_anchor_computation_mode.value.name:s}' not "
-                            f"implemented for TSDF voxel anchors using {integration_parameters.transformation_mode.value.name:s} "
-                            f"'{TransformationMode.__name__:s}'")
+                            depth_scale=depth_scale, depth_max=3.0,
+                            compute_anchors_using=CPPAnchorComputationModeMap[integration_parameters.voxel_anchor_computation_mode.value],
+                            use_node_distance_thresholding=False)
                 else:
                     raise NotImplementedError(f"Unsupported {TransformationMode.__name__:s} "
                                               f"'{integration_parameters.voxel_anchor_computation_mode.value.name:s}' "
