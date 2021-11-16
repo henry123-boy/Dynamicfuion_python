@@ -211,6 +211,10 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
 						 "input_mesh"_a, "node_coverage"_a, "anchor_count"_a = 4,
 						 "threshold_nodes_by_distance"_a = false, "minimum_valid_anchor_count"_a = 0);
+	graph_warp_field.def_readwrite("nodes", &GraphWarpField::nodes);
+	graph_warp_field.def_readwrite("edges", &GraphWarpField::edges);
+	graph_warp_field.def_readwrite("edge_weights", &GraphWarpField::edge_weights);
+	graph_warp_field.def_readwrite("clusters", &GraphWarpField::clusters);
 	graph_warp_field.def_readwrite("translations", &GraphWarpField::translations);
 	graph_warp_field.def_readwrite("rotations", &GraphWarpField::rotations);
 }

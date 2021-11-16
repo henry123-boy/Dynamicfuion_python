@@ -10,6 +10,8 @@ from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
 from telemetry.visualization.geometry.make_plane import make_z_aligned_image_plane
 
+from nnrt.geometry import GraphWarpField as GraphWarpFieldOpen3DNative
+
 from dq3d import dualquat, quat, op
 
 
@@ -198,9 +200,9 @@ def load_numpy_warp_field_from_disk(path: str) -> GraphWarpFieldNumpy:
     return graph
 
 
-def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
+def build_deformation_graph_from_mesh(mesh: o3d.t.geometry.TriangleMesh, node_coverage: float = 0.05,
                                       erosion_iteration_count: int = 10, erosion_min_neighbor_count: int = 4,
-                                      neighbor_count: int = 8) -> GraphWarpFieldNumpy:
+                                      neighbor_count: int = 8) -> GraphWarpFieldOpen3DNative:
     vertex_positions = np.array(mesh.vertices)
     triangle_vertex_indices = np.array(mesh.triangles)
 
@@ -211,12 +213,12 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
         nnrt.sample_nodes(vertex_positions, erosion_mask, node_coverage, use_only_non_eroded_indices=True, random_shuffle=False)
     node_count = nodes.shape[0]
 
-    graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
+    edges, edge_weights, graph_edge_distances, node_to_vertex_distances = \
         nnrt.compute_edges_shortest_path(vertex_positions, triangle_vertex_indices, node_vertex_indices,
                                          neighbor_count, node_coverage, True)
 
     # ===== Remove nodes with not enough neighbors ===
-    # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding C++ code
+    # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding code below, then port to C++
     # valid_nodes_mask = np.ones((node_count, 1), dtype=bool)
     # # Mark nodes with not enough neighbors
     # nnrt.node_and_edge_clean_up(graph_edges, valid_nodes_mask)
@@ -297,13 +299,18 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
     #########################################################################
     # Compute clusters.
     #########################################################################
-    clusters_size_list, graph_clusters = nnrt.compute_clusters(graph_edges)
+    clusters_size_list, clusters = nnrt.compute_clusters(edges)
     for i, cluster_size in enumerate(clusters_size_list):
         if cluster_size <= 2:
             print("Cluster is too small {}".format(clusters_size_list))
-            print("It only has nodes:", np.where(graph_clusters == i)[0])
+            print("It only has nodes:", np.where(clusters == i)[0])
 
-    return GraphWarpFieldNumpy(nodes, graph_edges, graph_edge_weights, graph_clusters)
+    nodes_o3d = o3c.Tensor(nodes, device=mesh.device)
+    edges_o3d = o3c.Tensor(edges, device=mesh.device)
+    edge_weights_o3d = o3c.Tensor(edge_weights, device=mesh.device)
+    clusters_o3d = o3c.Tensor(clusters, device=mesh.device)
+
+    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
 
 
 def draw_deformation_graph(deformation_graph: GraphWarpFieldNumpy,

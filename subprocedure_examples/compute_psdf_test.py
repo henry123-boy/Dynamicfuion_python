@@ -18,13 +18,12 @@ from settings import Parameters, process_arguments
 from data import StandaloneFramePreset, StandaloneFrameDataset
 
 from tsdf.numba_cuda.host_functions import cuda_compute_voxel_center_anchors, cuda_compute_psdf_warped_voxel_centers
-from warp_field import graph_warp_field
+from warp_field.graph_warp_field import build_deformation_graph_from_mesh
 
 PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-
     voxel_centers = np.load(os.path.join(Parameters.path.output_directory.value, "voxel_centers_000200_red_shorts.npy"))
 
     # TODO: is the original pre-generated graph radically different due to some camera frustum offset during generation?
@@ -32,9 +31,11 @@ def main():
     #     os.path.join(options.dataset_base_dir,
     #                  "val/seq014/graph_nodes/5db1b1dcfce4e1021deb83dc_shorts_000200_000400_geodesic_0.05.bin"))
 
-    mesh200: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000200_red_shorts.ply")
-    print(np.array(mesh200.vertices))
-    graph200 = graph.build_deformation_graph_from_mesh(mesh200, node_coverage=Parameters.graph.node_coverage.value)
+    mesh200_legacy: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000200_red_shorts.ply")
+    print(np.array(mesh200_legacy.vertices))
+    mesh200 = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh200_legacy)
+    graph200 = build_deformation_graph_from_mesh(mesh200, node_coverage=Parameters.graph.node_coverage.value)
+    # FIXME Field `nodes` no longer accessible, add readwrite python binding. Also, convert using nodes.cpu().numpy().
     graph_nodes = graph200.nodes
 
     # Load graph transformation

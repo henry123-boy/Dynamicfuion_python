@@ -25,7 +25,7 @@ from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
 import image_processing
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
-from warp_field.graph_warp_field import GraphWarpFieldNumpy, build_deformation_graph_from_mesh
+from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, TransformationMode, \
     AnchorComputationMode, TrackingSpanMode, GraphGenerationMode
 from settings import Parameters
@@ -77,7 +77,7 @@ class FusionPipeline:
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===
-        self.graph: Union[GraphWarpFieldNumpy, None] = None
+        self.graph: Union[GraphWarpFieldOpen3DNative, None] = None
         self.volume = default_tsdf.make_default_tsdf_voxel_grid(self.device)
 
         #####################################################################################################
@@ -106,19 +106,18 @@ class FusionPipeline:
         #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of these meshes
         #  The first step is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
-        canonical_mesh: Union[None, o3d.geometry.TriangleMesh] = None
+        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
-            canonical_mesh_t = self.volume.extract_surface_mesh(-1, 0)
-            canonical_mesh = canonical_mesh_t.to_legacy_triangle_mesh()
+            canonical_mesh = self.volume.extract_surface_mesh(-1, 0)
 
-        warped_mesh: Union[None, o3d.geometry.TriangleMesh] = None
+        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
         node_coverage = Parameters.graph.node_coverage.value
 
         # TODO: perform topological graph update
         if self.framewise_warped_mesh_needed:
             if Parameters.fusion.integration.transformation_mode.value == TransformationMode.QUATERNIONS:
-                warped_mesh = self.graph.warp_mesh_dq(canonical_mesh, node_coverage)
+                raise NotImplementedError("Dual quaternion mesh warping not implemented in native code.")
             else:
                 warped_mesh = self.graph.warp_mesh(canonical_mesh, node_coverage)
         return canonical_mesh, warped_mesh
@@ -211,18 +210,20 @@ class FusionPipeline:
                 if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
                     precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
                 if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
-                    canonical_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
+                    canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
+                    canonical_mesh = o3d.t.geometry.TrinagleMesh.from_legacy_triangle_mesh(canonical_mesh_legacy, device=device)
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, node_coverage,
                                                                    erosion_iteration_count=10,
                                                                    neighbor_count=8)
                 elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
-                    self.graph = sequence.get_current_frame_graph()
+                    self.graph = sequence.get_current_frame_graph_warp_field(device)
                     if self.graph is None:
                         raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
                 elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
                     self.graph, _, precomputed_anchors, precomputed_weights = \
                         build_graph_warp_field_from_depth_image(
-                            depth_image_np, mask_image_np, intrinsic_matrix=self.intrinsic_matrix_np,
+                            depth_image_np, mask_image_np,
+                            intrinsic_matrix=self.intrinsic_matrix_np, device=device,
                             max_triangle_distance=graph_parameters.graph_max_triangle_distance.value,
                             depth_scale_reciprocal=deform_net_parameters.depth_scale.value,
                             erosion_num_iterations=graph_parameters.graph_erosion_num_iterations.value,
@@ -289,11 +290,12 @@ class FusionPipeline:
                 # TODO outsource pixel_anchors & pixel_weights computation logic to a separate function
                 if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                        self.graph.nodes, source_point_image, node_coverage
+                        self.graph.nodes.cpu().numpy(), source_point_image, node_coverage
                     )
                 elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
+                    # TODO: use nnrt.geometry.compute_anchors_and_weights_shortest_path version instead (and change uses of pixel_anchors & pixel_weights accordingly)
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
-                        source_point_image, self.graph.nodes, self.graph.edges,
+                        source_point_image, self.graph.nodes.cpu().numpy(), self.graph.edges.cpu().numpy(),
                         integration_parameters.anchor_node_count.value, node_coverage
                     )
                 elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
@@ -343,10 +345,12 @@ class FusionPipeline:
 
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
-                    self.graph.rotations = rotations_pred
-                    self.graph.translations = translations_pred
+                    self.graph.rotations = o3c.Tensor(rotations_pred, device=device)
+                    self.graph.translations = o3c.Tensor(translations_pred, device=device)
 
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
+                    # TODO: either fix or deprecate QUATERNIONS
+                    raise NotImplementedError("This code is buggy!")
                     for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
                         if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
                             self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
@@ -365,35 +369,22 @@ class FusionPipeline:
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(self.graph)
 
-                # prepare data for Open3D integration
-                nodes_o3d = o3c.Tensor(self.graph.nodes, dtype=o3c.Dtype.Float32, device=device)
-                edges_o3d = o3c.Tensor(self.graph.edges, dtype=o3c.Dtype.Int32, device=device)
-
                 # TODO: outsource integration logic to a separate function.
 
                 # TODO: to eliminate some of the indirection here, see TODO above GraphWarpFieldOpen3DPythonic. Might be able to
                 #  condense the four variants here into a single function with two flag arguments controlling behavior.
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     # prepare quaternion data for Open3D integration
-                    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in self.graph.transformations_dq])
-                    node_dual_quaternions_o3d = o3c.Tensor(node_dual_quaternions, dtype=o3c.Dtype.Float32, device=device)
-                    cos_voxel_ray_to_normal = volume.integrate_warped_dq(
-                        depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                        self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                        nodes_o3d, edges_o3d, node_dual_quaternions_o3d, node_coverage,
-                        anchor_count=integration_parameters.anchor_node_count.value,
-                        minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                        depth_scale=depth_scale, depth_max=3.0,
-                        compute_anchors_using=CPPAnchorComputationModeMap[integration_parameters.voxel_anchor_computation_mode.value],
-                        use_node_distance_thresholding=False)
+                    # TODO fix or deprecate QUATERNION MODE
+                    raise NotImplementedError("Native GraphWarpField structure support for dual quaternions not implemented "
+                                              "(dual-quaternion TSDF integration implemented but, most likely, buggy) ")
+
                 elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
-                    node_rotations_o3d = o3c.Tensor(self.graph.rotations, dtype=o3c.Dtype.Float32, device=device)
-                    node_translations_o3d = o3c.Tensor(self.graph.translations, dtype=o3c.Dtype.Float32, device=device)
                     if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
                         cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
+                            self.graph.nodes, self.graph.edges, self.graph.rotations, self.graph.translations, node_coverage,
                             anchor_count=integration_parameters.anchor_node_count.value,
                             minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
                             depth_scale=depth_scale, depth_max=3.0,

@@ -71,13 +71,16 @@ public:
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, float node_coverage, int anchor_count = 4,
 	                                           bool threshold_nodes_by_distance = false, int minimum_valid_anchor_count = 0) const;
 
-	open3d::core::Tensor translations;
-	open3d::core::Tensor rotations;
-private:
+	//TODO: gradually hide these fields and expose only on a need-to-know basis
 	open3d::core::Tensor nodes;
 	open3d::core::Tensor edges;
 	open3d::core::Tensor edge_weights;
 	open3d::core::Tensor clusters;
+
+	open3d::core::Tensor translations;
+	open3d::core::Tensor rotations;
+private:
+
 
 };
 

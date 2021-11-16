@@ -4,13 +4,14 @@ import typing
 
 import numpy as np
 import open3d as o3d
+import open3d.core as o3c
 
 import data.io as dio
 import skimage.io
 
 from settings import process_arguments, Parameters
 import image_processing
-from warp_field.graph_warp_field import GraphWarpFieldNumpy
+from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
@@ -23,19 +24,19 @@ from nnrt import compute_clusters as compute_clusters_c
 from nnrt import update_pixel_anchors as update_pixel_anchors_c
 
 
-def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image: np.ndarray, intrinsic_matrix: np.ndarray,
+def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image: np.ndarray,
+                                            intrinsic_matrix: np.ndarray, device: o3d.core.Device,
                                             max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
                                             erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
                                             remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
                                             sample_random_shuffle: bool = False, neighbor_count: int = 8,
                                             enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
                                             enable_visual_debugging: bool = False) -> \
-        typing.Tuple[GraphWarpFieldNumpy, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
+        typing.Tuple[GraphWarpFieldOpen3DNative, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
     # options
 
     node_coverage = Parameters.graph.node_coverage.value
     graph_debug = Parameters.graph.graph_debug.value
-
 
     # extract intrinsic coefficients
 
@@ -145,7 +146,7 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
 
     visible_vertices = np.ones_like(valid_vertices)
 
-    graph_edges, graph_edges_weights, graph_edges_distances, node_to_vertex_distances = \
+    graph_edges, graph_edge_weights, graph_edges_distances, node_to_vertex_distances = \
         compute_edges_shortest_path_c(
             vertices, visible_vertices, faces, node_indices,
             neighbor_count, Parameters.graph.node_coverage.value, enforce_neighbor_count
@@ -196,7 +197,7 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
         node_deformations = node_deformations[valid_nodes_mask.squeeze()]
 
     graph_edges = graph_edges[valid_nodes_mask.squeeze()]
-    graph_edges_weights = graph_edges_weights[valid_nodes_mask.squeeze()]
+    graph_edge_weights = graph_edge_weights[valid_nodes_mask.squeeze()]
     graph_edges_distances = graph_edges_distances[valid_nodes_mask.squeeze()]
 
     #########################################################################
@@ -228,12 +229,12 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
 
             # make a copy of the current neighbors' ids
             graph_edge_copy = np.copy(graph_edge)
-            graph_edge_weights_copy = np.copy(graph_edges_weights[node_id])
+            graph_edge_weights_copy = np.copy(graph_edge_weights[node_id])
             graph_edge_distances_copy = np.copy(graph_edges_distances[node_id])
 
             # set the neighbors' ids to -1
             graph_edges[node_id] = -np.ones_like(graph_edge_copy)
-            graph_edges_weights[node_id] = np.zeros_like(graph_edge_weights_copy)
+            graph_edge_weights[node_id] = np.zeros_like(graph_edge_weights_copy)
             graph_edges_distances[node_id] = np.zeros_like(graph_edge_distances_copy)
 
             count_valid_neighbors = 0
@@ -249,17 +250,17 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
                         mapped_neighbor_id = node_id_mapping[current_neighbor_id]
 
                     graph_edges[node_id, count_valid_neighbors] = mapped_neighbor_id
-                    graph_edges_weights[node_id, count_valid_neighbors] = graph_edge_weights_copy[neighbor_idx]
+                    graph_edge_weights[node_id, count_valid_neighbors] = graph_edge_weights_copy[neighbor_idx]
                     graph_edges_distances[node_id, count_valid_neighbors] = graph_edge_distances_copy[neighbor_idx]
 
                     count_valid_neighbors += 1
 
             # normalize edges' weights
-            sum_weights = np.sum(graph_edges_weights[node_id])
+            sum_weights = np.sum(graph_edge_weights[node_id])
             if sum_weights > 0:
-                graph_edges_weights[node_id] /= sum_weights
+                graph_edge_weights[node_id] /= sum_weights
             else:
-                raise ValueError(f"Weight sum for node anchors is {sum_weights}. Weights: {str(graph_edges_weights[node_id])}.")
+                raise ValueError(f"Weight sum for node anchors is {sum_weights}. Weights: {str(graph_edge_weights[node_id])}.")
 
         # 3. Update pixel anchors using the id mapping (note that, at this point, pixel_anchors is already free of "bad" nodes, since
         # 'compute_pixel_anchors_shortest_path_c' was given 'valid_nodes_mask')
@@ -273,7 +274,12 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
         if cluster_size <= 2:
             raise ValueError(f"Cluster is too small: {cluster_size}, it only has nodes: {str(np.where(graph_clusters == i)[0])}")
 
-    return GraphWarpFieldNumpy(node_coords, graph_edges, graph_edges_weights, graph_clusters), node_deformations, pixel_anchors, pixel_weights
+    nodes_o3d = o3c.Tensor(node_coords, device=device)
+    edges_o3d = o3c.Tensor(graph_edges, device=device)
+    edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
+    clusters_o3d = o3c.Tensor(graph_clusters, device=device)
+
+    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d), node_deformations, pixel_anchors, pixel_weights
 
 
 def generate_paths(seq_dir: str):
@@ -313,7 +319,6 @@ def save_graph_data(seq_dir: str, pair_name: str, node_coords: np.ndarray, graph
                     node_deformations: typing.Union[None, np.ndarray] = None,
                     pixel_anchors: typing.Union[None, np.ndarray] = None,
                     pixel_weights: typing.Union[None, np.ndarray] = None):
-
     node_coverage = Parameters.graph.node_coverage.value
 
     dst_graph_nodes_dir, dst_graph_edges_dir, dst_pixel_weights_dir, dst_graph_edges_weights_dir, dst_graph_clusters_dir, \
@@ -459,10 +464,12 @@ def main():
     mask_image = skimage.io.imread(mask_image_path)
 
     graph, node_deformations, pixel_anchors, pixel_weights = \
-        build_graph_warp_field_from_depth_image(depth_image, mask_image, intrinsic_matrix, MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL,
-                                                EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS, REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS,
-                                                USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NEIGHBOR_COUNT, ENFORCE_NEIGHBOR_COUNT,
-                                                scene_flow_path, VISUAL_DEBUGGING)
+        build_graph_warp_field_from_depth_image(
+            depth_image, mask_image, o3d.core.Device("CPU:0"), intrinsic_matrix,
+            MAX_TRIANGLE_DISTANCE, DEPTH_SCALE_RECIPROCAL, EROSION_NUM_ITERATIONS, EROSION_MIN_NEIGHBORS,
+            REMOVE_NODES_WITH_TOO_FEW_NEIGHBORS, USE_ONLY_VALID_VERTICES, SAMPLE_RANDOM_SHUFFLE, NEIGHBOR_COUNT,
+            ENFORCE_NEIGHBOR_COUNT, scene_flow_path, VISUAL_DEBUGGING
+        )
 
     if SAVE_GRAPH_DATA:
         save_graph_data(seq_dir, pair_name, graph.nodes, graph.edges, graph.edge_weights, graph.clusters,
