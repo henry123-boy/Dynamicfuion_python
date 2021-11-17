@@ -304,8 +304,8 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const core::Tensor& points, const
 GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges,
                                open3d::core::Tensor edge_weights, open3d::core::Tensor clusters) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
-		translations({nodes.GetLength(), 3}, core::Dtype::Float32, nodes.GetDevice()),
-		rotations({nodes.GetLength(), 3, 3}, core::Dtype::Float32, nodes.GetDevice()) {
+		translations({this->nodes.GetLength(), 3}, core::Dtype::Float32, this->nodes.GetDevice()),
+		rotations({this->nodes.GetLength(), 3, 3}, core::Dtype::Float32, this->nodes.GetDevice()) {
 	auto device = this->nodes.GetDevice();
 	this->edges.AssertDevice(device);
 	this->edge_weights.AssertDevice(device);
@@ -315,9 +315,9 @@ GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor 
 	auto edge_weights_shape = this->edge_weights.GetShape();
 	auto clusters_shape = this->clusters.GetShape();
 	if (nodes_shape.size() != 2 || edges_shape.size() != 2 || edge_weights_shape.size() != 2 || clusters_shape.size() != 1) {
-		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have 2 dimensions,"
-		                  " respectively. Got shapes {}, {}, {}, and {}, respectively.", nodes_shape.size(),
-		                  edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
+		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have two dimensions,"
+		                  " while `clusters` needs to have one dimension. Got dimension counts {}, {}, {}, and {}, respectively.",
+						  nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
 	}
 	const int64_t node_count = nodes_shape[0];
 	if (nodes_shape[1] != 3) {

@@ -277,7 +277,7 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
     nodes_o3d = o3c.Tensor(node_coords, device=device)
     edges_o3d = o3c.Tensor(graph_edges, device=device)
     edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
-    clusters_o3d = o3c.Tensor(graph_clusters, device=device)
+    clusters_o3d = o3c.Tensor(graph_clusters.flatten(), device=device)
 
     return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d), node_deformations, pixel_anchors, pixel_weights
 

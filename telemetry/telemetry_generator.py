@@ -172,14 +172,14 @@ class TelemetryGenerator:
             raise NotImplementedError("TODO")
 
     def record_meshes_to_disk_if_needed(self,
-                                        canonical_mesh: Union[None, o3d.geometry.TriangleMesh],
-                                        warped_mesh: Union[None, o3d.geometry.TriangleMesh]):
+                                        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh],
+                                        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh]):
         if self.record_framewise_canonical_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
-                                       canonical_mesh)
+                                       canonical_mesh.to_legacy_triangle_mesh())
         if self.record_framewise_warped_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
-                                       warped_mesh)
+                                       warped_mesh.to_legacy_triangle_mesh())
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:

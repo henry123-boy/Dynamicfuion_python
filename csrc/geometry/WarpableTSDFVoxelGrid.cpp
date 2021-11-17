@@ -262,9 +262,6 @@ open3d::core::Tensor WarpableTSDFVoxelGrid::IntegrateWarpedMat(const open3d::t::
 	core::Tensor intrinsics_host_double = intrinsics.To(host, core::Dtype::Float64).Contiguous();
 	core::Tensor extrinsics_host_double = extrinsics.To(host, core::Dtype::Float64).Contiguous();
 
-	//__DEBUG
-	utility::LogWarning("Got to before KERNEL");
-
 	if (use_node_distance_thresholding) {
 		switch (compute_anchors_using) {
 			case AnchorComputationMethod::EUCLIDEAN:
