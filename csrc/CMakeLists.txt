@@ -36,6 +36,7 @@ set(NNRT_SOURCE_FILES
     cpu/image_proc.cpp
     debugging/debugging.hpp
     core/PlatformIndependence.h
+
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
     geometry/WarpableTSDFVoxelGrid.h
@@ -62,12 +63,20 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
     geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
+    geometry/kernel/Comparison.h
+    geometry/kernel/Comparison.cpp
     geometry/AnchorComputationMethod.h
     geometry/TransformationMode.h
     geometry/Comparison.h
     geometry/Comparison.cpp
-    geometry/kernel/Comparison.h
-    geometry/kernel/Comparison.cpp
+    geometry/kernel/ComparisonCPU.cpp
+    geometry/kernel/ComparisonCUDA.cu
+    geometry/kernel/ComparisonImpl.h
+    geometry/IndexedPointCloud.h
+
+    string/split_string.h
+    string/split_string.cpp
+
     core/KeyValuePair.h
     core/DeviceHeap.h
     core/CPU/DeviceHeapCPU.cpp
@@ -83,12 +92,10 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDAImpl.cuh
     core/CUDA/HostHeapCUDA.cu
     core/CUDA/HostHeapCUDA.h
-    string/split_string.h
-    string/split_string.cpp
-    geometry/kernel/DeviceSelection.h
-    geometry/kernel/ComparisonCPU.cpp
-    geometry/kernel/ComparisonCUDA.cu
-    geometry/kernel/ComparisonImpl.h)
+    core/KdTree.h
+    core/DeviceKdTree.h
+    core/KdTree.cpp
+    core/DeviceSelection.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

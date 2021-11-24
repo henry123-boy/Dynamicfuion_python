@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/28/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/24/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+#include <open3d/t/geometry/PointCloud.h
 
-namespace nnrt::core {
-template<typename TKey, typename TValue>
-struct KeyValuePair {
-	TKey key;
-	TValue value;
+namespace nnrt::geometry {
+
+template <typename Index>
+class IndexedPointCloud: public open3d::t::geometry::PointCloud{
+
 };
-} // namespace nnrt::core
+
+} // namespace nnrt::geometry

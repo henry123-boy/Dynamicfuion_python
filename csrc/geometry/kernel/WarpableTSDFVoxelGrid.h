@@ -16,7 +16,7 @@
 #pragma once
 
 #include "geometry/AnchorComputationMethod.h"
-#include "geometry/kernel/DeviceSelection.h"
+#include "core/DeviceSelection.h"
 
 #include <open3d/core/Tensor.h>
 #include <open3d/core/hashmap/Hashmap.h>
@@ -43,7 +43,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
                        const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
                        int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromTensorAndExecute(
 			block_keys,
 			[&] {
 				IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(
@@ -53,10 +53,13 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
 				);
 			},
 			[&] {
-				IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
-						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
-						node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+				NNRT_IF_CUDA(
+						IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
+								block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+								sdf_truncation_distance,
+								depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
+								node_dual_quaternion_transformations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+						);
 				);
 			}
 	);
@@ -83,7 +86,7 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
                         const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
                         int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromTensorAndExecute(
 			block_keys,
 			[&] {
 				IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(
@@ -93,10 +96,13 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
 				);
 			},
 			[&] {
-				IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
-						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
-						node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+				NNRT_IF_CUDA(
+						IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CUDA>(
+								block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+								sdf_truncation_distance,
+								depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_graph_nodes, warp_graph_edges,
+								node_rotations, node_translations, node_coverage, anchor_count, minimum_valid_anchor_count, depth_scale, depth_max
+						);
 				);
 			}
 	);

@@ -144,10 +144,10 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 		if (closest_node_index == -1) {
 			break; // no node to initialize queue with, we've got no more valid anchors to consider
 		}
-		priority_queue.insert(DistanceIndexPair{closest_node_distance, closest_node_index});
+		priority_queue.Insert(DistanceIndexPair{closest_node_distance, closest_node_index});
 
-		while (!priority_queue.empty() && discovered_anchor_count < anchor_count) {
-			auto source_pair = priority_queue.pop();
+		while (!priority_queue.Empty() && discovered_anchor_count < anchor_count) {
+			auto source_pair = priority_queue.Pop();
 			bool node_already_processed = false;
 			for (int i_anchor = 0; i_anchor < discovered_anchor_count && !node_already_processed; i_anchor++) {
 				if (anchor_indices[i_anchor] == source_pair.value) {
@@ -172,7 +172,7 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 					auto target_pointer = node_indexer.template GetDataPtr<float>(target_node_index);
 					Eigen::Map<const Eigen::Vector3f> target_node(target_pointer);
 					float distance_source_to_target = (target_node - source_node).norm();
-					priority_queue.insert(DistanceIndexPair{source_pair.key + distance_source_to_target, target_node_index});
+					priority_queue.Insert(DistanceIndexPair{source_pair.key + distance_source_to_target, target_node_index});
 				}
 			}
 		}

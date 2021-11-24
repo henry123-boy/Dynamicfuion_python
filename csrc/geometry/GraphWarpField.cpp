@@ -301,11 +301,14 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const core::Tensor& points, const
 	return py::make_tuple(anchors, weights);
 }
 
-GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges,
-                               open3d::core::Tensor edge_weights, open3d::core::Tensor clusters) :
+GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights,
+                               open3d::core::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance, int anchor_count,
+							   int minimum_valid_anchor_count) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
 		translations({this->nodes.GetLength(), 3}, core::Dtype::Float32, this->nodes.GetDevice()),
-		rotations({this->nodes.GetLength(), 3, 3}, core::Dtype::Float32, this->nodes.GetDevice()) {
+		rotations({this->nodes.GetLength(), 3, 3}, core::Dtype::Float32, this->nodes.GetDevice()),
+		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
+		minimum_valid_anchor_count(minimum_valid_anchor_count) {
 	auto device = this->nodes.GetDevice();
 	this->edges.AssertDevice(device);
 	this->edge_weights.AssertDevice(device);
@@ -317,7 +320,7 @@ GraphWarpField::GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor 
 	if (nodes_shape.size() != 2 || edges_shape.size() != 2 || edge_weights_shape.size() != 2 || clusters_shape.size() != 1) {
 		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have two dimensions,"
 		                  " while `clusters` needs to have one dimension. Got dimension counts {}, {}, {}, and {}, respectively.",
-						  nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
+		                  nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
 	}
 	const int64_t node_count = nodes_shape[0];
 	if (nodes_shape[1] != 3) {
@@ -347,10 +350,9 @@ open3d::core::TensorList GraphWarpField::GetNodeExtent() const {
 }
 
 open3d::t::geometry::TriangleMesh
-GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, float node_coverage, int anchor_count, bool threshold_nodes_by_distance,
-                         int minimum_valid_anchor_count) const {
-	return WarpTriangleMeshMat(input_mesh, this->nodes, this->rotations, this->translations, anchor_count, node_coverage,
-	                           threshold_nodes_by_distance, minimum_valid_anchor_count);
+GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh) const {
+	return WarpTriangleMeshMat(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
+	                           this->threshold_nodes_by_distance, this->minimum_valid_anchor_count);
 }
 
 

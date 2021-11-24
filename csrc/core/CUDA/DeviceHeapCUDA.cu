@@ -15,13 +15,11 @@
 //  ================================================================
 #include "DeviceHeapCUDA.cuh"
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 template
 class DeviceHeap<o3c::Device::DeviceType::CUDA, KeyValuePair<float, int32_t>,
 		decltype(MinHeapKeyCompare<float, int32_t>)>;
 
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

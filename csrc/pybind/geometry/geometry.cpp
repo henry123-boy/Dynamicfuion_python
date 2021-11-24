@@ -204,13 +204,14 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 			"the graph nodes within the proximity of this point. Currently, only supports linear & rotational node motion "
 			"for a single transformation (not suitable for storing animation data all by itself)."
 	);
-	graph_warp_field.def(py::init<core::Tensor&, core::Tensor&, core::Tensor&, core::Tensor&>(),
-	                     "nodes"_a, "edges"_a, "edge_weights"_a, "clusters"_a);
+	graph_warp_field.def(py::init<core::Tensor&, core::Tensor&, core::Tensor&, core::Tensor&, float, bool, int, int>(),
+	                     "nodes"_a, "edges"_a, "edge_weights"_a, "clusters"_a,
+						 "node_coverage"_a = 0.05, "threshold_nodes_by_distance"_a = false,
+						 "anchor_count"_a = 4, "minimum_valid_anchor_count"_a = 0);
 	graph_warp_field.def("get_warped_nodes", &GraphWarpField::GetWarpedNodes);
 	graph_warp_field.def("get_node_extent", &GraphWarpField::GetNodeExtent);
 	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
-						 "input_mesh"_a, "node_coverage"_a, "anchor_count"_a = 4,
-						 "threshold_nodes_by_distance"_a = false, "minimum_valid_anchor_count"_a = 0);
+						 "input_mesh"_a);
 	graph_warp_field.def_readwrite("nodes", &GraphWarpField::nodes);
 	graph_warp_field.def_readwrite("edges", &GraphWarpField::edges);
 	graph_warp_field.def_readwrite("edge_weights", &GraphWarpField::edge_weights);

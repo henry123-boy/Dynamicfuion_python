@@ -17,7 +17,13 @@
 
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::geometry::kernel{
+namespace nnrt::core{
+
+#ifdef BUILD_CUDA_MODULE
+	#define NNRT_IF_CUDA(...) __VA_ARGS__ static_assert(true)
+#else
+	#define NNRT_IF_CUDA(...) static_assert(true)
+#endif
 
 	template<typename FExecuteOnCPU, typename  FExecuteOnCUDA>
 	void InferDeviceFromTensorAndExecute(const open3d::core::Tensor& guiding_tensor,
@@ -44,4 +50,4 @@ namespace nnrt::geometry::kernel{
 		}
 	}
 
-} // nnrt::geometry::kernel
+} // nnrt::core

@@ -102,7 +102,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 						n_voxels,
 						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
-				// region ===================== COMPUTE VOXEL COORDINATE ================================
+				// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
 				// Natural index (0, N) ->
 				//                    (workload_block_idx, voxel_index_in_block)
 				int64_t block_index = indices_ptr[workload_idx / block_resolution3];
@@ -126,6 +126,11 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 				                             y_block * block_resolution + y_voxel_local,
 				                             z_block * block_resolution + z_voxel_local);
 				Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
+
+				// voxel world coordinate (in voxels) -> voxel camera coordinate (in meters)
+				float x_voxel_camera, y_voxel_camera, z_voxel_camera;
+				transform_indexer.RigidTransform(voxel_global_metric.x(), voxel_global_metric.y(), voxel_global_metric.z(),
+				                                 &x_voxel_camera, &y_voxel_camera, &z_voxel_camera);
 				// endregion
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
@@ -134,12 +139,7 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 					return;
 				}
 				// endregion
-				// region ===================== CONVERT VOXEL TO CAMERA SPACE, WARP IT, AND PROJECT TO IMAGE ============================
-
-				// voxel world coordinate (in voxels) -> voxel camera coordinate (in meters)
-				float x_voxel_camera, y_voxel_camera, z_voxel_camera;
-				transform_indexer.RigidTransform(voxel_global_metric.x(), voxel_global_metric.y(), voxel_global_metric.z(),
-				                                 &x_voxel_camera, &y_voxel_camera, &z_voxel_camera);
+				// region ===================== WARP CAMERA-SPACE VOXEL AND PROJECT TO IMAGE ============================
 				Eigen::Vector3f voxel_camera(x_voxel_camera, y_voxel_camera, z_voxel_camera);
 				Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
 

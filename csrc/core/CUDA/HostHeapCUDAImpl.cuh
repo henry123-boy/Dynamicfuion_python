@@ -21,16 +21,15 @@
 #include <open3d/core/CUDAUtils.h>
 
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 __global__
 void InsertIntoHeap(IDeviceHeap* device_heap, const uint8_t* input_keys_data, const uint8_t* input_values_data,
 					const int64_t key_byte_size, const int64_t value_byte_size, const int64_t count){
 
 	for(int64_t i_pair = 0; i_pair < count; i_pair++){
-		device_heap->insert_internal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
-		                             reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
+		device_heap->InsertInternal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
+		                    reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
 	}
 }
 
@@ -66,17 +65,17 @@ void MakeMaxHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
 
 __global__
 void PopHeap(IDeviceHeap* device_heap, void* key, void* data) {
-	device_heap->pop_internal(key, data);
+	device_heap->PopInternal(key, data);
 }
 
 __global__
 void IsHeapEmpty(IDeviceHeap* device_heap, bool* empty) {
-	*empty = device_heap->empty();
+	*empty = device_heap->Empty();
 }
 
 __global__
 void GetHeapSize(IDeviceHeap* device_heap, int32_t* size) {
-	*size = device_heap->size();
+	*size = device_heap->Size();
 }
 
 template<typename TKey, typename TValue, typename TCompare>
@@ -185,5 +184,4 @@ bool HostHeap<open3d::core::Device::DeviceType::CUDA>::Empty() const {
 	return is_empty;
 };
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core
