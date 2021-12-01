@@ -152,8 +152,9 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 	for (int64_t range_start_index = 0, range_length = 1;
 	     range_start_index < point_count;
 	     range_start_index += range_length, range_length *= 2) {
+
 		launcher::ParallelFor(
-				range_length,
+				std::min(range_length, point_count-range_start_index),
 				[=] OPEN3D_DEVICE(int64_t workload_idx) {
 					KdTreeNode* node = nodes + range_start_index + workload_idx;
 					FindTreeNodeAndSetUpChildRanges<TDeviceType>(nodes, nodes_end, node, i_dimension, point_indexer);

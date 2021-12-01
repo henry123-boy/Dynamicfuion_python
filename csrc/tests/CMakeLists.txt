@@ -1,7 +1,8 @@
-function(add_test name)
+function(NNRT_add_test name)
     add_executable(${name} ${ARGN})
     target_link_libraries(${name} PUBLIC nnrt_cpp test_utils)
     target_link_libraries(${name} PUBLIC Python3::Python ${CATCH2_TARGET})
+    add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
 if (BUILD_CPP_TESTS)
@@ -48,8 +49,9 @@ if (BUILD_CPP_TESTS)
 
 
     ### add tests ###
-    add_test(test_graph_proc test_graph_proc.cpp)
-    add_test(test_index_conversions test_index_conversions.cpp)
-    add_test(test_array_comparisons test_array_comparisons.cpp)
-    add_test(test_heap test_heap.cpp)
+    NNRT_add_test(test_graph_proc test_graph_proc.cpp)
+    NNRT_add_test(test_index_conversions test_index_conversions.cpp)
+    NNRT_add_test(test_array_comparisons test_array_comparisons.cpp)
+    NNRT_add_test(test_heap test_heap.cpp)
+    NNRT_add_test(test_kdtree test_kdtree.cpp)
 endif ()

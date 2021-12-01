@@ -15,6 +15,10 @@ option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
 option(SET_UP_U_2_NET             "Set up a slimmed-down version of U^2 Net for mask generation using Saliency Object Detection (requires a large ~177 Mb  download to a local folder)" ON)
 
+if(BUILD_CPP_TESTS)
+    enable_testing()
+endif()
+
 if(GLIBCXX_USE_CXX11_ABI)
     set(usage "1")
 else()

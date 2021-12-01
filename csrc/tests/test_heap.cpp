@@ -26,42 +26,42 @@ using namespace nnrt;
 namespace o3c = open3d::core;
 
 TEST_CASE("Test Device Heap CPU") {
-	typedef core::KeyValuePair<float, int32_t> DistanceIndexPair;
-	typedef decltype(core::MinHeapKeyCompare<float, int32_t>) Compare;
+	typedef core::KeyValuePair<float, int32_t> KeyValuePair;
+	typedef decltype(core::MinHeapKeyCompare<KeyValuePair>) Compare;
 
 	const int queue_capacity = 40;
-	DistanceIndexPair queue_data[queue_capacity];
-	core::DeviceHeap<open3d::core::Device::DeviceType::CPU, DistanceIndexPair, Compare> heap(queue_data, queue_capacity, core::MinHeapKeyCompare<float, int32_t>);
+	KeyValuePair queue_data[queue_capacity];
+	core::DeviceHeap<open3d::core::Device::DeviceType::CPU, KeyValuePair, Compare> heap(queue_data, queue_capacity, core::MinHeapKeyCompare<KeyValuePair>);
 
-	DistanceIndexPair queue_data_insert_order[6] = {
-			DistanceIndexPair{50.0f, 4},
-			DistanceIndexPair{40.0f, 3},
-			DistanceIndexPair{20.0f, 2},
-			DistanceIndexPair{100.0f, 6},
-			DistanceIndexPair{60.0f, 5},
-			DistanceIndexPair{10.0f, 1}
+	KeyValuePair queue_data_insert_order[6] = {
+			KeyValuePair{50.0f, 4},
+			KeyValuePair{40.0f, 3},
+			KeyValuePair{20.0f, 2},
+			KeyValuePair{100.0f, 6},
+			KeyValuePair{60.0f, 5},
+			KeyValuePair{10.0f, 1}
 	};
 
 	const int first_batch_size = 4;
 	for(int i_item = 0; i_item < first_batch_size; i_item++){
-		heap.insert(queue_data_insert_order[i_item]);
+		heap.Insert(queue_data_insert_order[i_item]);
 	}
-	auto min_pair1 = heap.pop();
+	auto min_pair1 = heap.Pop();
 	REQUIRE(min_pair1.key == 20.0f);
 	REQUIRE(min_pair1.value == 2);
 	for(int i_item = first_batch_size; i_item < 6; i_item++){
-		heap.insert(queue_data_insert_order[i_item]);
+		heap.Insert(queue_data_insert_order[i_item]);
 	}
-	DistanceIndexPair expected_output_order[5] = {
-			DistanceIndexPair{10.0f, 1},
-			DistanceIndexPair{40.0f, 3},
-			DistanceIndexPair{50.0f, 4},
-			DistanceIndexPair{60.0f, 5},
-			DistanceIndexPair{100.0f, 6}
+	KeyValuePair expected_output_order[5] = {
+			KeyValuePair{10.0f, 1},
+			KeyValuePair{40.0f, 3},
+			KeyValuePair{50.0f, 4},
+			KeyValuePair{60.0f, 5},
+			KeyValuePair{100.0f, 6}
 	};
 
 	for(int i_item = 0; i_item < 5; i_item++){
-		auto current_head = heap.pop();
+		auto current_head = heap.Pop();
 		REQUIRE(current_head.key == expected_output_order[i_item].key);
 		REQUIRE(current_head.value == expected_output_order[i_item].value);
 	}
