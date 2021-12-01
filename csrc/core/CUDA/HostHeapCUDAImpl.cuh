@@ -36,14 +36,14 @@ void InsertIntoHeap(IDeviceHeap* device_heap, const uint8_t* input_keys_data, co
 template<typename TKey, typename TValue>
 __global__
 void MakeMinHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
-	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
-	typedef decltype(core::MinHeapKeyCompare<TKey, TValue>) Compare;
+	typedef core::KeyValuePair<TKey, TValue> KeyValuePair;
+	typedef decltype(core::MinHeapKeyCompare<KeyValuePair>) Compare;
 
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HT;
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, KeyValuePair, Compare> HT;
 	HT local(
-			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+			reinterpret_cast<KeyValuePair*>(storage),
 			capacity,
-			core::MinHeapKeyCompare<TKey, TValue>
+			core::MinHeapKeyCompare<KeyValuePair>
 	);
 	memcpy(device_heap,&local, sizeof(HT));
 }
@@ -51,14 +51,14 @@ void MakeMinHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
 template<typename TKey, typename TValue>
 __global__
 void MakeMaxHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
-	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
-	typedef decltype(core::MaxHeapKeyCompare<TKey, TValue>) Compare;
+	typedef core::KeyValuePair<TKey, TValue> KeyValuePair;
+	typedef decltype(core::MaxHeapKeyCompare<KeyValuePair>) Compare;
 
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HT;
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, KeyValuePair, Compare> HT;
 	HT local(
-			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+			reinterpret_cast<KeyValuePair*>(storage),
 			capacity,
-			core::MaxHeapKeyCompare<TKey, TValue>
+			core::MaxHeapKeyCompare<KeyValuePair>
 	);
 	memcpy(device_heap,&local, sizeof(HT));
 }
@@ -115,11 +115,11 @@ HostHeap<open3d::core::Device::DeviceType::CUDA>::HostHeap(int32_t capacity,
 			cudaMalloc(&storage, sizeof(KeyValuePair<int32_t, float>) * capacity);
 			switch (heap_type) {
 				case HeapType::MIN:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<float, int32_t>)));
+					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
 					MakeMinHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				case HeapType::MAX:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<float, int32_t>)));
+					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
 					MakeMaxHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				default:

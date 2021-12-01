@@ -15,13 +15,8 @@
 //  ================================================================
 
 #include "core/KdTree.h"
-#include "DeviceSelection.h"
-
-#ifdef BUILD_CUDA_MODULE
-
-#include <open3d/core/CUDAUtils.h>
-
-#endif
+#include "core/DeviceSelection.h"
+#include "core/kernel/KdTree.h"
 
 #include <limits>
 #include <cstring>
@@ -31,29 +26,44 @@ namespace o3u = open3d::utility;
 
 
 namespace nnrt::core {
-KdTree::KdTree(const open3d::core::Tensor& indexed_tensor)
-		: indexed_tensor(&indexed_tensor),
-		  dimension_count(indexed_tensor.GetShape(1)),
-		  index_data(std::make_shared<o3c::Blob>(indexed_tensor.GetShape(0) * sizeof(Node), indexed_tensor.GetDevice())),
-		  data_pointer(this->index_data->GetDataPtr()) {
-	auto dimensions = indexed_tensor.GetShape();
+KdTree::KdTree(const open3d::core::Tensor& points)
+		: points(points),
+		  point_dimension_count(points.GetShape(1)),
+		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())),
+		  index_data_pointer(index_data->GetDataPtr()){
+	auto dimensions = points.GetShape();
+	points.AssertDtype(o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
 		o3u::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
-
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points);
 }
 
 void KdTree::Reindex() {
-
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points);
 }
 
 void KdTree::ChangeToAppendedTensor(const open3d::core::Tensor& tensor) {
-
+	o3u::LogError("Not implemented");
 }
 
 void KdTree::UpdatePoint(const open3d::core::Tensor& point) {
+	o3u::LogError("Not implemented");
+}
 
+open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor& query_points, int32_t k) const{
+	query_points.AssertDevice(this->points.GetDevice());
+	query_points.AssertDtype(o3c::Dtype::Float32);
+	if(query_points.GetShape().GetLength() != this->points.GetShape().GetLength() ||
+	   query_points.GetShape(1) != this->points.GetShape(1)){
+		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the KD Tree, which"
+					  "has shape {}. Both arrays should be 2D and have matching axis 1 length (i.e. point dimensions).",
+		              query_points.GetShape(), this->points.GetShape());
+	}
+	o3c::Tensor closest_indices, squared_distances;
+	kernel::kdtree::FindKNearestKdTreePoints(closest_indices, squared_distances, query_points, k, *this->index_data, this->points);
+	return o3c::TensorList({closest_indices, squared_distances});
 }
 
 

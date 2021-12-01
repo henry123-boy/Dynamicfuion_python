@@ -95,7 +95,15 @@ set(NNRT_SOURCE_FILES
     core/KdTree.h
     core/DeviceKdTree.h
     core/KdTree.cpp
-    core/DeviceSelection.h)
+    core/DeviceSelection.h
+    core/DimensionCount.h
+    core/TensorManipulationRoutines.h
+    core/TensorManipulationRoutines.cpp
+    core/kernel/KdTree.h
+    core/kernel/KdTreeImpl.h
+    core/kernel/KdTreeCPU.cpp
+    core/kernel/KdTreeCUDA.cu
+    core/kernel/KdTree.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

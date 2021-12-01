@@ -16,6 +16,7 @@
 #pragma once
 
 #include <open3d/core/Tensor.h>
+#include <open3d/core/TensorList.h>
 #include <open3d/core/Blob.h>
 #include "core/PlatformIndependence.h"
 
@@ -23,31 +24,23 @@ namespace nnrt::core {
 
 
 class KdTree{
-	typedef uint32_t index_data_type;
 public:
-	struct Node{
-		index_data_type index;
-		Node* left_child;
-		Node* right_child;
-		float distance;
-	};
 
-	explicit KdTree(const open3d::core::Tensor& indexed_tensor);
+
+	explicit KdTree(const open3d::core::Tensor& points);
 	virtual ~KdTree() = default;
 	virtual void Reindex();
 	virtual void UpdatePoint(const open3d::core::Tensor& point);
 	virtual void ChangeToAppendedTensor(const open3d::core::Tensor& tensor);
-	virtual open3d::core::Tensor FindKNearestToPoints(open3d::core::Tensor& points, int k) = 0;
+	virtual open3d::core::TensorList FindKNearestToPoints(const open3d::core::Tensor& query_points, int32_t k) const;
 
 
 private:
+	const open3d::core::Tensor& points;
+	const int64_t point_dimension_count;
 
-
-	const open3d::core::Tensor* indexed_tensor;
-	const int64_t dimension_count;
-
-	std::shared_ptr<open3d::core::Blob> index_data;
-	void* data_pointer;
+	const std::shared_ptr<open3d::core::Blob> index_data;
+	void* index_data_pointer;
 
 };
 

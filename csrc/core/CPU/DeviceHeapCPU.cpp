@@ -26,7 +26,16 @@ namespace nnrt::core {
 
 template
 class DeviceHeap<o3c::Device::DeviceType::CPU, KeyValuePair<float, int32_t>,
-		decltype(MinHeapKeyCompare<float, int32_t>)>;
+		decltype(MinHeapKeyCompare<KeyValuePair<float, int32_t>>)>;
+template
+class DeviceHeap<o3c::Device::DeviceType::CPU, KeyValuePair<float, int32_t>,
+		decltype(MaxHeapKeyCompare<KeyValuePair<float, int32_t>>)>;
+template
+class DeviceHeap<o3c::Device::DeviceType::CPU, DistanceIndexPair<float, int32_t>,
+		decltype(MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)>;
+template
+class DeviceHeap<o3c::Device::DeviceType::CPU, DistanceIndexPair<float, int32_t>,
+		decltype(MaxHeapKeyCompare<DistanceIndexPair<float, int32_t>>)>;
 
 
 } // namespace nnrt::core

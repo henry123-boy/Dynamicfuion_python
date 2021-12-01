@@ -39,7 +39,6 @@ namespace nnrt::core{
 			case open3d::core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
 				execute_on_cuda();
-
 #else
 				open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif

@@ -24,13 +24,13 @@ namespace nnrt::core{
 
 
 
-template<typename TKey, typename TValue>
-const auto MinHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const KeyValuePair<TKey, TValue>& first, const KeyValuePair<TKey, TValue>& second){
+template<typename TKeyValuePair>
+const auto MinHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const TKeyValuePair& first, const TKeyValuePair& second){
 	return first.key > second.key;
 };
 
-template<typename TKey, typename TValue>
-const auto MaxHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const KeyValuePair<TKey, TValue>& first, const KeyValuePair<TKey, TValue>& second){
+template<typename TKeyValuePair>
+const auto MaxHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const TKeyValuePair& first, const TKeyValuePair& second){
 	return first.key < second.key;
 };
 
@@ -44,7 +44,6 @@ public:
 	virtual NNRT_DEVICE_WHEN_CUDACC bool Empty() const = 0;
 	virtual NNRT_DEVICE_WHEN_CUDACC int Size() const = 0;
 };
-
 
 
 template<typename TElement>

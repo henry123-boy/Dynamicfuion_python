@@ -43,22 +43,22 @@ HostHeap(int32_t capacity,
 					device_heap = std::make_shared<DeviceHeap<
 							open3d::core::Device::DeviceType::CPU,
 							KeyValuePair<float, int32_t>,
-							decltype(MinHeapKeyCompare<float, int32_t>)
+							decltype(MinHeapKeyCompare<KeyValuePair<float, int32_t>>)
 					>>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
-							MinHeapKeyCompare<float, int32_t>
+							MinHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 					break;
 				case HeapType::MAX:
 					device_heap = std::make_shared<DeviceHeap<
 							open3d::core::Device::DeviceType::CPU,
 							KeyValuePair<float, int32_t>,
-							decltype(MaxHeapKeyCompare<float, int32_t>)
+							decltype(MaxHeapKeyCompare<KeyValuePair<float, int32_t>>)
 					>>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
-							MaxHeapKeyCompare<float, int32_t>
+							MaxHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 				default:
 					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);

@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/28/21.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/25/21.
 //  Copyright (c) 2021 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -15,22 +15,8 @@
 //  ================================================================
 #pragma once
 
-namespace nnrt::core {
-template<typename TKey, typename TValue>
-struct KeyValuePair {
-	TKey key;
-	TValue value;
-};
+#include <open3d/core/Tensor.h>
 
-template<typename TKey, typename TValue>
-struct DistanceIndexPair {
-	union{
-		TKey key;
-		TKey distance;
-	};
-	union{
-		TValue value;
-		TValue index;
-	};
-};
-} // namespace nnrt::core
+namespace nnrt::core{
+	open3d::core::Tensor CombineAlongAxis0(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
+} // nnrt::core

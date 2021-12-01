@@ -25,10 +25,7 @@
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace knn {
+namespace nnrt::geometry::kernel::knn {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
@@ -126,12 +123,12 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
                                        const NDArrayIndexer& node_indexer,
                                        const NDArrayIndexer& edge_indexer) {
 	int discovered_anchor_count = 0;
-	typedef core::KeyValuePair<float, int32_t> DistanceIndexPair;
-	typedef decltype(core::MinHeapKeyCompare<float, int32_t>) Compare;
+	typedef core::DistanceIndexPair<float, int32_t> DistanceIndexPair;
+	typedef decltype(core::MinHeapKeyCompare<DistanceIndexPair>) Compare;
 
 	const int queue_capacity = 40;
 	DistanceIndexPair queue_data[queue_capacity];
-	core::DeviceHeap<TDeviceType, DistanceIndexPair, Compare> priority_queue(queue_data, queue_capacity, core::MinHeapKeyCompare<float, int32_t>);
+	core::DeviceHeap<TDeviceType, DistanceIndexPair, Compare> priority_queue(queue_data, queue_capacity, core::MinHeapKeyCompare<DistanceIndexPair>);
 
 	while (discovered_anchor_count < anchor_count) {
 		int closest_node_index = -1;
@@ -179,7 +176,4 @@ inline void FindShortestPathKNNAnchors(int32_t* anchor_indices, float* distances
 	}
 }
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::knn
