@@ -43,5 +43,6 @@ namespace nnrt::core{
 
 		concatenated_tensor.SetItem(o3c::TensorKey::Slice(0, tensor1_length, 1), tensor1);
 		concatenated_tensor.SetItem(o3c::TensorKey::Slice(tensor1_length, combined_length, 1), tensor2);
+		return concatenated_tensor;
 	}
 }

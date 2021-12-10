@@ -43,7 +43,7 @@ void IntegrateWarpedDQ(const open3d::core::Tensor& block_indices, const open3d::
                        const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
                        const open3d::core::Tensor& node_dual_quaternion_transformations, float node_coverage, int anchor_count,
                        int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	core::InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			block_keys,
 			[&] {
 				IntegrateWarpedDQ<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(
@@ -86,7 +86,7 @@ void IntegrateWarpedMat(const open3d::core::Tensor& block_indices, const open3d:
                         const open3d::core::Tensor& warp_graph_nodes, const open3d::core::Tensor& warp_graph_edges,
                         const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
                         int anchor_count, int minimum_valid_anchor_count, float depth_scale, float depth_max) {
-	core::InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			block_keys,
 			[&] {
 				IntegrateWarpedMat<TAnchorComputationMethod, TUseNodeDistanceThreshold, open3d::core::Device::DeviceType::CPU>(

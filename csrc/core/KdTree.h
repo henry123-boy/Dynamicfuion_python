@@ -32,6 +32,7 @@ public:
 	virtual void Reindex();
 	virtual void UpdatePoint(const open3d::core::Tensor& point);
 	virtual void ChangeToAppendedTensor(const open3d::core::Tensor& tensor);
+	virtual open3d::core::Tensor GetIndices() const;
 	virtual open3d::core::TensorList FindKNearestToPoints(const open3d::core::Tensor& query_points, int32_t k) const;
 
 
@@ -40,7 +41,6 @@ private:
 	const int64_t point_dimension_count;
 
 	const std::shared_ptr<open3d::core::Blob> index_data;
-	void* index_data_pointer;
 
 };
 

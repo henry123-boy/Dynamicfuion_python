@@ -29,8 +29,7 @@ namespace nnrt::core {
 KdTree::KdTree(const open3d::core::Tensor& points)
 		: points(points),
 		  point_dimension_count(points.GetShape(1)),
-		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())),
-		  index_data_pointer(index_data->GetDataPtr()){
+		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())){
 	auto dimensions = points.GetShape();
 	points.AssertDtype(o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
@@ -64,6 +63,13 @@ open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor
 	o3c::Tensor closest_indices, squared_distances;
 	kernel::kdtree::FindKNearestKdTreePoints(closest_indices, squared_distances, query_points, k, *this->index_data, this->points);
 	return o3c::TensorList({closest_indices, squared_distances});
+}
+
+open3d::core::Tensor KdTree::GetIndices() const{
+
+	o3c::Tensor indices;
+	kernel::kdtree::GetNodeIndices(indices, *this->index_data, this->points.GetLength());
+	return indices;
 }
 
 

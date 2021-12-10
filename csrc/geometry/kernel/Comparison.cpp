@@ -24,7 +24,7 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& normals1,
                                   const open3d::core::Tensor& vertices1,
                                   const open3d::core::Tensor& vertices2) {
-	core::InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			normals1,
 			[&] { ComputePointToPlaneDistances<o3c::Device::DeviceType::CPU>(distances, normals1, vertices1, vertices2); },
 			[&] { NNRT_IF_CUDA(ComputePointToPlaneDistances<o3c::Device::DeviceType::CUDA>(distances, normals1, vertices1, vertices2);); }

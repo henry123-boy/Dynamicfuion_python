@@ -29,6 +29,7 @@ void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::co
                                                                       int32_t k, const open3d::core::Blob& index_data,
                                                                       const open3d::core::Tensor& kd_tree_points);
 
-
+template
+void GetNodeIndices<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& indices, const open3d::core::Blob& index_data, int64_t node_count);
 
 } // nnrt::core::kernel

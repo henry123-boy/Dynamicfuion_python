@@ -25,11 +25,11 @@ namespace nnrt::core{
 	#define NNRT_IF_CUDA(...) static_assert(true)
 #endif
 
-	template<typename FExecuteOnCPU, typename  FExecuteOnCUDA>
-	void InferDeviceFromTensorAndExecute(const open3d::core::Tensor& guiding_tensor,
+	template<typename TEntity, typename FExecuteOnCPU, typename  FExecuteOnCUDA>
+	void InferDeviceFromEntityAndExecute(const TEntity& guiding_entity,
 	                                     FExecuteOnCPU&& execute_on_cpu,
 	                                     FExecuteOnCUDA&& execute_on_cuda){
-		open3d::core::Device device = guiding_tensor.GetDevice();
+		open3d::core::Device device = guiding_entity.GetDevice();
 		open3d::core::Device::DeviceType device_type = device.GetType();
 
 		switch (device_type) {

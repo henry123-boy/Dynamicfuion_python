@@ -23,10 +23,10 @@ namespace o3c = open3d::core;
 namespace nnrt::core::kernel::kdtree {
 
 void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points) {
-	core::InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			points,
 			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points); },
-			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points);); }
+			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points);); }
 	);
 
 }
@@ -36,7 +36,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
                          const open3d::core::Tensor& query_points,
                          int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points) {
 	const int dimension_count = (int) kd_tree_points.GetShape(1);
-	core::InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			kd_tree_points,
 			[&] {
 				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU>(
@@ -44,10 +44,18 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU>(
+						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA>(
 								closest_indices, squared_distances, query_points, k, index_data, kd_tree_points);
 				);
 			}
+	);
+}
+
+void GetNodeIndices(open3d::core::Tensor& indices, const open3d::core::Blob& index_data, int64_t node_count) {
+	core::InferDeviceFromEntityAndExecute(
+			index_data,
+			[&] { GetNodeIndices<o3c::Device::DeviceType::CPU>(indices, index_data, node_count); },
+			[&] { NNRT_IF_CUDA(GetNodeIndices<o3c::Device::DeviceType::CUDA>(indices, index_data, node_count);); }
 	);
 }
 
