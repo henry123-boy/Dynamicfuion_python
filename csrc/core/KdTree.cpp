@@ -18,6 +18,7 @@
 #include "core/DeviceSelection.h"
 #include "core/kernel/KdTree.h"
 
+
 #include <limits>
 #include <cstring>
 
@@ -36,11 +37,15 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 		o3u::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points);
+	if(points.GetLength() > std::numeric_limits<int32_t>::max()){
+		o3u::LogError("KdTree index currently cannot support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
+					  points.GetLength());
+	}
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
 }
 
 void KdTree::Reindex() {
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points);
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
 }
 
 void KdTree::ChangeToAppendedTensor(const open3d::core::Tensor& tensor) {
@@ -65,10 +70,9 @@ open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor
 	return o3c::TensorList({closest_indices, squared_distances});
 }
 
-open3d::core::Tensor KdTree::GetIndices() const{
-
-	o3c::Tensor indices;
-	kernel::kdtree::GetNodeIndices(indices, *this->index_data, this->points.GetLength());
+std::string KdTree::GenerateTreeDiagram() const{
+	std::string indices;
+	kernel::kdtree::GenerateTreeDiagram(indices, *this->index_data, this->root, this->points);
 	return indices;
 }
 

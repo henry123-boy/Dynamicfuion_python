@@ -100,7 +100,7 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
     core/kernel/KdTree.h
-    core/kernel/KdTreeImpl.h
+    core/kernel/BuildKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
     core/kernel/KdTree.cpp)

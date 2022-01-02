@@ -473,6 +473,32 @@ if(NOT USE_SYSTEM_EIGEN3)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS "${EIGEN3_TARGET}")
 
+# fmt
+if(USE_SYSTEM_FMT)
+    nnrt_find_package_3rdparty_library(3rdparty_fmt
+        PACKAGE fmt
+        TARGETS fmt::fmt-header-only fmt::fmt
+        )
+    if(3rdparty_fmt_FOUND)
+        if(NOT BUILD_SHARED_LIBS)
+            list(APPEND NNRT_3RDPARTY_EXTERNAL_MODULES "fmt")
+        endif()
+    else()
+        set(USE_SYSTEM_FMT OFF)
+    endif()
+endif()
+if(NOT USE_SYSTEM_FMT)
+    # We set the FMT_HEADER_ONLY macro, so no need to actually compile the source
+    include(${NNRT_3RDPARTY_DIR}/fmt/fmt.cmake)
+    nnrt_import_3rdparty_library(3rdparty_fmt
+        PUBLIC
+        INCLUDE_DIRS ${FMT_INCLUDE_DIRS}
+        DEPENDS      ext_fmt
+        )
+    target_compile_definitions(3rdparty_fmt INTERFACE FMT_HEADER_ONLY=1)
+endif()
+list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS NNRT::3rdparty_fmt)
+
 # Pybind11
 if(USE_SYSTEM_PYBIND11)
     find_package(pybind11)

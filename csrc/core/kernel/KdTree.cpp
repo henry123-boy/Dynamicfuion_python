@@ -13,20 +13,25 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include <fmt/format.h>
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+
 #include "core/kernel/KdTree.h"
+#include "core/kernel/KdTreeUtils.h"
 #include "core/DeviceSelection.h"
 #include "core/DimensionCount.h"
 
 
+namespace o3gk = open3d::t::geometry::kernel;
 namespace o3c = open3d::core;
 
 namespace nnrt::core::kernel::kdtree {
 
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points) {
+void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
 	core::InferDeviceFromEntityAndExecute(
 			points,
-			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points); },
-			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points);); }
+			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root); },
+			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root);); }
 	);
 
 }
@@ -51,12 +56,64 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 	);
 }
 
-void GetNodeIndices(open3d::core::Tensor& indices, const open3d::core::Blob& index_data, int64_t node_count) {
-	core::InferDeviceFromEntityAndExecute(
-			index_data,
-			[&] { GetNodeIndices<o3c::Device::DeviceType::CPU>(indices, index_data, node_count); },
-			[&] { NNRT_IF_CUDA(GetNodeIndices<o3c::Device::DeviceType::CUDA>(indices, index_data, node_count);); }
-	);
+inline open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const o3c::Device& device) {
+	o3c::Blob target_blob(byte_count, device);
+	o3c::MemoryManager::Memcpy(target_blob.GetDataPtr(), device, index_data.GetDataPtr(), index_data.GetDevice(), byte_count);
+}
+
+void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points) {
+	auto* nodes = reinterpret_cast<const KdTreeNode*>(index_data.GetDataPtr());
+	const auto* root_node = reinterpret_cast<const KdTreeNode*>(root);
+	auto root_index = static_cast<int32_t>(root_node - nodes);
+	auto node_count = kd_tree_points.GetLength();
+	auto index_data_cpu = BlobToDevice(index_data, node_count * static_cast<int64_t>(sizeof(kernel::kdtree::KdTreeNode)), o3c::Device("CPU:0"));
+	auto* nodes_cpu = reinterpret_cast<KdTreeNode*>(index_data_cpu.GetDataPtr());
+	KdTreeNode* root_node_cpu = nodes_cpu + root_index;
+	std::function<int32_t(KdTreeNode*, int32_t)> get_tree_height = [&get_tree_height](KdTreeNode* node, int32_t height) {
+		if (node != nullptr) {
+			int32_t left_subtree_height = 1 + get_tree_height(node->left_child, height);
+			int32_t right_subtree_height = 1 + get_tree_height(node->right_child, height);
+			return std::max(left_subtree_height, right_subtree_height);
+		}
+		return 0;
+	};
+	int32_t tree_height = get_tree_height(root_node_cpu, 0);
+	const int dimension_count = static_cast<int>(kd_tree_points.GetShape(1));
+	const int digit_length = 5;
+	const int coordinate_spacing = 1;
+
+
+	o3gk::NDArrayIndexer point_indexer(kd_tree_points, 1);
+
+	std::function<std::string(int)> print_point = [&point_indexer, &dimension_count](int point_index) {
+		auto* point_data = point_indexer.GetDataPtr<float>(point_index);
+		std::string point_string = fmt::format("[{:0>5}", point_data[0]);
+		for (int i_dimension = 1; i_dimension < dimension_count; i_dimension++) {
+			point_string += fmt::format(" {:0>5}", point_data[i_dimension]);
+		}
+		point_string += fmt::format(" {:0>5}]", point_data[dimension_count - 1]);
+		return point_string;
+	};
+	const int point_string_length = (digit_length + coordinate_spacing) * (dimension_count - 1) + digit_length + 2; //2 is for the brackets
+	const int min_gap_size = 1;
+
+	const int leaf_node_length = point_string_length + min_gap_size;
+	int last_level_string_length = IntPower<2>(tree_height - 1) * leaf_node_length;
+	auto get_initial_offset = [&last_level_string_length, &leaf_node_length](int level) {
+		return (last_level_string_length - leaf_node_length) / (2 * IntPower<2>(level));
+	};
+
+	std::string level_strings[tree_height * 3 - 2];
+	bool level_initialized[tree_height];
+
+	std::function<void(KdTreeNode*, int)> fill_tree_level_strings =
+			[&fill_tree_level_strings, &level_strings, &print_point, &get_initial_offset]
+					(KdTreeNode* node, int level) {
+				std::string point_string = print_point(node->index);
+
+			};
+
+
 }
 
 } //  nnrt::core::kernel::kdtree

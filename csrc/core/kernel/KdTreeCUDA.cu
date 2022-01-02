@@ -16,20 +16,18 @@
 #include <open3d/core/kernel/CUDALauncher.cuh>
 
 #include "core/CUDA/DeviceHeapCUDA.cuh"
-#include "core/kernel/KdTreeImpl.h"
+#include "core/kernel/BuildKdTreeImpl.h"
+#include "core/kernel/SearchKdTreeImpl.h"
 
 namespace nnrt::core::kernel::kdtree {
 
 template
-void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points);
+void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
 template
 void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
                                                                       const open3d::core::Tensor& query_points,
                                                                       int32_t k, const open3d::core::Blob& index_data,
                                                                       const open3d::core::Tensor& kd_tree_points);
-
-template
-void GetNodeIndices<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& indices, const open3d::core::Blob& index_data, int64_t node_count);
 
 } // nnrt::core::kernel

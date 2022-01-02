@@ -38,6 +38,13 @@ if (CCACHE)
     endif()
 endif()
 
+# In ExternalProject_Add, if NNRT_THIRD_PARTY_DOWNLOAD_DIR is specified, CMake will
+# use this directory to cache downloaded 3rd party dependencies and automatically skip
+# downloading from the Internet if the files are available. This is only supported by
+# a limited number of 3rd party libraries.
+set(NNRT_THIRD_PARTY_DOWNLOAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty_downloads")
+message(STATUS "Downloading 3rdparty dependencies to ${NNRT_THIRD_PARTY_DOWNLOAD_DIR}")
+
 
 ### Parse NNRT version number
 file(STRINGS "csrc/version.txt" NNRT_VERSION_READ)

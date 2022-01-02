@@ -41,7 +41,7 @@ TEST_CASE("Test 1D KDTree Construction CPU") {
 
 	o3c::Tensor kd_tree_points2(kd_tree_point_data2, {static_cast<long>(kd_tree_point_data2.size()), 1}, o3c::Dtype::Float32, device);
 	core::KdTree kd_tree2(kd_tree_points2);
-	o3c::Tensor indices2 = kd_tree2.GetIndices().To(o3c::Device("CPU:0"));
+	o3c::Tensor indices2 = kd_tree2.GenerateTreeDiagram().To(o3c::Device("CPU:0"));
 
 	for(int i = 0; i < indices2.GetLength(); i++){
 		std::cout << reinterpret_cast<int*>(indices2.GetDataPtr())[i] << std::endl;
