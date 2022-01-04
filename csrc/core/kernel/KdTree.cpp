@@ -16,6 +16,7 @@
 #include <fmt/format.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
+#include "string/join_string_separator.h"
 #include "core/kernel/KdTree.h"
 #include "core/kernel/KdTreeUtils.h"
 #include "core/DeviceSelection.h"
@@ -27,11 +28,11 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::kernel::kdtree {
 
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
+void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root, int& root_node_index) {
 	core::InferDeviceFromEntityAndExecute(
 			points,
-			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root); },
-			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root);); }
+			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root, root_node_index); },
+			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root, root_node_index);); }
 	);
 
 }
@@ -59,6 +60,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 inline open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const o3c::Device& device) {
 	o3c::Blob target_blob(byte_count, device);
 	o3c::MemoryManager::Memcpy(target_blob.GetDataPtr(), device, index_data.GetDataPtr(), index_data.GetDevice(), byte_count);
+	return target_blob;
 }
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points) {
@@ -85,7 +87,7 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 
 	o3gk::NDArrayIndexer point_indexer(kd_tree_points, 1);
 
-	std::function<std::string(int)> print_point = [&point_indexer, &dimension_count](int point_index) {
+	std::function<std::string(int)> point_to_string = [&point_indexer, &dimension_count](int point_index) {
 		auto* point_data = point_indexer.GetDataPtr<float>(point_index);
 		std::string point_string = fmt::format("[{:0>5}", point_data[0]);
 		for (int i_dimension = 1; i_dimension < dimension_count; i_dimension++) {
@@ -98,22 +100,36 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 	const int min_gap_size = 1;
 
 	const int leaf_node_length = point_string_length + min_gap_size;
-	int last_level_string_length = IntPower<2>(tree_height - 1) * leaf_node_length;
+	int last_level_string_length = IntPower(2, tree_height - 1) * leaf_node_length + 1;
 	auto get_initial_offset = [&last_level_string_length, &leaf_node_length](int level) {
-		return (last_level_string_length - leaf_node_length) / (2 * IntPower<2>(level));
+		return (last_level_string_length / (2 * IntPower(2, level))) - (leaf_node_length / 2);
 	};
 
-	std::string level_strings[tree_height * 3 - 2];
+	auto get_gap_length = [&last_level_string_length, &leaf_node_length](int level) {
+		return (last_level_string_length / IntPower(2, level)) - leaf_node_length + 1;
+	};
+
+	const int row_count = tree_height * 3 - 2;
+	std::vector<std::string> row_strings(row_count);
 	bool level_initialized[tree_height];
 
 	std::function<void(KdTreeNode*, int)> fill_tree_level_strings =
-			[&fill_tree_level_strings, &level_strings, &print_point, &get_initial_offset]
+			[&fill_tree_level_strings, &get_initial_offset, &get_gap_length, &row_strings, &level_initialized, &point_to_string]
 					(KdTreeNode* node, int level) {
-				std::string point_string = print_point(node->index);
-
+				fill_tree_level_strings(node->left_child, level + 1);
+				fill_tree_level_strings(node->right_child, level + 1);
+				const int point_row = level * 3;
+				if (level_initialized[level]) {
+					row_strings[point_row] += fmt::format("{: >{}}", "", get_gap_length(level));
+				} else {
+					int initial_offset = get_initial_offset(level);
+					row_strings[point_row] += fmt::format("{: >{}}", "", initial_offset);
+					level_initialized[level] = true;
+				}
+				row_strings[level * 3] += point_to_string(node->index);
 			};
-
-
+	fill_tree_level_strings(root_node_cpu, 0);
+	diagram = string::join(row_strings, "\n");
 }
 
 } //  nnrt::core::kernel::kdtree

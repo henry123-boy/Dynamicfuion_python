@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
 #include <cstdint>
 
 namespace nnrt::core::kernel::kdtree {
@@ -30,14 +31,23 @@ inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level
 	return count;
 }
 
-template <unsigned int p>
-int constexpr IntPower(const int x){
+template<unsigned int p>
+int constexpr IntKnownPower(const int x) {
 	if constexpr (p == 0) return 1;
 	if constexpr (p == 1) return x;
 
-	int tmp = IntPower<p / 2>(x);
+	int tmp = IntKnownPower<p / 2>(x);
 	if constexpr ((p % 2) == 0) { return tmp * tmp; }
 	else { return x * tmp * tmp; }
+}
+
+static int IntPower(int x, unsigned int p) {
+	if (p == 0) return 1;
+	if (p == 1) return x;
+
+	int tmp = IntPower(x, p / 2);
+	if (p % 2 == 0) return tmp * tmp;
+	else return x * tmp * tmp;
 }
 
 } // namespace nnrt::core::kernel::kdtree

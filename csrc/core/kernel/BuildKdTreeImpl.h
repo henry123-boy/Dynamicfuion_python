@@ -43,7 +43,8 @@ inline void Swap(KdTreeNode* node1, KdTreeNode* node2) {
 
 template<open3d::core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
-inline KdTreeNode* FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t range_end, int32_t i_dimension, const o3gk::NDArrayIndexer& point_indexer) {
+inline KdTreeNode*
+FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t range_end, int32_t i_dimension, const o3gk::NDArrayIndexer& point_indexer) {
 	KdTreeNode* range_start_node = nodes + range_start;
 	KdTreeNode* range_end_node = nodes + range_end;
 	if (range_end <= range_start) return nullptr;
@@ -78,11 +79,6 @@ inline KdTreeNode* FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t ra
 				swap_target++;
 			}
 		}
-
-		// in rare cases, swap target ends up with a smaller value than the median candidate
-		// if (coordinate(swap_target) < coordinate(last)) {
-		// 	swap_target += swap_target < end;
-		// }
 		// push swap_target to the back of the range, bringing the original median candidate ("middle") to the swap_target location
 		Swap<TDeviceType>(swap_target, last);
 
@@ -102,14 +98,13 @@ inline KdTreeNode* FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t ra
 			range_start_node = swap_target;
 		}
 	}
-	// }
 }
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
-inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* range_nodes_end,  RangeNode* range_node,
-											KdTreeNode* nodes, int32_t i_dimension,
+inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* range_nodes_end, RangeNode* range_node,
+                                            KdTreeNode* nodes, int32_t i_dimension,
                                             const o3gk::NDArrayIndexer& point_indexer) {
 
 	KdTreeNode* median_node = FindMedian<TDeviceType>(nodes, range_node->range_start, range_node->range_end, i_dimension, point_indexer);
@@ -151,12 +146,8 @@ void ParallelFor(int64_t n, const func_t& func) {
 #endif
 
 
-
-
-
-
 template<open3d::core::Device::DeviceType TDeviceType>
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
+void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root, int& root_node_index) {
 	const int64_t point_count = points.GetLength();
 
 	const auto dimension_count = (int32_t) points.GetShape(1);
@@ -184,7 +175,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreeNode& node = nodes[workload_idx];
-				range_nodes[workload_idx].node=&node;
+				range_nodes[workload_idx].node = &node;
 				node.index = static_cast<int32_t>(workload_idx);
 			}
 	);
@@ -213,16 +204,18 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 		);
 		i_dimension = (i_dimension + 1) % dimension_count;
 	}
+	int32_t* root_node_index_address = &root_node_index;
 
 	// convert from index-based tree to direct / pointer-based tree to facilitate simple subsequent searches & insertion
 	launcher::ParallelFor(
-			secondary_index_length - IntPower<2>(tree_level_count),
+			secondary_index_length - IntPower(2, tree_level_count - 1),
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode& range_node = range_nodes[workload_idx];
-				if(workload_idx == 0){
+				if (workload_idx == 0) {
 					*root = range_node.node;
+					*root_node_index_address = range_node.node - nodes;
 				}
-				if(range_node.node != nullptr){
+				if (range_node.node != nullptr) {
 					RangeNode& left_child_candidate = range_nodes[2 * workload_idx + 1];
 					RangeNode& right_child_candidate = range_nodes[2 * workload_idx + 2];
 					range_node.node->left_child = left_child_candidate.node;
@@ -230,9 +223,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 				}
 			}
 	);
-
 }
-
 
 
 } // nnrt::core::kernel::kdtree

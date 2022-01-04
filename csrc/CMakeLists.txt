@@ -103,7 +103,7 @@ set(NNRT_SOURCE_FILES
     core/kernel/BuildKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
-    core/kernel/KdTree.cpp)
+    core/kernel/KdTree.cpp string/join_string_separator.cpp string/join_string_separator.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
