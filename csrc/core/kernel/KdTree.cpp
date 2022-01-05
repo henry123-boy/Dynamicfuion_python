@@ -117,7 +117,7 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 
 	std::function<void(KdTreeNode*, int, bool)> fill_tree_level_strings =
 			[&fill_tree_level_strings, &get_initial_offset, &get_gap_length, &row_strings,
-					&level_initialized, &point_to_string, &point_string_length]
+					&level_initialized, &point_to_string, &point_string_length, &tree_height]
 					(KdTreeNode* node, int level, bool right) {
 				if (node != nullptr) {
 					fill_tree_level_strings(node->left_child, level + 1, false);
@@ -161,7 +161,47 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 						}
 					}
 					row_strings[point_row] += point_to_string(node->index);
-
+				} else if (level < tree_height) {
+					// we have to print empty space here when nodes are missing from some tree branches
+					const int point_row = level * 3;
+					if (level_initialized[level]) {
+						const int gap_length = get_gap_length(level);
+						row_strings[point_row] += fmt::format("{: >{}}", "", gap_length);
+						if (level > 0) {
+							if (right) {
+								const int diagonal_bar_at = gap_length + 2 * (point_string_length / 2 - 1);
+								const int diagonal_bar_row = level * 3 - 1;
+								row_strings[diagonal_bar_row] += fmt::format("{: >{}} ", "", diagonal_bar_at);
+								const int handle_row = level * 3 - 2;
+								const int vertical_bar_at = diagonal_bar_at / 2;
+								row_strings[handle_row] += fmt::format("{: >{}}", "", vertical_bar_at);
+							} else {
+								const int diagonal_bar_at = gap_length + 2 * (point_string_length / 2 + 1);
+								const int diagonal_bar_row = level * 3 - 1;
+								row_strings[diagonal_bar_row] += fmt::format("{: >{}} ", "", diagonal_bar_at);
+								const int handle_row = level * 3 - 2;
+								row_strings[handle_row] += fmt::format("{: >{}}", "", diagonal_bar_at + 2);
+								const int vertical_bar_at = gap_length / 2 + (point_string_length / 2 - 1);
+								row_strings[handle_row] += fmt::format("{: >{}} ", "", vertical_bar_at);
+							}
+						}
+					} else {
+						const int initial_offset = get_initial_offset(level);
+						row_strings[point_row] += fmt::format("{: >{}}", "", initial_offset);
+						level_initialized[level] = true;
+						// draw the connector to parent (can only be a left child, since whole level just initialized)
+						if (level > 0) {
+							const int parent_level_initial_offset = get_initial_offset(level - 1);
+							const int diagonal_bar_at = initial_offset + (point_string_length / 2 + 1);
+							const int diagonal_bar_row = level * 3 - 1;
+							row_strings[diagonal_bar_row] += fmt::format("{: >{}} ", "", diagonal_bar_at);
+							const int handle_row = level * 3 - 2;
+							row_strings[handle_row] += fmt::format("{: >{}}", "", diagonal_bar_at + 1);
+							const int vertical_bar_at = parent_level_initial_offset - initial_offset - 2;
+							row_strings[handle_row] += fmt::format("{: >{}} ", "", vertical_bar_at);
+						}
+					}
+					row_strings[point_row] += fmt::format("{: >{}}", "", point_string_length);
 				}
 			};
 	fill_tree_level_strings(root_node_cpu, 0, false);

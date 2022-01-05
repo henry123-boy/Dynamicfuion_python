@@ -33,13 +33,13 @@ TEST_CASE("Test 1D KDTree Construction CPU") {
 	core::KdTree kd_tree(kd_tree_points);
 	std::string diagram = kd_tree.GenerateTreeDiagram();
 	std::cout << std::endl;
-	std::cout << diagram << std::endl;
+	// std::cout << diagram << std::endl;
 
 
-	// std::vector<float> kd_tree_point_data2{-1, 60, 33, 1, 24, 88, 67, 40, 39, 3, 0, 4};
-	// o3c::Tensor kd_tree_points2(kd_tree_point_data2, {static_cast<long>(kd_tree_point_data2.size()), 1}, o3c::Dtype::Float32, device);
-	// core::KdTree kd_tree2(kd_tree_points2);
-	// std::cout << kd_tree2.GenerateTreeDiagram() << std::endl;
+	std::vector<float> kd_tree_point_data2{-1, 60, 33, 1, 24, 88, 67, 40, 39, 3, 0, 4};
+	o3c::Tensor kd_tree_points2(kd_tree_point_data2, {static_cast<long>(kd_tree_point_data2.size()), 1}, o3c::Dtype::Float32, device);
+	core::KdTree kd_tree2(kd_tree_points2);
+	std::cout << kd_tree2.GenerateTreeDiagram() << std::endl;
 
 
 
