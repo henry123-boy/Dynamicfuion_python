@@ -42,7 +42,6 @@ private:
 
 	const std::shared_ptr<open3d::core::Blob> index_data;
 	void* root;
-	int32_t root_node_index;
 
 };
 

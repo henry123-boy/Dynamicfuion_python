@@ -22,8 +22,7 @@
 namespace nnrt::core::kernel::kdtree {
 
 template
-void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root,
-                                                              int& root_node_index);
+void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
 template
 void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,

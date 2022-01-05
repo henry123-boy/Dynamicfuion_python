@@ -28,11 +28,11 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::kernel::kdtree {
 
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root, int& root_node_index) {
+void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
 	core::InferDeviceFromEntityAndExecute(
 			points,
-			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root, root_node_index); },
-			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root, root_node_index);); }
+			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root); },
+			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root);); }
 	);
 
 }

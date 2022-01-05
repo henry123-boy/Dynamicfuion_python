@@ -149,7 +149,7 @@ void ParallelFor(int64_t n, const func_t& func) {
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root, int& root_node_index) {
+void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
 	const int64_t point_count = points.GetLength();
 
 	const auto dimension_count = (int32_t) points.GetShape(1);
@@ -208,7 +208,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 		);
 		i_dimension = (i_dimension + 1) % dimension_count;
 	}
-	int32_t* root_node_index_address = &root_node_index;
 
 	// convert from index-based tree to direct / pointer-based tree to facilitate simple subsequent searches & insertion
 	launcher::ParallelFor(
@@ -217,7 +216,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 				RangeNode& range_node = range_nodes[workload_idx];
 				if (workload_idx == 0) {
 					*root = range_node.node;
-					*root_node_index_address = range_node.node - nodes;
 				}
 				if (range_node.node != nullptr) {
 					RangeNode& left_child_candidate = range_nodes[2 * workload_idx + 1];
