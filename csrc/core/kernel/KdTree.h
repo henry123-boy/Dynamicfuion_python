@@ -48,6 +48,7 @@ void FindKNearestKdTreePoints(
 		int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points
 );
 
-void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points);
+void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
+                         int digit_length);
 
 } //  nnrt::core::kernel::kdtree

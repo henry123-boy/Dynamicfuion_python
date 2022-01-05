@@ -70,9 +70,9 @@ open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor
 	return o3c::TensorList({closest_indices, squared_distances});
 }
 
-std::string KdTree::GenerateTreeDiagram() const{
+std::string KdTree::GenerateTreeDiagram(int digit_length) const{
 	std::string diagram;
-	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->root, this->points);
+	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->root, this->points, digit_length);
 	return diagram;
 }
 

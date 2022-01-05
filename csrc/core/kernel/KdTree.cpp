@@ -63,7 +63,8 @@ inline open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int
 	return target_blob;
 }
 
-void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points) {
+void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
+                         const int digit_length) {
 	auto* nodes = reinterpret_cast<const KdTreeNode*>(index_data.GetDataPtr());
 	const auto* root_node = reinterpret_cast<const KdTreeNode*>(root);
 	auto root_index = static_cast<int32_t>(root_node - nodes);
@@ -81,32 +82,31 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 	};
 	int32_t tree_height = get_tree_height(root_node_cpu, 0);
 	const int dimension_count = static_cast<int>(kd_tree_points.GetShape(1));
-	const int digit_length = 5;
 	const int coordinate_spacing = 1;
 
 
 	o3gk::NDArrayIndexer point_indexer(kd_tree_points, 1);
 
-	std::function<std::string(int)> point_to_string = [&point_indexer, &dimension_count](int point_index) {
+	std::function<std::string(int)> point_to_string = [&point_indexer, &dimension_count, & digit_length](int point_index) {
 		auto* point_data = point_indexer.GetDataPtr<float>(point_index);
-		std::string point_string = fmt::format("[{: >5}", point_data[0]);
+		std::string point_string = fmt::format("[{: >{}}", point_data[0], digit_length);
 		for (int i_dimension = 1; i_dimension < dimension_count; i_dimension++) {
-			point_string += fmt::format(" {: >5}", point_data[i_dimension]);
+			point_string += fmt::format(" {: >{}}", point_data[i_dimension], digit_length);
 		}
 		point_string += "]";
 		return point_string;
 	};
-	const int point_string_length = (digit_length + coordinate_spacing) * (dimension_count - 1) + digit_length + 2; //2 is for the brackets
+	const int point_string_length = (digit_length + coordinate_spacing) * (dimension_count - 1) + digit_length + 2; //2 is for the brackets, 1 for the sign
 	const int min_gap_size = 1;
 
 	const int leaf_node_length = point_string_length + min_gap_size;
 	int last_level_string_length = IntPower(2, tree_height - 1) * leaf_node_length;
-	auto get_initial_offset = [&last_level_string_length, &leaf_node_length](int level) {
-		return (last_level_string_length / (2 * IntPower(2, level))) - (leaf_node_length / 2);
+	auto get_initial_offset = [&leaf_node_length, &tree_height](int level) {
+		return (IntPower(2, tree_height - level - 1) - 1) * (leaf_node_length / 2);
 	};
 
-	auto get_gap_length = [&last_level_string_length, &leaf_node_length](int level) {
-		return (last_level_string_length / IntPower(2, level)) - leaf_node_length + 1;
+	auto get_gap_length = [&leaf_node_length, &tree_height](int level) {
+		return (IntPower(2, tree_height - level - 1) - 1) * leaf_node_length + 1;
 	};
 
 	const int row_count = tree_height * 3 - 2;
