@@ -120,9 +120,11 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 	RangeNode* right_child = range_nodes + 2 * parent_index + 2;
 
 	if (left_child < range_nodes_end) {
+		left_child->node = nullptr;
 		left_child->range_start = range_node->range_start;
 		left_child->range_end = median_node_index;
 		if (right_child < range_nodes_end) {
+			right_child->node = nullptr;
 			right_child->range_start = median_node_index + 1;
 			right_child->range_end = range_node->range_end;
 		}
@@ -133,7 +135,7 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 
 // ST
 // __DEBUG
-#define __DEBUG_ST__
+// #define __DEBUG_ST__
 #ifdef __DEBUG_ST__
 namespace cpu_launcher_st {
 template<typename func_t>
@@ -177,6 +179,8 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 				KdTreeNode& node = nodes[workload_idx];
 				range_nodes[workload_idx].node = &node;
 				node.index = static_cast<int32_t>(workload_idx);
+				node.left_child = nullptr;
+				node.right_child = nullptr;
 			}
 	);
 
