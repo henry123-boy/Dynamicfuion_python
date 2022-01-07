@@ -119,7 +119,7 @@ void Test2DKdTreeConstruction(const o3c::Device& device) {
 
 	std::vector<float> kd_tree_point_data2{6.9, 0.7, 8.5, 4.9, 4.6, 1.1, 4.8, 7.9, 8.2, 2.6, 8.4, 5.4, 5.2,
 	                                       1.7, 9.6, 0.1, 7.1, 8.3, 2.9, 6.4, 5.5, 2.2, 4.6, 5.6, 6.8, 1.9,
-	                                       3.3, 4.8, 2.1, 7.9, 7. , 7.8, 0.4, 5.2, 0.2, 8.7, 1. , 4.6, 1.9,
+	                                       3.3, 4.8, 2.1, 7.9, 7., 7.8, 0.4, 5.2, 0.2, 8.7, 1., 4.6, 1.9,
 	                                       2.5};
 	o3c::Tensor kd_tree_points2(kd_tree_point_data2, {20, 2}, o3c::Dtype::Float32, device);
 	core::KdTree kd_tree2(kd_tree_points2);
@@ -154,10 +154,10 @@ TEST_CASE("Test 2D KDTree Construction CUDA") {
 
 
 void Test3DKdTreeConstruction(const o3c::Device& device) {
-	std::vector<float> kd_tree_point_data{0. ,  9.8,  6.8,  5.7,  5. ,  0.8,  2.1,  1.8,  8.9,  8.3,  1.9,
-	                                      2.1,  0.4,  4.3,  3. ,  8.3,  1.3,  2.9,  1.5,  3.2,  7.6,  3.1,
-	                                      2. ,  7.7,  3.3,  8.4,  0.9,  4.6,  2.7,  5.6,  6.7,  4.9,  1.3,
-	                                      5.8,  0.5,  9.3,  0.5,  5.4,  0. ,  2.8,  7. ,  6.9,  5.2,  7.7,
+	std::vector<float> kd_tree_point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
+	                                      2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
+	                                      2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
+	                                      5.8, 0.5, 9.3, 0.5, 5.4, 0., 2.8, 7., 6.9, 5.2, 7.7,
 	                                      8.6};
 
 	o3c::Tensor kd_tree_points(kd_tree_point_data, {15, 3}, o3c::Dtype::Float32, device);
@@ -176,11 +176,11 @@ void Test3DKdTreeConstruction(const o3c::Device& device) {
 			"dim: 0 [1.5 3.2 7.6] [2.1 1.8 8.9] [0.5 5.4 0.0] [2.8 7.0 6.9] [8.3 1.9 2.1] [5.8 0.5 9.3] [5.7 5.0 0.8] [5.2 7.7 8.6]";
 	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(3));
 
-	std::vector<float> kd_tree_point_data2{-5. ,  4.8,  1.8,  0.7,  0. , -4.2, -2.9, -3.2,  3.9,  3.3, -3.1,
-	                                      -2.9, -4.6, -0.7, -2. ,  3.3, -3.7, -2.1, -3.5, -1.8,  2.6, -1.9,
-	                                      -3. ,  2.7, -1.7,  3.4, -4.1, -0.4, -2.3,  0.6,  1.7, -0.1, -3.7,
-	                                      0.8, -4.5,  4.3, -4.5,  0.4, -5. , -2.2,  2. ,  1.9,  0.2,  2.7,
-	                                      3.6};
+	std::vector<float> kd_tree_point_data2{-5., 4.8, 1.8, 0.7, 0., -4.2, -2.9, -3.2, 3.9, 3.3, -3.1,
+	                                       -2.9, -4.6, -0.7, -2., 3.3, -3.7, -2.1, -3.5, -1.8, 2.6, -1.9,
+	                                       -3., 2.7, -1.7, 3.4, -4.1, -0.4, -2.3, 0.6, 1.7, -0.1, -3.7,
+	                                       0.8, -4.5, 4.3, -4.5, 0.4, -5., -2.2, 2., 1.9, 0.2, 2.7,
+	                                       3.6};
 	o3c::Tensor kd_tree_points2(kd_tree_point_data2, {15, 3}, o3c::Dtype::Float32, device);
 	core::KdTree kd_tree2(kd_tree_points2);
 	// diagram verified manually via numpy/jupyter
@@ -207,4 +207,35 @@ TEST_CASE("Test 3D KDTree Construction CPU") {
 TEST_CASE("Test 3D KDTree Construction CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	Test3DKdTreeConstruction(device);
+}
+
+void Test3DKdTreeSearch(const o3c::Device& device) {
+	std::vector<float> kd_tree_point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
+	                                      2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
+	                                      2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
+	                                      5.8, 0.5, 9.3, 0.5, 5.4, 0., 2.8, 7., 6.9, 5.2, 7.7,
+	                                      8.6};
+	o3c::Tensor kd_tree_points(kd_tree_point_data, {15, 3}, o3c::Dtype::Float32, device);
+	core::KdTree kd_tree(kd_tree_points);
+
+	std::vector<float> query_point_data{4.1, 7.2, 6.7, 8., 8.7, 3.3, 4.8, 1.8, 2.6};
+	o3c::Tensor query_points(query_point_data, {3, 3}, o3c::Dtype::Float32, device);
+	o3c::Tensor nearest_neighbor_indices;
+	o3c::Tensor squared_distances;
+	kd_tree.FindKNearestToPoints(nearest_neighbor_indices, squared_distances, query_points, 4);
+	std::cout << "Size: " << nearest_neighbor_indices.GetShape().ToString() << std::endl;
+	auto* nni_ptr = nearest_neighbor_indices.GetDataPtr<int32_t>();
+	for (int i = 0; i < 12; i++) {
+		std::cout << nni_ptr[i] << std::endl;
+	}
+}
+
+TEST_CASE("Test 3D KDTree Search CPU") {
+	auto device = o3c::Device("CPU:0");
+	Test3DKdTreeSearch(device);
+}
+
+TEST_CASE("Test 3D KDTree Search CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	Test3DKdTreeSearch(device);
 }

@@ -108,10 +108,11 @@ FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t range_end, int32_t i_
 template<open3d::core::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* range_nodes_end, RangeNode* range_node,
-                                            KdTreeNode* nodes, int32_t i_dimension,
+                                            KdTreeNode* nodes, uint8_t i_dimension,
                                             const o3gk::NDArrayIndexer& point_indexer) {
 
 	KdTreeNode* median_node = FindMedian<TDeviceType>(nodes, range_node->range_start, range_node->range_end, i_dimension, point_indexer);
+	median_node->i_dimension = i_dimension;
 	range_node->node = median_node;
 	if (median_node == nullptr) {
 		return;
@@ -137,21 +138,6 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 } // namespace
 
 
-// ST
-// __DEBUG
-// #define __DEBUG_ST__
-#ifdef __DEBUG_ST__
-namespace cpu_launcher_st {
-template<typename func_t>
-void ParallelFor(int64_t n, const func_t& func) {
-	for (int64_t i = 0; i < n; ++i) {
-		func(i);
-	}
-}
-} //
-#endif
-
-
 template<open3d::core::Device::DeviceType TDeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
 	const int64_t point_count = points.GetLength();
@@ -170,8 +156,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 
 #if defined(__CUDACC__)
 	namespace launcher = o3c::kernel::cuda_launcher;
-#elif defined(__DEBUG_ST__)//__DEBUG
-	namespace launcher = cpu_launcher_st;
 #else
 	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
@@ -182,6 +166,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreeNode& node = nodes[workload_idx];
 				node.index = static_cast<int32_t>(workload_idx);
+				node.i_dimension = 0;
 				node.left_child = nullptr;
 				node.right_child = nullptr;
 			}
@@ -197,7 +182,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 				range_node.range_end = static_cast<int32_t>(point_count);
 			}
 	);
-	int32_t i_dimension = 0;
+	uint8_t i_dimension = 0;
 	// build tree by splitting each node down the median along a different dimension at each iteration
 	for (int64_t range_start_index = 0, range_length = 1;
 	     range_start_index < point_count;

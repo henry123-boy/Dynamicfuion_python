@@ -29,7 +29,7 @@ template
 void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
                                                                      const open3d::core::Tensor& query_points,
                                                                      int32_t k, const open3d::core::Blob& index_data,
-                                                                     const open3d::core::Tensor& kd_tree_points);
+                                                                     const open3d::core::Tensor& kd_tree_points,const void* root);
 
 
 } // nnrt::core::kernel::kdtree

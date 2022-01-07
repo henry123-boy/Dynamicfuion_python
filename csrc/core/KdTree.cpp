@@ -57,18 +57,16 @@ void KdTree::UpdatePoint(const open3d::core::Tensor& point) {
 	o3u::LogError("Not implemented");
 }
 
-open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor& query_points, int32_t k) const{
+void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points, int32_t k) const{
 	query_points.AssertDevice(this->points.GetDevice());
 	query_points.AssertDtype(o3c::Dtype::Float32);
-	if(query_points.GetShape().GetLength() != this->points.GetShape().GetLength() ||
+	if(query_points.GetShape().size() != 2 ||
 	   query_points.GetShape(1) != this->points.GetShape(1)){
 		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the KD Tree, which"
-					  "has shape {}. Both arrays should be 2D and have matching axis 1 length (i.e. point dimensions).",
+					  "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
 		              query_points.GetShape(), this->points.GetShape());
 	}
-	o3c::Tensor closest_indices, squared_distances;
-	kernel::kdtree::FindKNearestKdTreePoints(closest_indices, squared_distances, query_points, k, *this->index_data, this->points);
-	return o3c::TensorList({closest_indices, squared_distances});
+	kernel::kdtree::FindKNearestKdTreePoints(nearest_neighbor_indices, squared_distances, query_points, k, *this->index_data, this->points, this->root);
 }
 
 std::string KdTree::GenerateTreeDiagram(int digit_length) const{

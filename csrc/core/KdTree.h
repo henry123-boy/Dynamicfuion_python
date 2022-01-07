@@ -32,8 +32,8 @@ public:
 	virtual void Reindex();
 	virtual void UpdatePoint(const open3d::core::Tensor& point);
 	virtual void ChangeToAppendedTensor(const open3d::core::Tensor& tensor);
-	virtual std::string GenerateTreeDiagram(int digit_length = 5) const;
-	virtual open3d::core::TensorList FindKNearestToPoints(const open3d::core::Tensor& query_points, int32_t k) const;
+	std::string GenerateTreeDiagram(int digit_length = 5) const;
+	virtual void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points, int32_t k) const;
 
 
 private:

@@ -23,6 +23,7 @@ namespace nnrt::core::kernel::kdtree {
 
 struct KdTreeNode {
 	int32_t index;
+	uint8_t i_dimension;
 	KdTreeNode* left_child;
 	KdTreeNode* right_child;
 };
@@ -44,16 +45,14 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 template<open3d::core::Device::DeviceType DeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
-void FindKNearestKdTreePoints(
-		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
-		int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points
-);
+void
+FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
+                         int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root);
 
 template<open3d::core::Device::DeviceType DeviceType>
-void FindKNearestKdTreePoints(
-		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
-		int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points
-);
+void
+FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
+                         int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root);
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
                          int digit_length);
