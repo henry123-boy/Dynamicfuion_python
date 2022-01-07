@@ -59,6 +59,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
                          const int digit_length) {
+
 	auto* nodes = reinterpret_cast<const KdTreeNode*>(index_data.GetDataPtr());
 	const auto* root_node = reinterpret_cast<const KdTreeNode*>(root);
 	auto root_index = static_cast<int32_t>(root_node - nodes);

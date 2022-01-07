@@ -73,6 +73,10 @@ open3d::core::TensorList KdTree::FindKNearestToPoints(const open3d::core::Tensor
 
 std::string KdTree::GenerateTreeDiagram(int digit_length) const{
 	std::string diagram;
+	if(digit_length % 2 == 0 || digit_length < 1){
+		o3u::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
+		              digit_length);
+	}
 	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->root, this->points, digit_length);
 	return diagram;
 }
