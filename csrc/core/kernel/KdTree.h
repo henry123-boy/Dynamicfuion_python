@@ -16,6 +16,7 @@
 #pragma once
 
 #include <open3d/core/Tensor.h>
+#include <open3d/core/Blob.h>
 #include "core/DimensionCount.h"
 
 namespace nnrt::core::kernel::kdtree {
@@ -31,6 +32,12 @@ struct RangeNode{
 	int32_t range_start;
 	int32_t range_end;
 };
+
+open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const open3d::core::Device& device);
+
+open3d::core::Blob IndexDataToHost(const open3d::core::Blob& index_data, int point_count);
+
+void IndexDataToHost_CUDA(open3d::core::Blob& index_data_cpu, const open3d::core::Blob& index_data, int point_count);
 
 void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 

@@ -25,6 +25,10 @@
 #include "core/KeyValuePair.h"
 #include "core/DeviceHeap.h"
 #include "core/PlatformIndependence.h"
+//__DEBUG
+#ifdef __CUDACC__
+#include <open3d/core/CUDAUtils.h>
+#endif
 
 
 namespace o3c = open3d::core;
@@ -109,10 +113,10 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 
 	KdTreeNode* median_node = FindMedian<TDeviceType>(nodes, range_node->range_start, range_node->range_end, i_dimension, point_indexer);
 	range_node->node = median_node;
-	auto median_node_index = static_cast<int32_t>(median_node - nodes);
 	if (median_node == nullptr) {
 		return;
 	}
+	auto median_node_index = static_cast<int32_t>(median_node - nodes);
 
 	auto parent_index = range_node - range_nodes;
 
@@ -127,6 +131,11 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 			right_child->node = nullptr;
 			right_child->range_start = median_node_index + 1;
 			right_child->range_end = range_node->range_end;
+			//__DEBUG
+			// printf("node index: %d; range: [%d, %d); left range: [%d, %d); right range: [%d, %d)\n",
+			// 	   range_node->node->index, range_node->range_start, range_node->range_end,
+			// 	   left_child->range_start, left_child->range_end,
+			// 	   right_child->range_start, right_child->range_end);
 		}
 	}
 }
@@ -166,7 +175,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 
 #if defined(__CUDACC__)
 	namespace launcher = o3c::kernel::cuda_launcher;
-#elif defined(__DEBUG_ST__)
+#elif defined(__DEBUG_ST__)//__DEBUG
 	namespace launcher = cpu_launcher_st;
 #else
 	namespace launcher = o3c::kernel::cpu_launcher;
@@ -177,19 +186,20 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreeNode& node = nodes[workload_idx];
-				range_nodes[workload_idx].node = &node;
 				node.index = static_cast<int32_t>(workload_idx);
 				node.left_child = nullptr;
 				node.right_child = nullptr;
 			}
 	);
 
+
 	launcher::ParallelFor(
 			1,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				RangeNode& node = range_nodes[workload_idx];
-				node.range_start = 0;
-				node.range_end = static_cast<int32_t>(point_count);
+				RangeNode& range_node = range_nodes[workload_idx];
+				range_nodes[workload_idx].node = nodes;
+				range_node.range_start = 0;
+				range_node.range_end = static_cast<int32_t>(point_count);
 			}
 	);
 	int32_t i_dimension = 0;
@@ -209,23 +219,36 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 		i_dimension = (i_dimension + 1) % dimension_count;
 	}
 
+	o3c::Tensor root_index_tensor({1}, o3c::Dtype::Int32, points.GetDevice());
+	auto* root_index_at = root_index_tensor.GetDataPtr<int32_t>();
+
 	// convert from index-based tree to direct / pointer-based tree to facilitate simple subsequent searches & insertion
 	launcher::ParallelFor(
 			secondary_index_length - IntPower(2, tree_level_count - 1),
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode& range_node = range_nodes[workload_idx];
 				if (workload_idx == 0) {
-					*root = range_node.node;
+					*root_index_at = static_cast<int32_t>(range_node.node - nodes);
 				}
 				if (range_node.node != nullptr) {
 					RangeNode& left_child_candidate = range_nodes[2 * workload_idx + 1];
 					RangeNode& right_child_candidate = range_nodes[2 * workload_idx + 2];
 					range_node.node->left_child = left_child_candidate.node;
 					range_node.node->right_child = right_child_candidate.node;
+					//__DEBUG
+					printf("node index: %d)\n",range_node.node->index);
 				}
 			}
 	);
+
+	o3c::Blob index_data_cpu(144, o3c::Device("CPU:0"));
+	o3c::MemoryManager::Memcpy(index_data_cpu.GetDataPtr(), o3c::Device("CPU:0"), nodes, index_data.GetDevice(), 144);
+	auto* nodes_cpu = reinterpret_cast<KdTreeNode*>(index_data_cpu.GetDataPtr());
+
+	*root = nodes + *(root_index_tensor.To(o3c::Device("CPU:0")).template GetDataPtr<int32_t>());
 }
+
+
 
 
 } // nnrt::core::kernel::kdtree

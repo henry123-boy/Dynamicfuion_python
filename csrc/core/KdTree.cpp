@@ -30,7 +30,8 @@ namespace nnrt::core {
 KdTree::KdTree(const open3d::core::Tensor& points)
 		: points(points),
 		  point_dimension_count(points.GetShape(1)),
-		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())){
+		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())),
+		  root(nullptr){
 	auto dimensions = points.GetShape();
 	points.AssertDtype(o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {

@@ -31,4 +31,5 @@ void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU>(open3d::cor
                                                                      int32_t k, const open3d::core::Blob& index_data,
                                                                      const open3d::core::Tensor& kd_tree_points);
 
+
 } // nnrt::core::kernel::kdtree
