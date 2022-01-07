@@ -92,7 +92,8 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 		point_string += "]";
 		return point_string;
 	};
-	const int point_string_length = (digit_length + coordinate_spacing) * (dimension_count - 1) + digit_length + 2; //2 is for the brackets, 1 for the sign
+	const int point_string_length =
+			(digit_length + coordinate_spacing) * (dimension_count - 1) + digit_length + 2; //2 is for the brackets, 1 for the sign
 	const int min_gap_size = 1;
 
 	const int leaf_node_length = point_string_length + min_gap_size;
@@ -107,6 +108,20 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 
 	const int row_count = tree_height * 3 - 2;
 	std::vector<std::string> row_strings(row_count);
+	// initialize all rows with dimension
+	int i_dimension = 0;
+	const int dim_digit_length = 1;
+	const std::string dim_prefix = "dim: ";
+	for (int i_row = 0; i_row < row_count; i_row++) {
+		if (i_row % 3 == 0) {
+			// we want some descriptor of the kind "dim: <dimension>" at each point row
+			row_strings[i_row] += fmt::format("{}{: >{}} ", dim_prefix, i_dimension, dim_digit_length);
+			i_dimension = (i_dimension + 1) % dimension_count;
+		} else {
+			// initialize non-point rows with white space of length equivalent to dimension prefix & digit
+			row_strings[i_row] += fmt::format("{: >{}} ", "", dim_prefix.length() + dim_digit_length);
+		}
+	}
 	bool level_initialized[tree_height];
 	std::fill(level_initialized, level_initialized + tree_height, 0);
 
@@ -208,7 +223,7 @@ open3d::core::Blob IndexDataToHost(const open3d::core::Blob& index_data, int poi
 	o3c::Blob index_data_cpu = BlobToDevice(index_data, point_count * static_cast<int64_t>(sizeof(KdTreeNode)), o3c::Device("CPU:0"));
 	core::InferDeviceFromEntityAndExecute(
 			index_data,
-			[&] {  },
+			[&] {},
 			[&] { NNRT_IF_CUDA(IndexDataToHost_CUDA(index_data_cpu, index_data, point_count);); }
 	);
 	return index_data_cpu;

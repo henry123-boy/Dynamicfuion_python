@@ -131,11 +131,6 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 			right_child->node = nullptr;
 			right_child->range_start = median_node_index + 1;
 			right_child->range_end = range_node->range_end;
-			//__DEBUG
-			// printf("node index: %d; range: [%d, %d); left range: [%d, %d); right range: [%d, %d)\n",
-			// 	   range_node->node->index, range_node->range_start, range_node->range_end,
-			// 	   left_child->range_start, left_child->range_end,
-			// 	   right_child->range_start, right_child->range_end);
 		}
 	}
 }
@@ -235,8 +230,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 					RangeNode& right_child_candidate = range_nodes[2 * workload_idx + 2];
 					range_node.node->left_child = left_child_candidate.node;
 					range_node.node->right_child = right_child_candidate.node;
-					//__DEBUG
-					printf("node index: %d)\n",range_node.node->index);
 				}
 			}
 	);
