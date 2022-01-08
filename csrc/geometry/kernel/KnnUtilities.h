@@ -35,6 +35,51 @@ inline void SetFloatsToValue(float* array, const int size, const float value) {
 	}
 }
 
+template<o3c::Device::DeviceType TDeviceType, typename TPointVector, typename TMakePointVector>
+NNRT_DEVICE_WHEN_CUDACC
+inline void ProcessNodeEuclideanKNNBruteForce(int& max_at_index, float& max_squared_distance, int32_t* anchor_indices,
+                                              float* squared_distances, const int anchor_count,
+                                              TPointVector& point,
+                                              const open3d::t::geometry::kernel::NDArrayIndexer& node_indexer,
+                                              const int i_node,
+                                              TMakePointVector&& make_point_vector) {
+	auto node_data = node_indexer.GetDataPtr<float>(i_node);
+	auto node = make_point_vector(node_data);
+	float squared_distance = (node - point).squaredNorm();
+	if (squared_distance < max_squared_distance) {
+		squared_distances[max_at_index] = squared_distance;
+		anchor_indices[max_at_index] = i_node;
+
+		//update the maximum distance within current anchor nodes
+		max_at_index = 0;
+		max_squared_distance = squared_distances[max_at_index];
+		for (int i_anchor = 1; i_anchor < anchor_count; i_anchor++) {
+			if (squared_distances[i_anchor] > max_squared_distance) {
+				max_at_index = i_anchor;
+				max_squared_distance = squared_distances[i_anchor];
+			}
+		}
+	}
+}
+
+template<o3c::Device::DeviceType TDeviceType, typename TPointVector, typename TMakePointVector>
+NNRT_DEVICE_WHEN_CUDACC
+inline void FindEuclideanKNNAnchorsBruteForce(int32_t* anchor_indices, float* squared_distances, const int anchor_count,
+                                              const int node_count, TPointVector& point,
+                                              const NDArrayIndexer& node_indexer,
+                                              TMakePointVector&& make_point_vector) {
+	SetFloatsToValue<TDeviceType>(squared_distances, anchor_count, INFINITY);
+
+	int max_at_index = 0;
+	float max_squared_distance = INFINITY;
+
+	for (int i_node = 0; i_node < node_count; i_node++) {
+		ProcessNodeEuclideanKNNBruteForce<TDeviceType, TPointVector>(
+				max_at_index, max_squared_distance, anchor_indices, squared_distances, anchor_count,
+				point, node_indexer, i_node, make_point_vector);
+	}
+}
+
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void ProcessNodeEuclideanKNNBruteForce(int& max_at_index, float& max_squared_distance, int32_t* anchor_indices,
@@ -42,8 +87,8 @@ inline void ProcessNodeEuclideanKNNBruteForce(int& max_at_index, float& max_squa
                                               const Eigen::Vector3f& point,
                                               const open3d::t::geometry::kernel::NDArrayIndexer& node_indexer,
                                               const int i_node) {
-	auto node_pointer = node_indexer.GetDataPtr<float>(i_node);
-	Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
+	auto node_data = node_indexer.GetDataPtr<float>(i_node);
+	Eigen::Map<Eigen::Vector3f> node(node_data);
 	float squared_distance = (node - point).squaredNorm();
 	if (squared_distance < max_squared_distance) {
 		squared_distances[max_at_index] = squared_distance;

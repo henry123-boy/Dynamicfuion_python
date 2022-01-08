@@ -18,9 +18,7 @@
 #include "core/DeviceSelection.h"
 #include "core/kernel/KdTree.h"
 
-
 #include <limits>
-#include <cstring>
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -29,7 +27,6 @@ namespace o3u = open3d::utility;
 namespace nnrt::core {
 KdTree::KdTree(const open3d::core::Tensor& points)
 		: points(points),
-		  point_dimension_count(points.GetShape(1)),
 		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())),
 		  root(nullptr){
 	auto dimensions = points.GetShape();

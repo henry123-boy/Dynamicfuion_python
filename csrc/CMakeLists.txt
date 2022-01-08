@@ -76,6 +76,8 @@ set(NNRT_SOURCE_FILES
 
     string/split_string.h
     string/split_string.cpp
+    string/join_string_separator.cpp
+    string/join_string_separator.h
 
     core/KeyValuePair.h
     core/DeviceHeap.h
@@ -92,18 +94,30 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDAImpl.cuh
     core/CUDA/HostHeapCUDA.cu
     core/CUDA/HostHeapCUDA.h
+
     core/KdTree.h
-    core/DeviceKdTree.h
     core/KdTree.cpp
-    core/DeviceSelection.h
-    core/DimensionCount.h
-    core/TensorManipulationRoutines.h
-    core/TensorManipulationRoutines.cpp
     core/kernel/KdTree.h
+    core/kernel/KdTree.cpp
     core/kernel/BuildKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
-    core/kernel/KdTree.cpp string/join_string_separator.cpp string/join_string_separator.h bench/kdtree_benchmark.cpp)
+    core/DimensionCount.h
+
+    core/LinearIndex.cpp
+    core/LinearIndex.h
+    core/kernel/LinearIndex.cpp
+    core/kernel/LinearIndex.h
+    core/kernel/LinearIndexImpl.h
+    core/kernel/LinearIndexCPU.cpp
+    core/kernel/LinearIndexCUDA.cu
+
+    core/DeviceSelection.h
+
+    core/TensorManipulationRoutines.h
+    core/TensorManipulationRoutines.cpp
+
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

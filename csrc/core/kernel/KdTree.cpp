@@ -40,7 +40,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 void
 FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
                          int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root) {
-	const int dimension_count = (int) kd_tree_points.GetShape(1);
 	core::InferDeviceFromEntityAndExecute(
 			kd_tree_points,
 			[&] {

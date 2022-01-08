@@ -34,10 +34,7 @@ namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph {
+namespace nnrt::geometry::kernel::graph {
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
 void ComputeAnchorsAndWeightsEuclidean
@@ -129,7 +126,4 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	);
 }
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

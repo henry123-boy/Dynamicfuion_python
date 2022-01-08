@@ -160,25 +160,11 @@ void FindKnnInKdSubtreeIterative(const KdTreeNode* root, const KdTreeNode* last_
 	} while (node != nullptr);
 }
 
-// ST
-// __DEBUG
-// #define __DEBUG_ST__
-#ifdef __DEBUG_ST__
-namespace cpu_launcher_st {
-template<typename func_t>
-void ParallelFor(int64_t n, const func_t& func) {
-	for (int64_t i = 0; i < n; ++i) {
-		func(i);
-	}
-}
-} //
-#endif
-
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TMakePointVector>
 inline void
 FindKNearestKdTreePoints_Generic(
-		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
+		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
 		int32_t k, const open3d::core::Blob& index_data, const KdTreeNode* root_node, const open3d::core::Tensor& kd_tree_points,
 		TMakePointVector&& make_point_vector
 ) {
@@ -192,15 +178,13 @@ FindKNearestKdTreePoints_Generic(
 	o3gk::NDArrayIndexer kd_tree_point_indexer(kd_tree_points, 1);
 	o3gk::NDArrayIndexer query_point_indexer(query_points, 1);
 
-	closest_indices = open3d::core::Tensor({query_point_count, k}, o3c::Int32, query_points.GetDevice());
+	nearest_neighbor_indices = open3d::core::Tensor({query_point_count, k}, o3c::Int32, query_points.GetDevice());
 	squared_distances = open3d::core::Tensor({query_point_count, k}, o3c::Float32, query_points.GetDevice());
-	o3gk::NDArrayIndexer closest_indices_indexer(closest_indices, 1);
+	o3gk::NDArrayIndexer closest_indices_indexer(nearest_neighbor_indices, 1);
 	o3gk::NDArrayIndexer squared_distance_indexer(squared_distances, 1);
 
 #if defined(__CUDACC__)
 	namespace launcher = o3c::kernel::cuda_launcher;
-#elif defined(__DEBUG_ST__)//__DEBUG
-	namespace launcher = cpu_launcher_st;
 #else
 	namespace launcher = o3c::kernel::cpu_launcher;
 #endif
@@ -260,14 +244,14 @@ FindKNearestKdTreePoints_Generic(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void
-FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
+FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
                          int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root) {
 	auto dimension_count = (int32_t) kd_tree_points.GetShape(1);
 	auto* root_node = reinterpret_cast<const KdTreeNode*>(root);
 	switch (dimension_count) {
 		case 1:
 			FindKNearestKdTreePoints_Generic<TDeviceType>(
-					closest_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
+					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, 1>>(vector_data, dimension_count);
 					}
@@ -275,7 +259,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 			break;
 		case 2:
 			FindKNearestKdTreePoints_Generic<TDeviceType>(
-					closest_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
+					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector2f>(vector_data, dimension_count, 1);
 					}
@@ -283,7 +267,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 			break;
 		case 3:
 			FindKNearestKdTreePoints_Generic<TDeviceType>(
-					closest_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
+					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector3f>(vector_data, dimension_count, 1);
 					}
@@ -291,7 +275,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Te
 			break;
 		default:
 			FindKNearestKdTreePoints_Generic<TDeviceType>(
-					closest_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
+					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, Eigen::Dynamic>>(vector_data, dimension_count);
 					}

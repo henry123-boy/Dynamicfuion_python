@@ -13,11 +13,30 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <iostream>
+#include "LinearIndex.h"
+#include "core/DeviceSelection.h"
 
-#include <core/KdTree.h>
-#include <open3d/core/Tensor.h>
+namespace o3c = open3d::core;
 
-int main(){
-	std::cout << "Hello!" << std::endl;
+namespace nnrt::core::kernel::linear_index {
+void FindKNearestKdTreePoints(
+		o3c::Tensor& nearest_neighbor_indices, o3c::Tensor& squared_distances,
+		const o3c::Tensor& query_points, int32_t k, const o3c::Tensor& indexed_points) {
+	core::InferDeviceFromEntityAndExecute(
+			indexed_points,
+			[&] {
+				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU>(
+						nearest_neighbor_indices, squared_distances, query_points, k, indexed_points);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA>(
+								nearest_neighbor_indices, squared_distances, query_points, k, indexed_points);
+				);
+			}
+	);
+
+
 }
+
+} // namespace nnrt::core::kernel::linear_index

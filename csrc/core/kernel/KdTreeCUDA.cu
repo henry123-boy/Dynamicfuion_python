@@ -25,7 +25,7 @@ template
 void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
                                                                       const open3d::core::Tensor& query_points,
                                                                       int32_t k, const open3d::core::Blob& index_data,
                                                                       const open3d::core::Tensor& kd_tree_points, const void* root);
@@ -73,4 +73,4 @@ void IndexDataToHost_CUDA(open3d::core::Blob& index_data_cpu, const open3d::core
 	}
 }
 
-} // nnrt::core::kernel
+} // nnrt::core::kernel::kdtree

@@ -13,11 +13,19 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <iostream>
+#pragma once
 
-#include <core/KdTree.h>
 #include <open3d/core/Tensor.h>
 
-int main(){
-	std::cout << "Hello!" << std::endl;
-}
+namespace nnrt::core::kernel::linear_index{
+
+
+void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+                              const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+                              const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points);
+
+
+} // namespace nnrt::core::kernel::linear_index
