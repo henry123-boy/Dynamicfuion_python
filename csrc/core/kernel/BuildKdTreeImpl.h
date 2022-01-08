@@ -109,11 +109,11 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
                                             const o3gk::NDArrayIndexer& point_indexer) {
 
 	KdTreeNode* median_node = FindMedian<TDeviceType>(nodes, range_node->range_start, range_node->range_end, i_dimension, point_indexer);
-	median_node->i_dimension = i_dimension;
 	range_node->node = median_node;
 	if (median_node == nullptr) {
 		return;
 	}
+	median_node->i_dimension = i_dimension;
 	auto median_node_index = static_cast<int32_t>(median_node - nodes);
 
 	auto parent_index = range_node - range_nodes;

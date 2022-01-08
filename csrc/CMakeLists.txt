@@ -103,7 +103,7 @@ set(NNRT_SOURCE_FILES
     core/kernel/BuildKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
-    core/kernel/KdTree.cpp string/join_string_separator.cpp string/join_string_separator.h)
+    core/kernel/KdTree.cpp string/join_string_separator.cpp string/join_string_separator.h bench/kdtree_benchmark.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -119,6 +119,8 @@ nnrt_link_3rdparty_libraries(nnrt_cpp)
 nnrt_set_global_properties(nnrt_cpp)
 target_link_libraries(nnrt_cpp PUBLIC CUDA::toolkit)
 
+# ==================== Benchmark Executables =========================================
+add_subdirectory(bench)
 # ==================== set up NNRT Python binding library ============================
 set(PYBIND_SOURCE_FILES
     3rd_party/magic_enum.hpp
