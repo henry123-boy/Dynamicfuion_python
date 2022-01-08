@@ -226,7 +226,7 @@ FindKNearestKdTreePoints_Generic(
 				}
 				const KdTreeNode* last_node_to_check = node;
 
-
+				//__DEBUG
 				// FindKnnInKdSubtreeRecursive<TDeviceType>(root_node, nearest_neighbor_heap, query_point, kd_tree_point_indexer, 0, dimension_count,
 				//                                          make_point_vector);
 
@@ -238,12 +238,16 @@ FindKNearestKdTreePoints_Generic(
 
 				const int neighbor_count = nearest_neighbor_heap.Size();
 				int i_neighbor = neighbor_count - 1;
+
+
+
 				while (!nearest_neighbor_heap.Empty()) {
 					KdDistanceIndexPair pair = nearest_neighbor_heap.Pop();
 					indices_for_query_point[i_neighbor] = pair.value;
 					distances_for_query_point[i_neighbor] = pair.key;
 					i_neighbor--;
 				}
+
 				delete[] nearest_neighbor_data;
 				for (i_neighbor = neighbor_count; i_neighbor < k; i_neighbor++) {
 					indices_for_query_point[i_neighbor] = -1;

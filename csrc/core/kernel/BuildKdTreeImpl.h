@@ -25,10 +25,7 @@
 #include "core/KeyValuePair.h"
 #include "core/DeviceHeap.h"
 #include "core/PlatformIndependence.h"
-//__DEBUG
-#ifdef __CUDACC__
-#include <open3d/core/CUDAUtils.h>
-#endif
+
 
 
 namespace o3c = open3d::core;

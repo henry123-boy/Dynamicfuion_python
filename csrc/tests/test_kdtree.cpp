@@ -223,11 +223,16 @@ void Test3DKdTreeSearch(const o3c::Device& device) {
 	o3c::Tensor nearest_neighbor_indices;
 	o3c::Tensor squared_distances;
 	kd_tree.FindKNearestToPoints(nearest_neighbor_indices, squared_distances, query_points, 4);
-	std::cout << "Size: " << nearest_neighbor_indices.GetShape().ToString() << std::endl;
-	auto* nni_ptr = nearest_neighbor_indices.GetDataPtr<int32_t>();
-	for (int i = 0; i < 12; i++) {
-		std::cout << nni_ptr[i] << std::endl;
-	}
+
+	// gt data deduced manually via numpy / jupyter shell
+	std::vector<int> gt_nn_indices_data{13, 14, 9, 6, 10, 1, 8, 14, 9, 3, 5, 1};
+	std::vector<float> gt_nn_square_distances_data{1.77f, 5.07f, 21.71f, 23.57f, 20.13f, 25.23f, 27.94f, 36.93f, 9.85f, 12.51f, 12.59f, 14.29f};
+
+	REQUIRE(nearest_neighbor_indices.ToFlatVector<int32_t>() == gt_nn_indices_data);
+	auto nn_square_distance_data = squared_distances.ToFlatVector<float>();
+	REQUIRE(std::equal(nn_square_distance_data.begin(), nn_square_distance_data.end(), gt_nn_square_distances_data.begin(),
+					   [](float a, float b ){ return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
+
 }
 
 TEST_CASE("Test 3D KDTree Search CPU") {
