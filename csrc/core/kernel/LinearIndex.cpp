@@ -19,24 +19,34 @@
 namespace o3c = open3d::core;
 
 namespace nnrt::core::kernel::linear_index {
+template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(
 		o3c::Tensor& nearest_neighbor_indices, o3c::Tensor& squared_distances,
 		const o3c::Tensor& query_points, int32_t k, const o3c::Tensor& indexed_points) {
 	core::InferDeviceFromEntityAndExecute(
 			indexed_points,
 			[&] {
-				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU>(
+				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TTrackingStrategy>(
 						nearest_neighbor_indices, squared_distances, query_points, k, indexed_points);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA>(
+						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA, TTrackingStrategy>(
 								nearest_neighbor_indices, squared_distances, query_points, k, indexed_points);
 				);
 			}
 	);
-
-
 }
+
+template
+void FindKNearestKdTreePoints<NeighborTrackingStrategy::PLAIN>(
+		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
+);
+template
+void FindKNearestKdTreePoints<NeighborTrackingStrategy::PRIORITY_QUEUE>(
+		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
+);
 
 } // namespace nnrt::core::kernel::linear_index

@@ -19,13 +19,14 @@
 
 #include "core/kernel/LinearIndex.h"
 #include "KnnUtilities.h"
+#include "KnnUtilities_PriorityQueue.h"
 
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
 
 namespace nnrt::core::kernel::linear_index {
 
-template<open3d::core::Device::DeviceType TDeviceType, typename TMakePointVector>
+template<open3d::core::Device::DeviceType TDeviceType, NeighborTrackingStrategy TTrackingStrategy, typename TMakePointVector>
 inline void FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
                                              const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points,
                                              TMakePointVector&& make_point_vector) {
@@ -52,20 +53,26 @@ inline void FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neigh
 				auto query_point = make_point_vector(query_point_indexer.template GetDataPtr<float>(workload_idx));
 				auto anchor_indices = closest_indices_indexer.template GetDataPtr<int32_t>(workload_idx);
 				auto squared_distances = squared_distance_indexer.template GetDataPtr<float>(workload_idx);
-				core::kernel::knn::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(
-						anchor_indices, squared_distances,
-						k, point_count, query_point, point_indexer, make_point_vector);
+				if (TTrackingStrategy == NeighborTrackingStrategy::PLAIN) {
+					core::kernel::knn::FindEuclideanKnn_BruteForce<TDeviceType>(
+							anchor_indices, squared_distances,
+							k, point_count, query_point, point_indexer, make_point_vector);
+				} else {
+					core::kernel::knn::FindEuclideanKnn_BruteForce_PriorityQueue<TDeviceType>(
+							anchor_indices, squared_distances,
+							k, point_count, query_point, point_indexer, make_point_vector);
+				}
 			}
 	);
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
                               const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points) {
 	auto dimension_count = (int32_t) indexed_points.GetShape(1);
 	switch (dimension_count) {
 		case 1:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TTrackingStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, indexed_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, 1>>(vector_data, dimension_count);
@@ -73,7 +80,7 @@ void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, op
 			);
 			break;
 		case 2:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TTrackingStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, indexed_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector2f>(vector_data, dimension_count, 1);
@@ -81,7 +88,7 @@ void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, op
 			);
 			break;
 		case 3:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TTrackingStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, indexed_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector3f>(vector_data, dimension_count, 1);
@@ -89,7 +96,7 @@ void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, op
 			);
 			break;
 		default:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TTrackingStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, indexed_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, Eigen::Dynamic>>(vector_data, dimension_count);

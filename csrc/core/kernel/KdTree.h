@@ -28,7 +28,7 @@ struct KdTreeNode {
 	KdTreeNode* right_child;
 };
 
-struct RangeNode{
+struct RangeNode {
 	KdTreeNode* node;
 	int32_t range_start;
 	int32_t range_end;
@@ -36,6 +36,10 @@ struct RangeNode{
 
 enum SearchStrategy {
 	RECURSIVE, ITERATIVE
+};
+
+enum NeighborTrackingStrategy {
+	PLAIN, PRIORITY_QUEUE
 };
 
 open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const open3d::core::Device& device);
@@ -49,15 +53,13 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 template<open3d::core::Device::DeviceType DeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
-template<SearchStrategy TSearchStrategy>
-void
-FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
-                         int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root);
+template<SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
+void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+                              const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points, const void* root);
 
-template<open3d::core::Device::DeviceType DeviceType, SearchStrategy TSearchStrategy>
-void
-FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
-                         int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root);
+template<open3d::core::Device::DeviceType DeviceType, SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
+void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+                              const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points, const void* root);
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
                          int digit_length);

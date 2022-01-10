@@ -234,7 +234,7 @@ void SortFinalKNNHelper(std::vector<int32_t>& nn_i_sorted, std::vector<float>& n
 }
 
 template<typename TIndex = core::KdTree>
-void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = true) {
+void Test3DKnnSearch(const o3c::Device& device, bool use_priority_queue = true) {
 	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
 	                              2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
 	                              2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
@@ -249,14 +249,14 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 	o3c::Tensor nearest_neighbor_indices;
 	o3c::Tensor squared_distances;
 	const int k = 4;
-	index.FindKNearestToPoints(nearest_neighbor_indices, squared_distances, query_points, k);
+	index.FindKNearestToPoints(nearest_neighbor_indices, squared_distances, query_points, k, use_priority_queue);
 
 	// ground truth data computed manually via numpy / jupyter shell
 	std::vector<int> gt_nn_indices_data{13, 14, 9, 6, 10, 1, 8, 14, 9, 3, 5, 1};
 	std::vector<float> gt_nn_square_distances_data{1.77f, 5.07f, 21.71f, 23.57f, 20.13f, 25.23f, 27.94f, 36.93f, 9.85f, 12.51f, 12.59f, 14.29f};
 	std::vector<int32_t> nn_i_sorted;
 	std::vector<float> nn_sd_sorted;
-	if (make_final_sorting_pass) {
+	if (!use_priority_queue) {
 		SortFinalKNNHelper(nn_i_sorted, nn_sd_sorted, nearest_neighbor_indices, squared_distances);
 	} else {
 		nn_i_sorted = nearest_neighbor_indices.ToFlatVector<int32_t>();
@@ -308,12 +308,12 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 
 	o3c::Tensor nearest_neighbor_indices2;
 	o3c::Tensor squared_distances2;
-	index2.FindKNearestToPoints(nearest_neighbor_indices2, squared_distances2, query_points2, 8);
+	index2.FindKNearestToPoints(nearest_neighbor_indices2, squared_distances2, query_points2, 8, use_priority_queue);
 
 	std::vector<int32_t> nn_i_sorted2;
 	std::vector<float> nn_sd_sorted2;
 
-	if (make_final_sorting_pass) {
+	if (!use_priority_queue) {
 		SortFinalKNNHelper(nn_i_sorted2, nn_sd_sorted2, nearest_neighbor_indices2, squared_distances2);
 	} else {
 		nn_i_sorted2 = nearest_neighbor_indices2.ToFlatVector<int32_t>();
@@ -357,22 +357,42 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 
 }
 
-TEST_CASE("Test 3D KDTree Search CPU") {
+TEST_CASE("Test 3D KDTree Search CPU - Plain") {
 	auto device = o3c::Device("CPU:0");
 	Test3DKnnSearch<core::KdTree>(device, false);
 }
 
-TEST_CASE("Test 3D KDTree Search CUDA") {
+TEST_CASE("Test 3D KDTree Search CPU - Priority Queue") {
+	auto device = o3c::Device("CPU:0");
+	Test3DKnnSearch<core::KdTree>(device, true);
+}
+
+TEST_CASE("Test 3D KDTree Search CUDA - Plain") {
 	auto device = o3c::Device("CUDA:0");
 	Test3DKnnSearch<core::KdTree>(device, false);
 }
 
-TEST_CASE("Test 3D LinearIndex Search CPU") {
+TEST_CASE("Test 3D KDTree Search CUDA - Priority Queue") {
+	auto device = o3c::Device("CUDA:0");
+	Test3DKnnSearch<core::KdTree>(device, true);
+}
+
+TEST_CASE("Test 3D LinearIndex Search CPU - Priority Queue") {
 	auto device = o3c::Device("CPU:0");
 	Test3DKnnSearch<core::LinearIndex>(device, true);
 }
 
-TEST_CASE("Test 3D LinearIndex Search CUDA") {
+TEST_CASE("Test 3D LinearIndex Search CPU - Plain") {
+	auto device = o3c::Device("CPU:0");
+	Test3DKnnSearch<core::LinearIndex>(device, true);
+}
+
+TEST_CASE("Test 3D LinearIndex Search CUDA - Priority Queue") {
+	auto device = o3c::Device("CUDA:0");
+	Test3DKnnSearch<core::LinearIndex>(device, true);
+}
+
+TEST_CASE("Test 3D LinearIndex Search CUDA - Plain") {
 	auto device = o3c::Device("CUDA:0");
 	Test3DKnnSearch<core::LinearIndex>(device, true);
 }

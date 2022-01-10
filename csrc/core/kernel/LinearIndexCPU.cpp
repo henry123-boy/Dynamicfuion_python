@@ -21,7 +21,13 @@
 namespace nnrt::core::kernel::linear_index {
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU>(
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PLAIN>(
+		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
+);
+
+template
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PRIORITY_QUEUE>(
 		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
 		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
 );

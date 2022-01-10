@@ -23,7 +23,8 @@
 
 namespace o3c = open3d::core;
 
-void BenchmarkForDevice(const o3c::Device& device, const int query_point_count, const int point_count, const int k, bool compare_results = false);
+void BenchmarkForDevice(const o3c::Device& device, int query_point_count, int point_count,
+                        int k, bool sorted_output = false, bool compare_results = false);
 
 int main() {
 	const int query_point_count = 300000;
@@ -32,7 +33,7 @@ int main() {
 	// o3c::Device cpu("CPU:0");
 	// BenchmarkForDevice(cpu, query_point_count, point_count, k);
 	o3c::Device cuda("CUDA:0");
-	BenchmarkForDevice(cuda, query_point_count, point_count, k, false);
+	BenchmarkForDevice(cuda, query_point_count, point_count, k, false, false);
 }
 
 // final output sort (linear index / brute force KNN doesn't even use a priority queue,
@@ -61,7 +62,8 @@ void SortFinalKNNHelper(std::vector<int32_t>& nn_i_sorted, std::vector<float>& n
 	}
 }
 
-void BenchmarkForDevice(const o3c::Device& device, const int query_point_count, const int point_count, const int k, bool compare_results) {
+void BenchmarkForDevice(const o3c::Device& device, const int query_point_count,
+                        const int point_count, const int k, bool sorted_output, bool compare_results) {
 	using namespace std::chrono;
 	const int point_dimension_count = 3;
 
@@ -97,32 +99,39 @@ void BenchmarkForDevice(const o3c::Device& device, const int query_point_count, 
 	o3c::Tensor nearest_neighbor_indices_bf, squared_distances_bf;
 	std::cout << "Searching linear index for query points' KNN (brute force, multi-threaded)..." << std::endl;
 	start = high_resolution_clock::now();
-	linear_index.FindKNearestToPoints(nearest_neighbor_indices_bf, squared_distances_bf, query_points, k);
+	linear_index.FindKNearestToPoints(nearest_neighbor_indices_bf, squared_distances_bf, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
 	std::cout << "Finished searching linear index. Time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
 
 	o3c::Tensor nearest_neighbor_indices_kdtree, squared_distances_kdtree;
 	std::cout << "Searching KD Tree for query points' KNN... (multi-threaded)" << std::endl;
 	start = high_resolution_clock::now();
-	kd_tree.FindKNearestToPoints(nearest_neighbor_indices_kdtree, squared_distances_kdtree, query_points, k);
+	kd_tree.FindKNearestToPoints(nearest_neighbor_indices_kdtree, squared_distances_kdtree, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
 	std::cout << "Finished searching KD Tree. Time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
 
 	if (compare_results) {
 		std::cout << "Comparing results...." << std::endl;
-		std::vector<int32_t> nn_i_sorted;
-		std::vector<float> nn_sd_sorted;
-		SortFinalKNNHelper(nn_i_sorted, nn_sd_sorted, nearest_neighbor_indices_bf, squared_distances_bf);
-		auto nni_kdtree = nearest_neighbor_indices_kdtree.ToFlatVector<int32_t>();
-		std::cout << "Indices match: " << (nn_i_sorted == nni_kdtree ? "true" : "false") << std::endl;
-		for (int i = 0; i < nn_i_sorted.size(); i++) {
-			if (nn_i_sorted[i] != nni_kdtree[i]) {
+		std::vector<int32_t> nn_i_sorted_bf, nn_i_sorted_kdtree;
+		std::vector<float> nn_sd_sorted_bf, nn_sd_sorted_kdtree;
+		if (sorted_output) {
+			nn_i_sorted_bf = nearest_neighbor_indices_bf.ToFlatVector<int32_t>();
+			nn_sd_sorted_bf = squared_distances_bf.ToFlatVector<float>();
+			nn_i_sorted_kdtree = nearest_neighbor_indices_kdtree.ToFlatVector<int32_t>();
+			nn_sd_sorted_kdtree = squared_distances_kdtree.ToFlatVector<float>();
+		} else {
+			SortFinalKNNHelper(nn_i_sorted_bf, nn_sd_sorted_bf, nearest_neighbor_indices_bf, squared_distances_bf);
+			SortFinalKNNHelper(nn_i_sorted_kdtree, nn_sd_sorted_kdtree, nearest_neighbor_indices_kdtree, squared_distances_kdtree);
+		}
+
+		std::cout << "Indices match: " << (nn_i_sorted_bf == nn_i_sorted_kdtree ? "true" : "false") << std::endl;
+		for (int i = 0; i < nn_i_sorted_bf.size(); i++) {
+			if (nn_i_sorted_bf[i] != nn_i_sorted_kdtree[i]) {
 				std::cout << "Mismatch at index " << i << ":" << std::endl << "KD Tree: "
-				          << nni_kdtree[i] << " vs. LI: " << nn_i_sorted[i] << std::endl;
+				          << nn_i_sorted_kdtree[i] << " vs. LI: " << nn_i_sorted_bf[i] << std::endl;
 			}
 		}
-		auto squared_distances_kdtree_data = squared_distances_kdtree.ToFlatVector<float>();
-		std::cout << "Distances match: " << (std::equal(nn_sd_sorted.begin(), nn_sd_sorted.end(), squared_distances_kdtree_data.begin(),
+		std::cout << "Distances match: " << (std::equal(nn_sd_sorted_bf.begin(), nn_sd_sorted_bf.end(), nn_sd_sorted_kdtree.begin(),
 		                                                [](float a, float b) { return std::abs(a - b) <= 1e-5; }) ? "true" : "false") << std::endl;
 	}
 }

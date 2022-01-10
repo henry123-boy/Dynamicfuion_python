@@ -19,11 +19,15 @@
 
 namespace nnrt::core::kernel::linear_index{
 
+enum NeighborTrackingStrategy{
+	PLAIN, PRIORITY_QUEUE
+};
 
+template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
                               const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points);
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
                               const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& indexed_points);
 
