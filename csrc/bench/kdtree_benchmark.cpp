@@ -27,8 +27,8 @@ void BenchmarkForDevice(const o3c::Device& device, int query_point_count, int po
                         int k, bool sorted_output = false, bool compare_results = false);
 
 int main() {
-	const int query_point_count = 300000;
-	const int point_count = 30000;
+	const int query_point_count = 1000000;
+	const int point_count = 3000;
 	const int k = 8;
 	// o3c::Device cpu("CPU:0");
 	// BenchmarkForDevice(cpu, query_point_count, point_count, k);
@@ -101,14 +101,14 @@ void BenchmarkForDevice(const o3c::Device& device, const int query_point_count,
 	start = high_resolution_clock::now();
 	linear_index.FindKNearestToPoints(nearest_neighbor_indices_bf, squared_distances_bf, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
-	std::cout << "Finished searching linear index. Time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
+	std::cout << "Finished searching linear index.\nBrute force KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
 
 	o3c::Tensor nearest_neighbor_indices_kdtree, squared_distances_kdtree;
 	std::cout << "Searching KD Tree for query points' KNN... (multi-threaded)" << std::endl;
 	start = high_resolution_clock::now();
 	kd_tree.FindKNearestToPoints(nearest_neighbor_indices_kdtree, squared_distances_kdtree, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
-	std::cout << "Finished searching KD Tree. Time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
+	std::cout << "Finished searching KD Tree.\nKD Tree KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds." << std::endl;
 
 	if (compare_results) {
 		std::cout << "Comparing results...." << std::endl;
@@ -131,7 +131,7 @@ void BenchmarkForDevice(const o3c::Device& device, const int query_point_count,
 				          << nn_i_sorted_kdtree[i] << " vs. LI: " << nn_i_sorted_bf[i] << std::endl;
 			}
 		}
-		std::cout << "Distances match: " << (std::equal(nn_sd_sorted_bf.begin(), nn_sd_sorted_bf.end(), nn_sd_sorted_kdtree.begin(),
-		                                                [](float a, float b) { return std::abs(a - b) <= 1e-5; }) ? "true" : "false") << std::endl;
+		// std::cout << "Distances match: " << (std::equal(nn_sd_sorted_bf.begin(), nn_sd_sorted_bf.end(), nn_sd_sorted_kdtree.begin(),
+		//                                                 [](float a, float b) { return std::abs(a - b) <= 1e-5; }) ? "true" : "false") << std::endl;
 	}
 }
