@@ -25,10 +25,20 @@ template
 void BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root);
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-                                                                      const open3d::core::Tensor& query_points,
-                                                                      int32_t k, const open3d::core::Blob& index_data,
-                                                                      const open3d::core::Tensor& kd_tree_points, const void* root);
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, SearchStrategy::ITERATIVE>(
+		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points,
+		int32_t k, const open3d::core::Blob& index_data,
+		const open3d::core::Tensor& kd_tree_points, const void* root
+);
+
+template
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, SearchStrategy::RECURSIVE>(
+		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points,
+		int32_t k, const open3d::core::Blob& index_data,
+		const open3d::core::Tensor& kd_tree_points, const void* root
+);
 
 void IndexDataToHost_CUDA(open3d::core::Blob& index_data_cpu, const open3d::core::Blob& index_data, int point_count) {
 	auto* nodes_cpu = reinterpret_cast<KdTreeNode*>(index_data_cpu.GetDataPtr());

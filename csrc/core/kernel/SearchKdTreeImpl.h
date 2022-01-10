@@ -26,6 +26,11 @@
 #include "core/DeviceHeap.h"
 #include "core/PlatformIndependence.h"
 
+//__DEBUG
+#ifdef __CUDACC__
+#include <open3d/core/CUDAUtils.h>
+#endif
+
 
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
@@ -42,10 +47,11 @@ using NearestNeighborHeap = core::DeviceHeap<TDeviceType, KdDistanceIndexPair, N
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TPointVector, typename TMakePointVector>
 NNRT_DEVICE_WHEN_CUDACC
-void FindKnnInKdSubtreeRecursive(const KdTreeNode* node, NearestNeighborHeap<TDeviceType> nearest_neighbor_heap,
-                                 const TPointVector& query_point,
-                                 const o3gk::NDArrayIndexer& kd_tree_point_indexer, const int i_dimension,
-                                 const int dimension_count, TMakePointVector&& make_point_vector) {
+inline void
+FindKnnInKdSubtreeRecursive(const KdTreeNode* node, const KdTreeNode* last_node_to_check, NearestNeighborHeap<TDeviceType>& nearest_neighbor_heap,
+                            const TPointVector& query_point,
+                            const o3gk::NDArrayIndexer& kd_tree_point_indexer, const int i_dimension,
+                            const int dimension_count, TMakePointVector&& make_point_vector) {
 
 	if (node == nullptr) {
 		return;
@@ -53,48 +59,59 @@ void FindKnnInKdSubtreeRecursive(const KdTreeNode* node, NearestNeighborHeap<TDe
 	float max_knn_distance = nearest_neighbor_heap.Head().distance;
 	auto node_point = make_point_vector(kd_tree_point_indexer.template GetDataPtr<float>(node->index));
 
-	float node_distance = (node_point - query_point).squaredNorm();
-	if (max_knn_distance > node_distance) {
-		nearest_neighbor_heap.Insert(KdDistanceIndexPair{node_distance, node->index});
+	if (node <= last_node_to_check) {
+		float node_distance = (node_point - query_point).squaredNorm();
+		if (max_knn_distance > node_distance) {
+			nearest_neighbor_heap.Pop();
+			nearest_neighbor_heap.Insert(KdDistanceIndexPair{node_distance, node->index});
+			max_knn_distance = nearest_neighbor_heap.Head().distance;
+		}
 	}
 
 	float node_value = node_point.coeff(i_dimension);
 
+	bool search_left_first = false;
 	bool search_left = false;
 	bool search_right = false;
 
 	if (query_point[i_dimension] < node_value) {
-		if (query_point[i_dimension] - max_knn_distance < node_value) {
-			search_left = true;
+		search_left_first = true;
+	}
+	if (query_point[i_dimension] - max_knn_distance < node_value) {
+		search_left = true;
+	}
+	if (query_point[i_dimension] + max_knn_distance > node_value) {
+		search_right = true;
+	}
+	if (search_left_first) {
+		if (search_left) {
+			FindKnnInKdSubtreeRecursive<TDeviceType>(node->left_child, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+			                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
 		}
-		if (query_point[i_dimension] + max_knn_distance > node_value) {
-			search_right = true;
+		if (search_right) {
+			FindKnnInKdSubtreeRecursive<TDeviceType>(node->right_child, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+			                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
 		}
 	} else {
-		if (query_point[i_dimension] + max_knn_distance < node_value) {
-			search_right = true;
+		if (search_right) {
+			FindKnnInKdSubtreeRecursive<TDeviceType>(node->right_child, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+			                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
 		}
-		if (query_point[i_dimension] - max_knn_distance > node_value) {
-			search_left = true;
+		if (search_left) {
+			FindKnnInKdSubtreeRecursive<TDeviceType>(node->left_child, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+			                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
 		}
 	}
-	if (search_left) {
-		FindKnnInKdSubtreeRecursive<TDeviceType>(node->left_child, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
-		                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
-	}
-	if (search_right) {
-		FindKnnInKdSubtreeRecursive<TDeviceType>(node->right_child, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
-		                                         (i_dimension + 1) % dimension_count, dimension_count, make_point_vector);
-	}
+
 }
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TPointVector, typename TMakePointVector>
 NNRT_DEVICE_WHEN_CUDACC
-void FindKnnInKdSubtreeIterative(const KdTreeNode* root, const KdTreeNode* last_node_to_check,
-                                 NearestNeighborHeap<TDeviceType> nearest_neighbor_heap,
-                                 const TPointVector& query_point,
-                                 const o3gk::NDArrayIndexer& kd_tree_point_indexer,
-                                 TMakePointVector&& make_point_vector) {
+inline void FindKnnInKdSubtreeIterative(const KdTreeNode* root, const KdTreeNode* last_node_to_check,
+                                        NearestNeighborHeap<TDeviceType>& nearest_neighbor_heap,
+                                        const TPointVector& query_point,
+                                        const o3gk::NDArrayIndexer& kd_tree_point_indexer,
+                                        TMakePointVector&& make_point_vector) {
 	// Allocate traversal stack from thread-local memory,
 	// and push nullptr onto the stack to indicate that there are no deferred nodes.
 	const KdTreeNode* stack[64];
@@ -161,7 +178,7 @@ void FindKnnInKdSubtreeIterative(const KdTreeNode* root, const KdTreeNode* last_
 }
 
 
-template<open3d::core::Device::DeviceType TDeviceType, typename TMakePointVector>
+template<open3d::core::Device::DeviceType TDeviceType, SearchStrategy TSearchStrategy, typename TMakePointVector>
 inline void
 FindKNearestKdTreePoints_Generic(
 		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
@@ -171,8 +188,8 @@ FindKNearestKdTreePoints_Generic(
 	auto query_point_count = query_points.GetLength();
 	auto kd_tree_point_count = kd_tree_points.GetLength();
 
-	//__DEBUG
-	// auto dimension_count = (int32_t) kd_tree_points.GetShape(1);
+
+	auto dimension_count = (int32_t) kd_tree_points.GetShape(1);
 	auto* nodes = reinterpret_cast<const KdTreeNode*>(index_data.GetDataPtr());
 	auto* nodes_end = nodes + kd_tree_point_count;
 	o3gk::NDArrayIndexer kd_tree_point_indexer(kd_tree_points, 1);
@@ -210,19 +227,19 @@ FindKNearestKdTreePoints_Generic(
 				}
 				const KdTreeNode* last_node_to_check = node;
 
-				//__DEBUG
-				// FindKnnInKdSubtreeRecursive<TDeviceType>(root_node, nearest_neighbor_heap, query_point, kd_tree_point_indexer, 0, dimension_count,
-				//                                          make_point_vector);
-
-				FindKnnInKdSubtreeIterative<TDeviceType>(root_node, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
-				                                         make_point_vector);
+				if (TSearchStrategy == SearchStrategy::RECURSIVE) {
+					FindKnnInKdSubtreeRecursive<TDeviceType>(root_node, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+					                                         0, dimension_count, make_point_vector);
+				} else {
+					FindKnnInKdSubtreeIterative<TDeviceType>(root_node, last_node_to_check, nearest_neighbor_heap, query_point, kd_tree_point_indexer,
+					                                         make_point_vector);
+				}
 
 				auto* indices_for_query_point = closest_indices_indexer.template GetDataPtr<int32_t>(workload_idx);
 				auto* distances_for_query_point = squared_distance_indexer.template GetDataPtr<float>(workload_idx);
 
 				const int neighbor_count = nearest_neighbor_heap.Size();
 				int i_neighbor = neighbor_count - 1;
-
 
 
 				while (!nearest_neighbor_heap.Empty()) {
@@ -242,15 +259,16 @@ FindKNearestKdTreePoints_Generic(
 }
 } // namespace
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, SearchStrategy TSearchStrategy>
 void
-FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
+FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+                         const open3d::core::Tensor& query_points,
                          int32_t k, const open3d::core::Blob& index_data, const open3d::core::Tensor& kd_tree_points, const void* root) {
 	auto dimension_count = (int32_t) kd_tree_points.GetShape(1);
 	auto* root_node = reinterpret_cast<const KdTreeNode*>(root);
 	switch (dimension_count) {
 		case 1:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TSearchStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, 1>>(vector_data, dimension_count);
@@ -258,7 +276,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d:
 			);
 			break;
 		case 2:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TSearchStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector2f>(vector_data, dimension_count, 1);
@@ -266,7 +284,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d:
 			);
 			break;
 		case 3:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TSearchStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector3f>(vector_data, dimension_count, 1);
@@ -274,7 +292,7 @@ FindKNearestKdTreePoints(open3d::core::Tensor& nearest_neighbor_indices, open3d:
 			);
 			break;
 		default:
-			FindKNearestKdTreePoints_Generic<TDeviceType>(
+			FindKNearestKdTreePoints_Generic<TDeviceType, TSearchStrategy>(
 					nearest_neighbor_indices, squared_distances, query_points, k, index_data, root_node, kd_tree_points,
 					[dimension_count] NNRT_DEVICE_WHEN_CUDACC(float* vector_data) {
 						return Eigen::Map<Eigen::Vector<float, Eigen::Dynamic>>(vector_data, dimension_count);

@@ -263,7 +263,7 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 		nn_sd_sorted = squared_distances.ToFlatVector<float>();
 	}
 
-
+	//__DEBUG
 	REQUIRE(nn_i_sorted == gt_nn_indices_data);
 	REQUIRE(std::equal(nn_sd_sorted.begin(), nn_sd_sorted.end(), gt_nn_square_distances_data.begin(),
 	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
@@ -310,6 +310,7 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 	o3c::Tensor nearest_neighbor_indices2;
 	o3c::Tensor squared_distances2;
 	index2.FindKNearestToPoints(nearest_neighbor_indices2, squared_distances2, query_points2, 8);
+
 	std::vector<int32_t> nn_i_sorted2;
 	std::vector<float> nn_sd_sorted2;
 

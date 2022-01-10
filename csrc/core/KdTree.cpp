@@ -63,7 +63,7 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 					  "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
 		              query_points.GetShape(), this->points.GetShape());
 	}
-	kernel::kdtree::FindKNearestKdTreePoints(nearest_neighbor_indices, squared_distances, query_points, k, *this->index_data, this->points, this->root);
+	kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE>(nearest_neighbor_indices, squared_distances, query_points, k, *this->index_data, this->points, this->root);
 }
 
 std::string KdTree::GenerateTreeDiagram(int digit_length) const{
