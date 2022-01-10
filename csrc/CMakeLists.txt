@@ -53,7 +53,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/GraphCPU.cpp
     geometry/kernel/GraphCUDA.cu
     geometry/kernel/GraphImpl.h
-    geometry/kernel/KnnUtilities.h
+    core/kernel/KnnUtilities.h
     geometry/kernel/WarpUtilities.h
     geometry/kernel/Warp.h
     geometry/kernel/Warp.cpp

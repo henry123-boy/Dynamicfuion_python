@@ -25,7 +25,8 @@
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
-namespace nnrt::geometry::kernel::knn {
+//TODO: revise to make names of things more generic, i.e. anchors --> neighbors, nodes --> points, point --> query_point
+namespace nnrt::core::kernel::knn {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC

@@ -263,7 +263,6 @@ void Test3DKnnSearch(const o3c::Device& device, bool make_final_sorting_pass = t
 		nn_sd_sorted = squared_distances.ToFlatVector<float>();
 	}
 
-	//__DEBUG
 	REQUIRE(nn_i_sorted == gt_nn_indices_data);
 	REQUIRE(std::equal(nn_sd_sorted.begin(), nn_sd_sorted.end(), gt_nn_square_distances_data.begin(),
 	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));

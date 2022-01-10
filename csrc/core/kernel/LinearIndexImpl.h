@@ -18,7 +18,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 #include "core/kernel/LinearIndex.h"
-#include "geometry/kernel/KnnUtilities.h"
+#include "KnnUtilities.h"
 
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
@@ -52,7 +52,7 @@ inline void FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neigh
 				auto query_point = make_point_vector(query_point_indexer.template GetDataPtr<float>(workload_idx));
 				auto anchor_indices = closest_indices_indexer.template GetDataPtr<int32_t>(workload_idx);
 				auto squared_distances = squared_distance_indexer.template GetDataPtr<float>(workload_idx);
-				geometry::kernel::knn::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(
+				core::kernel::knn::FindEuclideanKNNAnchorsBruteForce<TDeviceType>(
 						anchor_indices, squared_distances,
 						k, point_count, query_point, point_indexer, make_point_vector);
 			}
