@@ -434,7 +434,7 @@ TEST_CASE("Test 3D LinearIndex Search CPU - Priority Queue") {
 
 TEST_CASE("Test 3D LinearIndex Search CPU - Plain") {
 	auto device = o3c::Device("CPU:0");
-	Test3DKnnSearch<core::LinearIndex>(device, true);
+	Test3DKnnSearch<core::LinearIndex>(device, false);
 }
 
 TEST_CASE("Test 3D LinearIndex Search CUDA - Priority Queue") {
@@ -444,7 +444,7 @@ TEST_CASE("Test 3D LinearIndex Search CUDA - Priority Queue") {
 
 TEST_CASE("Test 3D LinearIndex Search CUDA - Plain") {
 	auto device = o3c::Device("CUDA:0");
-	Test3DKnnSearch<core::LinearIndex>(device, true);
+	Test3DKnnSearch<core::LinearIndex>(device, false);
 }
 
 

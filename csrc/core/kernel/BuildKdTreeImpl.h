@@ -113,7 +113,7 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 	if (median_node == nullptr) {
 		return;
 	}
-	median_node->i_dimension = i_dimension;
+	median_node->i_split_dimension = i_dimension;
 	auto median_node_index = static_cast<int32_t>(median_node - nodes);
 
 	auto parent_index = range_node - range_nodes;
@@ -163,7 +163,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreeNode& node = nodes[workload_idx];
 				node.index = static_cast<int32_t>(workload_idx);
-				node.i_dimension = 0;
+				node.i_split_dimension = 0;
 				node.left_child = nullptr;
 				node.right_child = nullptr;
 			}

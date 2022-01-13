@@ -31,13 +31,13 @@ void BenchmarkKnnTreePointCloudForDevice(const o3c::Device& device, int query_po
 
 int main() {
 	const int query_point_count = 1000000;
-	const int reference_point_count = 3000;
+	const int reference_point_count = 10000;
 	const int k = 8;
 	o3c::Device cpu("CPU:0");
 	o3c::Device cuda("CUDA:0");
 	// BenchmarkForDevice(cpu, query_point_count, reference_point_count, k, false, false)
 	BenchmarkKnnTreeIndexForDevice(cuda, query_point_count, reference_point_count, k, false, false);
-	BenchmarkKnnTreePointCloudForDevice(cuda, query_point_count, reference_point_count, k, false);
+	// BenchmarkKnnTreePointCloudForDevice(cuda, query_point_count, reference_point_count, k, false);
 }
 
 void PrepareData(o3c::Tensor& query_points, o3c::Tensor& reference_points,

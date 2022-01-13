@@ -23,7 +23,7 @@ namespace nnrt::core::kernel::kdtree {
 
 struct KdTreeNode {
 	int32_t index;
-	uint8_t i_dimension;
+	uint8_t i_split_dimension;
 	KdTreeNode* left_child;
 	KdTreeNode* right_child;
 };

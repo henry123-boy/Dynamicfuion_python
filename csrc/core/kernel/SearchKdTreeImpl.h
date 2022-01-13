@@ -181,7 +181,7 @@ inline void FindKnnInKdSubtreeIterative_Generic(const KdTreeNode* root,
 			max_neighbor_distance = get_max_distance();
 		}
 
-		const uint8_t i_dimension = node->i_dimension;
+		const uint8_t i_dimension = node->i_split_dimension;
 		float node_coordinate = node_point.coeff(i_dimension);
 
 		// Query overlaps an internal node => traverse.
