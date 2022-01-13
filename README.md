@@ -26,7 +26,7 @@ Testing & working on the code requires `git`. In terminal or msys git shell for 
 **Important:** please follow the order of these topics during setup.
 
 #### CUDA ####
-Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 (or the latest version of cuda supported by both PyTorch and CuPy) installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of these instructions assume you followed this recommendation, otherwise please adjust accordingly.
+Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 (or the latest version of cuda supported by both PyTorch and CuPy) installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/point_index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/point_index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/point_index.html)). The rest of these instructions assume you followed this recommendation, otherwise please adjust accordingly.
 
 #### CMake ####
 

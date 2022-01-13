@@ -40,8 +40,8 @@ public:
 private:
 	const open3d::core::Tensor& points;
 
+	const int64_t index_length;
 	const std::shared_ptr<open3d::core::Blob> index_data;
-	void* root;
 
 };
 

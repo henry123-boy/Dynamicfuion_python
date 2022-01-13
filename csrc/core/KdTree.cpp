@@ -28,8 +28,8 @@ namespace o3u = open3d::utility;
 namespace nnrt::core {
 KdTree::KdTree(const open3d::core::Tensor& points)
 		: points(points),
-		  index_data(std::make_shared<open3d::core::Blob>(core::kernel::kdtree::FindBalancedTreeIndexLength(points.GetLength()) * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())),
-		  root(nullptr) {
+		  index_length(core::kernel::kdtree::FindBalancedTreeIndexLength(points.GetLength())),
+		  index_data(std::make_shared<open3d::core::Blob>(index_length * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())) {
 	auto dimensions = points.GetShape();
 	points.AssertDtype(o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
@@ -40,11 +40,11 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 		o3u::LogError("KdTree index currently cannot support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
 		              points.GetLength());
 	}
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->index_length, this->points);
 }
 
 void KdTree::Reindex() {
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
+	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->index_length, this->points);
 }
 
 void KdTree::ChangeToAppendedTensor(const open3d::core::Tensor& tensor) {
@@ -67,12 +67,10 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 	}
 	if (sort_output) {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
-				nearest_neighbor_indices, squared_distances, query_points, k, this->points, this->root
-		);
+				*this->index_data, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
-				nearest_neighbor_indices, squared_distances, query_points, k, this->points, this->root
-		);
+				*this->index_data, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	}
 
 }
@@ -83,7 +81,7 @@ std::string KdTree::GenerateTreeDiagram(int digit_length) const {
 		o3u::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
 		              digit_length);
 	}
-	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->root, this->points, digit_length);
+	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->points, digit_length);
 	return diagram;
 }
 

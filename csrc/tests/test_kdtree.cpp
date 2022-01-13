@@ -39,7 +39,7 @@ void Test1DKdTreeConstruction(const o3c::Device& device) {
 			"            __|__           __|  \n"
 			"           /     \\         /      \n"
 			"dim: 0 [  1.0] [  3.0] [  5.0]        ";
-	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(5));
+	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(5, <#initializer#>, <#initializer#>, 0));
 
 	std::vector<float> kd_tree_point_data2{-1, 60, 33, 1, 24, 88, 67, 40, 39, 3, 0, 4};
 	o3c::Tensor kd_tree_points2(kd_tree_point_data2, {static_cast<long>(kd_tree_point_data2.size()), 1}, o3c::Dtype::Float32, device);
@@ -57,7 +57,7 @@ void Test1DKdTreeConstruction(const o3c::Device& device) {
 			"           /     \\         /               /               /      \n"
 			"dim: 0 [ -1.0] [  1.0] [  4.0]         [ 39.0]         [ 67.0]        ";
 
-	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram());
+	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram(<#initializer#>, <#initializer#>, <#initializer#>, 0));
 
 	std::vector<float> kd_tree_point_data3{
 			21.8, 36., -4.9, 42.5, -38.2, -24.5, -42.1, 43.4, -35.1,
@@ -88,7 +88,7 @@ void Test1DKdTreeConstruction(const o3c::Device& device) {
 			"           /     \\         /               /               /               /     \\         /               /               /               /     \\         /               /               /               /               /               /               /      \n"
 			"dim: 0 [-49.3] [-44.6] [-41.7]         [-38.2]         [-34.5]         [-27.1] [-26.8] [-24.5]         [-21.0]         [-14.2]         [ -5.4] [ -4.9] [  0.4]         [  8.5]         [ 16.3]         [ 21.8]         [ 31.2]         [ 42.5]         [ 44.9]        ";
 
-	REQUIRE(gt_diagram3 == kd_tree3.GenerateTreeDiagram(5));
+	REQUIRE(gt_diagram3 == kd_tree3.GenerateTreeDiagram(5, <#initializer#>, <#initializer#>, 0));
 }
 
 TEST_CASE("Test 1D KDTree Construction CPU") {
@@ -126,7 +126,7 @@ void Test2DKdTreeConstruction(const o3c::Device& device) {
 			"               _____|_____                 _____|     \n"
 			"              /           \\               /            \n"
 			"dim: 0 [  2.0   5.0] [  3.0   8.0] [  7.0   6.0]              ";
-	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(5));
+	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(5, <#initializer#>, <#initializer#>, 0));
 
 	std::vector<float> kd_tree_point_data2{6.9, 0.7, 8.5, 4.9, 4.6, 1.1, 4.8, 7.9, 8.2, 2.6, 8.4, 5.4, 5.2,
 	                                       1.7, 9.6, 0.1, 7.1, 8.3, 2.9, 6.4, 5.5, 2.2, 4.6, 5.6, 6.8, 1.9,
@@ -149,7 +149,7 @@ void Test2DKdTreeConstruction(const o3c::Device& device) {
 			"               _____|                      _____|                      _____|                                                  _____|                                                  _____|                                 \n"
 			"              /                           /                           /                                                       /                                                       /                                        \n"
 			"dim: 0 [  1.0   4.6]               [  4.6   1.1]               [  2.1   7.9]                                           [  6.8   1.9]                                           [  7.0   7.8]                                          ";
-	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram(5));
+	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram(5, <#initializer#>, <#initializer#>, 0));
 
 }
 
@@ -195,7 +195,7 @@ void Test3DKdTreeConstruction(const o3c::Device& device) {
 			"               _____|_____                 _____|_____                 _____|_____                 _____|_____\n"
 			"              /           \\               /           \\               /           \\               /           \\\n"
 			"dim: 0 [1.5 3.2 7.6] [2.1 1.8 8.9] [0.5 5.4 0.0] [2.8 7.0 6.9] [8.3 1.9 2.1] [5.8 0.5 9.3] [5.7 5.0 0.8] [5.2 7.7 8.6]";
-	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(3));
+	REQUIRE(gt_diagram == kd_tree.GenerateTreeDiagram(3, <#initializer#>, <#initializer#>, 0));
 
 	std::vector<float> kd_tree_point_data2{-5., 4.8, 1.8, 0.7, 0., -4.2, -2.9, -3.2, 3.9, 3.3, -3.1,
 	                                       -2.9, -4.6, -0.7, -2., 3.3, -3.7, -2.1, -3.5, -1.8, 2.6, -1.9,
@@ -216,7 +216,7 @@ void Test3DKdTreeConstruction(const o3c::Device& device) {
 			"                  ________|________                       ________|________                       ________|________                       ________|________\n"
 			"                 /                 \\                     /                 \\                     /                 \\                     /                 \\\n"
 			"dim: 0 [ -3.5  -1.8   2.6] [ -2.9  -3.2   3.9] [ -4.5   0.4  -5.0] [ -2.2   2.0   1.9] [  3.3  -3.1  -2.9] [  0.8  -4.5   4.3] [  0.7   0.0  -4.2] [  0.2   2.7   3.6]";
-	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram(5));
+	REQUIRE(gt_diagram2 == kd_tree2.GenerateTreeDiagram(5, <#initializer#>, <#initializer#>, 0));
 
 }
 
