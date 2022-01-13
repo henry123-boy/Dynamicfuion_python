@@ -22,6 +22,7 @@ namespace nnrt::core::kernel::kdtree {
 
 open3d::core::Blob BlobToDevice(const open3d::core::Blob& node_data, int64_t byte_count, const open3d::core::Device& device);
 
+
 inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level_count) {
 	int64_t count = 0;
 	level_count = 0;
@@ -32,6 +33,11 @@ inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level
 		count += range_length;
 	}
 	return count;
+}
+
+inline int64_t FindBalancedTreeIndexLength(const int64_t point_count) {
+	int level_count;
+	return FindBalancedTreeIndexLength(point_count, level_count);
 }
 
 template<unsigned int p>
