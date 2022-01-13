@@ -216,10 +216,6 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor
 			}
 	);
 
-	o3c::Blob index_data_cpu(144, o3c::Device("CPU:0"));
-	o3c::MemoryManager::Memcpy(index_data_cpu.GetDataPtr(), o3c::Device("CPU:0"), nodes, index_data.GetDevice(), 144);
-	auto* nodes_cpu = reinterpret_cast<KdTreeNode*>(index_data_cpu.GetDataPtr());
-
 	*root = nodes + *(root_index_tensor.To(o3c::Device("CPU:0")).template GetDataPtr<int32_t>());
 }
 

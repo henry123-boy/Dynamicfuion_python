@@ -26,54 +26,37 @@ namespace o3u = open3d::utility;
 
 namespace nnrt::core {
 KdTreePointCloud::KdTreePointCloud(const open3d::core::Tensor& points)
-		: points(points),
-		  index_data(std::make_shared<open3d::core::Blob>(points.GetLength() * kernel::kdtree::GetNodeByteCount(points), points.GetDevice())),
+		: point_dimension_count(points.GetShape(1)),
+		  point_count(points.GetShape(0)),
+		  node_data(std::make_shared<open3d::core::Blob>(points.GetLength() * kernel::kdtree::GetNodeByteCount(points), points.GetDevice())),
 		  root(nullptr) {
 	auto dimensions = points.GetShape();
 	points.AssertDtype(o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
-		o3u::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
+		o3u::LogError("KdTreePointCloud can only hold points from two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
 	if (points.GetLength() > std::numeric_limits<int32_t>::max()) {
-		o3u::LogError("KdTree index currently cannot support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
+		o3u::LogError("KdTreePointCloud currently cannot support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
 		              points.GetLength());
 	}
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
+	kernel::kdtree::BuildKdTreePointCloud(*this->node_data, points, &this->root);
 }
 
-void KdTreePointCloud::Reindex() {
-	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->points, &this->root);
-}
 
-void KdTreePointCloud::ChangeToAppendedTensor(const open3d::core::Tensor& tensor) {
-	o3u::LogError("Not implemented");
-}
-
-void KdTreePointCloud::UpdatePoint(const open3d::core::Tensor& point) {
-	o3u::LogError("Not implemented");
-}
-
-void KdTreePointCloud::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-                                  const open3d::core::Tensor& query_points, int32_t k, bool sort_output) const {
-	query_points.AssertDevice(this->points.GetDevice());
+void KdTreePointCloud::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbors, open3d::core::Tensor& nearest_neighbor_distances,
+                                            const open3d::core::Tensor& query_points, int32_t k) const {
+	query_points.AssertDevice(this->node_data->GetDevice());
 	query_points.AssertDtype(o3c::Dtype::Float32);
 	if (query_points.GetShape().size() != 2 ||
-	    query_points.GetShape(1) != this->points.GetShape(1)) {
-		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the KD Tree, which"
-		              "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
-		              query_points.GetShape(), this->points.GetShape());
+	    query_points.GetShape(1) != point_dimension_count) {
+		o3u::LogError("Query point array of shape {} is incompatible to the set of points in the KD Tree Point Cloud, which"
+		              "have {} dimensions. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
+		              query_points.GetShape(), point_dimension_count);
 	}
-	if (sort_output) {
-		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
-				nearest_neighbor_indices, squared_distances, query_points, k, this->points, this->root
-		);
-	} else {
-		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
-				nearest_neighbor_indices, squared_distances, query_points, k, this->points, this->root
-		);
-	}
-
+	kernel::kdtree::FindKNearestKdTreePointCloudPoints<kernel::kdtree::SearchStrategy::ITERATIVE>(
+			nearest_neighbors, nearest_neighbor_distances, query_points, k, this->root, this->point_dimension_count
+	);
 }
 
 std::string KdTreePointCloud::GenerateTreeDiagram(int digit_length) const {
@@ -82,7 +65,8 @@ std::string KdTreePointCloud::GenerateTreeDiagram(int digit_length) const {
 		o3u::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
 		              digit_length);
 	}
-	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->root, this->points, digit_length);
+	kernel::kdtree::GenerateKdTreePointCloudDiagram(diagram, *this->node_data, this->root, this->point_count,
+													this->point_dimension_count, digit_length);
 	return diagram;
 }
 

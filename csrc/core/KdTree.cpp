@@ -60,7 +60,7 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 	query_points.AssertDtype(o3c::Dtype::Float32);
 	if (query_points.GetShape().size() != 2 ||
 	    query_points.GetShape(1) != this->points.GetShape(1)) {
-		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the KD Tree, which"
+		o3u::LogError("Query point array of shape {} is incompatible to the set of points being indexed by the KD Tree (reference points), which"
 		              "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
 		              query_points.GetShape(), this->points.GetShape());
 	}

@@ -32,18 +32,15 @@ public:
 
 	explicit KdTreePointCloud(const open3d::core::Tensor& points);
 	virtual ~KdTreePointCloud() = default;
-	virtual void Reindex();
-	virtual void UpdatePoint(const open3d::core::Tensor& point);
-	virtual void ChangeToAppendedTensor(const open3d::core::Tensor& tensor);
 	std::string GenerateTreeDiagram(int digit_length = 5) const;
-	virtual void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-	                                  const open3d::core::Tensor& query_points, int32_t k, bool sort_output = false) const;
+	virtual void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbors, open3d::core::Tensor& nearest_neighbor_distances,
+	                                  const open3d::core::Tensor& query_points, int32_t k) const;
 
 
 private:
-	const open3d::core::Tensor& points;
-
-	const std::shared_ptr<open3d::core::Blob> index_data;
+	const int point_dimension_count;
+	const int point_count;
+	const std::shared_ptr<open3d::core::Blob> node_data;
 	void* root;
 
 };

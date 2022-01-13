@@ -33,4 +33,28 @@ struct DistanceIndexPair {
 		TValue index;
 	};
 };
+
+template<typename TKey, typename TValue>
+struct DistancePointPair {
+	union{
+		TKey key;
+		TKey distance;
+	};
+	union{
+		TValue value;
+		TValue point;
+	};
+};
+
+template<typename TKey, typename TValue>
+struct DistanceNodePair {
+	union{
+		TKey key;
+		TKey distance;
+	};
+	union{
+		TValue value;
+		TValue node;
+	};
+};
 } // namespace nnrt::core

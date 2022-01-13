@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/8/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/12/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,27 +13,15 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
-// linear index over an array, mostly for benchmarking purposes
+#include "core/kernel/KdTreeUtils.h"
+namespace o3c = open3d::core;
 
-#include <open3d/core/Tensor.h>
+namespace nnrt::core::kernel::kdtree {
 
-namespace nnrt::core {
+open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const o3c::Device& device) {
+	o3c::Blob target_blob(byte_count, device);
+	o3c::MemoryManager::Memcpy(target_blob.GetDataPtr(), device, index_data.GetDataPtr(), index_data.GetDevice(), byte_count);
+	return target_blob;
+}
 
-
-class LinearIndex{
-public:
-
-
-	explicit LinearIndex(const open3d::core::Tensor& points);
-	virtual ~LinearIndex() = default;
-	virtual void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& nearest_neighbor_distances,
-	                                  const open3d::core::Tensor& query_points, int32_t k, bool sort_output = false) const;
-
-
-private:
-	const open3d::core::Tensor& points;
-
-};
-
-} // namespace nnrt::core
+} // namespace nnrt::core::kernel::kdtree

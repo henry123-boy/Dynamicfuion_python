@@ -36,7 +36,7 @@ nnrt::core::LinearIndex::LinearIndex(const open3d::core::Tensor& points) :
 	}
 }
 
-void LinearIndex::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+void LinearIndex::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& nearest_neighbor_distances,
                                        const open3d::core::Tensor& query_points, int32_t k, bool sort_output) const {
 	query_points.AssertDevice(this->points.GetDevice());
 	query_points.AssertDtype(o3c::Dtype::Float32);
@@ -47,10 +47,11 @@ void LinearIndex::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_in
 		              query_points.GetShape(), this->points.GetShape());
 	}
 	if(sort_output){
-		kernel::linear_index::FindKNearestKdTreePoints<kernel::linear_index::NeighborTrackingStrategy::PRIORITY_QUEUE>(nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+		kernel::linear_index::FindKNearestKdTreePoints<kernel::linear_index::NeighborTrackingStrategy::PRIORITY_QUEUE>(nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, this->points);
 	}else{
-		kernel::linear_index::FindKNearestKdTreePoints<kernel::linear_index::NeighborTrackingStrategy::PLAIN>(nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+		kernel::linear_index::FindKNearestKdTreePoints<kernel::linear_index::NeighborTrackingStrategy::PLAIN>(nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, this->points);
 	}
+	nearest_neighbor_distances.Sqrt_();
 
 }
 

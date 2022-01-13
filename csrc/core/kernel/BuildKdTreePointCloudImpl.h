@@ -27,7 +27,6 @@
 #include "core/PlatformIndependence.h"
 
 
-
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
 
@@ -45,7 +44,7 @@ inline void Swap(KdTreePointCloudNode<TPoint>* node1, KdTreePointCloudNode<TPoin
 template<open3d::core::Device::DeviceType TDeviceType, typename TPoint>
 NNRT_DEVICE_WHEN_CUDACC
 inline KdTreePointCloudNode<TPoint>*
-FindMedian(KdTreePointCloudNode<TPoint>* nodes, int32_t range_start, int32_t range_end, int32_t i_dimension, const o3gk::NDArrayIndexer& point_indexer) {
+FindMedian(KdTreePointCloudNode<TPoint>* nodes, int32_t range_start, int32_t range_end, int32_t i_dimension) {
 	KdTreePointCloudNode<TPoint>* range_start_node = nodes + range_start;
 	KdTreePointCloudNode<TPoint>* range_end_node = nodes + range_end;
 	if (range_end <= range_start) return nullptr;
@@ -70,7 +69,7 @@ FindMedian(KdTreePointCloudNode<TPoint>* nodes, int32_t range_start, int32_t ran
 		for (swap_target = cursor = range_start_node; cursor < last; cursor++) {
 			// at every iteration, compare the cursor to the pivot. If it precedes the pivot, swap it with the reference,
 			// thereby pushing the preceding value towards the start of the range.
-			if (coordinate(cursor) < pivot) {
+			if (cursor->point.coeff(i_dimension) < pivot) {
 				if (cursor != swap_target) {
 					Swap<TDeviceType>(cursor, swap_target);
 				}
@@ -83,8 +82,8 @@ FindMedian(KdTreePointCloudNode<TPoint>* nodes, int32_t range_start, int32_t ran
 		// at some point, with the whole lower half of the range sorted, reference is going to end up at the true median,
 		// in which case return that node (because it means that exactly half the nodes are below the median candidate).
 		// We do a coordinate- instead of pointer comparison here, because there might be duplicate values around the median
-		if (coordinate(swap_target) ==
-		    coordinate(middle)) {
+		if (swap_target->point.coeff(i_dimension) ==
+		    middle->point.coeff(i_dimension)) {
 			return middle;
 		}
 
@@ -130,9 +129,8 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode<TPoint>* range_nodes, Rang
 }
 } // namespace
 
-
-template<open3d::core::Device::DeviceType TDeviceType, typename TPoint>
-void BuildKdTreeIndex_Generic(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
+template<open3d::core::Device::DeviceType TDeviceType, typename TPoint, typename TMakePoint>
+void BuildKdTreePointCloud_Generic(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root, TMakePoint&& make_point) {
 	const int64_t point_count = points.GetLength();
 
 	const auto dimension_count = (int32_t) points.GetShape(1);
@@ -158,7 +156,7 @@ void BuildKdTreeIndex_Generic(open3d::core::Blob& index_data, const open3d::core
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreePointCloudNode<TPoint>& node = nodes[workload_idx];
-				node.point = Eigen::Vector3f()
+				node.point = make_point(point_indexer.template GetDataPtr<float>(workload_idx));
 				node.i_dimension = 0;
 				node.left_child = nullptr;
 				node.right_child = nullptr;
@@ -185,8 +183,7 @@ void BuildKdTreeIndex_Generic(open3d::core::Blob& index_data, const open3d::core
 				range_length,
 				[=] OPEN3D_DEVICE(int64_t workload_idx) {
 					RangeNode<TPoint>* range_node = range_nodes + range_start_index + workload_idx;
-					FindTreeNodeAndSetUpChildRanges<TDeviceType>(range_nodes, range_nodes_end, range_node, nodes, i_dimension,
-					                                             point_indexer);
+					FindTreeNodeAndSetUpChildRanges<TDeviceType, TPoint>(range_nodes, range_nodes_end, range_node, nodes, i_dimension);
 				}
 		);
 		i_dimension = (i_dimension + 1) % dimension_count;
@@ -212,31 +209,44 @@ void BuildKdTreeIndex_Generic(open3d::core::Blob& index_data, const open3d::core
 			}
 	);
 
-	o3c::Blob index_data_cpu(144, o3c::Device("CPU:0"));
-	o3c::MemoryManager::Memcpy(index_data_cpu.GetDataPtr(), o3c::Device("CPU:0"), nodes, index_data.GetDevice(), 144);
-	auto* nodes_cpu = reinterpret_cast<KdTreePointCloudNode<TPoint>*>(index_data_cpu.GetDataPtr());
-
 	*root = nodes + *(root_index_tensor.To(o3c::Device("CPU:0")).template GetDataPtr<int32_t>());
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
-	switch (points.GetShape(2)) {
+void BuildKdTreePointCloud(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
+	auto dimension_count = (int32_t) points.GetShape(1);
+	switch (dimension_count) {
 		case 1:
-			BuildKdTreeIndex_Generic<TDeviceType, Eigen::Vector<float, 1>>(index_data, points, root);
+			BuildKdTreePointCloud_Generic<TDeviceType, Eigen::Vector<float, 1>>(
+					index_data, points, root,
+					[]NNRT_DEVICE_WHEN_CUDACC(float* point_data) { return Eigen::Vector<float, 1>(point_data[0]); }
+			);
 			break;
 		case 2:
-			BuildKdTreeIndex_Generic<TDeviceType, Eigen::Vector2f>(index_data, points, root);
+			BuildKdTreePointCloud_Generic<TDeviceType, Eigen::Vector2f>(
+					index_data, points, root,
+					[]NNRT_DEVICE_WHEN_CUDACC(float* point_data) { return Eigen::Vector2f(point_data[0], point_data[1]); }
+			);
 			break;
 		case 3:
-			BuildKdTreeIndex_Generic<TDeviceType, Eigen::Vector3f>(index_data, points, root);
+			BuildKdTreePointCloud_Generic<TDeviceType, Eigen::Vector3f>(
+					index_data, points, root,
+					[]NNRT_DEVICE_WHEN_CUDACC(float* point_data) { return Eigen::Vector3f(point_data[0], point_data[1], point_data[2]); }
+			);
 			break;
 		default:
-			BuildKdTreeIndex_Generic<TDeviceType, Eigen::Vector<float, Eigen::Dynamic>>(index_data, points, root);
+			BuildKdTreePointCloud_Generic<TDeviceType, Eigen::Vector<float, Eigen::Dynamic>>(
+					index_data, points, root, [dimension_count]NNRT_DEVICE_WHEN_CUDACC(float* point_data) {
+						Eigen::Vector<float, Eigen::Dynamic> point(dimension_count);
+						for (int i_value = 0; i_value < dimension_count; i_value++) {
+							point << point_data[i_value];
+						}
+						return point;
+					}
+			);
 			break;
 	}
 }
-
 
 
 } // nnrt::core::kernel::kdtree

@@ -126,7 +126,7 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
 
-    core/kernel/KnnUtilities_PriorityQueue.h)
+    core/kernel/KnnUtilities_PriorityQueue.h core/kernel/KdTreeUtils.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

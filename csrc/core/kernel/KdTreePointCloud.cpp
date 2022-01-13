@@ -28,75 +28,72 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::kernel::kdtree {
 
-void BuildKdTreeIndex(open3d::core::Blob& index_data, const open3d::core::Tensor& points, void** root) {
+size_t GetNodeByteCount(const open3d::core::Tensor& points) {
+	switch (points.GetShape(1)) {
+		case 1:
+			return sizeof(KdTreePointCloudNode<Eigen::Vector<float, 1>>);
+		case 2:
+			return sizeof(KdTreePointCloudNode<Eigen::Vector2f>);
+		case 3:
+			return sizeof(KdTreePointCloudNode<Eigen::Vector3f>);
+		default:
+			return sizeof(KdTreePointCloudNode<Eigen::Vector<float, Eigen::Dynamic>>);
+	}
+}
+
+void BuildKdTreePointCloud(open3d::core::Blob& node_data, const open3d::core::Tensor& points, void** root) {
 	core::InferDeviceFromEntityAndExecute(
 			points,
-			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, points, root); },
-			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, points, root);); }
+			[&] { BuildKdTreePointCloud<o3c::Device::DeviceType::CPU>(node_data, points, root); },
+			[&] { NNRT_IF_CUDA(BuildKdTreePointCloud<o3c::Device::DeviceType::CUDA>(node_data, points, root);); }
 	);
 
 }
 
-template<SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
-void
-FindKNearestKdTreePoints(open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances, const open3d::core::Tensor& query_points,
-                         int32_t k, const open3d::core::Tensor& kd_tree_points, const void* root) {
+template<SearchStrategy TSearchStrategy>
+void FindKNearestKdTreePointCloudPoints(open3d::core::Tensor& nearest_neighbors, open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points,
+                                        const int32_t k, const void* root, int dimension_count) {
 	core::InferDeviceFromEntityAndExecute(
-			kd_tree_points,
+			query_points,
 			[&] {
-				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TSearchStrategy, TTrackingStrategy>(
-						closest_indices, squared_distances, query_points, k, kd_tree_points, root);
+				FindKNearestKdTreePointCloudPoints<o3c::Device::DeviceType::CPU, TSearchStrategy>(
+						nearest_neighbors, nearest_neighbor_distances, query_points, k, root, dimension_count);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA, TSearchStrategy, TTrackingStrategy>(
-								closest_indices, squared_distances, query_points, k, kd_tree_points, root);
+						FindKNearestKdTreePointCloudPoints<o3c::Device::DeviceType::CUDA, TSearchStrategy>(
+								nearest_neighbors, nearest_neighbor_distances, query_points, k, root, dimension_count);
 				);
 			}
 	);
 }
 
 template
-void FindKNearestKdTreePoints<SearchStrategy::ITERATIVE, NeighborTrackingStrategy::PLAIN>(open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                          open3d::core::Tensor& squared_distances,
-                                                                                          const open3d::core::Tensor& query_points, int32_t k,
-                                                                                          const open3d::core::Tensor& kd_tree_points,
-                                                                                          const void* root);
+void FindKNearestKdTreePointCloudPoints<SearchStrategy::ITERATIVE>(open3d::core::Tensor& nearest_neighbors,
+                                                         open3d::core::Tensor& nearest_neighbor_distances,
+                                                         const open3d::core::Tensor& query_points, int32_t k,
+                                                         const void* root, int dimension_count);
+
 
 template
-void FindKNearestKdTreePoints<SearchStrategy::ITERATIVE, NeighborTrackingStrategy::PRIORITY_QUEUE>(open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                                   open3d::core::Tensor& squared_distances,
-                                                                                                   const open3d::core::Tensor& query_points,
-                                                                                                   int32_t k,
-                                                                                                   const open3d::core::Tensor& kd_tree_points,
-                                                                                                   const void* root);
+void FindKNearestKdTreePointCloudPoints<SearchStrategy::RECURSIVE>(open3d::core::Tensor& nearest_neighbors,
+                                                         open3d::core::Tensor& nearest_neighbor_distances,
+                                                         const open3d::core::Tensor& query_points, int32_t k,
+                                                         const void* root, int dimension_count);
 
-template
-void FindKNearestKdTreePoints<SearchStrategy::RECURSIVE, NeighborTrackingStrategy::PLAIN>(open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                          open3d::core::Tensor& squared_distances,
-                                                                                          const open3d::core::Tensor& query_points, int32_t k,
-                                                                                          const open3d::core::Tensor& kd_tree_points,
-                                                                                          const void* root);
 
-template
-void FindKNearestKdTreePoints<SearchStrategy::RECURSIVE, NeighborTrackingStrategy::PRIORITY_QUEUE>(open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                                   open3d::core::Tensor& squared_distances,
-                                                                                                   const open3d::core::Tensor& query_points,
-                                                                                                   int32_t k,
-                                                                                                   const open3d::core::Tensor& kd_tree_points,
-                                                                                                   const void* root);
+template<typename TPoint>
+void GenerateKdTreePointCloudDiagram(std::string& diagram, const open3d::core::Blob& node_data, const void* root,
+                                     const int point_count, const int dimension_count, const int digit_length) {
 
-void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const void* root, const open3d::core::Tensor& kd_tree_points,
-                         const int digit_length) {
-
-	auto* nodes = reinterpret_cast<const KdTreePointCloudNode*>(index_data.GetDataPtr());
-	const auto* root_node = reinterpret_cast<const KdTreePointCloudNode*>(root);
+	auto* nodes = reinterpret_cast<const KdTreePointCloudNode<TPoint>*>(node_data.GetDataPtr());
+	const auto* root_node = reinterpret_cast<const KdTreePointCloudNode<TPoint>*>(root);
 	auto root_index = static_cast<int32_t>(root_node - nodes);
-	auto node_count = kd_tree_points.GetLength();
-	auto index_data_cpu = IndexDataToHost(index_data, node_count);
-	auto* nodes_cpu = reinterpret_cast<KdTreePointCloudNode*>(index_data_cpu.GetDataPtr());
-	KdTreePointCloudNode* root_node_cpu = nodes_cpu + root_index;
-	std::function<int32_t(KdTreePointCloudNode*, int32_t)> get_tree_height = [&get_tree_height](KdTreePointCloudNode* node, int32_t height) {
+	auto node_data_cpu = PointCloudDataToHost<TPoint>(node_data, point_count, dimension_count);
+	auto* nodes_cpu = reinterpret_cast<KdTreePointCloudNode<TPoint>*>(node_data_cpu.GetDataPtr());
+	KdTreePointCloudNode<TPoint>* root_node_cpu = nodes_cpu + root_index;
+	std::function<int32_t(KdTreePointCloudNode<TPoint>*, int32_t)> get_tree_height = [&get_tree_height](KdTreePointCloudNode<TPoint>* node,
+	                                                                                                    int32_t height) {
 		if (node != nullptr) {
 			int32_t left_subtree_height = 1 + get_tree_height(node->left_child, height);
 			int32_t right_subtree_height = 1 + get_tree_height(node->right_child, height);
@@ -105,19 +102,12 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 		return 0;
 	};
 	int32_t tree_height = get_tree_height(root_node_cpu, 0);
-	const int dimension_count = static_cast<int>(kd_tree_points.GetShape(1));
 	const int coordinate_spacing = 1;
 
-	o3c::Tensor kd_tree_points_cpu = kd_tree_points.To(o3c::Device("CPU:0"), false);
-
-
-	o3gk::NDArrayIndexer point_indexer(kd_tree_points_cpu, 1);
-
-	std::function<std::string(int)> point_to_string = [&point_indexer, &dimension_count, & digit_length](int point_index) {
-		auto* point_data = point_indexer.GetDataPtr<float>(point_index);
-		std::string point_string = fmt::format("[{: >{}}", point_data[0], digit_length);
+	std::function<std::string(const TPoint&)> point_to_string = [&dimension_count, & digit_length](const TPoint& point) {
+		std::string point_string = fmt::format("[{: >{}}", point.coeff(0), digit_length);
 		for (int i_dimension = 1; i_dimension < dimension_count; i_dimension++) {
-			point_string += fmt::format(" {: >{}}", point_data[i_dimension], digit_length);
+			point_string += fmt::format(" {: >{}}", point.coeff(i_dimension), digit_length);
 		}
 		point_string += "]";
 		return point_string;
@@ -156,10 +146,10 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 	std::fill(level_initialized, level_initialized + tree_height, 0);
 
 
-	std::function<void(KdTreePointCloudNode*, int, bool)> fill_tree_level_strings =
+	std::function<void(KdTreePointCloudNode<TPoint>*, int, bool)> fill_tree_level_strings =
 			[&fill_tree_level_strings, &get_initial_offset, &get_gap_length, &row_strings,
 					&level_initialized, &point_to_string, &point_string_length, &tree_height]
-					(KdTreePointCloudNode* node, int level, bool right) {
+					(KdTreePointCloudNode<TPoint>* node, int level, bool right) {
 				if (node != nullptr) {
 					fill_tree_level_strings(node->left_child, level + 1, false);
 					fill_tree_level_strings(node->right_child, level + 1, true);
@@ -201,7 +191,7 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 							row_strings[handle_row] += fmt::format("{:_>{}}|", "", vertical_bar_at);
 						}
 					}
-					row_strings[point_row] += point_to_string(node->index);
+					row_strings[point_row] += point_to_string(node->point);
 				} else if (level < tree_height) {
 					// we have to print empty space here when nodes are missing from some tree branches
 					const int point_row = level * 3;
@@ -249,20 +239,40 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 	diagram = string::join(row_strings, "\n");
 }
 
-open3d::core::Blob IndexDataToHost(const open3d::core::Blob& index_data, int point_count) {
-	o3c::Blob index_data_cpu = BlobToDevice(index_data, point_count * static_cast<int64_t>(sizeof(KdTreePointCloudNode)), o3c::Device("CPU:0"));
+void GenerateKdTreePointCloudDiagram(std::string& diagram, const open3d::core::Blob& kd_tree_point_cloud_data, const void* root, int point_count,
+                                     int dimension_count, int digit_length) {
+	switch (dimension_count) {
+		case 1:
+			GenerateKdTreePointCloudDiagram<Eigen::Vector<float, 1>>(diagram, kd_tree_point_cloud_data,
+			                                                         root, point_count, dimension_count, digit_length);
+			break;
+		case 2:
+			GenerateKdTreePointCloudDiagram<Eigen::Vector2f>(diagram, kd_tree_point_cloud_data,
+			                                                 root, point_count, dimension_count, digit_length);
+			break;
+		case 3:
+			GenerateKdTreePointCloudDiagram<Eigen::Vector3f>(diagram, kd_tree_point_cloud_data,
+			                                                 root, point_count, dimension_count, digit_length);
+			break;
+		default:
+			GenerateKdTreePointCloudDiagram<Eigen::Vector<float, Eigen::Dynamic>>(diagram, kd_tree_point_cloud_data,
+			                                                                      root, point_count, dimension_count, digit_length);
+			break;
+	}
+
+}
+
+template<typename TPoint>
+open3d::core::Blob PointCloudDataToHost(const open3d::core::Blob& index_data, int point_count, int dimension_count) {
+	o3c::Blob index_data_cpu = BlobToDevice(index_data, point_count * static_cast<int64_t>(sizeof(KdTreePointCloudNode<TPoint>)),
+	                                        o3c::Device("CPU:0"));
 	core::InferDeviceFromEntityAndExecute(
 			index_data,
 			[&] {},
-			[&] { NNRT_IF_CUDA(IndexDataToHost_CUDA(index_data_cpu, index_data, point_count);); }
+			[&] { NNRT_IF_CUDA(PointCloudDataToHost_CUDA(index_data_cpu, index_data, point_count, dimension_count);); }
 	);
 	return index_data_cpu;
 }
 
-open3d::core::Blob BlobToDevice(const open3d::core::Blob& index_data, int64_t byte_count, const o3c::Device& device) {
-	o3c::Blob target_blob(byte_count, device);
-	o3c::MemoryManager::Memcpy(target_blob.GetDataPtr(), device, index_data.GetDataPtr(), index_data.GetDevice(), byte_count);
-	return target_blob;
-}
 
 } //  nnrt::core::kernel::kdtree
