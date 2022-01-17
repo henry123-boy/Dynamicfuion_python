@@ -21,6 +21,7 @@
 #include <Eigen/Dense>
 
 #include "core/kernel/KdTreeUtils.h"
+#include "core/kernel/KdTreeNodeTypes.h"
 #include "core/kernel/KdTree.h"
 #include "core/KeyValuePair.h"
 #include "core/DeviceHeap.h"
@@ -85,8 +86,7 @@ FindMedian(KdTreeNode* nodes, int32_t range_start, int32_t range_end, int32_t i_
 		// at some point, with the whole lower half of the range sorted, reference is going to end up at the true median,
 		// in which case return that node (because it means that exactly half the nodes are below the median candidate).
 		// We do a coordinate- instead of pointer comparison here, because there might be duplicate values around the median
-		if (coordinate(swap_target) ==
-		    coordinate(middle)) {
+		if (coordinate(swap_target) == coordinate(middle)) {
 			return middle;
 		}
 
@@ -132,6 +132,18 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 }
 } // namespace
 
+// __DEBUG
+// #define DEBUG_ST
+#ifdef DEBUG_ST
+namespace cpu_launcher_st {
+template<typename func_t>
+void ParallelFor(int64_t n, const func_t& func) {
+	for (int64_t i = 0; i < n; ++i) {
+		func(i);
+	}
+}
+} // namespace cpu_launcher_st
+#endif
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points) {
@@ -148,6 +160,8 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 #if defined(__CUDACC__)
 	namespace launcher = o3c::kernel::cuda_launcher;
+#elif defined(DEBUG_ST)
+	namespace launcher = cpu_launcher_st;
 #else
 	namespace launcher = o3c::kernel::cpu_launcher;
 #endif

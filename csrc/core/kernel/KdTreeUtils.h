@@ -17,21 +17,25 @@
 
 #include <cstdint>
 #include <open3d/core/Blob.h>
+#include "core/PlatformIndependence.h"
 
 namespace nnrt::core::kernel::kdtree {
 
 open3d::core::Blob BlobToDevice(const open3d::core::Blob& node_data, int64_t byte_count, const open3d::core::Device& device);
 
+NNRT_DEVICE_WHEN_CUDACC
 inline int32_t GetLeftChildIndex(int32_t parent_index){
-	return 2 * parent_index;
-}
-
-inline int32_t GetRightChildIndex(int32_t parent_index){
 	return 2 * parent_index + 1;
 }
 
+NNRT_DEVICE_WHEN_CUDACC
+inline int32_t GetRightChildIndex(int32_t parent_index){
+	return 2 * parent_index + 2;
+}
+
+NNRT_DEVICE_WHEN_CUDACC
 inline int32_t GetParentIndex(int32_t child_index){
-	return child_index / 2;
+	return (child_index-1) / 2;
 }
 
 inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level_count) {

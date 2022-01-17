@@ -18,6 +18,7 @@
 #include "core/DeviceSelection.h"
 #include "core/kernel/KdTreeUtils.h"
 #include "core/kernel/KdTree.h"
+#include "core/kernel/KdTreeNodeTypes.h"
 
 #include <limits>
 
@@ -36,8 +37,8 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 		o3u::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
-	if (points.GetLength() > std::numeric_limits<int32_t>::max()) {
-		o3u::LogError("KdTree index currently cannot support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
+	if (points.GetLength() > std::numeric_limits<int32_t>::max() || points.GetLength() < 1) {
+		o3u::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
 		              points.GetLength());
 	}
 	kernel::kdtree::BuildKdTreeIndex(*this->index_data, this->index_length, this->points);
@@ -67,10 +68,10 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 	}
 	if (sort_output) {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
-				*this->index_data, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+				*this->index_data, this->index_length, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
-				*this->index_data, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+				*this->index_data,  this->index_length, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	}
 
 }
@@ -81,7 +82,7 @@ std::string KdTree::GenerateTreeDiagram(int digit_length) const {
 		o3u::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
 		              digit_length);
 	}
-	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->points, digit_length);
+	kernel::kdtree::GenerateTreeDiagram(diagram, *this->index_data, this->index_length, this->points, digit_length);
 	return diagram;
 }
 
