@@ -330,7 +330,7 @@ FindEuclideanKnn_KdTree_PriorityQueue(int32_t* nearest_neighbor_indices, float* 
 }
 
 // __DEBUG
-#define DEBUG_ST
+// #define DEBUG_ST
 #ifdef DEBUG_ST
 namespace cpu_launcher_st {
 template<typename func_t>

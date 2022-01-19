@@ -24,20 +24,38 @@
 
 namespace o3c = open3d::core;
 
-void BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, int query_point_count, int reference_point_count,
-                                    int k, bool sorted_output = false, bool compare_results = false);
+
+struct BenchmarkResult {
+	double brute_force_time;
+	double kd_tree_time;
+};
+
+BenchmarkResult BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_point_count, const int reference_point_count,
+                                               const int k, bool sorted_output = false, bool compare_results = false);
 void BenchmarkKnnTreePointCloudForDevice(const o3c::Device& device, int query_point_count,
                                          int reference_point_count, int k, bool compare_results);
+
 
 int main() {
 	const int query_point_count = 1000000;
 	const int reference_point_count = 10000;
 	const int k = 8;
+	const int run_count = 10;
 	o3c::Device cpu("CPU:0");
 	o3c::Device cuda("CUDA:0");
-	// BenchmarkForDevice(cpu, query_point_count, reference_point_count, k, false, false)
-	BenchmarkKnnTreeIndexForDevice(cuda, query_point_count, reference_point_count, k, false, false);
+
 	// BenchmarkKnnTreePointCloudForDevice(cuda, query_point_count, reference_point_count, k, false);
+
+	double total_bf_time = 0.0;
+	double total_kd_time = 0.0;
+
+	for(int i_run = 0; i_run < run_count; i_run++){
+		auto result = BenchmarkKnnTreeIndexForDevice(cuda, query_point_count, reference_point_count, k, false, false);
+		total_bf_time += result.brute_force_time;
+		total_kd_time += result.kd_tree_time;
+	}
+	std::cout << "Average brute-force search time over " << run_count << " runs: " << total_bf_time / run_count << " s" << std::endl;
+	std::cout << "Average KD-tree search time over " << run_count << " runs: " << total_kd_time / run_count << " s" << std::endl;
 }
 
 void PrepareData(o3c::Tensor& query_points, o3c::Tensor& reference_points,
@@ -87,8 +105,8 @@ void SortFinalKNNHelper_Indices(std::vector<TIndexElement>& nn_i_sorted, std::ve
 	}
 }
 
-void BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_point_count,
-                                    const int reference_point_count, const int k, bool sorted_output, bool compare_results) {
+BenchmarkResult BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_point_count,
+                                               const int reference_point_count, const int k, bool sorted_output, bool compare_results) {
 	using namespace std::chrono;
 	const int point_dimension_count = 3;
 
@@ -112,6 +130,7 @@ void BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_p
 	start = high_resolution_clock::now();
 	linear_index.FindKNearestToPoints(neighbor_indices_bf, neighbor_distances_bf, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
+	double brute_force_time = duration_cast<duration<double>>(end - start).count();
 	std::cout << "Finished searching linear index.\nBrute force KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds."
 	          << std::endl;
 
@@ -120,8 +139,8 @@ void BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_p
 	start = high_resolution_clock::now();
 	kd_tree.FindKNearestToPoints(neighbor_indices_kdtree, neighbor_distances_kdtree, query_points, k, sorted_output);
 	end = high_resolution_clock::now();
-	std::cout << "Finished searching KD Tree.\nKD Tree KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds."
-	          << std::endl;
+	double kd_tree_time = duration_cast<duration<double>>(end - start).count();
+	std::cout << "Finished searching KD Tree.\nKD Tree KNN time: " << kd_tree_time << " seconds." << std::endl;
 
 	if (compare_results) {
 		std::cout << "Comparing results...." << std::endl;
@@ -147,6 +166,7 @@ void BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_p
 		std::cout << "Distances match: " << (std::equal(nn_d_sorted_bf.begin(), nn_d_sorted_bf.end(), nn_d_sorted_kdtree.begin(),
 		                                                [](float a, float b) { return std::abs(a - b) <= 1e-5; }) ? "true" : "false") << std::endl;
 	}
+	return {brute_force_time, kd_tree_time};
 }
 
 // final output sort (for small K, it is faster to use a plain memory block instead of a priority queue for tracking
