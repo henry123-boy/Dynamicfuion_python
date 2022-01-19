@@ -31,7 +31,7 @@ KdTreePointCloud::KdTreePointCloud(const open3d::core::Tensor& points)
 		  node_data(std::make_shared<open3d::core::Blob>(points.GetLength() * kernel::kdtree::GetNodeByteCount(points), points.GetDevice())),
 		  root(nullptr) {
 	auto dimensions = points.GetShape();
-	points.AssertDtype(o3c::Dtype::Float32);
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
 		o3u::LogError("KdTreePointCloud can only hold points from two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
@@ -46,8 +46,8 @@ KdTreePointCloud::KdTreePointCloud(const open3d::core::Tensor& points)
 
 void KdTreePointCloud::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbors, open3d::core::Tensor& nearest_neighbor_distances,
                                             const open3d::core::Tensor& query_points, int32_t k) const {
-	query_points.AssertDevice(this->node_data->GetDevice());
-	query_points.AssertDtype(o3c::Dtype::Float32);
+	o3c::AssertTensorDevice(query_points, this->node_data->GetDevice());
+	o3c::AssertTensorDtype(query_points, o3c::Dtype::Float32);
 	if (query_points.GetShape().size() != 2 ||
 	    query_points.GetShape(1) != point_dimension_count) {
 		o3u::LogError("Query point array of shape {} is incompatible to the set of points in the KD Tree Point Cloud, which"

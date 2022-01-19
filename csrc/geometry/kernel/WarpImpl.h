@@ -69,13 +69,8 @@ void WarpPoints_Generic(o3c::Tensor& warped_points, const o3c::Tensor& points,
 	//output indexer
 	NDArrayIndexer warped_point_indexer(warped_points, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
-			point_count,
+	open3d::core::ParallelFor(
+			points.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data);
@@ -156,13 +151,8 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 	//output indexer
 	NDArrayIndexer warped_point_indexer(warped_points, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
-			point_count,
+	open3d::core::ParallelFor(
+			points.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data);

@@ -20,8 +20,8 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core{
 	open3d::core::Tensor CombineAlongAxis0(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2){
-		tensor2.AssertDtype(tensor1.GetDtype());
-		tensor2.AssertDevice(tensor1.GetDevice());
+		o3c::AssertTensorDtype(tensor2, tensor1.GetDtype());
+		o3c::AssertTensorDevice(tensor2, tensor1.GetDevice());
 
 		auto tensor1_length = tensor1.GetLength();
 

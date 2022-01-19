@@ -137,7 +137,7 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 #ifdef DEBUG_ST
 namespace cpu_launcher_st {
 template<typename func_t>
-void ParallelFor(int64_t n, const func_t& func) {
+void ParallelFor(o3c::Device& device, int64_t n, const func_t& func) {
 	for (int64_t i = 0; i < n; ++i) {
 		func(i);
 	}
@@ -158,17 +158,16 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 	auto* range_nodes = reinterpret_cast<RangeNode*>(secondary_index.GetDataPtr());
 	RangeNode* range_nodes_end = range_nodes + index_length;
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#elif defined(DEBUG_ST)
+
+#if !defined(__CUDACC__) && defined(DEBUG_ST)
 	namespace launcher = cpu_launcher_st;
 #else
-	namespace launcher = o3c::kernel::cpu_launcher;
+	namespace launcher = open3d::core;
 #endif
 
 	// index points linearly at first using the nodes
 	launcher::ParallelFor(
-			point_count,
+			index_data.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreeNode& node = nodes[workload_idx];
 				node.point_index = static_cast<int32_t>(workload_idx);
@@ -178,7 +177,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 	// set up the range nodes so they all point "nowhere" at first
 	launcher::ParallelFor(
-			index_length,
+			index_data.GetDevice(), index_length,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode& range_node = range_nodes[workload_idx];
 				range_node.node.Clear();
@@ -187,7 +186,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 
 	launcher::ParallelFor(
-			1,
+			index_data.GetDevice(), 1,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode& range_node = range_nodes[workload_idx];
 				range_node.range_start = 0;
@@ -201,7 +200,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 	     range_start_index += range_length, range_length *= 2) {
 
 		launcher::ParallelFor(
-				range_length,
+				index_data.GetDevice(), range_length,
 				[=] OPEN3D_DEVICE(int64_t workload_idx) {
 					RangeNode* range_node = range_nodes + range_start_index + workload_idx;
 					FindTreeNodeAndSetUpChildRanges<TDeviceType>(range_nodes, range_nodes_end, range_node, nodes, i_dimension,
@@ -213,7 +212,7 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 	// copy over the nodes from range nodes
 	launcher::ParallelFor(
-			index_length,
+			index_data.GetDevice(), index_length,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				nodes[workload_idx] = range_nodes[workload_idx].node;
 			}

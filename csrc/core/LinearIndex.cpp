@@ -25,7 +25,7 @@ namespace nnrt::core {
 nnrt::core::LinearIndex::LinearIndex(const open3d::core::Tensor& points) :
 	points(points){
 	auto dimensions = points.GetShape();
-	points.AssertDtype(o3c::Dtype::Float32);
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
 		o3u::LogError("Linear index only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
@@ -38,8 +38,8 @@ nnrt::core::LinearIndex::LinearIndex(const open3d::core::Tensor& points) :
 
 void LinearIndex::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& nearest_neighbor_distances,
                                        const open3d::core::Tensor& query_points, int32_t k, bool sort_output) const {
-	query_points.AssertDevice(this->points.GetDevice());
-	query_points.AssertDtype(o3c::Dtype::Float32);
+	o3c::AssertTensorDevice(query_points, this->points.GetDevice());
+	o3c::AssertTensorDtype(query_points, o3c::Dtype::Float32);
 	if(query_points.GetShape().size() != 2 ||
 	   query_points.GetShape(1) != this->points.GetShape(1)){
 		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the linear index, which"

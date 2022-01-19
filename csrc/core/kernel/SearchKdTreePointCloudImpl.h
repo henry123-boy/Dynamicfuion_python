@@ -221,13 +221,8 @@ FindKNearestKdTreePoints_Generic(
 	o3gk::NDArrayIndexer neighbor_indexer(nearest_neighbors, 1);
 	o3gk::NDArrayIndexer neighbor_distance_indexer(nearest_neighbor_distances, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-
-	launcher::ParallelFor(
+	open3d::core::ParallelFor(
+			query_points.GetDevice(),
 			query_point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto query_point = make_query_point(query_point_indexer.template GetDataPtr<float>(workload_idx));
@@ -296,13 +291,11 @@ void PointCloudDataToHost_CUDA(open3d::core::Blob& index_data_cpu, const open3d:
 	auto* nodes_cpu = reinterpret_cast<KdTreePointCloudNode<TPoint>*>(index_data_cpu.GetDataPtr());
 	auto* nodes = reinterpret_cast<const KdTreePointCloudNode<TPoint>*>(index_data.GetDataPtr());
 
-	namespace launcher = o3c::kernel::cuda_launcher;
-
 	o3c::Tensor child_indices({point_count, 2}, o3c::Dtype::Int32, index_data.GetDevice());
 	o3gk::NDArrayIndexer child_index_indexer(child_indices, 1);
 
-	launcher::ParallelFor(
-			point_count,
+	o3c::ParallelFor(
+			index_data.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				const KdTreePointCloudNode<TPoint>& node = nodes[workload_idx];
 				auto* child_set = child_index_indexer.GetDataPtr<int32_t>(workload_idx);

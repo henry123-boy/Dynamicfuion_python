@@ -31,8 +31,8 @@ ComputePointToPlaneDistances(const TriangleMesh& mesh1, const TriangleMesh& mesh
 	if (!mesh1.HasVertexNormals()) {
 		utility::LogError("Mesh1 needs to have vertex normals defined.");
 	}
-	const core::Tensor& vertices1 = mesh1.GetVertices();
-	const core::Tensor& vertices2 = mesh2.GetVertices();
+	const core::Tensor& vertices1 = mesh1.GetVertexPositions();
+	const core::Tensor& vertices2 = mesh2.GetVertexPositions();
 	const core::Tensor& normals1 = mesh1.GetVertexNormals();
 	if (vertices1.GetLength() != vertices2.GetLength()) {
 		utility::LogError("Meshes need to have matching number of vertices. Got: {} and {}.", vertices1.GetLength(), vertices2.GetLength());
@@ -52,17 +52,17 @@ ComputePointToPlaneDistances(const TriangleMesh& mesh, const PointCloud& point_c
 	if (!mesh.HasVertexNormals()) {
 		utility::LogError("Mesh needs to have vertex normals defined.");
 	}
-	const core::Tensor& normals1 = mesh.GetVertexNormals();
-	const core::Tensor& vertices1 = mesh.GetVertices();
-	const core::Tensor& vertices2 = point_cloud.GetPoints();
+	const core::Tensor& vertex_normals = mesh.GetVertexNormals();
+	const core::Tensor& vertex_positions = mesh.GetVertexPositions();
+	const core::Tensor& point_positions = point_cloud.GetPointPositions();
 
-	if (vertices1.GetLength() != vertices2.GetLength()) {
+	if (vertex_positions.GetLength() != point_positions.GetLength()) {
 		utility::LogError("Mesh vertex count has to match the point count in the point cloud. Got: {} and {}.",
-						  vertices1.GetLength(), vertices2.GetLength());
+		                  vertex_positions.GetLength(), point_positions.GetLength());
 	}
 
 	core::Tensor distances;
-	kernel::comparison::ComputePointToPlaneDistances(distances, normals1, vertices1, vertices2);
+	kernel::comparison::ComputePointToPlaneDistances(distances, vertex_normals, vertex_positions, point_positions);
 	return distances;
 }
 } //namespace nnrt::geometry

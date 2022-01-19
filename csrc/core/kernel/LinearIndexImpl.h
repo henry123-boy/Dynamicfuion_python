@@ -42,12 +42,9 @@ inline void FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neigh
 	o3gk::NDArrayIndexer closest_indices_indexer(nearest_neighbor_indices, 1);
 	o3gk::NDArrayIndexer squared_distance_indexer(squared_distances, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
+
+	o3c::ParallelFor(
+			indexed_points.GetDevice(),
 			query_point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto query_point = make_point_vector(query_point_indexer.template GetDataPtr<float>(workload_idx));

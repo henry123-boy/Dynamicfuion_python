@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <open3d/core/kernel/CUDALauncher.cuh>
+#include <open3d/core/ParallelFor.h>
 
 #include "core/CUDA/DeviceHeapCUDA.cuh"
 #include "core/kernel/BuildKdTreeImpl.h"

@@ -18,7 +18,10 @@
 #include <open3d/t/geometry/TriangleMesh.h>
 #include <open3d/t/geometry/PointCloud.h>
 #include <open3d/core/TensorList.h>
+
 #include <pybind11/pybind11.h>
+
+#include "core/KdTree.h"
 
 namespace py = pybind11;
 
@@ -67,6 +70,7 @@ public:
 	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
 	               float node_coverage = 0.05, bool threshold_nodes_by_distance = false, int anchor_count = 4, int minimum_valid_anchor_count = 0);
 	virtual ~GraphWarpField() = default;
+
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::TensorList GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh) const;
@@ -87,8 +91,10 @@ public:
 	const bool threshold_nodes_by_distance;
 	const int minimum_valid_anchor_count;
 private:
+	std::shared_ptr<core::KdTree> KDTreeIndex;
 
-
+	virtual void FindKNearestNodesToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+	                                       const open3d::core::Tensor& query_points, int32_t k);
 
 };
 

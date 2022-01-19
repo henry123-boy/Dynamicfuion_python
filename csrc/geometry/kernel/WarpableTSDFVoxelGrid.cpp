@@ -15,7 +15,7 @@
 //  ================================================================
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Console.h>
-#include <open3d/core/hashmap/Hashmap.h>
+// #include <open3d/core/hashmap/Hashmap.h>
 
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 

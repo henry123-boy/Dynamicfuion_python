@@ -87,19 +87,14 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
 
 	//  Go through voxels
 //@formatter:off
 	DISPATCH_BYTESIZE_TO_VOXEL(
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
-				launcher::ParallelFor(
-						n_voxels,
+				open3d::core::ParallelFor(
+						depth_tensor.GetDevice(),n_voxels,
 						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
 				// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
@@ -212,31 +207,31 @@ void IntegrateWarped_Generic(const o3c::Tensor& block_indices, const o3c::Tensor
 // generic function templated only on one function parameter (e.g. blend warp function).
 #define NNRT_WARPABLE_TSDF_VOXEL_GRID_ANCHOR_COMPUTATION_METHOD_SELECTOR() \
 if (TUseNodeDistanceThreshold) {\
-	switch (TAnchorComputationMethod) {\
-		case AnchorComputationMethod::EUCLIDEAN:\
-			return warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(\
-					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_count, point, node_indexer,\
-					node_coverage_squared\
-			);\
-		case AnchorComputationMethod::SHORTEST_PATH:\
-			return warp::FindAnchorsAndWeightsForPointShortestPath_Threshold<TDeviceType>(\
-					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_count, point, node_indexer,\
-					edge_indexer, node_coverage_squared\
-			);\
-	}\
+    switch (TAnchorComputationMethod) {\
+        case AnchorComputationMethod::EUCLIDEAN:\
+            return warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(\
+                    anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_count, point, node_indexer,\
+                    node_coverage_squared\
+            );\
+        case AnchorComputationMethod::SHORTEST_PATH:\
+            return warp::FindAnchorsAndWeightsForPointShortestPath_Threshold<TDeviceType>(\
+                    anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_count, point, node_indexer,\
+                    edge_indexer, node_coverage_squared\
+            );\
+    }\
 } else {\
-	switch (TAnchorComputationMethod) {\
-		case AnchorComputationMethod::EUCLIDEAN:\
-			warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(\
-					anchor_indices, anchor_weights, anchor_count, node_count, point, node_indexer, node_coverage_squared\
-			);\
-			return true;\
-		case AnchorComputationMethod::SHORTEST_PATH:\
-			warp::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(\
-					anchor_indices, anchor_weights, anchor_count, node_count, point, node_indexer, edge_indexer, node_coverage_squared\
-			);\
-			return true;\
-	}\
+    switch (TAnchorComputationMethod) {\
+        case AnchorComputationMethod::EUCLIDEAN:\
+            warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(\
+                    anchor_indices, anchor_weights, anchor_count, node_count, point, node_indexer, node_coverage_squared\
+            );\
+            return true;\
+        case AnchorComputationMethod::SHORTEST_PATH:\
+            warp::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(\
+                    anchor_indices, anchor_weights, anchor_count, node_count, point, node_indexer, edge_indexer, node_coverage_squared\
+            );\
+            return true;\
+    }\
 } static_assert(true, "")
 
 template<AnchorComputationMethod TAnchorComputationMethod, bool TUseNodeDistanceThreshold, o3c::Device::DeviceType TDeviceType>

@@ -75,10 +75,10 @@ HostHeap<open3d::core::Device::DeviceType::CPU>::~HostHeap() {
 }
 
 void HostHeap<open3d::core::Device::DeviceType::CPU>::Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) {
-	input_keys.AssertDtype(this->key_data_type);
-	input_values.AssertDtype(this->value_data_type);
-	input_keys.AssertDevice(this->device);
-	input_values.AssertDevice(this->device);
+	o3c::AssertTensorDtype(input_keys, this->key_data_type);
+	o3c::AssertTensorDtype(input_values, this->value_data_type);
+	o3c::AssertTensorDevice(input_keys, this->device);
+	o3c::AssertTensorDevice(input_values, this->device);
 	auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
 	auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
 	for(int64_t i_pair = 0; i_pair < input_keys.GetLength(); i_pair++){

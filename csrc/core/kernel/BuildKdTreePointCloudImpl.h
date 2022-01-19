@@ -145,15 +145,10 @@ void BuildKdTreePointCloud_Generic(open3d::core::Blob& index_data, const open3d:
 	auto* range_nodes = reinterpret_cast<RangeNode<TPoint>*>(secondary_index.GetDataPtr());
 	RangeNode<TPoint>* range_nodes_end = range_nodes + secondary_index_length;
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
 
 	// index points linearly at first
-	launcher::ParallelFor(
-			point_count,
+	open3d::core::ParallelFor(
+			index_data.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				KdTreePointCloudNode<TPoint>& node = nodes[workload_idx];
 				node.point = make_point(point_indexer.template GetDataPtr<float>(workload_idx));
@@ -164,8 +159,8 @@ void BuildKdTreePointCloud_Generic(open3d::core::Blob& index_data, const open3d:
 	);
 
 
-	launcher::ParallelFor(
-			1,
+	open3d::core::ParallelFor(
+			index_data.GetDevice(), 1,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode<TPoint>& range_node = range_nodes[workload_idx];
 				range_nodes[workload_idx].node = nodes;
@@ -179,8 +174,8 @@ void BuildKdTreePointCloud_Generic(open3d::core::Blob& index_data, const open3d:
 	     range_start_index < point_count;
 	     range_start_index += range_length, range_length *= 2) {
 
-		launcher::ParallelFor(
-				range_length,
+		open3d::core::ParallelFor(
+				index_data.GetDevice(), range_length,
 				[=] OPEN3D_DEVICE(int64_t workload_idx) {
 					RangeNode<TPoint>* range_node = range_nodes + range_start_index + workload_idx;
 					FindTreeNodeAndSetUpChildRanges<TDeviceType, TPoint>(range_nodes, range_nodes_end, range_node, nodes, i_dimension);
@@ -193,8 +188,8 @@ void BuildKdTreePointCloud_Generic(open3d::core::Blob& index_data, const open3d:
 	auto* root_index_at = root_index_tensor.GetDataPtr<int32_t>();
 
 	// convert from index-based tree to direct / pointer-based tree to facilitate simple subsequent searches & insertion
-	launcher::ParallelFor(
-			secondary_index_length - IntPower(2, tree_level_count - 1),
+	open3d::core::ParallelFor(
+			index_data.GetDevice(), secondary_index_length - IntPower(2, tree_level_count - 1),
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				RangeNode<TPoint>& range_node = range_nodes[workload_idx];
 				if (workload_idx == 0) {

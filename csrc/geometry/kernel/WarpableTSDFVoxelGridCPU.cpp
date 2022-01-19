@@ -21,7 +21,7 @@
 // I don't know why it's not properly installed.
 // #include <open3d/core/hashmap/CPU/TBBHashmap.h>
 // #include <open3d/core/hashmap/Dispatch.h>
-#include <open3d/core/kernel/CPULauncher.h>
+#include <open3d/core/ParallelFor.h>
 
 #include "core/CPU/DeviceHeapCPU.h"
 #include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"

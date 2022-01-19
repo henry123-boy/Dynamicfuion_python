@@ -33,12 +33,9 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
 	NDArrayIndexer normals1_indexer(vertices1, 1);
 	NDArrayIndexer vertices1_indexer(vertices1, 1);
 	NDArrayIndexer vertices2_indexer(vertices2, 1);
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
+
+	open3d::core::ParallelFor(
+			vertices1.GetDevice(),
 			point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto vertex1_normal_data = normals1_indexer.template GetDataPtr<float>(workload_idx);

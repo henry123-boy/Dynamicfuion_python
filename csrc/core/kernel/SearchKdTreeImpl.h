@@ -360,16 +360,15 @@ FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neighbor_indices,
 	o3gk::NDArrayIndexer nearest_neighbor_indices_indexer(nearest_neighbor_indices, 1);
 	o3gk::NDArrayIndexer nearest_neighbor_distances_indexer(neighbor_distances, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#elif defined(DEBUG_ST)
+#if !defined(__CUDACC__) && defined(DEBUG_ST)
 	namespace launcher = cpu_launcher_st;
 #else
-	namespace launcher = o3c::kernel::cpu_launcher;
+	namespace launcher = open3d::core;
 #endif
 
+
 	launcher::ParallelFor(
-			query_point_count,
+			kd_tree_points.GetDevice(), query_point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto query_point = make_point_vector(query_point_indexer.template GetDataPtr<float>(workload_idx));
 				auto* indices_for_query_point = nearest_neighbor_indices_indexer.template GetDataPtr<int32_t>(workload_idx);
