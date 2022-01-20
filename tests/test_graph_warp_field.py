@@ -157,7 +157,7 @@ def test_warp_mesh_open3d_pythonic_mat(device, ground_truth_vertices):
     mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
 
     warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
-    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy_triangle_mesh()
+    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
     warped_mesh_legacy.compute_vertex_normals()
 
     visualize_results = False
@@ -227,7 +227,7 @@ def test_warp_mesh_open3d_native_mat(device, ground_truth_vertices):
     mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
 
     warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
-    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy_triangle_mesh()
+    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
     warped_mesh_legacy.compute_vertex_normals()
 
     visualize_results = False

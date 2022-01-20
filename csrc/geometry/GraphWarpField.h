@@ -91,10 +91,10 @@ public:
 	const bool threshold_nodes_by_distance;
 	const int minimum_valid_anchor_count;
 private:
-	std::shared_ptr<core::KdTree> KDTreeIndex;
-
-	virtual void FindKNearestNodesToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-	                                       const open3d::core::Tensor& query_points, int32_t k);
+	// std::shared_ptr<core::KdTree> KDTreeIndex;
+	//
+	// virtual void FindKNearestNodesToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+	//                                        const open3d::core::Tensor& query_points, int32_t k);
 
 };
 

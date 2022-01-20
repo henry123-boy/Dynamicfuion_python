@@ -91,9 +91,9 @@ class TelemetryGenerator:
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             if self.record_visualization_to_disk:
                 # FIXME: mesh_video_recorder is broken, fix
-                self.mesh_video_recorder.capture_frame([canonical_mesh.to_legacy_triangle_mesh()])
+                self.mesh_video_recorder.capture_frame([canonical_mesh.to_legacy()])
             else:
-                o3d.visualization.draw_geometries([canonical_mesh.to_legacy_triangle_mesh()],
+                o3d.visualization.draw_geometries([canonical_mesh.to_legacy()],
                                                   front=[0, 0, -1],
                                                   lookat=[0, 0, 1.5],
                                                   up=[0, -1.0, 0],
@@ -102,9 +102,9 @@ class TelemetryGenerator:
     def process_warped_mesh(self, warped_mesh: o3d.geometry.TriangleMesh) -> None:
         if self.visualization_mode == VisualizationMode.WARPED_MESH:
             if self.record_visualization_to_disk:
-                self.mesh_video_recorder.capture_frame([warped_mesh.to_legacy_triangle_mesh()])
+                self.mesh_video_recorder.capture_frame([warped_mesh.to_legacy()])
             else:
-                o3d.visualization.draw_geometries([warped_mesh.to_legacy_triangle_mesh()],
+                o3d.visualization.draw_geometries([warped_mesh.to_legacy()],
                                                   front=[0, 0, -1],
                                                   lookat=[0, 0, 1.5],
                                                   up=[0, -1.0, 0],
@@ -176,10 +176,10 @@ class TelemetryGenerator:
                                         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh]):
         if self.record_framewise_canonical_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
-                                       canonical_mesh.to_legacy_triangle_mesh())
+                                       canonical_mesh.to_legacy())
         if self.record_framewise_warped_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
-                                       warped_mesh.to_legacy_triangle_mesh())
+                                       warped_mesh.to_legacy())
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:

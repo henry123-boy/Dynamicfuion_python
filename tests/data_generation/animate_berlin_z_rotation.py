@@ -32,7 +32,7 @@ def main():
     extrinsics_open3d_cuda = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, device)
 
     volume.integrate(depth_image, color_image, intrinsics_open3d_cuda, extrinsics_open3d_cuda, DeformNetParameters.depth_scale.value, 3.0)
-    original_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy_triangle_mesh()
+    original_mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(0).to_legacy()
     renderer = PyTorch3DRenderer((depth_image.rows, depth_image.columns), device, intrinsics_open3d_cuda)
 
     frame_count = 6

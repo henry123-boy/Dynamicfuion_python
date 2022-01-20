@@ -45,15 +45,18 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
+
     geometry/DualQuaternion.h
+
     geometry/GraphWarpField.h
     geometry/GraphWarpField.cpp
+
     geometry/kernel/Graph.h
     geometry/kernel/Graph.cpp
     geometry/kernel/GraphCPU.cpp
     geometry/kernel/GraphCUDA.cu
     geometry/kernel/GraphImpl.h
-    core/kernel/KnnUtilities.h
+
     geometry/kernel/WarpUtilities.h
     geometry/kernel/Warp.h
     geometry/kernel/Warp.cpp
@@ -78,6 +81,9 @@ set(NNRT_SOURCE_FILES
     string/split_string.cpp
     string/join_string_separator.cpp
     string/join_string_separator.h
+
+    core/kernel/KnnUtilities.h
+    core/kernel/KnnUtilities_PriorityQueue.h
 
     core/KeyValuePair.h
     core/DeviceHeap.h
@@ -110,6 +116,8 @@ set(NNRT_SOURCE_FILES
     core/kernel/BuildKdTreePointCloudImpl.h
     core/kernel/KdTreePointCloudCPU.cpp
     core/kernel/KdTreePointCloudCUDA.cu
+    core/kernel/KdTreeUtils.cpp
+    core/kernel/KdTreeNodeTypes.h
 
     core/DimensionCount.h
 
@@ -126,7 +134,8 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
 
-    core/kernel/KnnUtilities_PriorityQueue.h core/kernel/KdTreeUtils.cpp core/kernel/KdTreeNodeTypes.h)
+
+)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

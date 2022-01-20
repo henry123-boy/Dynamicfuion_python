@@ -13,8 +13,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <open3d/core/ParallelFor.h>
 
+#include <open3d/core/ParallelFor.h>
 #include "core/CPU/DeviceHeapCPU.h"
 #include "core/kernel/BuildKdTreeImpl.h"
 #include "core/kernel/SearchKdTreeImpl.h"

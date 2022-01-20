@@ -6,10 +6,10 @@ import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 
-import data.io as dio
+import io as dio
 import skimage.io
 
-from settings import process_arguments, Parameters
+from settings import Parameters
 import image_processing
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 

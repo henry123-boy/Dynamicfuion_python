@@ -77,14 +77,14 @@ def main():
         depth_image_open3d_legacy = o3d.io.read_image(depth_image_path)
         color_image_open3d_legacy = o3d.io.read_image(color_image_path)
 
-    depth_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(depth_image_open3d_legacy, device=device)
+    depth_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy(depth_image_open3d_legacy, device=device)
 
-    color_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy_image(color_image_open3d_legacy, device=device)
+    color_image_gpu: o3d.t.geometry.Image = o3d.t.geometry.Image.from_legacy(color_image_open3d_legacy, device=device)
     volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
 
     # === mesh extraction ===
 
-    mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
+    mesh: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy()
     mesh.compute_vertex_normals()
 
     # === visualization ===

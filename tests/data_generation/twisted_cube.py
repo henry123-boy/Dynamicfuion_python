@@ -8,7 +8,7 @@ import open3d as o3d
 import open3d.core as o3c
 from scipy.spatial.transform.rotation import Rotation
 
-import data.io as dio
+import io as dio
 from settings import PathParameters, process_arguments
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DPythonic
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
@@ -154,7 +154,7 @@ def main():
         mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(current_mesh, device=device)
 
         warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
-        warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy_triangle_mesh()
+        warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
         warped_mesh_legacy.compute_vertex_normals()
         return warped_mesh_legacy
 

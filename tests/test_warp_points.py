@@ -50,7 +50,7 @@ def test_warp_points_cpp_vs_legacy():
     pc_legacy = o3d.geometry.PointCloud()
     pc_legacy.points = o3d.utility.Vector3dVector(source_rgbxyz[:, 3:])
     pc_legacy.colors = o3d.utility.Vector3dVector(source_rgbxyz[:, :3])
-    pc = o3d.t.geometry.PointCloud.from_legacy_pointcloud(pc_legacy, device=device)
+    pc = o3d.t.geometry.PointCloud.from_legacy(pc_legacy, device=device)
 
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
     node_rotations_o3d = o3c.Tensor(node_rotations, dtype=o3c.Dtype.Float32, device=device)
@@ -60,6 +60,6 @@ def test_warp_points_cpp_vs_legacy():
     point_weights_o3d = o3c.Tensor(pixel_weights.reshape(-1, 4), dtype=o3c.Dtype.Float32, device=device)
 
     warped_pc_o3d = ng.warp_point_cloud_mat(pc, nodes_o3d, node_rotations_o3d, node_translations_o3d, point_anchors_o3d, point_weights_o3d, 4)
-    warped_points = warped_pc_o3d.point["points"].cpu().numpy()
+    warped_points = warped_pc_o3d.point["positions"].cpu().numpy()
     assert np.allclose(warped_points, legacy_warped_points, atol=1e-7)
 

@@ -210,7 +210,7 @@ class FusionPipeline:
                 if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
                     precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
                 if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
-                    canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy_triangle_mesh()
+                    canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy()
                     canonical_mesh = o3d.t.geometry.TrinagleMesh.from_legacy_triangle_mesh(canonical_mesh_legacy, device=device)
                     self.graph = build_deformation_graph_from_mesh(canonical_mesh, node_coverage,
                                                                    erosion_iteration_count=10,
