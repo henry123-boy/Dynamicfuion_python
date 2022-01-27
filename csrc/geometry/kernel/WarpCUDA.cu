@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "geometry/kernel/Warp.h"
-#include "open3d/core/kernel/CUDALauncher.cuh"
+#include "open3d/core/ParallelFor.h"
 #include "geometry/kernel/WarpImpl.h"
 
 using namespace open3d;

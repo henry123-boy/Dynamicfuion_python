@@ -64,15 +64,9 @@ void ExtractVoxelCentersCPU
 	// Plain array that does not require indexers
 	const int64_t* indices_ptr = indices.GetDataPtr<int64_t>();
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-
 	// Go through voxels
-	launcher::ParallelFor(
-			n_voxels,
+	open3d::core::ParallelFor(
+			indices.GetDevice(), n_voxels,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 
 		// Natural index (0, N) ->
@@ -139,19 +133,14 @@ void ExtractTSDFValuesAndWeightsCPU
 	const auto* indices_ptr = indices.GetDataPtr<int64_t>();
 
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-
 	//  Go through voxels
 //@formatter:off
 	DISPATCH_BYTESIZE_TO_VOXEL(
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
-				launcher::ParallelFor(
-						n_voxels, [=] OPEN3D_DEVICE(int64_t workload_idx) {
+				open3d::core::ParallelFor(
+						indices.GetDevice(), n_voxels,
+						[=] OPEN3D_DEVICE(int64_t workload_idx) {
 //@formatter:on
 				// Natural index (0, N) ->
 				//                        (workload_block_idx, voxel_index_in_block)
@@ -222,19 +211,14 @@ void ExtractValuesInExtentCPU(
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-
 //  Go through voxels
 //@formatter:off
 	DISPATCH_BYTESIZE_TO_VOXEL(
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
-				launcher::ParallelFor(
-						n_voxels, [=] OPEN3D_DEVICE(int64_t workload_idx) {
+				open3d::core::ParallelFor(
+						block_indices.GetDevice(), n_voxels,
+						[=] OPEN3D_DEVICE(int64_t workload_idx) {
 //@formatter:on
 				// Natural index (0, N) ->
 				//                    (workload_block_idx, voxel_index_in_block)

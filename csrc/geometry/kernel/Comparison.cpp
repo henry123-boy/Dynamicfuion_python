@@ -14,9 +14,9 @@
 //  limitations under the License.
 //  ================================================================
 #include "geometry/kernel/Comparison.h"
-#include "geometry/kernel/DeviceSelection.h"
+#include "core/DeviceSelection.h"
 
-using namespace open3d;
+namespace o3c = open3d::core;
 
 namespace nnrt::geometry::kernel::comparison {
 
@@ -24,10 +24,10 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& normals1,
                                   const open3d::core::Tensor& vertices1,
                                   const open3d::core::Tensor& vertices2) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			normals1,
-			[&] { ComputePointToPlaneDistances<core::Device::DeviceType::CPU>(distances, normals1, vertices1, vertices2); },
-			[&] { ComputePointToPlaneDistances<core::Device::DeviceType::CUDA>(distances, normals1, vertices1, vertices2); }
+			[&] { ComputePointToPlaneDistances<o3c::Device::DeviceType::CPU>(distances, normals1, vertices1, vertices2); },
+			[&] { NNRT_IF_CUDA(ComputePointToPlaneDistances<o3c::Device::DeviceType::CUDA>(distances, normals1, vertices1, vertices2);); }
 	);
 }
 

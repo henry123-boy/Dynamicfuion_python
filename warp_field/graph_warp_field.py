@@ -1,5 +1,6 @@
 import typing
 
+from deprecated import deprecated
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -8,6 +9,8 @@ from scipy.sparse import csr_matrix, lil_matrix
 from scipy.sparse.csgraph import connected_components
 from matplotlib import cm
 from telemetry.visualization.geometry.make_plane import make_z_aligned_image_plane
+
+from nnrt.geometry import GraphWarpField as GraphWarpFieldOpen3DNative
 
 from dq3d import dualquat, quat, op
 
@@ -84,7 +87,7 @@ def find_knn_graph_connected_components(knn_edges: np.ndarray) -> np.ndarray:
     return labels
 
 
-class DeformationGraphNumpy:
+class GraphWarpFieldNumpy:
     def __init__(self, canonical_node_positions: np.ndarray, edges: np.ndarray, edge_weights: np.ndarray,
                  clusters: np.ndarray):
         self.nodes = canonical_node_positions
@@ -92,27 +95,28 @@ class DeformationGraphNumpy:
         self.edge_weights = edge_weights
         self.clusters = clusters
         self.transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
-        self.rotations_mat = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
-        self.translations_vec = np.zeros_like(self.nodes)
+        self.rotations = np.array([np.eye(3, dtype=np.float32)] * len(self.nodes))
+        self.translations = np.zeros_like(self.nodes)
 
     def get_warped_nodes(self) -> np.ndarray:
-        return self.nodes + self.translations_vec
+        return self.nodes + self.translations
 
-    def get_extent_canonical(self) -> typing.Tuple[np.ndarray, np.ndarray]:
-        return self.nodes.max(axis=0), self.nodes.min(axis=0)
+    def get_node_extent(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+        return self.nodes.min(axis=0), self.nodes.max(axis=0)
 
+    @deprecated(version="1.0.0", reason="Will be phased out eventually during transition to native GraphWarpField class")
     def as_line_set_canonical(self) -> o3d.geometry.LineSet:
         return knn_graph_to_line_set(self.nodes, self.edges, self.clusters)
 
-    def warp_mesh_mat(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
+    def warp_mesh(self, mesh: o3d.geometry.TriangleMesh, node_coverage) -> o3d.geometry.TriangleMesh:
         vertices = np.array(mesh.vertices)
         vertex_anchors, vertex_weights = nnrt.compute_vertex_anchors_euclidean(self.nodes, vertices, node_coverage)
         i_vertex = 0
         deformed_vertices = np.zeros_like(vertices)
         for vertex in vertices:
             vertex_anchor_weights = vertex_weights[i_vertex]
-            vertex_anchor_rotations = [self.rotations_mat[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
-            vertex_anchor_translations = [self.translations_vec[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
+            vertex_anchor_rotations = [self.rotations[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
+            vertex_anchor_translations = [self.translations[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
             vertex_anchor_nodes = [self.nodes[anchor_node_index] for anchor_node_index in vertex_anchors[i_vertex]]
             deformed_vertex = np.zeros((3,), dtype=np.float32)
             for weight, rotation, translation, node in \
@@ -151,55 +155,54 @@ class DeformationGraphNumpy:
         :param path: where to save
         """
         np.savez(path, nodes=self.nodes, edges=self.edges, edge_weights=self.edge_weights, clusters=self.clusters,
-                 rotations_mat=self.rotations_mat, translations_vec=self.translations_vec)
+                 rotations_mat=self.rotations, translations_vec=self.translations)
 
 
-# TODO: eventually, the idea is to first use this class instead of DeformationGraphNumpy, then make an Open3D-based
+# TODO: eventually, the idea is to first use this class instead of GraphWarpFieldNumpy, then make an Open3D-based
 #  C++ implementation of it (with a python port, of course, and could be something like WarpField instead of Graph to
 #  further abstract away things)
 #  This will greatly reduce or eliminate the Long Parameter List anti-pattern in the IntegrateWarped____ member functions,
 #  since these will accept a graph with all of the parameters like "nodes", "edges", "node_transformations", etc.
-class DeformationGraphOpen3D:
+class GraphWarpFieldOpen3DPythonic:
     def __init__(self, nodes: o3c.Tensor, edges: o3c.Tensor, edge_weights: o3c.Tensor,
-                 clusters: o3c.Tensor, anchor_count=4):
+                 clusters: o3c.Tensor):
         self.nodes = nodes
         self.edges = edges
         self.edge_weights = edge_weights
         self.clusters = clusters
         transformations_dq = [dualquat(quat.identity())] * len(self.nodes)
         transformations_dq_numpy = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in transformations_dq])
-        self.translations_dq = o3c.Tensor(transformations_dq_numpy, device=nodes.device)
-        self.rotations_mat = o3c.Tensor(np.array([np.eye(3, dtype=np.float32)] * len(self.nodes)), device=nodes.device)
-        self.translations_vec = o3c.Tensor.zeros(self.nodes.shape, dtype=o3c.Dtype.Float32, device=nodes.device),
-        self.anchor_count = anchor_count
+        self.transformations_dq = o3c.Tensor(transformations_dq_numpy, device=nodes.device)
+        self.rotations = o3c.Tensor(np.array([np.eye(3, dtype=np.float32)] * len(self.nodes)), device=nodes.device)
+        self.translations = o3c.Tensor.zeros(self.nodes.shape, dtype=o3c.Dtype.Float32, device=nodes.device)
 
     def get_warped_nodes(self) -> o3c.Tensor:
-        return self.nodes + self.translations_vec
+        return self.nodes + self.translations
 
-    def get_extent_canonical(self) -> typing.Tuple[o3c.Tensor, o3c.Tensor]:
-        return self.nodes.max(dim=0), self.nodes.min(dim=0)
+    def get_node_extent(self) -> typing.Tuple[o3c.Tensor, o3c.Tensor]:
+        return self.nodes.min(dim=0), self.nodes.max(dim=0)
 
     def as_line_set_canonical(self) -> o3d.geometry.LineSet:
         return knn_graph_to_line_set(self.nodes.numpy(), self.edges.numpy(), self.clusters.numpy())
 
-    def warp_mesh_mat(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
-        return nnrt.geometry.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations_mat, self.translations_vec, self.anchor_count, node_coverage)
+    def warp_mesh(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage, anchor_count=4) -> o3d.t.geometry.TriangleMesh:
+        return nnrt.geometry.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations, self.translations, anchor_count, node_coverage)
 
     def warp_mesh_dq(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage) -> o3d.t.geometry.TriangleMesh:
         raise NotImplemented("Dual-quaternion mesh warping hasn't yet been implemented.")
 
 
-def load_deformation_graph_from_disk(path: str) -> DeformationGraphNumpy:
+def load_numpy_warp_field_from_disk(path: str) -> GraphWarpFieldNumpy:
     container = np.load(path)
-    graph = DeformationGraphNumpy(container["nodes"], container["edges"], container["edge_weights"], container["clusters"])
-    graph.rotations_mat = container["rotations_mat"]
-    graph.translations_vec = container["translations_vec"]
+    graph = GraphWarpFieldNumpy(container["nodes"], container["edges"], container["edge_weights"], container["clusters"])
+    graph.rotations = container["rotations"]
+    graph.translations = container["translations"]
     return graph
 
 
-def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_coverage: float = 0.05,
+def build_deformation_graph_from_mesh(mesh: o3d.t.geometry.TriangleMesh, node_coverage: float = 0.05,
                                       erosion_iteration_count: int = 10, erosion_min_neighbor_count: int = 4,
-                                      neighbor_count: int = 8) -> DeformationGraphNumpy:
+                                      neighbor_count: int = 8) -> GraphWarpFieldOpen3DNative:
     vertex_positions = np.array(mesh.vertices)
     triangle_vertex_indices = np.array(mesh.triangles)
 
@@ -210,12 +213,12 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
         nnrt.sample_nodes(vertex_positions, erosion_mask, node_coverage, use_only_non_eroded_indices=True, random_shuffle=False)
     node_count = nodes.shape[0]
 
-    graph_edges, graph_edge_weights, graph_edge_distances, node_to_vertex_distances = \
+    edges, edge_weights, graph_edge_distances, node_to_vertex_distances = \
         nnrt.compute_edges_shortest_path(vertex_positions, triangle_vertex_indices, node_vertex_indices,
                                          neighbor_count, node_coverage, True)
 
     # ===== Remove nodes with not enough neighbors ===
-    # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding C++ code
+    # TODO: break up the routines in create_graph_data.py and reuse them here & in the corresponding code below, then port to C++
     # valid_nodes_mask = np.ones((node_count, 1), dtype=bool)
     # # Mark nodes with not enough neighbors
     # nnrt.node_and_edge_clean_up(graph_edges, valid_nodes_mask)
@@ -296,20 +299,25 @@ def build_deformation_graph_from_mesh(mesh: o3d.geometry.TriangleMesh, node_cove
     #########################################################################
     # Compute clusters.
     #########################################################################
-    clusters_size_list, graph_clusters = nnrt.compute_clusters(graph_edges)
+    clusters_size_list, clusters = nnrt.compute_clusters(edges)
     for i, cluster_size in enumerate(clusters_size_list):
         if cluster_size <= 2:
             print("Cluster is too small {}".format(clusters_size_list))
-            print("It only has nodes:", np.where(graph_clusters == i)[0])
+            print("It only has nodes:", np.where(clusters == i)[0])
 
-    return DeformationGraphNumpy(nodes, graph_edges, graph_edge_weights, graph_clusters)
+    nodes_o3d = o3c.Tensor(nodes, device=mesh.device)
+    edges_o3d = o3c.Tensor(edges, device=mesh.device)
+    edge_weights_o3d = o3c.Tensor(edge_weights, device=mesh.device)
+    clusters_o3d = o3c.Tensor(clusters, device=mesh.device)
+
+    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage)
 
 
-def draw_deformation_graph(deformation_graph: DeformationGraphNumpy,
+def draw_deformation_graph(deformation_graph: GraphWarpFieldNumpy,
                            background_image: o3d.geometry.Image = None) -> None:
     line_set = deformation_graph.as_line_set_canonical()
 
-    extent_max, extent_min = deformation_graph.get_extent_canonical()
+    extent_min, extent_max = deformation_graph.get_node_extent()
     plane_z = extent_max[2]
 
     if background_image is not None:

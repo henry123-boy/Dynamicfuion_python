@@ -23,15 +23,24 @@
 
 namespace nnrt::geometry::kernel::warp {
 
+// version not using node distance thresholding
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage);
 
+// version using node distance thresholding
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage,
                 int minimum_valid_anchor_count);
 
+// version using precomputed anchors, but not distance thresholding
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations,
+                const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
+
+// version using precomputed anchors & distance thresholding
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations,
@@ -48,6 +57,12 @@ void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor&
                 const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, int anchor_count, float node_coverage,
                 int minimum_valid_anchor_count);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+                const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
+                const open3d::core::Tensor& node_translations,
+                const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights);
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,

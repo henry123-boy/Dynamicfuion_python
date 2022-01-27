@@ -15,10 +15,10 @@
 //  ================================================================
 
 #include <open3d/core/Dispatch.h>
-#include <open3d/core/hashmap/CUDA/StdGPUHashmap.h>
-#include <open3d/core/hashmap/DeviceHashmap.h>
-#include <open3d/core/hashmap/Dispatch.h>
-#include <open3d/core/kernel/CUDALauncher.cuh>
+// #include <open3d/core/hashmap/CUDA/StdGPUHashmap.h>
+// #include <open3d/core/hashmap/DeviceHashmap.h>
+// #include <open3d/core/hashmap/Dispatch.h>
+#include <open3d/core/ParallelFor.h>
 
 #include "core/CUDA/DeviceHeapCUDA.cuh"
 #include "geometry/kernel/WarpableTSDFVoxelGridImpl.h"

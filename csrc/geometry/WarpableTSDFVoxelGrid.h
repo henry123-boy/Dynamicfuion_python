@@ -82,13 +82,6 @@ public:
 protected:
 	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(
 			const open3d::core::Tensor& active_block_addresses);
-
-	using TSDFVoxelGrid::voxel_size_;
-	using TSDFVoxelGrid::sdf_trunc_;
-	using TSDFVoxelGrid::block_resolution_;
-	using TSDFVoxelGrid::block_count_;
-	using TSDFVoxelGrid::device_;
-	using TSDFVoxelGrid::attr_dtype_map_;
 };
 
 }// namespace geometry

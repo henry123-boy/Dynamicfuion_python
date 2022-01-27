@@ -21,30 +21,29 @@
 #include <open3d/core/CUDAUtils.h>
 
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 __global__
 void InsertIntoHeap(IDeviceHeap* device_heap, const uint8_t* input_keys_data, const uint8_t* input_values_data,
 					const int64_t key_byte_size, const int64_t value_byte_size, const int64_t count){
 
 	for(int64_t i_pair = 0; i_pair < count; i_pair++){
-		device_heap->insert_internal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
-		                             reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
+		device_heap->InsertInternal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
+		                    reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
 	}
 }
 
 template<typename TKey, typename TValue>
 __global__
 void MakeMinHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
-	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
-	typedef decltype(core::MinHeapKeyCompare<TKey, TValue>) Compare;
+	typedef core::KeyValuePair<TKey, TValue> KeyValuePair;
+	typedef decltype(core::MinHeapKeyCompare<KeyValuePair>) Compare;
 
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HT;
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, KeyValuePair, Compare> HT;
 	HT local(
-			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+			reinterpret_cast<KeyValuePair*>(storage),
 			capacity,
-			core::MinHeapKeyCompare<TKey, TValue>
+			core::MinHeapKeyCompare<KeyValuePair>
 	);
 	memcpy(device_heap,&local, sizeof(HT));
 }
@@ -52,31 +51,31 @@ void MakeMinHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
 template<typename TKey, typename TValue>
 __global__
 void MakeMaxHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
-	typedef core::KeyValuePair<TKey, TValue> DistanceIndexPair;
-	typedef decltype(core::MaxHeapKeyCompare<TKey, TValue>) Compare;
+	typedef core::KeyValuePair<TKey, TValue> KeyValuePair;
+	typedef decltype(core::MaxHeapKeyCompare<KeyValuePair>) Compare;
 
-	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, DistanceIndexPair, Compare> HT;
+	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, KeyValuePair, Compare> HT;
 	HT local(
-			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
+			reinterpret_cast<KeyValuePair*>(storage),
 			capacity,
-			core::MaxHeapKeyCompare<TKey, TValue>
+			core::MaxHeapKeyCompare<KeyValuePair>
 	);
 	memcpy(device_heap,&local, sizeof(HT));
 }
 
 __global__
 void PopHeap(IDeviceHeap* device_heap, void* key, void* data) {
-	device_heap->pop_internal(key, data);
+	device_heap->PopInternal(key, data);
 }
 
 __global__
 void IsHeapEmpty(IDeviceHeap* device_heap, bool* empty) {
-	*empty = device_heap->empty();
+	*empty = device_heap->Empty();
 }
 
 __global__
 void GetHeapSize(IDeviceHeap* device_heap, int32_t* size) {
-	*size = device_heap->size();
+	*size = device_heap->Size();
 }
 
 template<typename TKey, typename TValue, typename TCompare>
@@ -116,11 +115,11 @@ HostHeap<open3d::core::Device::DeviceType::CUDA>::HostHeap(int32_t capacity,
 			cudaMalloc(&storage, sizeof(KeyValuePair<int32_t, float>) * capacity);
 			switch (heap_type) {
 				case HeapType::MIN:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<float, int32_t>)));
+					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
 					MakeMinHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				case HeapType::MAX:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<float, int32_t>)));
+					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
 					MakeMaxHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				default:
@@ -139,10 +138,10 @@ HostHeap<open3d::core::Device::DeviceType::CUDA>::~HostHeap() {
 }
 
 void HostHeap<open3d::core::Device::DeviceType::CUDA>::Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) {
-	input_keys.AssertDtype(this->key_data_type);
-	input_values.AssertDtype(this->value_data_type);
-	input_keys.AssertDevice(this->device);
-	input_values.AssertDevice(this->device);
+	o3c::AssertTensorDtype(input_keys, this->key_data_type);
+	o3c::AssertTensorDtype(input_values, this->value_data_type);
+	o3c::AssertTensorDevice(input_keys, this->device);
+	o3c::AssertTensorDevice(input_values, this->device);
 	auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
 	auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
 	dim3 grid_size(1);
@@ -185,5 +184,4 @@ bool HostHeap<open3d::core::Device::DeviceType::CUDA>::Empty() const {
 	return is_empty;
 };
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

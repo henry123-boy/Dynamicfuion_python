@@ -15,6 +15,10 @@ option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
 option(SET_UP_U_2_NET             "Set up a slimmed-down version of U^2 Net for mask generation using Saliency Object Detection (requires a large ~177 Mb  download to a local folder)" ON)
 
+if(BUILD_CPP_TESTS)
+    enable_testing()
+endif()
+
 if(GLIBCXX_USE_CXX11_ABI)
     set(usage "1")
 else()
@@ -33,6 +37,13 @@ if (CCACHE)
         set(CMAKE_CUDA_COMPILER_LAUNCHER ${CCACHE})
     endif()
 endif()
+
+# In ExternalProject_Add, if NNRT_THIRD_PARTY_DOWNLOAD_DIR is specified, CMake will
+# use this directory to cache downloaded 3rd party dependencies and automatically skip
+# downloading from the Internet if the files are available. This is only supported by
+# a limited number of 3rd party libraries.
+set(NNRT_THIRD_PARTY_DOWNLOAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty_downloads")
+message(STATUS "Downloading 3rdparty dependencies to ${NNRT_THIRD_PARTY_DOWNLOAD_DIR}")
 
 
 ### Parse NNRT version number
@@ -187,11 +198,11 @@ function(nnrt_set_global_properties target)
         endif()
     endif()
     target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>")
-    if(GLIBCXX_USE_CXX11_ABI)
-        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=1)
-    else()
-        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=0)
-    endif()
+#    if(GLIBCXX_USE_CXX11_ABI)
+#        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=1)
+#    else()
+#        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=0)
+#    endif()
 endfunction()
 
 ### includes for dependency processing

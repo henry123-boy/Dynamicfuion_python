@@ -8,7 +8,7 @@ import open3d as o3d
 import torch
 
 from data import SequenceFrameDataset
-from warp_field.graph import DeformationGraphNumpy
+from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
 import pynvml
 import os
@@ -87,13 +87,13 @@ class TelemetryGenerator:
             print(f'free     : {info.free}')
             print(f'used     : {info.used}')
 
-    def process_canonical_mesh(self, canonical_mesh: o3d.geometry.TriangleMesh) -> None:
+    def process_canonical_mesh(self, canonical_mesh: o3d.t.geometry.TriangleMesh) -> None:
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             if self.record_visualization_to_disk:
                 # FIXME: mesh_video_recorder is broken, fix
-                self.mesh_video_recorder.capture_frame([canonical_mesh])
+                self.mesh_video_recorder.capture_frame([canonical_mesh.to_legacy()])
             else:
-                o3d.visualization.draw_geometries([canonical_mesh],
+                o3d.visualization.draw_geometries([canonical_mesh.to_legacy()],
                                                   front=[0, 0, -1],
                                                   lookat=[0, 0, 1.5],
                                                   up=[0, -1.0, 0],
@@ -102,9 +102,9 @@ class TelemetryGenerator:
     def process_warped_mesh(self, warped_mesh: o3d.geometry.TriangleMesh) -> None:
         if self.visualization_mode == VisualizationMode.WARPED_MESH:
             if self.record_visualization_to_disk:
-                self.mesh_video_recorder.capture_frame([warped_mesh])
+                self.mesh_video_recorder.capture_frame([warped_mesh.to_legacy()])
             else:
-                o3d.visualization.draw_geometries([warped_mesh],
+                o3d.visualization.draw_geometries([warped_mesh.to_legacy()],
                                                   front=[0, 0, -1],
                                                   lookat=[0, 0, 1.5],
                                                   up=[0, -1.0, 0],
@@ -117,7 +117,7 @@ class TelemetryGenerator:
                               target_rgbxyz: np.ndarray,
                               pixel_anchors: np.ndarray,
                               pixel_weights: np.ndarray,
-                              graph: DeformationGraphNumpy,
+                              graph: GraphWarpFieldOpen3DNative,
                               additional_geometry: List = []):
         if self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
             node_count = len(graph.nodes)
@@ -138,7 +138,7 @@ class TelemetryGenerator:
 
             additional_geometry = [item for item in additional_geometry if item is not None]
             tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
-                                            graph.get_warped_nodes(), graph.edges,
+                                            graph.get_warped_nodes().cpu().numpy(), graph.edges.cpu().numpy(),
                                             rotations_pred, translations_pred, mask_pred,
                                             valid_source_points, valid_correspondences, target_matches, additional_geometry)
 
@@ -148,13 +148,13 @@ class TelemetryGenerator:
             cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_depth.png"), depth_image)
 
     def process_result_visualization_and_logging(self,
-                                                 canonical_mesh: Union[None, o3d.geometry.TriangleMesh],
-                                                 warped_mesh: Union[None, o3d.geometry.TriangleMesh],
+                                                 canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh],
+                                                 warped_mesh: Union[None, o3d.t.geometry.TriangleMesh],
                                                  deform_net_data: dict,
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
                                                  pixel_anchors: np.ndarray, pixel_weights: np.ndarray,
-                                                 graph: DeformationGraphNumpy):
+                                                 graph: GraphWarpFieldOpen3DNative):
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
@@ -172,14 +172,14 @@ class TelemetryGenerator:
             raise NotImplementedError("TODO")
 
     def record_meshes_to_disk_if_needed(self,
-                                        canonical_mesh: Union[None, o3d.geometry.TriangleMesh],
-                                        warped_mesh: Union[None, o3d.geometry.TriangleMesh]):
+                                        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh],
+                                        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh]):
         if self.record_framewise_canonical_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
-                                       canonical_mesh)
+                                       canonical_mesh.to_legacy())
         if self.record_framewise_warped_mesh:
             o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
-                                       warped_mesh)
+                                       warped_mesh.to_legacy())
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:
@@ -201,13 +201,13 @@ class TelemetryGenerator:
             target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
             np.save(target_path, target_rgbxyz.reshape(6, -1).T)
 
-    def process_graph_transformation(self, graph: DeformationGraphNumpy):
+    def process_graph_transformation(self, graph: GraphWarpFieldOpen3DNative):
         if self.record_graph_transformations:
             nodes_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_nodes.npy")
-            np.save(nodes_path, graph.nodes)
+            np.save(nodes_path, graph.nodes.cpu().numpy())
             edges_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_edges.npy")
-            np.save(edges_path, graph.edges)
+            np.save(edges_path, graph.edges.cpu().numpy())
             rotations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_rotations.npy")
-            np.save(rotations_path, graph.rotations_mat)
+            np.save(rotations_path, graph.rotations.cpu().numpy())
             translations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_translations.npy")
-            np.save(translations_path, graph.translations_vec)
+            np.save(translations_path, graph.translations.cpu().numpy())

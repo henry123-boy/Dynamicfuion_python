@@ -14,11 +14,12 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
 #include "core/DeviceHeap.h"
+
 namespace o3c = open3d::core;
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 namespace cuda {
 template<typename T>
 __device__ void swap(T& x, T& y) {
@@ -79,8 +80,8 @@ public:
 	__device__ DeviceHeap(TElement* data, int capacity, TCompare compare) :
 			data(data), cursor(capacity), capacity(capacity), compare(compare), _size(0) {}
 
-	__device__ bool insert(TElement element) override {
-		if(_size >= capacity) return false;
+	__device__ bool Insert(TElement element) override {
+		if (_size >= capacity) return false;
 		// fill in from the back, moving toward the front
 		cursor--;
 		data[cursor] = element;
@@ -89,7 +90,7 @@ public:
 		return true;
 	}
 
-	__device__ TElement pop() override {
+	__device__ TElement Pop() override {
 		assert(_size > 0);
 		TElement extremum = data[cursor];
 		cursor++;
@@ -98,16 +99,16 @@ public:
 		return extremum;
 	}
 
-	__device__ TElement& head() override{
+	__device__ TElement& Head() override {
 		assert(_size > 0);
 		return data[cursor];
 	}
 
-	__device__ bool empty() const override {
+	__device__ bool Empty() const override {
 		return _size == 0;
 	}
 
-	__device__ int size() const override {
+	__device__ int Size() const override {
 		return _size;
 	}
 
@@ -120,5 +121,4 @@ private:
 };
 
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

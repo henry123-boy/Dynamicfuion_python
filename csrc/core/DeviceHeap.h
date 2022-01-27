@@ -20,31 +20,30 @@
 #include "PlatformIndependence.h"
 
 
-namespace nnrt{
-namespace core{
+namespace nnrt::core{
 
 
 
-template<typename TKey, typename TValue>
-const auto MinHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const KeyValuePair<TKey, TValue>& first, const KeyValuePair<TKey, TValue>& second){
+template<typename TKeyValuePair>
+const auto MinHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const TKeyValuePair& first, const TKeyValuePair& second){
 	return first.key > second.key;
 };
 
-template<typename TKey, typename TValue>
-const auto MaxHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const KeyValuePair<TKey, TValue>& first, const KeyValuePair<TKey, TValue>& second){
+template<typename TKeyValuePair>
+const auto MaxHeapKeyCompare = []NNRT_DEVICE_WHEN_CUDACC(const TKeyValuePair& first, const TKeyValuePair& second){
 	return first.key < second.key;
 };
 
 class IDeviceHeap {
 
 public:
-	virtual ~IDeviceHeap() = default;
-	virtual NNRT_DEVICE_WHEN_CUDACC bool insert_internal(const void* key, const void* value) = 0;
-	virtual NNRT_DEVICE_WHEN_CUDACC void pop_internal(void* key, void* value) = 0;
-	virtual NNRT_DEVICE_WHEN_CUDACC bool empty() const = 0;
-	virtual NNRT_DEVICE_WHEN_CUDACC int size() const = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC ~IDeviceHeap() = default;
+	//"Internal" suffix here mainly to avoid strange warnings from CUDA about overrides
+	virtual NNRT_DEVICE_WHEN_CUDACC bool InsertInternal(const void* key, const void* value) = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC void PopInternal(void* key, void* value) = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC bool Empty() const = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC int Size() const = 0;
 };
-
 
 
 template<typename TElement>
@@ -56,26 +55,23 @@ public:
 	typedef decltype(TElement::value) TValue;
 
 	NNRT_DEVICE_WHEN_CUDACC ~TypedDeviceHeap() override = default;
-	virtual NNRT_DEVICE_WHEN_CUDACC bool insert(TElement element) = 0;
-	virtual NNRT_DEVICE_WHEN_CUDACC TElement pop() = 0;
-	virtual NNRT_DEVICE_WHEN_CUDACC TElement& head() = 0;
-	bool NNRT_DEVICE_WHEN_CUDACC insert_internal(const void* key, const void* value) override{
-		return insert(TElement{*reinterpret_cast<const TKey *>(key), *reinterpret_cast<const TValue *>(value)});
+	virtual NNRT_DEVICE_WHEN_CUDACC bool Insert(TElement element) = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC TElement Pop() = 0;
+	virtual NNRT_DEVICE_WHEN_CUDACC TElement& Head() = 0;
+	bool NNRT_DEVICE_WHEN_CUDACC InsertInternal(const void* key, const void* value) override{
+		return Insert(TElement{*reinterpret_cast<const TKey*>(key), *reinterpret_cast<const TValue*>(value)});
 	}
-	void NNRT_DEVICE_WHEN_CUDACC pop_internal(void* key, void* value) override {
-		TElement& extremum = this->head();
+	void NNRT_DEVICE_WHEN_CUDACC PopInternal(void* key, void* value) override {
+		TElement& extremum = this->Head();
 		*reinterpret_cast<TKey *>(key) = extremum.key;
 		*reinterpret_cast<TValue *>(value) = extremum.value;
-		this->pop();
+		this->Pop();
 	}
 };
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TElement, typename TComparison>
 class DeviceHeap;
 
-
-
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core
 
 

@@ -3,13 +3,12 @@ import json
 
 import numpy as np
 from tqdm import tqdm
-import argparse
 
 from alignment.loss import EPE_3D_eval
 from data import DeformDataset
 
 from settings import Parameters, process_arguments
-import data.io
+import io
 
 
 def main():
@@ -129,11 +128,11 @@ def main():
             node_translations_pred_file), f"{node_translations_pred_file} does not exist. Make sure you are not missing any prediction."
         assert os.path.isfile(scene_flow_pred_file), f"{scene_flow_pred_file} does not exist. Make sure you are not missing any prediction."
 
-        node_translations_pred = data.io.load_graph_node_deformations(
+        node_translations_pred = io.load_graph_node_deformations(
             node_translations_pred_file
         )
 
-        scene_flow_pred = data.io.load_flow(
+        scene_flow_pred = io.load_flow(
             scene_flow_pred_file
         )
 

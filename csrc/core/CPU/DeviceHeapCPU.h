@@ -19,8 +19,7 @@
 
 namespace o3c = open3d::core;
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 template<typename TElement, typename TCompare>
 class DeviceHeap<o3c::Device::DeviceType::CPU, TElement, TCompare> : public TypedDeviceHeap<TElement> {
@@ -28,7 +27,7 @@ public:
 	DeviceHeap(TElement* data, int capacity, TCompare compare) :
 			data(data), capacity(capacity), compare(compare), _size(0) {}
 
-	bool insert(TElement element) override {
+	bool Insert(TElement element) override {
 		if (_size >= capacity) return false;
 		data[_size] = element;
 		_size++;
@@ -36,30 +35,30 @@ public:
 		return true;
 	}
 
-	TElement pop() override {
+	TElement Pop() override {
 		if (_size > 0) {
 			std::pop_heap(data, data + _size, compare);
 			TElement extremum = data[_size-1];
 			_size--;
 			return extremum;
 		} else {
-			open3d::utility::LogError("Trying to pop from an empty heap.");
+			open3d::utility::LogError("Trying to Pop from an empty heap.");
 		}
 	}
 
-	TElement& head() override{
+	TElement& Head() override{
 		if (_size > 0) {
 			return data[0];
 		} else {
-			open3d::utility::LogError("Trying to pop from an empty heap.");
+			open3d::utility::LogError("Trying to Pop from an empty heap.");
 		}
 	}
 
-	bool empty() const override {
+	bool Empty() const override {
 		return _size == 0;
 	}
 
-	int size() const override{
+	int Size() const override{
 		return _size;
 	}
 
@@ -73,5 +72,4 @@ private:
 
 
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

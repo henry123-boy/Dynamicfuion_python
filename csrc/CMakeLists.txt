@@ -36,6 +36,7 @@ set(NNRT_SOURCE_FILES
     cpu/image_proc.cpp
     debugging/debugging.hpp
     core/PlatformIndependence.h
+
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
     geometry/WarpableTSDFVoxelGrid.h
@@ -44,15 +45,18 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
+
     geometry/DualQuaternion.h
-    geometry/Graph.h
-    geometry/Graph.cpp
+
+    geometry/GraphWarpField.h
+    geometry/GraphWarpField.cpp
+
     geometry/kernel/Graph.h
     geometry/kernel/Graph.cpp
     geometry/kernel/GraphCPU.cpp
     geometry/kernel/GraphCUDA.cu
     geometry/kernel/GraphImpl.h
-    geometry/kernel/KnnUtilities.h
+
     geometry/kernel/WarpUtilities.h
     geometry/kernel/Warp.h
     geometry/kernel/Warp.cpp
@@ -62,12 +66,25 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
     geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
     geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
+    geometry/kernel/Comparison.h
+    geometry/kernel/Comparison.cpp
     geometry/AnchorComputationMethod.h
     geometry/TransformationMode.h
     geometry/Comparison.h
     geometry/Comparison.cpp
-    geometry/kernel/Comparison.h
-    geometry/kernel/Comparison.cpp
+    geometry/kernel/ComparisonCPU.cpp
+    geometry/kernel/ComparisonCUDA.cu
+    geometry/kernel/ComparisonImpl.h
+    geometry/IndexedPointCloud.h
+
+    string/split_string.h
+    string/split_string.cpp
+    string/join_string_separator.cpp
+    string/join_string_separator.h
+
+    core/kernel/KnnUtilities.h
+    core/kernel/KnnUtilities_PriorityQueue.h
+
     core/KeyValuePair.h
     core/DeviceHeap.h
     core/CPU/DeviceHeapCPU.cpp
@@ -83,12 +100,42 @@ set(NNRT_SOURCE_FILES
     core/CUDA/HostHeapCUDAImpl.cuh
     core/CUDA/HostHeapCUDA.cu
     core/CUDA/HostHeapCUDA.h
-    string/split_string.h
-    string/split_string.cpp
-    geometry/kernel/DeviceSelection.h
-    geometry/kernel/ComparisonCPU.cpp
-    geometry/kernel/ComparisonCUDA.cu
-    geometry/kernel/ComparisonImpl.h)
+
+    core/KdTree.h
+    core/KdTree.cpp
+    core/kernel/KdTree.h
+    core/kernel/KdTree.cpp
+    core/kernel/BuildKdTreeImpl.h
+    core/kernel/KdTreeCPU.cpp
+    core/kernel/KdTreeCUDA.cu
+
+    core/KdTreePointCloud.h
+    core/KdTreePointCloud.cpp
+    core/kernel/KdTreePointCloud.h
+    core/kernel/KdTreePointCloud.cpp
+    core/kernel/BuildKdTreePointCloudImpl.h
+    core/kernel/KdTreePointCloudCPU.cpp
+    core/kernel/KdTreePointCloudCUDA.cu
+    core/kernel/KdTreeUtils.cpp
+    core/kernel/KdTreeNodeTypes.h
+
+    core/DimensionCount.h
+
+    core/LinearIndex.cpp
+    core/LinearIndex.h
+    core/kernel/LinearIndex.cpp
+    core/kernel/LinearIndex.h
+    core/kernel/LinearIndexImpl.h
+    core/kernel/LinearIndexCPU.cpp
+    core/kernel/LinearIndexCUDA.cu
+
+    core/DeviceSelection.h
+
+    core/TensorManipulationRoutines.h
+    core/TensorManipulationRoutines.cpp
+
+
+)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -104,6 +151,8 @@ nnrt_link_3rdparty_libraries(nnrt_cpp)
 nnrt_set_global_properties(nnrt_cpp)
 target_link_libraries(nnrt_cpp PUBLIC CUDA::toolkit)
 
+# ==================== Benchmark Executables =========================================
+add_subdirectory(bench)
 # ==================== set up NNRT Python binding library ============================
 set(PYBIND_SOURCE_FILES
     3rd_party/magic_enum.hpp

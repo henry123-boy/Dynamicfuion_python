@@ -259,13 +259,13 @@ class FrameDataset(metaclass=ABCMeta):
         return cv2.imread(self.get_mask_image_path(), cv2.IMREAD_UNCHANGED)
 
     def load_color_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
-        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_color_image_path()), device=device)
+        return o3d.t.geometry.Image.from_legacy(o3d.io.read_image(self.get_color_image_path()), device=device)
 
     def load_depth_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
-        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_depth_image_path()), device=device)
+        return o3d.t.geometry.Image.from_legacy(o3d.io.read_image(self.get_depth_image_path()), device=device)
 
     def load_mask_image_open3d(self, device: o3d.core.Device) -> o3d.t.geometry.Image:
-        return o3d.t.geometry.Image.from_legacy_image(o3d.io.read_image(self.get_mask_image_path()), device=device)
+        return o3d.t.geometry.Image.from_legacy(o3d.io.read_image(self.get_mask_image_path()), device=device)
 
 
 class StandaloneFrameDataset(FrameDataset, GenericDataset):

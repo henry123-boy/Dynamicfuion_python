@@ -34,10 +34,7 @@ namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph {
+namespace nnrt::geometry::kernel::graph {
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
 void ComputeAnchorsAndWeightsEuclidean
@@ -60,13 +57,8 @@ void ComputeAnchorsAndWeightsEuclidean
 	NDArrayIndexer anchor_indexer(anchors, 1);
 	NDArrayIndexer weight_indexer(weights, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
-			point_count,
+	open3d::core::ParallelFor(
+			points.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
@@ -101,19 +93,14 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	NDArrayIndexer node_indexer(nodes, 1);
 	NDArrayIndexer edge_indexer(edges, 1);
 
-	edges.AssertShape({node_count, GRAPH_DEGREE});
+	o3c::AssertTensorShape(edges, {node_count, GRAPH_DEGREE});
 
 	//output indexers
 	NDArrayIndexer anchor_indexer(anchors, 1);
 	NDArrayIndexer weight_indexer(weights, 1);
 
-#if defined(__CUDACC__)
-	namespace launcher = o3c::kernel::cuda_launcher;
-#else
-	namespace launcher = o3c::kernel::cpu_launcher;
-#endif
-	launcher::ParallelFor(
-			point_count,
+	open3d::core::ParallelFor(
+			points.GetDevice(), point_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto point_data = point_indexer.GetDataPtr<float>(workload_idx);
 				Eigen::Vector3f point(point_data[0], point_data[1], point_data[2]);
@@ -129,7 +116,4 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	);
 }
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

@@ -13,7 +13,7 @@ import open3d.core as o3c
 
 import image_processing
 from data import DeformDataset
-import data.io
+import io
 from settings import Parameters, process_arguments
 from settings.model import get_saved_model
 
@@ -176,11 +176,11 @@ def main():
         node_translations_pred_file = os.path.join(output_dir, f"{sample_name}_node_translations.bin")
         scene_flow_pred_file = os.path.join(output_dir, f"{sample_name}_sceneflow.sflow")
 
-        data.io.save_graph_node_deformations(
+        io.save_graph_node_deformations(
             node_translations_pred_file, node_translations_pred
         )
 
-        data.io.save_flow(
+        io.save_flow(
             scene_flow_pred_file, scene_flow_pred
         )
 

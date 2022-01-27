@@ -26,7 +26,7 @@ Testing & working on the code requires `git`. In terminal or msys git shell for 
 **Important:** please follow the order of these topics during setup.
 
 #### CUDA ####
-Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 (or the latest version of cuda supported by both PyTorch and CuPy) installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/index.html)). The rest of these instructions assume you followed this recommendation, otherwise please adjust accordingly.
+Although in theory, it is possible to build and run the fusion pipeline without CUDA, it would be pretty slow on large scenes or with high resolutions. Hence, we recommend having CUDA 11.1 (or the latest version of cuda supported by both PyTorch and CuPy) installed on your platform (guides for [Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/point_index.html), [Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/point_index.html), [MacOS X](https://docs.nvidia.com/cuda/archive/9.2/cuda-installation-guide-mac-os-x/point_index.html)). The rest of these instructions assume you followed this recommendation, otherwise please adjust accordingly.
 
 #### CMake ####
 
@@ -40,7 +40,7 @@ Python 3.8 or above is required. Check out the official [website](https://www.py
 PyTorch 1.9.0 or later should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Please use matching PyTorch and CuPy CUDA version support, even though PyTorch for older CUDA builds sometimes works with the newer ones. Otherwise, there will be import errors due library loading conflicts. 
 
 #### Open3D ####
-Unlike PyTorch, Open3D still needs to be built from source in order to use CUDA. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout the `9a49100bc` commit (the Open3D C++ API is still very fluid, so we cannot recommend a specific release yet). Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
+Open3D still needs to be built from source in order for the extension to be compiled. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout `tags/v0.14.1`. Then, make sure to [initialize and update the submodules](https://stackoverflow.com/a/4438292/844728).
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 

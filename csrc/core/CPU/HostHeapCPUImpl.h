@@ -21,8 +21,7 @@
 
 namespace o3c = open3d::core;
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 HostHeap<open3d::core::Device::DeviceType::CPU>::
 HostHeap(int32_t capacity,
@@ -44,22 +43,22 @@ HostHeap(int32_t capacity,
 					device_heap = std::make_shared<DeviceHeap<
 							open3d::core::Device::DeviceType::CPU,
 							KeyValuePair<float, int32_t>,
-							decltype(MinHeapKeyCompare<float, int32_t>)
+							decltype(MinHeapKeyCompare<KeyValuePair<float, int32_t>>)
 					>>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
-							MinHeapKeyCompare<float, int32_t>
+							MinHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 					break;
 				case HeapType::MAX:
 					device_heap = std::make_shared<DeviceHeap<
 							open3d::core::Device::DeviceType::CPU,
 							KeyValuePair<float, int32_t>,
-							decltype(MaxHeapKeyCompare<float, int32_t>)
+							decltype(MaxHeapKeyCompare<KeyValuePair<float, int32_t>>)
 					>>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
-							MaxHeapKeyCompare<float, int32_t>
+							MaxHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 				default:
 					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
@@ -76,31 +75,30 @@ HostHeap<open3d::core::Device::DeviceType::CPU>::~HostHeap() {
 }
 
 void HostHeap<open3d::core::Device::DeviceType::CPU>::Insert(const open3d::core::Tensor& input_keys, const open3d::core::Tensor& input_values) {
-	input_keys.AssertDtype(this->key_data_type);
-	input_values.AssertDtype(this->value_data_type);
-	input_keys.AssertDevice(this->device);
-	input_values.AssertDevice(this->device);
+	o3c::AssertTensorDtype(input_keys, this->key_data_type);
+	o3c::AssertTensorDtype(input_values, this->value_data_type);
+	o3c::AssertTensorDevice(input_keys, this->device);
+	o3c::AssertTensorDevice(input_values, this->device);
 	auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
 	auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
 	for(int64_t i_pair = 0; i_pair < input_keys.GetLength(); i_pair++){
-		device_heap->insert_internal(reinterpret_cast<const void*>(input_keys_data + key_data_type.ByteSize() * i_pair),
-		                             input_values_data + value_data_type.ByteSize() * i_pair);
+		device_heap->InsertInternal(reinterpret_cast<const void*>(input_keys_data + key_data_type.ByteSize() * i_pair),
+		                    input_values_data + value_data_type.ByteSize() * i_pair);
 	}
 }
 
 void HostHeap<open3d::core::Device::DeviceType::CPU>::Pop(open3d::core::Tensor& output_key, open3d::core::Tensor& output_value) {
 	output_key = o3c::Tensor({1}, key_data_type, device);
 	output_value = o3c::Tensor({1}, value_data_type, device);
-	device_heap->pop_internal(output_key.GetDataPtr(), output_value.GetDataPtr());
+	device_heap->PopInternal(output_key.GetDataPtr(), output_value.GetDataPtr());
 }
 
 int HostHeap<open3d::core::Device::DeviceType::CPU>::Size() const {
-	return device_heap->size();
+	return device_heap->Size();
 };
 
 bool HostHeap<open3d::core::Device::DeviceType::CPU>::Empty() const {
-	return device_heap->empty();
+	return device_heap->Empty();
 };
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

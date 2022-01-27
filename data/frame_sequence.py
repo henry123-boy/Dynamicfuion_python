@@ -2,10 +2,11 @@ import typing
 import os
 
 import open3d as o3d
+import open3d.core as o3c
 
 from data import DeformDataset, StaticCenterCrop
 from data.frame import GenericDataset, DatasetType, DataSplit, SequenceFrameDataset
-from warp_field.graph import DeformationGraphNumpy
+from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 
 
 class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]):
@@ -133,7 +134,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
 
         return pixel_anchors, pixel_weights
 
-    def get_current_frame_graph(self) -> typing.Union[None, DeformationGraphNumpy]:
+    def get_current_frame_graph_warp_field(self, device: o3c.Device) -> typing.Union[None, GraphWarpFieldOpen3DNative]:
         if not self._loaded:
             raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
 
@@ -147,9 +148,14 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         if graph_filename is None:
             return None
 
-        graph_nodes, graph_edges, graph_edges_weights, _, graph_clusters = \
+        graph_nodes, graph_edges, graph_edge_weights, _, graph_clusters = \
             DeformDataset.load_graph_data(self.get_sequence_directory(), graph_filename, False)
-        graph = DeformationGraphNumpy(graph_nodes, graph_edges, graph_edges_weights, graph_clusters)
+
+        nodes_o3d = o3c.Tensor(graph_nodes, device=device)
+        edges_o3d = o3c.Tensor(graph_edges, device=device)
+        edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
+        clusters_o3d = o3c.Tensor(graph_clusters, device=device)
+        graph = GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
 
         return graph
 

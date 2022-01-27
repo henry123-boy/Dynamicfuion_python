@@ -17,7 +17,11 @@
 
 #include <open3d/t/geometry/TriangleMesh.h>
 #include <open3d/t/geometry/PointCloud.h>
+#include <open3d/core/TensorList.h>
+
 #include <pybind11/pybind11.h>
+
+#include "core/KdTree.h"
 
 namespace py = pybind11;
 
@@ -40,6 +44,10 @@ open3d::t::geometry::TriangleMesh WarpTriangleMeshMat(const open3d::t::geometry:
                                                       int anchor_count, float node_coverage, bool threshold_nodes_by_distance = true,
                                                       int minimum_valid_anchor_count = 0);
 
+open3d::t::geometry::TriangleMesh WarpTriangleMeshDQ(const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& nodes,
+                                                     const open3d::core::Tensor& node_transformations,
+                                                     int anchor_count, float node_coverage, bool threshold_nodes_by_distance = true,
+                                                     int minimum_valid_anchor_count = 0);
 
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
@@ -54,6 +62,41 @@ void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d:
 
 py::tuple ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
                                                const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
+
+class GraphWarpField {
+	friend class WarpableTSDFVoxelGrid;
+
+public:
+	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
+	               float node_coverage = 0.05, bool threshold_nodes_by_distance = false, int anchor_count = 4, int minimum_valid_anchor_count = 0);
+	virtual ~GraphWarpField() = default;
+
+	open3d::core::Tensor GetWarpedNodes() const;
+	open3d::core::TensorList GetNodeExtent() const;
+	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh) const;
+
+	Eigen::Vector3f WarpPoint(const Eigen::Vector3f& input_point);
+
+	//TODO: gradually hide these fields and expose only on a need-to-know basis
+	open3d::core::Tensor nodes;
+	open3d::core::Tensor edges;
+	open3d::core::Tensor edge_weights;
+	open3d::core::Tensor clusters;
+
+	open3d::core::Tensor translations;
+	open3d::core::Tensor rotations;
+
+	const float node_coverage;
+	const int anchor_count;
+	const bool threshold_nodes_by_distance;
+	const int minimum_valid_anchor_count;
+private:
+	// std::shared_ptr<core::KdTree> KDTreeIndex;
+	//
+	// virtual void FindKNearestNodesToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+	//                                        const open3d::core::Tensor& query_points, int32_t k);
+
+};
 
 
 } // namespace nnrt::geometry

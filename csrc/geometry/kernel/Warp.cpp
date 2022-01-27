@@ -14,9 +14,9 @@
 //  limitations under the License.
 //  ================================================================
 #include "geometry/kernel/Warp.h"
-#include "geometry/kernel/DeviceSelection.h"
+#include "core/DeviceSelection.h"
 
-using namespace open3d;
+namespace o3c = open3d::core;
 
 namespace nnrt::geometry::kernel::warp {
 
@@ -24,12 +24,16 @@ namespace nnrt::geometry::kernel::warp {
 void WarpPoints(open3d::core::Tensor& warped_vertices,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, const int anchor_count, const float node_coverage) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			nodes,
-			[&] { WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage); },
-			[&] { WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage); }
+			[&] {
+				WarpPoints<o3c::Device::DeviceType::CPU>(
+						warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+			},
+			[&] {
+				NNRT_IF_CUDA(WarpPoints<o3c::Device::DeviceType::CUDA>(
+						warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage););
+			}
 	);
 }
 
@@ -37,28 +41,54 @@ void WarpPoints(open3d::core::Tensor& warped_vertices,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations,
                 const open3d::core::Tensor& node_translations, const int anchor_count, const float node_coverage,
 				const int minimum_valid_anchor_count) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			nodes,
-			[&] { WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count); },
-			[&] { WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count); }
+			[&] {
+				WarpPoints<o3c::Device::DeviceType::CPU>(
+						warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count);
+			},
+			[&] {
+				NNRT_IF_CUDA(WarpPoints<o3c::Device::DeviceType::CUDA>(
+						warped_vertices, points, nodes, node_rotations, node_translations, anchor_count, node_coverage, minimum_valid_anchor_count););
+			}
 	);
 }
 
-void WarpPoints(open3d::core::Tensor& warped_vertices,
+
+// void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
+//                       const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, const open3d::core::Tensor& anchors,
+//                       const open3d::core::Tensor& anchor_weights) {
+// 	core::InferDeviceFromEntityAndExecute(
+// 			nodes,
+// 			[&] {
+// 				WarpPoints<o3c::Device::DeviceType::CPU>(
+// 						warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights);
+// 			},
+// 			[&] {
+// 				NNRT_IF_CUDA(WarpPoints<o3c::Device::DeviceType::CUDA>(
+// 						warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights););
+// 			}
+// 	);
+// }
+
+void WarpPoints(open3d::core::Tensor& warped_points,
                 const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
                 const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
                 const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
 				const int minimum_valid_anchor_count) {
-	InferDeviceFromTensorAndExecute(
+	core::InferDeviceFromEntityAndExecute(
 			nodes,
-			[&] { WarpPoints<core::Device::DeviceType::CPU>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count); },
-			[&] { WarpPoints<core::Device::DeviceType::CUDA>(
-					warped_vertices, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count); }
+			[&] {
+				WarpPoints<o3c::Device::DeviceType::CPU>(
+						warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count);
+			},
+			[&] {
+				NNRT_IF_CUDA(WarpPoints<o3c::Device::DeviceType::CUDA>(
+						warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights, minimum_valid_anchor_count););
+			}
 	);
 }
+
 
 
 } // namespace nnrt::geometry::kernel::warp

@@ -17,13 +17,19 @@
 
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::geometry::kernel{
+namespace nnrt::core{
 
-	template<typename FExecuteOnCPU, typename  FExecuteOnCUDA>
-	void InferDeviceFromTensorAndExecute(const open3d::core::Tensor& guiding_tensor,
+#ifdef BUILD_CUDA_MODULE
+	#define NNRT_IF_CUDA(...) __VA_ARGS__ static_assert(true)
+#else
+	#define NNRT_IF_CUDA(...) static_assert(true)
+#endif
+
+	template<typename TEntity, typename FExecuteOnCPU, typename  FExecuteOnCUDA>
+	void InferDeviceFromEntityAndExecute(const TEntity& guiding_entity,
 	                                     FExecuteOnCPU&& execute_on_cpu,
 	                                     FExecuteOnCUDA&& execute_on_cuda){
-		open3d::core::Device device = guiding_tensor.GetDevice();
+		open3d::core::Device device = guiding_entity.GetDevice();
 		open3d::core::Device::DeviceType device_type = device.GetType();
 
 		switch (device_type) {
@@ -33,7 +39,6 @@ namespace nnrt::geometry::kernel{
 			case open3d::core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
 				execute_on_cuda();
-
 #else
 				open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
@@ -44,4 +49,4 @@ namespace nnrt::geometry::kernel{
 		}
 	}
 
-} // nnrt::geometry::kernel
+} // nnrt::core

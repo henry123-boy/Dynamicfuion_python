@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "geometry/kernel/Comparison.h"
-#include "open3d/core/kernel/CPULauncher.h"
+#include "open3d/core/ParallelFor.h"
 #include "geometry/kernel/ComparisonImpl.h"
 
 namespace nnrt::geometry::kernel::comparison {

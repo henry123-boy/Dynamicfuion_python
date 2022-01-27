@@ -15,14 +15,46 @@
 //  ================================================================
 #pragma once
 
-namespace nnrt {
-namespace core {
-
+namespace nnrt::core {
 template<typename TKey, typename TValue>
 struct KeyValuePair {
 	TKey key;
 	TValue value;
 };
 
-} // namespace core
-} // namespace nnrt
+template<typename TKey, typename TValue>
+struct DistanceIndexPair {
+	union{
+		TKey key;
+		TKey distance;
+	};
+	union{
+		TValue value;
+		TValue index;
+	};
+};
+
+template<typename TKey, typename TValue>
+struct DistancePointPair {
+	union{
+		TKey key;
+		TKey distance;
+	};
+	union{
+		TValue value;
+		TValue point;
+	};
+};
+
+template<typename TKey, typename TValue>
+struct DistanceNodePair {
+	union{
+		TKey key;
+		TKey distance;
+	};
+	union{
+		TValue value;
+		TValue node;
+	};
+};
+} // namespace nnrt::core
