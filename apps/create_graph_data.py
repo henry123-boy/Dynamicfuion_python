@@ -28,10 +28,14 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
                                             intrinsic_matrix: np.ndarray, device: o3d.core.Device,
                                             max_triangle_distance: float = 0.05, depth_scale_reciprocal: float = 1000.0,
                                             erosion_num_iterations: int = 10, erosion_min_neighbors: int = 4,
-                                            remove_nodes_with_too_few_neighbors: bool = True, use_only_valid_vertices: bool = True,
+                                            remove_nodes_with_too_few_neighbors: bool = True,
+                                            use_only_valid_vertices: bool = True,
                                             sample_random_shuffle: bool = False, neighbor_count: int = 8,
-                                            enforce_neighbor_count: bool = True, scene_flow_path: typing.Union[str, None] = None,
-                                            enable_visual_debugging: bool = False) -> \
+                                            enforce_neighbor_count: bool = True,
+                                            scene_flow_path: typing.Union[str, None] = None,
+                                            enable_visual_debugging: bool = False,
+                                            node_coverage: float = 0.05,
+                                            minimum_valid_anchor_count: int = 3) -> \
         typing.Tuple[GraphWarpFieldOpen3DNative, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
     # options
 
@@ -102,7 +106,8 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
         if scene_flow_path is None:
             o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
         else:
-            mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows), o3d.utility.Vector3iVector(faces))
+            mesh_transformed = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices + vertex_flows),
+                                                         o3d.utility.Vector3iVector(faces))
             mesh_transformed.compute_vertex_normals()
             mesh_transformed.paint_uniform_color([0.0, 1.0, 0.0])
 
@@ -167,7 +172,8 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
             print("You're allowing nodes with not enough neighbors!")
 
     if graph_debug:
-        print("Node filtering: initial num nodes", num_nodes, "| invalid nodes", len(node_id_black_list), "({})".format(node_id_black_list))
+        print("Node filtering: initial num nodes", num_nodes, "| invalid nodes", len(node_id_black_list),
+              "({})".format(node_id_black_list))
 
     #########################################################################
     # Compute pixel anchors.
@@ -260,7 +266,8 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
             if sum_weights > 0:
                 graph_edge_weights[node_id] /= sum_weights
             else:
-                raise ValueError(f"Weight sum for node anchors is {sum_weights}. Weights: {str(graph_edge_weights[node_id])}.")
+                raise ValueError(
+                    f"Weight sum for node anchors is {sum_weights}. Weights: {str(graph_edge_weights[node_id])}.")
 
         # 3. Update pixel anchors using the id mapping (note that, at this point, pixel_anchors is already free of "bad" nodes, since
         # 'compute_pixel_anchors_shortest_path_c' was given 'valid_nodes_mask')
@@ -272,14 +279,19 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
 
     for i, cluster_size in enumerate(cluster_sizes):
         if cluster_size <= 2:
-            raise ValueError(f"Cluster is too small: {cluster_size}, it only has nodes: {str(np.where(graph_clusters == i)[0])}")
+            raise ValueError(
+                f"Cluster is too small: {cluster_size}, it only has nodes: {str(np.where(graph_clusters == i)[0])}")
 
     nodes_o3d = o3c.Tensor(node_coords, device=device)
     edges_o3d = o3c.Tensor(graph_edges, device=device)
     edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
     clusters_o3d = o3c.Tensor(graph_clusters.flatten(), device=device)
 
-    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d), node_deformations, pixel_anchors, pixel_weights
+    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d,
+                                      clusters_o3d, node_coverage=node_coverage,
+                                      threshold_nodes_by_distance=minimum_valid_anchor_count > 0,
+                                      minimum_valid_anchor_count=minimum_valid_anchor_count), \
+           node_deformations, pixel_anchors, pixel_weights
 
 
 def generate_paths(seq_dir: str):
@@ -324,15 +336,21 @@ def save_graph_data(seq_dir: str, pair_name: str, node_coords: np.ndarray, graph
     dst_graph_nodes_dir, dst_graph_edges_dir, dst_pixel_weights_dir, dst_graph_edges_weights_dir, dst_graph_clusters_dir, \
     dst_node_deformations_dir, dst_pixel_anchors_dir, dst_pixel_weights_dir = generate_paths(seq_dir)
 
-    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
-    output_graph_edges_path = os.path.join(dst_graph_edges_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_graph_nodes_path = os.path.join(dst_graph_nodes_dir,
+                                           pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_graph_edges_path = os.path.join(dst_graph_edges_dir,
+                                           pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
     output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir,
                                                    pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
-    output_node_deformations_path = os.path.join(dst_node_deformations_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
-    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_node_deformations_path = os.path.join(dst_node_deformations_dir,
+                                                 pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_graph_clusters_path = os.path.join(dst_graph_clusters_dir,
+                                              pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
 
-    output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
-    output_pixel_weights_path = os.path.join(dst_pixel_weights_dir, pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir,
+                                             pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+    output_pixel_weights_path = os.path.join(dst_pixel_weights_dir,
+                                             pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
 
     dio.save_graph_nodes(output_graph_nodes_path, node_coords)
     dio.save_graph_edges(output_graph_edges_path, graph_edges)
@@ -359,19 +377,26 @@ def check_graph_data_against_ground_truth(seq_dir: str, ground_truth_pair_name: 
     dst_node_deformations_dir, dst_pixel_anchors_dir, dst_pixel_weights_dir = generate_paths(seq_dir)
 
     gt_output_graph_nodes_path = os.path.join(dst_graph_nodes_dir,
-                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                               node_coverage))
     gt_output_graph_edges_path = os.path.join(dst_graph_edges_dir,
-                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                              ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                               node_coverage))
     gt_output_graph_edges_weights_path = os.path.join(dst_graph_edges_weights_dir,
-                                                      ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                                      ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                                       node_coverage))
     gt_output_node_deformations_path = os.path.join(dst_node_deformations_dir,
-                                                    ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                                    ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                                     node_coverage))
     gt_output_graph_clusters_path = os.path.join(dst_graph_clusters_dir,
-                                                 ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                                 ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                                  node_coverage))
     gt_output_pixel_anchors_path = os.path.join(dst_pixel_anchors_dir,
-                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                                 node_coverage))
     gt_output_pixel_weights_path = os.path.join(dst_pixel_weights_dir,
-                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic", node_coverage))
+                                                ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
+                                                                                                 node_coverage))
 
     assert np.array_equal(node_coords, dio.load_graph_nodes(gt_output_graph_nodes_path))
     assert np.array_equal(graph_edges, dio.load_graph_edges(gt_output_graph_edges_path))

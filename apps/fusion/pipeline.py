@@ -213,9 +213,10 @@ class FusionPipeline:
                 if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
                     canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy()
                     canonical_mesh = o3d.t.geometry.TrinagleMesh.from_legacy(canonical_mesh_legacy, device=device)
-                    self.graph = build_deformation_graph_from_mesh(canonical_mesh, node_coverage,
-                                                                   erosion_iteration_count=10,
-                                                                   neighbor_count=8)
+                    self.graph = build_deformation_graph_from_mesh(
+                        canonical_mesh, node_coverage, erosion_iteration_count=10, neighbor_count=8,
+                        minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value
+                    )
                 elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
                     self.graph = sequence.get_current_frame_graph_warp_field(device)
                     if self.graph is None:
@@ -233,7 +234,9 @@ class FusionPipeline:
                             use_only_valid_vertices=graph_parameters.graph_use_only_valid_vertices.value,
                             sample_random_shuffle=graph_parameters.graph_sample_random_shuffle.value,
                             neighbor_count=graph_parameters.graph_neighbor_count.value,
-                            enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.value
+                            enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.value,
+                            node_coverage = node_coverage,
+                            minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value
                         )
                 else:
                     raise NotImplementedError(
@@ -376,8 +379,6 @@ class FusionPipeline:
 
                 # TODO: outsource integration logic to a separate function.
 
-                # TODO: to eliminate some of the indirection here, see TODO above GraphWarpFieldOpen3DPythonic. Might be able to
-                #  condense the four variants here into a single function with two flag arguments controlling behavior.
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     # prepare quaternion data for Open3D integration
                     # TODO fix or deprecate QUATERNION MODE
@@ -387,17 +388,10 @@ class FusionPipeline:
 
                 elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
                     if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
-                        cos_voxel_ray_to_normal = volume.integrate_warped_mat(
+                        cos_voxel_ray_to_normal = volume.integrate_warped(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                            self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            self.graph.nodes, self.graph.edges, self.graph.rotations, self.graph.translations,
-                            node_coverage,
-                            anchor_count=integration_parameters.anchor_node_count.value,
-                            minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
-                            depth_scale=depth_scale, depth_max=3.0,
-                            compute_anchors_using=CPPAnchorComputationModeMap[
-                                integration_parameters.voxel_anchor_computation_mode.value],
-                            use_node_distance_thresholding=False)
+                            self.intrinsics_open3d_device, self.extrinsics_open3d_device, self.graph,
+                            depth_scale=depth_scale, depth_max=3.0)
                 else:
                     raise NotImplementedError(f"Unsupported {TransformationMode.__name__:s} "
                                               f"'{integration_parameters.voxel_anchor_computation_mode.value.name:s}' "
