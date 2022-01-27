@@ -16,7 +16,8 @@ import nnrt
 
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
-from alignment.interface import run_non_rigid_alignment  # temporarily out-of-order here due to some CuPy 10 / CUDA 11.4 problems
+from alignment.interface import \
+    run_non_rigid_alignment  # temporarily out-of-order here due to some CuPy 10 / CUDA 11.4 problems
 from apps.create_graph_data import build_graph_warp_field_from_depth_image
 from data import camera
 from data import *
@@ -52,7 +53,8 @@ class FusionPipeline:
         #  here to see if certain operations will need to be done to produce input for the telemetry generator.
         self.extracted_framewise_canonical_mesh_needed = \
             tracking_parameters.source_image_mode.value != SourceImageMode.REUSE_PREVIOUS_FRAME or \
-            viz_parameters.visualization_mode.value in [VisualizationMode.CANONICAL_MESH, VisualizationMode.WARPED_MESH] or \
+            viz_parameters.visualization_mode.value in [VisualizationMode.CANONICAL_MESH,
+                                                        VisualizationMode.WARPED_MESH] or \
             log_parameters.record_canonical_meshes_to_disk.value
 
         self.framewise_warped_mesh_needed = \
@@ -112,14 +114,12 @@ class FusionPipeline:
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
-        node_coverage = Parameters.graph.node_coverage.value
-
         # TODO: perform topological graph update
         if self.framewise_warped_mesh_needed:
             if Parameters.fusion.integration.transformation_mode.value == TransformationMode.QUATERNIONS:
                 raise NotImplementedError("Dual quaternion mesh warping not implemented in native code.")
             else:
-                warped_mesh = self.graph.warp_mesh(canonical_mesh, node_coverage)
+                warped_mesh = self.graph.warp_mesh(canonical_mesh)
         return canonical_mesh, warped_mesh
 
     def run(self) -> int:
@@ -199,7 +199,8 @@ class FusionPipeline:
             # endregion
             if current_frame.frame_index == sequence.start_frame_index:
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
-                volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device, self.extrinsics_open3d_device,
+                volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device,
+                                 self.extrinsics_open3d_device,
                                  depth_scale, sequence.far_clipping_distance)
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
                 volume.activate_sleeve_blocks()
@@ -235,7 +236,8 @@ class FusionPipeline:
                             enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.value
                         )
                 else:
-                    raise NotImplementedError(f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
+                    raise NotImplementedError(
+                        f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
                 # TODO: save initial meshes somehow specially maybe (line below will extract)?
                 # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
@@ -351,7 +353,8 @@ class FusionPipeline:
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     # TODO: either fix or deprecate QUATERNIONS
                     raise NotImplementedError("This code is buggy!")
-                    for rotation, translation, i_node in zip(rotations_pred, translations_pred, np.arange(0, node_count)):
+                    for rotation, translation, i_node in zip(rotations_pred, translations_pred,
+                                                             np.arange(0, node_count)):
                         if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
                             self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
                         elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.T_MINUS_ONE_TO_T:
@@ -360,12 +363,14 @@ class FusionPipeline:
                                 rotation.dot(self.graph.rotations[i_node])
                             current_translation = self.graph.translations[i_node] = \
                                 translation + self.graph.translations[i_node]
-                            translation_global = node_position + current_translation - current_rotation.dot(node_position)
+                            translation_global = node_position + current_translation - current_rotation.dot(
+                                node_position)
                             self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
                         else:
-                            raise NotImplementedError(f"{TrackingSpanMode.__class__:s} {tracking_parameters.tracking_span_mode.value.name:s} "
-                                                      f" post-processing not implemented for f{TransformationMode.__class__:s} "
-                                                      f"{integration_parameters.transformation_mode.value.name}.")
+                            raise NotImplementedError(
+                                f"{TrackingSpanMode.__class__:s} {tracking_parameters.tracking_span_mode.value.name:s} "
+                                f" post-processing not implemented for f{TransformationMode.__class__:s} "
+                                f"{integration_parameters.transformation_mode.value.name}.")
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(self.graph)
 
@@ -376,19 +381,22 @@ class FusionPipeline:
                 if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
                     # prepare quaternion data for Open3D integration
                     # TODO fix or deprecate QUATERNION MODE
-                    raise NotImplementedError("Native GraphWarpField structure support for dual quaternions not implemented "
-                                              "(dual-quaternion TSDF integration implemented but, most likely, buggy) ")
+                    raise NotImplementedError(
+                        "Native GraphWarpField structure support for dual quaternions not implemented "
+                        "(dual-quaternion TSDF integration implemented but, most likely, buggy) ")
 
                 elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
                     if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
                         cos_voxel_ray_to_normal = volume.integrate_warped_mat(
                             depth_image_open3d, color_image_open3d, target_normal_map_o3d,
                             self.intrinsics_open3d_device, self.extrinsics_open3d_device,
-                            self.graph.nodes, self.graph.edges, self.graph.rotations, self.graph.translations, node_coverage,
+                            self.graph.nodes, self.graph.edges, self.graph.rotations, self.graph.translations,
+                            node_coverage,
                             anchor_count=integration_parameters.anchor_node_count.value,
                             minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value,
                             depth_scale=depth_scale, depth_max=3.0,
-                            compute_anchors_using=CPPAnchorComputationModeMap[integration_parameters.voxel_anchor_computation_mode.value],
+                            compute_anchors_using=CPPAnchorComputationModeMap[
+                                integration_parameters.voxel_anchor_computation_mode.value],
                             use_node_distance_thresholding=False)
                 else:
                     raise NotImplementedError(f"Unsupported {TransformationMode.__name__:s} "

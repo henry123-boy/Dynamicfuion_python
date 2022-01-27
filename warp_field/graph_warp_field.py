@@ -310,7 +310,7 @@ def build_deformation_graph_from_mesh(mesh: o3d.t.geometry.TriangleMesh, node_co
     edge_weights_o3d = o3c.Tensor(edge_weights, device=mesh.device)
     clusters_o3d = o3c.Tensor(clusters, device=mesh.device)
 
-    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
+    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage)
 
 
 def draw_deformation_graph(deformation_graph: GraphWarpFieldNumpy,
