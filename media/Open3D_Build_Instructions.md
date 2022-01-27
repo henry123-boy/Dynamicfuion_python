@@ -1,5 +1,7 @@
 # Open3D Build Instructions
 
+Before proceeding with building & installing from source, please make sure that you have removed any existing installations of Open3D from your Python path (e.g. run `pip uninstall open3d` or equivalent). We found that if you have open3d installed via official channels, even if the version matches our requirement exactly, there may be minor differences in the Open3D binaries that will not allow you to import the `nnrt` Python extension library.
+
 ## Ubuntu / MacOS ##
 
 ### Configuring CMake
