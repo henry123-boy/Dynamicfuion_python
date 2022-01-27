@@ -342,7 +342,7 @@ class FusionPipeline:
 
                 # endregion
                 #####################################################################################################
-                # region === fuse aligned data into the canonical/reference TSDF volume ====
+                # region === fuse/integrate aligned data into the canonical/reference TSDF volume ====
                 #####################################################################################################
 
                 # use the resulting frame transformation predictions to update the global, cumulative node transformations

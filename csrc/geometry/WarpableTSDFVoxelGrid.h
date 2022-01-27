@@ -18,8 +18,9 @@
 #include <utility>
 
 #include <open3d/t/geometry/TSDFVoxelGrid.h>
-#include <geometry/DualQuaternion.h>
-#include <geometry/AnchorComputationMethod.h>
+#include "geometry/DualQuaternion.h"
+#include "geometry/AnchorComputationMethod.h"
+#include "geometry/GraphWarpField.h"
 
 namespace nnrt::geometry {
 
@@ -61,6 +62,11 @@ public:
 	                   float depth_scale = 1000.0f, float depth_max = 3.0f,
 	                   AnchorComputationMethod compute_anchors_using = AnchorComputationMethod::EUCLIDEAN,
 	                   bool use_node_distance_thresholding = true);
+
+	open3d::core::Tensor
+	IntegrateWarped(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color, const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
+	                const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
+	                float depth_scale = 1000.0f, float depth_max = 3.0f);
 
 	int64_t ActivateSleeveBlocks();
 

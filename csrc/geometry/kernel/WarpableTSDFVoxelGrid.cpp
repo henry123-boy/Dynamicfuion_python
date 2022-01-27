@@ -24,6 +24,31 @@ using namespace open3d;
 namespace nnrt::geometry::kernel::tsdf {
 
 
+void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+                     const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
+                     float depth_scale, float depth_max) {
+	core::InferDeviceFromEntityAndExecute(
+			block_keys,
+			[&] {
+				IntegrateWarped<open3d::core::Device::DeviceType::CPU>(
+						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
+						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale, depth_max
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						IntegrateWarped<open3d::core::Device::DeviceType::CUDA>(
+								block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+								sdf_truncation_distance,
+								depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale, depth_max
+						);
+				);
+			}
+	);
+}
+
 // void DetermineWhichBlocksToActivateWithWarp(core::Tensor& blocks_to_activate_mask, const core::Tensor& candidate_block_coordinates,
 //                                             const core::Tensor& depth_downsampled, const core::Tensor& intrinsics_downsampled,
 //                                             const core::Tensor& extrinsics, const core::Tensor& graph_nodes, const core::Tensor& node_rotations,

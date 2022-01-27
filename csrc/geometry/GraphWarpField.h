@@ -75,8 +75,6 @@ public:
 	open3d::core::TensorList GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh) const;
 
-	Eigen::Vector3f WarpPoint(const Eigen::Vector3f& input_point);
-
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
 	open3d::core::Tensor nodes;
 	open3d::core::Tensor edges;

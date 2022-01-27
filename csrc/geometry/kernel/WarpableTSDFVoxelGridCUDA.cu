@@ -141,6 +141,15 @@ void IntegrateWarpedMat<AnchorComputationMethod::SHORTEST_PATH, false, o3c::Devi
 		int minimum_valid_anchor_count, float depth_scale, float depth_max
 );
 
+template
+void IntegrateWarped<open3d::core::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
+		float depth_scale, float depth_max
+);
+
 // endregion 
 
 // template

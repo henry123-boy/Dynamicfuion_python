@@ -329,6 +329,42 @@ WarpableTSDFVoxelGrid::IntegrateWarpedMat(
 	                          compute_anchors_using, use_node_distance_thresholding);
 }
 
+
+open3d::core::Tensor
+WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const open3d::t::geometry::Image& color,
+                                       const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
+                                       const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
+									   float depth_scale, float depth_max) {
+	// TODO note the difference from TSDFVoxelGrid::Integrate
+	//  IntegrateWarpedEuclideanDQ currently assumes that all of the relevant hash blocks have already been activated. This will probably change in the future.
+
+	o3c::AssertTensorDtype(intrinsics, o3c::Dtype::Float32);
+	o3c::AssertTensorDtype(extrinsics, o3c::Dtype::Float32);
+
+	o3c::Tensor depth_tensor, color_tensor;
+	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->GetAttrDtypeMap());
+
+	// Query active blocks and their nearest neighbors to handle boundary cases.
+	o3c::Tensor active_block_addresses;
+	auto block_hashmap = this->GetBlockHashMap();
+	block_hashmap->GetActiveIndices(active_block_addresses);
+	o3c::Tensor block_values = block_hashmap->GetValueTensor();
+
+
+	o3c::Tensor cos_voxel_ray_to_normal;
+
+	static const o3c::Device host("CPU:0");
+	o3c::Tensor intrinsics_host_double = intrinsics.To(host, o3c::Dtype::Float64).Contiguous();
+	o3c::Tensor extrinsics_host_double = extrinsics.To(host, o3c::Dtype::Float64).Contiguous();
+
+	kernel::tsdf::IntegrateWarped(active_block_addresses.To(o3c::Dtype::Int64), block_hashmap->GetKeyTensor(), block_values,
+	                              cos_voxel_ray_to_normal, this->GetBlockResolution(), this->GetVoxelSize(), this->GetSDFTrunc(),
+	                              depth_tensor, color_tensor, depth_normals, intrinsics_host_double, extrinsics_host_double, warp_field,
+								  depth_scale, depth_max);
+
+	return cos_voxel_ray_to_normal;
+}
+
 o3c::Tensor WarpableTSDFVoxelGrid::BufferCoordinatesOfInactiveNeighborBlocks(const o3c::Tensor& active_block_addresses) {
 	//TODO: shares most code with TSDFVoxelGrid::BufferRadiusNeighbors (DRY violation)
 	auto block_hashmap = this->GetBlockHashMap();
