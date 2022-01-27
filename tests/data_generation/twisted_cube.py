@@ -151,7 +151,7 @@ def main():
         translations = nodes_rotated - nodes
         graph_open3d.translations = o3c.Tensor(translations, device=device)
 
-        mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(current_mesh, device=device)
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(current_mesh, device=device)
 
         warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
         warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()

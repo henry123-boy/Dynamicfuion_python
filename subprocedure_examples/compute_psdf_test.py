@@ -33,7 +33,7 @@ def main():
 
     mesh200_legacy: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh("output/mesh_000200_red_shorts.ply")
     print(np.array(mesh200_legacy.vertices))
-    mesh200 = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh200_legacy)
+    mesh200 = o3d.t.geometry.TriangleMesh.from_legacy(mesh200_legacy)
     graph200 = build_deformation_graph_from_mesh(mesh200, node_coverage=Parameters.graph.node_coverage.value)
     # FIXME Field `nodes` no longer accessible, add readwrite python binding. Also, convert using nodes.cpu().numpy().
     graph_nodes = graph200.nodes

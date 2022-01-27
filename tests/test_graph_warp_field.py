@@ -149,12 +149,13 @@ def test_warp_mesh_open3d_pythonic_mat(device, ground_truth_vertices):
     nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
                                                    (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
 
-    graph_open3d.rotations = o3c.Tensor(np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
-                                        device=device)
+    graph_open3d.rotations = o3c.Tensor(
+        np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
+        device=device)
     translations = nodes_rotated - nodes
     graph_open3d.translations = o3c.Tensor(translations, device=device)
 
-    mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
+    mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
 
     warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
     warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
@@ -203,7 +204,9 @@ def test_warp_mesh_open3d_native_mat(device, ground_truth_vertices):
     edge_weights_o3d = o3c.Tensor(np.array([[1] * edges.shape[1]] * edges.shape[0]), device=device)
     clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
 
-    graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
+    node_coverage = 0.5
+
+    graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
 
     mesh_rotation_angle = math.radians(22.5)
     global_rotation_matrix_top = np.array([[math.cos(mesh_rotation_angle), 0.0, math.sin(mesh_rotation_angle)],
@@ -219,14 +222,15 @@ def test_warp_mesh_open3d_native_mat(device, ground_truth_vertices):
     nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
                                                    (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
 
-    graph_open3d.rotations = o3c.Tensor(np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
-                                        device=device)
+    graph_open3d.rotations = o3c.Tensor(
+        np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
+        device=device)
     translations = nodes_rotated - nodes
     graph_open3d.translations = o3c.Tensor(translations, device=device)
 
-    mesh = o3d.t.geometry.TriangleMesh.from_legacy_triangle_mesh(mesh_legacy, device=device)
+    mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
 
-    warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
+    warped_mesh = graph_open3d.warp_mesh(mesh)
     warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
     warped_mesh_legacy.compute_vertex_normals()
 

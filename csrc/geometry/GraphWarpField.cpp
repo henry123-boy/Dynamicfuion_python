@@ -312,9 +312,9 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
 		minimum_valid_anchor_count(minimum_valid_anchor_count) {
 	auto device = this->nodes.GetDevice();
-	o3c::AssertTensorDevice(edges, device);
-	o3c::AssertTensorDevice(edge_weights, device);
-	o3c::AssertTensorDevice(clusters, device);
+	o3c::AssertTensorDevice(this->edges, device);
+	o3c::AssertTensorDevice(this->edge_weights, device);
+	o3c::AssertTensorDevice(this->clusters, device);
 	auto nodes_shape = this->nodes.GetShape();
 	auto edges_shape = this->edges.GetShape();
 	auto edge_weights_shape = this->edge_weights.GetShape();
