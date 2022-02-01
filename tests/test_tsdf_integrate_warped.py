@@ -147,13 +147,22 @@ def test_integrate_warped_simple_motion(device):
     node_rotations_o3d = o3c.Tensor(node_rotations_mat, dtype=o3c.Dtype.Float32, device=device)
     node_translations_o3d = o3c.Tensor(node_translations_vec, dtype=o3c.Dtype.Float32, device=device)
     nodes_o3d = o3c.Tensor(nodes, dtype=o3c.Dtype.Float32, device=device)
-    edges_o3d = o3c.Tensor((1, 1))
+    edges_o3d = o3c.Tensor([[1, 2, 3, 4],
+                            [-1, -1, -1, -1],
+                            [-1, -1, -1, -1],
+                            [-1, -1, -1, -1],
+                            [-1, -1, -1, -1]], device=device)
+    edge_weights_o3d = o3c.Tensor.ones(edges_o3d.shape, dtype=o3c.Dtype.Float32, device=device)
+    clusters = o3c.Tensor((0, 0, 0, 0, 0), device=device)
 
-    cos_voxel_ray_to_normal = volume.integrate_warped_mat(
-        depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d,
-        nodes_o3d, edges_o3d, node_rotations_o3d, node_translations_o3d, node_coverage,
-        anchor_count=4, minimum_valid_anchor_count=3, depth_scale=1000.0, depth_max=3.0,
-        compute_anchors_using=nnrt_geom.AnchorComputationMethod.EUCLIDEAN, use_node_distance_thresholding=False)
+    # ---- construct warp-field ----
+    warp_field = nnrt_geom.GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters, node_coverage, True, 4, 3)
+    warp_field.rotations = node_rotations_o3d
+    warp_field.translations = node_translations_o3d
+
+    cos_voxel_ray_to_normal = volume.integrate_warped(
+        depth_image_o3d, color_image_o3d, normals_o3d, intrinsic_matrix_o3d, extrinsic_matrix_o3d, warp_field,
+        depth_scale=1000.0, depth_max=3.0)
 
     cos_voxel_ray_to_normal = np.squeeze(cos_voxel_ray_to_normal.cpu().numpy())
 

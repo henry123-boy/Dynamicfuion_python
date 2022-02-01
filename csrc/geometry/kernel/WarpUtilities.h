@@ -22,7 +22,6 @@
 #include "core/kernel/KnnUtilities.h"
 #include "core/kernel/KnnUtilities_PriorityQueue.h"
 #include "core/DeviceHeap.h"
-#include "geometry/DualQuaternion.h"
 
 
 
@@ -154,41 +153,9 @@ FindAnchorsAndWeightsForPointShortestPath_Threshold(int32_t* anchor_indices, flo
 	return true;
 }
 
-
 template<typename TPoint>
 inline NNRT_DEVICE_WHEN_CUDACC
-void BlendWarpDualQuaternions(
-		TPoint& warped_point,
-		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
-		const NDArrayIndexer& node_transform_indexer, const Eigen::Vector3f& source_point
-) {
-	// *** linearly blend the anchor nodes' dual quaternions ***
-	float coefficients[8];
-	for (float& coefficient: coefficients) {
-		coefficient = 0.0f;
-	}
-	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
-		int anchor_node_index = anchor_indices[i_anchor];
-		if (anchor_node_index != -1) {
-			float anchor_weight = anchor_weights[i_anchor];
-			auto node_transform = node_transform_indexer.GetDataPtr<float>(anchor_node_index);
-			for (int i_coefficient = 0; i_coefficient < 8; i_coefficient++) {
-				coefficients[i_coefficient] += anchor_weight * node_transform[i_coefficient];
-			}
-		}
-	}
-	Eigen::DualQuaternion<float> voxel_transformation(
-			Eigen::Quaternion<float>(coefficients[0], coefficients[1], coefficients[2], coefficients[3]),
-			Eigen::Quaternion<float>(coefficients[4], coefficients[5], coefficients[6], coefficients[7])
-	);
-
-	voxel_transformation.normalize();
-	warped_point = voxel_transformation.transformPoint(source_point);
-}
-
-template<typename TPoint>
-inline NNRT_DEVICE_WHEN_CUDACC
-void BlendWarpMatrices(
+void BlendWarp(
 		TPoint& warped_point,
 		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
 		const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
@@ -211,7 +178,7 @@ void BlendWarpMatrices(
 
 template<typename TPoint>
 inline NNRT_DEVICE_WHEN_CUDACC
-void BlendWarpMatrices_ValidAnchorCountThreshold(
+void BlendWarp_ValidAnchorCountThreshold(
 		TPoint& warped_point,
 		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
 		const int minimum_valid_anchor_count,
@@ -223,8 +190,8 @@ void BlendWarpMatrices_ValidAnchorCountThreshold(
 		valid_anchor_count += static_cast<int>(anchor_indices[i_anchor] != -1);
 	}
 	if (valid_anchor_count >= minimum_valid_anchor_count) {
-		BlendWarpMatrices(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer,
-		                  node_rotation_indexer, node_translation_indexer, source_point);
+		BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer,
+		          node_rotation_indexer, node_translation_indexer, source_point);
 	}
 }
 

@@ -59,33 +59,10 @@ void CheckNodeMatrixTransformationData(o3c::Device& device, const o3c::Tensor& n
 	o3c::AssertTensorDtype(node_translations, o3c::Dtype::Float32);
 }
 
-void CheckNodeDualQuaternionTransformationData(o3c::Device& device, const o3c::Tensor& nodes, const o3c::Tensor& node_transformations) {
-	if (device != nodes.GetDevice() || device != node_transformations.GetDevice()) {
-		o3u::LogError("Device not consistent among arguments.");
-	}
-	auto nodes_shape = nodes.GetShape();
-	auto transformations_shape = node_transformations.GetShape();
-	if (nodes_shape.size() != 2 || transformations_shape.size() != 2) {
-		o3u::LogError("Arguments nodes and node_transformations need to have 2 dimensions,"
-		              " respectively. Got {} and {}.", nodes_shape.size(), transformations_shape.size());
-	}
-
-	const int64_t node_count = nodes_shape[0];
-	if (nodes_shape[1] != 3) {
-		o3u::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
-	}
-	if (transformations_shape[0] != node_count || transformations_shape[1] != 8) {
-		o3u::LogError("Argument node_translations needs to have shape ({}, 8), where first dimension is the node count N"
-		              ", but has shape {}", node_count, transformations_shape);
-	}
-	o3c::AssertTensorDtype(nodes, o3c::Dtype::Float32);
-	o3c::AssertTensorDtype(node_transformations, o3c::Dtype::Float32);
-}
-
 o3tg::PointCloud
-WarpPointCloudMat(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
-                  const o3c::Tensor& node_translations, const int anchor_count, float node_coverage,
-                  int minimum_valid_anchor_count) {
+WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+               const o3c::Tensor& node_translations, int anchor_count, float node_coverage,
+               int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -124,9 +101,9 @@ WarpPointCloudMat(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& 
 
 
 o3tg::PointCloud
-WarpPointCloudMat(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
-                  const o3c::Tensor& node_translations, const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
-                  int minimum_valid_anchor_count) {
+WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+               const o3c::Tensor& node_translations, const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
+               int minimum_valid_anchor_count) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -186,9 +163,9 @@ void CopyWarpedTriangleMeshData(o3tg::TriangleMesh& warped_mesh, const o3tg::Tri
 }
 
 o3tg::TriangleMesh
-WarpTriangleMeshMat(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nodes,
-                    const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
-                    int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
+WarpTriangleMesh(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nodes,
+                 const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
+                 int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
 	auto device = input_mesh.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -212,44 +189,6 @@ WarpTriangleMeshMat(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nod
 			                         minimum_valid_anchor_count);
 		} else {
 			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
-		}
-
-		warped_mesh.SetVertexPositions(warped_vertices);
-	}
-
-
-	return warped_mesh;
-}
-
-
-open3d::t::geometry::TriangleMesh
-WarpTriangleMeshDQ(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nodes, const o3c::Tensor& node_transformations, int anchor_count,
-                   float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
-	auto device = input_mesh.GetDevice();
-	// region ================ INPUT CHECKS ======================================
-	CheckNodeDualQuaternionTransformationData(device, nodes, node_transformations);
-	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
-	}
-	// endregion
-
-	o3tg::TriangleMesh warped_mesh(device);
-	CopyWarpedTriangleMeshData(warped_mesh, input_mesh);
-
-	if (input_mesh.HasVertexPositions()) {
-		const auto& vertices = input_mesh.GetVertexPositions();
-		// FIXME: not sure if this check is at all necessary. There seem to be some situations in pythonic context when np.array(mesh.vertices)
-		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
-		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
-		o3c::Tensor warped_vertices;
-		o3u::LogError("Not implemented.");
-		if (threshold_nodes_by_distance) {
-			//TODO:
-			// kernel::warp::WarpPointsDQ(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-			//                          minimum_valid_anchor_count);
-
-		} else {
-			// kernel::warp::WarpPointsDQ(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
 		}
 
 		warped_mesh.SetVertexPositions(warped_vertices);
@@ -354,11 +293,11 @@ o3c::TensorList GraphWarpField::GetNodeExtent() const {
 open3d::t::geometry::TriangleMesh
 GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding) const {
 	if (disable_neighbor_thresholding) {
-		return WarpTriangleMeshMat(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
-		                           false, 0);
+		return WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
+		                        false, 0);
 	} else {
-		return WarpTriangleMeshMat(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
-		                           this->threshold_nodes_by_distance, this->minimum_valid_anchor_count);
+		return WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
+		                        this->threshold_nodes_by_distance, this->minimum_valid_anchor_count);
 	}
 
 }

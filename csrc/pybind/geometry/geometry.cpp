@@ -42,8 +42,8 @@ void pybind_geometry(py::module& m) {
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
+	//Example for how to export enums to Python
 	nnrt::export_enum<nnrt::geometry::AnchorComputationMethod>(m);
-	nnrt::export_enum<nnrt::geometry::TransformationMode>(m);
 }
 
 
@@ -149,24 +149,6 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 	                             "min_x"_a, "min_y"_a, "min_z"_a,
 	                             "max_x"_a, "max_y"_a, "max_z"_a);
 
-	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&,
-			                             const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
-			                             const o3c::Tensor&, float, int, int, float, float, AnchorComputationMethod, bool>(
-			                             &WarpableTSDFVoxelGrid::IntegrateWarpedMat),
-	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a,
-	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a, "depth_scale"_a,
-	                             "depth_max"_a, "compute_anchors_using"_a = AnchorComputationMethod::EUCLIDEAN,
-	                             "use_node_distance_thresholding"_a = true);
-	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const o3tg::Image&, const o3c::Tensor&,
-			                             const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
-			                             const o3c::Tensor&, float, int, int, float, float, AnchorComputationMethod, bool>(
-			                             &WarpableTSDFVoxelGrid::IntegrateWarpedMat),
-	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a,
-	                             "warp_graph_edges"_a, "node_rotations"_a, "node_translations"_a, "node_coverage"_a,
-	                             "anchor_count"_a, "minimum_valid_anchor_count"_a, "depth_scale"_a, "depth_max"_a,
-	                             "compute_anchors_using"_a = AnchorComputationMethod::EUCLIDEAN, "use_node_distance_thresholding"_a = true);
-
 	warpable_tsdf_voxel_grid.def("integrate_warped", py::overload_cast<
 			                             const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
 										 const GraphWarpField&,
@@ -188,19 +170,19 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 			      const o3c::Tensor&, int, float>(&ComputeAnchorsAndWeightsShortestPath), "points"_a, "nodes"_a, "edges"_a,
 	      "anchor_count"_a, "node_coverage"_a);
 
-	m.def("warp_triangle_mesh_mat", &WarpTriangleMeshMat, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
+	m.def("warp_triangle_mesh", &WarpTriangleMesh, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a, "threshold_nodes_by_distance"_a = false,
 	      "minimum_valid_anchor_count"_a = 0);
 
-	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
-			      const o3c::Tensor&, const o3c::Tensor&, int, float, int>(&WarpPointCloudMat),
+	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
+			      const o3c::Tensor&, const o3c::Tensor&, int, float, int>(&WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
 	      "minimum_valid_anchor_count"_a);
 
-	m.def("warp_point_cloud_mat", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
+	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
 			      const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int>(
-			      &WarpPointCloudMat),
+			      &WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
 	      "minimum_valid_anchor_count"_a);

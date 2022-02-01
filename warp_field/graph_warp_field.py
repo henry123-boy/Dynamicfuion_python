@@ -164,8 +164,8 @@ class GraphWarpFieldOpen3DPythonic:
 
     def warp_mesh(self, mesh: o3d.t.geometry.TriangleMesh, node_coverage,
                   anchor_count=4) -> o3d.t.geometry.TriangleMesh:
-        return nnrt.geometry.warp_triangle_mesh_mat(mesh, self.nodes, self.rotations, self.translations, anchor_count,
-                                                    node_coverage)
+        return nnrt.geometry.warp_triangle_mesh(mesh, self.nodes, self.rotations, self.translations, anchor_count,
+                                                node_coverage)
 
 
 def load_numpy_warp_field_from_disk(path: str) -> GraphWarpFieldNumpy:
