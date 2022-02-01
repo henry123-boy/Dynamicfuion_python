@@ -1,0 +1,49 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: cuda-toolkit
+      uses: Jimver/cuda-toolkit@v0.2.5
+      id: cuda-toolkit
+      with:
+        cuda: '11.5.1'
+        method: 'network'
+    
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+         path: NNRTF
+         submodules: recursive
+         
+    - name: Checkout Open3D
+      uses: actions/checkout@v2
+      with:
+        repository: isl-org/Open3D
+        path: Open3D
+        ref: tags/v0.14.1
+    
+    - name: Build Open3D
+      run: |
+        cd ${GITHUB_ACTION_PATH}/Open3D
+        mkdir install
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_ACTION_PATH}/Open3D/install ..
+        make -j2 && make install
+        cmake --build . --target install-pip-package -- -j2
+        
+        
+        
+        
+        
+      
+        
