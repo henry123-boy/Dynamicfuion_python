@@ -30,7 +30,7 @@ jobs:
       with:
         repository: isl-org/Open3D
         path: Open3D
-        ref: tags/v0.14.1
+        ref: v0.14.1
         fetch-depth: 0
     
     - name: Build Open3D
