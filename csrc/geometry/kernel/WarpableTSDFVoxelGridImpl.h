@@ -24,6 +24,7 @@
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
 #include "core/PlatformIndependence.h"
+#include "core/kernel/KdTreeNodeTypes.h"
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 #include "geometry/kernel/Defines.h"
 #include "geometry/kernel/WarpUtilities.h"
@@ -39,6 +40,7 @@ using namespace open3d;
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 using namespace open3d::t::geometry::kernel::tsdf;
+namespace kdtree = nnrt::core::kernel::kdtree;
 
 namespace nnrt::geometry::kernel::tsdf {
 
@@ -89,6 +91,9 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 
+	auto* kd_tree_nodes = warp_field.GetIndex().GetNodes();
+	const int kd_tree_node_count = warp_field.GetIndex().GetNodeCount();
+
 	//  Go through voxels
 //@formatter:off
 	DISPATCH_BYTESIZE_TO_VOXEL(
@@ -131,9 +136,9 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(
-						anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_count, voxel_global_metric, node_indexer,
-						node_coverage_squared
+				if (!warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
+						anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
+						voxel_global_metric, node_coverage_squared
 				)) {
 					return;
 				}

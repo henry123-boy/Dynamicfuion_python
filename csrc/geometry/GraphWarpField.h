@@ -59,7 +59,6 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& point
                                                const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
 
 class GraphWarpField {
-	friend class WarpableTSDFVoxelGrid;
 
 public:
 	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
@@ -71,10 +70,10 @@ public:
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
 
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
-	open3d::core::Tensor nodes;
-	open3d::core::Tensor edges;
-	open3d::core::Tensor edge_weights;
-	open3d::core::Tensor clusters;
+	const open3d::core::Tensor nodes;
+	const open3d::core::Tensor edges;
+	const open3d::core::Tensor edge_weights;
+	const open3d::core::Tensor clusters;
 
 	open3d::core::Tensor translations;
 	open3d::core::Tensor rotations;
@@ -83,11 +82,11 @@ public:
 	const int anchor_count;
 	const bool threshold_nodes_by_distance;
 	const int minimum_valid_anchor_count;
+
+	const core::KdTree& GetIndex() const;
+
 private:
-	// std::shared_ptr<core::KdTree> KDTreeIndex;
-	//
-	// virtual void FindKNearestNodesToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-	//                                        const open3d::core::Tensor& query_points, int32_t k);
+	core::KdTree index;
 
 };
 

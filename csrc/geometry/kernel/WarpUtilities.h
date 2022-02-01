@@ -21,12 +21,13 @@
 #include "geometry/kernel/Defines.h"
 #include "core/kernel/KnnUtilities.h"
 #include "core/kernel/KnnUtilities_PriorityQueue.h"
+#include "core/kernel/KdTreeNodeTypes.h"
 #include "core/DeviceHeap.h"
-
 
 
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
+namespace kdtree = nnrt::core::kernel::kdtree;
 
 namespace nnrt::geometry::kernel::warp {
 
@@ -120,11 +121,34 @@ FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float*
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
+inline bool
+FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                                        const int minimum_valid_anchor_count, const kdtree::KdTreeNode* kd_tree_nodes,
+                                                        const int kd_tree_node_count, const NDArrayIndexer& node_indexer,
+                                                        const Eigen::Vector3f& point, const float node_coverage_squared) {
+	auto anchor_distances = anchor_weights; // repurpose the anchor weights array to hold anchor distances
+	// note that in this function, some nomenclature gets flipped around. Whereas we're still calling the motion graph control nodes as "nodes" here,
+	// in the KdTree context, KD Tree nodes become more relevant, whereas the old "graph" nodes are called "reference points".
+	core::kernel::knn::FindEuclideanKnn_KdTree<TDeviceType>(anchor_indices, anchor_distances, kd_tree_nodes, kd_tree_node_count, anchor_count, point,
+	                                                        node_indexer);
+	float weight_sum;
+	int valid_anchor_count;
+	ComputeAnchorWeights_Threshold<TDeviceType, false>(anchor_indices, anchor_weights, weight_sum, valid_anchor_count, anchor_distances, anchor_count,
+	                                                   node_coverage_squared);
+	if (valid_anchor_count < minimum_valid_anchor_count) {
+		return false;
+	}
+	NormalizeAnchorWeights<TDeviceType>(anchor_weights, weight_sum, anchor_count, valid_anchor_count);
+	return true;
+}
+
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
 inline void
 FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
                                           const int node_count, const Eigen::Vector3f& point,
                                           const NDArrayIndexer& node_indexer, const NDArrayIndexer& edge_indexer, const float node_coverage_squared) {
-	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
+	auto distances = anchor_weights; // repurpose the anchor weights array to hold the shortest path distances to anchors
 	core::kernel::knn::FindShortestPathKnn_PriorityQueue<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer,
 	                                                                  edge_indexer, GRAPH_DEGREE);
 	float weight_sum = 0.0;

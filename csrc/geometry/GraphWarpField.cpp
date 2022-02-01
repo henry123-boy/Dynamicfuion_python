@@ -249,7 +249,7 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 		translations({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
-		minimum_valid_anchor_count(minimum_valid_anchor_count) {
+		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes){
 	auto device = this->nodes.GetDevice();
 	o3c::AssertTensorDevice(this->edges, device);
 	o3c::AssertTensorDevice(this->edge_weights, device);
@@ -300,6 +300,10 @@ GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bo
 		                        this->threshold_nodes_by_distance, this->minimum_valid_anchor_count);
 	}
 
+}
+
+const core::KdTree& GraphWarpField::GetIndex() const {
+	return this->index;
 }
 
 

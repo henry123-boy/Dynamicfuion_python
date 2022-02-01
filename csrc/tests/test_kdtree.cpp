@@ -14,7 +14,6 @@
 //  limitations under the License.
 //  ================================================================
 #include "test_main.hpp"
-#include "core/KdTreePointCloud.h"
 
 #include <core/KdTree.h>
 #include <core/LinearIndex.h>
@@ -101,16 +100,6 @@ TEST_CASE("Test 1D KDTree Construction CUDA") {
 	Test1DKdTreeConstruction<core::KdTree>(device);
 }
 
-TEST_CASE("Test 1D KDTreePointCloud Construction CPU") {
-	auto device = o3c::Device("CPU:0");
-	Test1DKdTreeConstruction<core::KdTreePointCloud>(device);
-}
-
-TEST_CASE("Test 1D KDTreePointCloud Construction CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	Test1DKdTreeConstruction<core::KdTreePointCloud>(device);
-}
-
 template<typename TDataStructure>
 void Test2DKdTreeConstruction(const o3c::Device& device) {
 	std::vector<float> kd_tree_point_data{2.f, 5.f, 6.f, 3.f, 3.f, 8.f, 8.f, 9.f, 4.f, 7.f, 7.f, 6.f};
@@ -163,15 +152,6 @@ TEST_CASE("Test 2D KDTree Construction CUDA") {
 	Test2DKdTreeConstruction<core::KdTree>(device);
 }
 
-TEST_CASE("Test 2D KDTreePointCloud Construction CPU") {
-	auto device = o3c::Device("CPU:0");
-	Test2DKdTreeConstruction<core::KdTreePointCloud>(device);
-}
-
-TEST_CASE("Test 2D KDTreePointCloud Construction CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	Test2DKdTreeConstruction<core::KdTreePointCloud>(device);
-}
 
 template<typename TDataStructure>
 void Test3DKdTreeConstruction(const o3c::Device& device) {
@@ -228,16 +208,6 @@ TEST_CASE("Test 3D KDTree Construction CPU") {
 TEST_CASE("Test 3D KDTree Construction CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	Test3DKdTreeConstruction<core::KdTree>(device);
-}
-
-TEST_CASE("Test 3D KDTreePointCloud Construction CPU") {
-	auto device = o3c::Device("CPU:0");
-	Test3DKdTreeConstruction<core::KdTreePointCloud>(device);
-}
-
-TEST_CASE("Test 3D KDTreePointCloud Construction CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	Test3DKdTreeConstruction<core::KdTreePointCloud>(device);
 }
 
 // final output sort (for small K, it is faster to use a plain memory block instead of a priority queue for tracking
@@ -476,162 +446,4 @@ void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<floa
 			nn_d_sorted[offset + i_neighbor] = nn_d[offset + idx[i_neighbor]];
 		}
 	}
-}
-
-void Test3DKnnSearch_KdTreePointCloud(const o3c::Device& device) {
-	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
-	                              2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
-	                              2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
-	                              5.8, 0.5, 9.3, 0.5, 5.4, 0., 2.8, 7., 6.9, 5.2, 7.7,
-	                              8.6};
-	o3c::Tensor points(point_data, {15, 3}, o3c::Dtype::Float32, device);
-	core::KdTreePointCloud index(points);
-
-	std::vector<float> query_point_data{4.1, 7.2, 6.7, 8., 8.7, 3.3, 4.8, 1.8, 2.6};
-	o3c::Tensor query_points(query_point_data, {3, 3}, o3c::Dtype::Float32, device);
-
-	o3c::Tensor nearest_neighbor_indices;
-	o3c::Tensor nearest_neighbor_distances;
-	const int k = 4;
-	index.FindKNearestToPoints(nearest_neighbor_indices, nearest_neighbor_distances, query_points, k);
-
-	// ground truth data computed manually via numpy / jupyter shell
-	std::vector<int64_t> gt_nn_indices_data{13, 14, 9, 6, 10, 1, 8, 14, 9, 3, 5, 1};
-	o3c::Tensor gt_nn_indices(gt_nn_indices_data, {k, 3}, o3c::Dtype::Int64, device);
-	o3c::Tensor gt_nn_points = points.GetItem(o3c::TensorKey::IndexTensor(gt_nn_indices));
-
-	std::vector<float> gt_nn_distances_data{1.33041347f, 2.25166605f, 4.6593991f, 4.85489444f, 4.48664685f, 5.02294734f, 5.28583011f, 6.07700584f,
-	                                        3.13847097f, 3.53694784f, 3.548239f, 3.78021163f};
-	std::vector<float> nn_p_sorted;
-	std::vector<float> nn_d_sorted;
-
-	SortFinalKNNHelper_Points(nn_p_sorted, nn_d_sorted, nearest_neighbor_indices, nearest_neighbor_distances);
-
-	REQUIRE(nn_p_sorted == gt_nn_points.ToFlatVector<float>());
-	REQUIRE(std::equal(nn_d_sorted.begin(), nn_d_sorted.end(), gt_nn_distances_data.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
-
-	std::vector<float> point_data2{-1.1, -4.4, 2.9, -3.8, 2.5, 0.7, 0.2, -2.6, 4.7, 4., -2.6,
-	                               -2.8, -3., 0.9, -1., 1.2, -1.2, -0.2, -0.4, 2.4, -2.6, -4.7,
-	                               -1.9, -2.8, 1., 4.2, 2.6, -1.2, 3.6, -1.6, -4., -3.1, -1.8,
-	                               4.8, -1.4, -4.8, -2., -3.9, 3.9, -4.7, -4.7, -3.8, -2.1, -2.8,
-	                               -1.3, -1.1, -4.3, -4.1, 0., 2.2, 1.9, 3.2, 5., 3.4, 3.2,
-	                               -3.8, -3.2, -2.6, 2.8, 1., 1.8, -1.5, 1.7, -2.5, -3.1, 4.5,
-	                               4.9, 1.2, -0.2, 3.3, 3.9, -3., -2.9, -4.3, -3.3, -0.8, 3.7,
-	                               -1.8, -3.8, 0.4, -0.3, -4.4, 3., 4.3, -0.7, 0.9, 1.8, 0.1,
-	                               -2.2, -2.4, -0.3, 3.6, -3.9, -0.7, 2.4, 2., 3.3, -3.4, -1.1,
-	                               -3.1, -2.9, 4.8, 4.1, 0.7, -1.5, 0., -4.5, -1.1, 0.1, 3.6,
-	                               4.5, 1.6, 3.1, 3.1, -3.6, -3.1, -4.2, 1.8, 1.2, -3.2, -2.7,
-	                               -3.3, -1.9, -1.1, 4.1, -4.2, 2.4, -0.4, -1.5, -1.9, -1.1, -1.8,
-	                               0.5, 0.7, -1.6, -0.9, 1., -4.4, -1.4, 1.7, 2.9, -1.3, 0.,
-	                               -2., -4.6, 0.1, 5., -3., 0.7, -4.1, 3.9, 2.9, 0.9, -0.6,
-	                               -3.1, -3.9, 2.6, -1.7, -3.5, -0.2, 3.7, 0.2, 1.8, 4.9, -0.2,
-	                               1.4, 1.4, -0.6, -2.7, -2.4, -1.4, 3.9, -2.3, 4.8, 1.7, -1.3,
-	                               2., -2., 2.9, -2.1, 3.1, 0.1, -2.3, -1.7, -3., 1., 2.4,
-	                               0.7, -4.2, 2.9, -0.1, -3.4, 1.6, 2.6, -3.3, -2.3, 4., -0.8,
-	                               4., 0.9, -2.6, -2.6, -1.8, 2.6, -2.6, -4.6, -1.6, 0., -4.5,
-	                               0.2, -0.2, 4.4, -3.5, -2., 0.4, 3.3, 5., 1.3, 4.1, 4.1,
-	                               -0.7, -1.6, -4.2, 1., 2.9, -3.7, -2.1, -0.2, -3.6, -3.6, 0.,
-	                               2.3, -4.9, 3.4, 1.5, -3.5, 2.5, -4.3, -4.5, 1.9, -0.3, -3.8,
-	                               -3.4, 0.6, 3.1, 3.2, -3.1, -2.5, -3.9, -0.7, 3.7, -0.6, 3.1,
-	                               -4.7, 4.7, 1.1, 0.3, -0.6, -0.1, 2.7, 0.5, -2.7, -1.6, 0.4,
-	                               -1.2, -2.8, -4.2, 4.3, 2.8, 3.7, 4.1, -4.4, 1.1, 4.7, -3.3,
-	                               -2.8, 2.7, -1.4, 2.9, -2.3, -1.2, -4.4, 4.4, -0.3, -2.8, 0.3,
-	                               -2.2, -3.6, -1.6, -2.1, -2.3, 3.7, -0.4, 1.8, -2.7, 4., 4.1,
-	                               0.3, -2.6, -3.2};
-	o3c::Tensor points2(point_data2, {100, 3}, o3c::Dtype::Float32, device);
-	core::KdTreePointCloud index2(points2);
-
-	std::vector<float> query_point_data2{-4.5, 1.7, -2.2, -3.1, -1.7, 3., 2.7, 4.6, -4.1, 0.1, -3.9,
-	                                     -0.9, -3.4, -4.2, 2.8, -1.1, 2.3, -4., 2., -1.1, -2., -1.7,
-	                                     4.7, -4.8, 3.7, 1.3, -1.5, -3.2, -2., -0.4, -2.8, -3.4, -0.2,
-	                                     3.4, -1.4, 3.4, -0.5, -3.8, 2., 3.1, -3.9, 3.9, -2.6, -4.1,
-	                                     -3.1, -3.8, -0.7, -0.5, 2.9, 1.8, -2.7, 4.1, -0.8, 0.9, 4.5,
-	                                     -4., -2.2, -3.6, 1.5, 3.7};
-	o3c::Tensor query_points2(query_point_data2, {20, 3}, o3c::Dtype::Float32, device);
-
-	o3c::Tensor nearest_neighbor_indices2;
-	o3c::Tensor nearest_neighbor_distances2;
-	index2.FindKNearestToPoints(nearest_neighbor_indices2, nearest_neighbor_distances2, query_points2, 8);
-
-	std::vector<float> nn_p_sorted2;
-	std::vector<float> nn_d_sorted2;
-
-
-	SortFinalKNNHelper_Points(nn_p_sorted2, nn_d_sorted2, nearest_neighbor_indices2, nearest_neighbor_distances2);
-
-
-	// ground truth data computed manually via numpy / jupyter shell
-	std::vector<int64_t> gt_nn_indices_data2{4, 26, 49, 59, 1, 65, 47, 7,
-										 67, 21, 33, 71, 12, 87, 61, 74,
-										 23, 64, 70, 30, 39, 41, 62, 54,
-										 35, 69, 29, 14, 80, 99, 61, 96,
-										 79, 12, 21, 0, 33, 67, 61, 76,
-										 45, 30, 6, 41, 59, 70, 49, 25,
-										 42, 60, 52, 63, 5, 73, 85, 29,
-										 41, 30, 70, 59, 25, 9, 6, 45,
-										 34, 66, 60, 22, 73, 42, 94, 55,
-										 75, 87, 56, 14, 76, 10, 40, 43,
-										 76, 14, 56, 75, 61, 40, 68, 87,
-										 92, 57, 97, 58, 20, 78, 72, 84,
-										 0, 61, 69, 78, 12, 67, 2, 35,
-										 84, 77, 57, 78, 92, 90, 2, 20,
-										 24, 40, 68, 38, 15, 82, 10, 88,
-										 26, 75, 87, 4, 56, 43, 10, 7,
-										 39, 66, 64, 60, 62, 34, 63, 23,
-	                                     97, 22, 73, 92, 20, 58, 34, 42,
-										 91, 3, 18, 32, 52, 90, 73, 11,
-										 74, 27, 71, 48, 46, 98, 19, 1};
-
-	o3c::Tensor gt_nn_indices2(gt_nn_indices_data2, {8, 20}, o3c::Dtype::Int64, device);
-	o3c::Tensor gt_nn_points2 = points2.GetItem(o3c::TensorKey::IndexTensor(gt_nn_indices2));
-
-
-	std::vector<float> gt_nn_distances_data2{2.0808652, 2.40624188, 2.61916017, 2.77488739, 3.08868904,
-	                                         3.47706773, 3.62904946, 3.65513338, 0.64807407, 2.13775583,
-	                                         2.16333077, 2.38956063, 2.61916017, 2.63248932, 2.76586334,
-	                                         2.91719043, 1.43527001, 2.41867732, 2.96816442, 3.1685959,
-	                                         3.63042697, 3.8340579, 3.91279951, 4.01372645, 0.64031242,
-	                                         1.25698051, 2.26715681, 2.49198716, 2.53377189, 2.64952826,
-	                                         2.7676705, 2.84429253, 1.30766968, 1.80554701, 2.21585198,
-	                                         2.310844, 2.40416306, 2.53771551, 2.7513633, 2.87054002,
-	                                         1.37477271, 1.52970585, 1.56843871, 1.81107703, 2.18632111,
-	                                         2.33880311, 2.48596058, 2.62488095, 0.9486833, 1.65529454,
-	                                         1.72336879, 1.94164878, 1.97230829, 2.17485632, 2.17485632,
-	                                         2.23159136, 1.03923048, 1.99499373, 2.00748599, 3.25883415,
-	                                         3.28785644, 3.42052628, 3.43802269, 3.80657326, 0.72111026,
-	                                         1.2083046, 1.56204994, 1.77200451, 2.04205779, 2.14009346,
-	                                         2.17715411, 2.47184142, 0.54772256, 1.02469508, 1.18743421,
-	                                         1.63095064, 1.69705627, 1.95192213, 2.04694895, 2.11187121,
-	                                         0.84852814, 1.43527001, 1.56524758, 1.58113883, 1.67630546,
-	                                         1.70587221, 1.8547237, 1.9, 0.86023253, 1.73781472,
-	                                         1.91049732, 2.20454077, 2.33666429, 2.97153159, 3.21558704,
-	                                         3.55949435, 1.23693169, 1.75499288, 1.99499373, 2.08326667,
-	                                         2.42280829, 2.96141858, 3.03644529, 3.21714159, 1.13137085,
-	                                         1.37477271, 2.00249844, 2.16333077, 2.72213152, 3.01496269,
-	                                         3.27719392, 3.50570963, 0.41231056, 1.44568323, 1.58113883,
-	                                         1.79164729, 1.81383571, 1.85741756, 2.15638587, 2.20454077,
-	                                         1.11803399, 1.43527001, 1.68226038, 1.85741756, 2.21585198,
-	                                         2.33666429, 2.73678644, 2.74590604, 1.34907376, 1.42478068,
-	                                         1.64012195, 1.75783958, 1.92613603, 2.02237484, 2.02484567,
-	                                         2.15870331, 1.06301458, 2.41867732, 2.5019992, 2.51396102,
-	                                         2.53377189, 2.68700577, 2.83019434, 2.96816442, 0.94339811,
-	                                         1.60312195, 1.65227116, 1.73493516, 3.25422802, 3.34813381,
-	                                         3.37786915, 3.68917335, 1.11803399, 1.80277564, 1.98242276,
-	                                         2.15638587, 2.34946802, 2.68700577, 3.1591138, 3.1685959};
-	REQUIRE(nn_p_sorted2 == gt_nn_points2.ToFlatVector<float>());
-
-	REQUIRE(std::equal(nn_d_sorted2.begin(), nn_d_sorted2.end(), gt_nn_distances_data2.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
-
-}
-
-TEST_CASE("Test 3D KDTreePointCloud Search CPU") {
-	auto device = o3c::Device("CPU:0");
-	Test3DKnnSearch_KdTreePointCloud(device);
-}
-
-TEST_CASE("Test 3D KDTreePointCloud Search CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	Test3DKnnSearch_KdTreePointCloud(device);
 }

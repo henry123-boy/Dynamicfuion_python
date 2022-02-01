@@ -42,10 +42,11 @@ public:
 	/// All undefined SDF residuals will be kept as -2.0
 	open3d::core::Tensor ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z, int max_voxel_x, int max_voxel_y, int max_voxel_z);
 
-	open3d::core::Tensor
-	IntegrateWarped(const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color, const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
-	                const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-	                float depth_scale = 1000.0f, float depth_max = 3.0f);
+	open3d::core::Tensor IntegrateWarped(
+			const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color, const open3d::core::Tensor& depth_normals,
+			const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
+			float depth_scale = 1000.0f, float depth_max = 3.0f
+	);
 
 	int64_t ActivateSleeveBlocks();
 

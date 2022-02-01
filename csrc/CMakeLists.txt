@@ -107,13 +107,6 @@ set(NNRT_SOURCE_FILES
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
 
-    core/KdTreePointCloud.h
-    core/KdTreePointCloud.cpp
-    core/kernel/KdTreePointCloud.h
-    core/kernel/KdTreePointCloud.cpp
-    core/kernel/BuildKdTreePointCloudImpl.h
-    core/kernel/KdTreePointCloudCPU.cpp
-    core/kernel/KdTreePointCloudCUDA.cu
     core/kernel/KdTreeUtils.cpp
     core/kernel/KdTreeNodeTypes.h
 

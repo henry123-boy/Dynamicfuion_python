@@ -38,10 +38,10 @@ inline int32_t GetParentIndex(int32_t child_index){
 	return (child_index-1) / 2;
 }
 
-inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level_count) {
-	int64_t count = 0;
+inline int32_t FindBalancedTreeIndexLength(const int32_t point_count, int& level_count) {
+	int32_t count = 0;
 	level_count = 0;
-	for (int64_t range_start_index = 0, range_length = 1;
+	for (int32_t range_start_index = 0, range_length = 1;
 	     range_start_index < point_count;
 	     range_start_index += range_length, range_length *= 2) {
 		level_count += 1;
@@ -50,7 +50,7 @@ inline int64_t FindBalancedTreeIndexLength(const int64_t point_count, int& level
 	return count;
 }
 
-inline int64_t FindBalancedTreeIndexLength(const int64_t point_count) {
+inline int32_t FindBalancedTreeIndexLength(const int32_t point_count) {
 	int level_count;
 	return FindBalancedTreeIndexLength(point_count, level_count);
 }

@@ -20,7 +20,6 @@
 #include <core/KdTree.h>
 #include <core/LinearIndex.h>
 #include <open3d/core/Tensor.h>
-#include "core/KdTreePointCloud.h"
 
 namespace o3c = open3d::core;
 
@@ -30,10 +29,8 @@ struct BenchmarkResult {
 	double kd_tree_time;
 };
 
-BenchmarkResult BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, const int query_point_count, const int reference_point_count,
-                                               const int k, bool sorted_output = false, bool compare_results = false);
-void BenchmarkKnnTreePointCloudForDevice(const o3c::Device& device, int query_point_count,
-                                         int reference_point_count, int k, bool compare_results);
+BenchmarkResult BenchmarkKnnTreeIndexForDevice(const o3c::Device& device, int query_point_count, int reference_point_count,
+                                               int k, bool sorted_output = false, bool compare_results = false);
 
 
 int main() {
@@ -44,12 +41,10 @@ int main() {
 	o3c::Device cpu("CPU:0");
 	o3c::Device cuda("CUDA:0");
 
-	// BenchmarkKnnTreePointCloudForDevice(cuda, query_point_count, reference_point_count, k, false);
-
 	double total_bf_time = 0.0;
 	double total_kd_time = 0.0;
 
-	for(int i_run = 0; i_run < run_count; i_run++){
+	for (int i_run = 0; i_run < run_count; i_run++) {
 		auto result = BenchmarkKnnTreeIndexForDevice(cuda, query_point_count, reference_point_count, k, false, false);
 		total_bf_time += result.brute_force_time;
 		total_kd_time += result.kd_tree_time;
@@ -194,58 +189,5 @@ void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<floa
 			nn_p_sorted[(offset + i_neighbor) * 3 + 2] = nn_p[(offset + idx[i_neighbor]) * 3 + 2];
 			nn_d_sorted[offset + i_neighbor] = nn_d[offset + idx[i_neighbor]];
 		}
-	}
-}
-
-void BenchmarkKnnTreePointCloudForDevice(const o3c::Device& device, const int query_point_count,
-                                         const int reference_point_count, const int k, bool compare_results) {
-	using namespace std::chrono;
-
-
-	std::cout << "Testing on device `" << device.ToString() << "`." << std::endl;
-
-	std::cout << "Preparing data..." << std::endl;
-	o3c::Tensor query_points, reference_points;
-	PrepareData(query_points, reference_points, query_point_count, reference_point_count, device);
-	std::cout << "Data prepared." << std::endl;
-
-	std::cout << "Data prepared." << std::endl;
-
-
-	std::cout << "Constructing KD Tree Point Cloud..." << std::endl;
-	auto start = high_resolution_clock::now();
-	nnrt::core::KdTreePointCloud kd_tree_point_cloud(reference_points);
-	auto end = high_resolution_clock::now();
-	std::cout << "Finished constructing KD Tree Point Cloud. Time: " << duration_cast<duration<double>>(end - start).count() << " seconds."
-	          << std::endl;
-
-	nnrt::core::LinearIndex linear_index(reference_points);
-
-	o3c::Tensor neighbor_indices_bf, neighbor_distances_bf;
-	std::cout << "Searching linear index for query points' KNN (brute force, multi-threaded)..." << std::endl;
-	start = high_resolution_clock::now();
-	linear_index.FindKNearestToPoints(neighbor_indices_bf, neighbor_distances_bf, query_points, k, false);
-	end = high_resolution_clock::now();
-	std::cout << "Finished searching linear index.\nBrute force KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds."
-	          << std::endl;
-
-	o3c::Tensor neighbor_nodes_kdtree, neighbor_distances_kdtree;
-	std::cout << "Searching KD Tree Point Cloud for query points' KNN... (multi-threaded)" << std::endl;
-	start = high_resolution_clock::now();
-	kd_tree_point_cloud.FindKNearestToPoints(neighbor_nodes_kdtree, neighbor_distances_kdtree, query_points, k);
-	end = high_resolution_clock::now();
-	std::cout << "Finished searching KD Tree Point Cloud.\nKD Tree KNN time: " << duration_cast<duration<double>>(end - start).count() << " seconds."
-	          << std::endl;
-
-	if (compare_results) {
-		std::cout << "Comparing result neighbor distances...." << std::endl;
-		std::vector<int64_t> nn_i_sorted_bf;
-		std::vector<float> nn_p_sorted_kdtree;
-		std::vector<float> nn_d_sorted_bf, nn_d_sorted_kdtree;
-
-		SortFinalKNNHelper_Indices(nn_i_sorted_bf, nn_d_sorted_bf, neighbor_indices_bf, neighbor_distances_bf);
-
-		std::cout << "Distances match: " << (std::equal(nn_d_sorted_bf.begin(), nn_d_sorted_bf.end(), nn_d_sorted_kdtree.begin(),
-		                                                [](float a, float b) { return std::abs(a - b) <= 1e-5; }) ? "true" : "false") << std::endl;
 	}
 }
