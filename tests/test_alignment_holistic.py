@@ -6,8 +6,6 @@ import sys
 import random
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parent.parent))
-
 # SWAP THESE LINES IF YOU WANNA USE THE ORIGINAL AUTHORS' DEFORM-NET CODE (e.g. to save test data)
 # from alignment.deform_net_legacy import DeformNet
 from alignment import DeformNet
@@ -20,14 +18,17 @@ import open3d.core as o3c
 # the forward method of DeformNet
 from settings import Parameters
 
-AlignmentTestParameters = namedtuple('AlignmentTestParameters', ['config_file_name', 'input_data_folder', 'gt_data_folder'])
+AlignmentTestParameters = namedtuple('AlignmentTestParameters',
+                                     ['config_file_name', 'input_data_folder', 'gt_data_folder'])
 
 
-@pytest.mark.parametrize("parameters", [AlignmentTestParameters("nnrt_fusion_parameters_flow.yaml", "inputs", "gt_flow"),
-                                        AlignmentTestParameters("nnrt_fusion_parameters_test1.yaml", "inputs", "gt_test1")])
+@pytest.mark.parametrize("parameters",
+                         [AlignmentTestParameters("nnrt_fusion_parameters_flow.yaml", "inputs", "gt_flow"),
+                          AlignmentTestParameters("nnrt_fusion_parameters_test1.yaml", "inputs", "gt_test1")])
 def test_alignment_holistic(parameters: AlignmentTestParameters):
     import ext_argparse
-    configuration_path = os.path.join(Path(__file__).parent.parent.resolve(), f"configuration_files/{parameters.config_file_name}")
+    configuration_path = os.path.join(Path(__file__).parent.parent.resolve(),
+                                      f"configuration_files/{parameters.config_file_name}")
     ext_argparse.process_settings_file(Parameters, configuration_path, generate_default_settings_if_missing=True)
 
     # make output deterministic
@@ -75,8 +76,8 @@ def test_alignment_holistic(parameters: AlignmentTestParameters):
     valid_solve = deform_net_data["valid_solve"]
     mask_pred = deform_net_data["mask_pred"]
     # @formatter:off
-    xy_coords_warped, source_points, valid_source_points, target_matches, \
-        valid_target_matches, valid_correspondences, deformed_points_idxs, deformed_points_subsampled = \
+    xy_coords_warped, source_points, valid_source_points, target_matches, valid_target_matches, valid_correspondences, \
+        deformed_point_indices, deformed_points_subsampled = \
         tuple(deform_net_data["correspondence_info"])
     # @formatter:on
 
@@ -99,7 +100,7 @@ def test_alignment_holistic(parameters: AlignmentTestParameters):
         torch.save(target_matches, os.path.join(gt_path, "target_matches.pt"))
         torch.save(valid_target_matches, os.path.join(gt_path, "valid_target_matches.pt"))
         torch.save(valid_correspondences, os.path.join(gt_path, "valid_correspondences.pt"))
-        torch.save(deformed_points_idxs, os.path.join(gt_path, "deformed_points_idxs.pt"))
+        torch.save(deformed_point_indices, os.path.join(gt_path, "deformed_points_idxs.pt"))
         torch.save(deformed_points_subsampled, os.path.join(gt_path, "deformed_points_subsampled.pt"))
     else:
         # load ground truth
@@ -142,5 +143,5 @@ def test_alignment_holistic(parameters: AlignmentTestParameters):
         assert torch.equal(target_matches, gt_target_matches)
         assert torch.equal(valid_target_matches, gt_valid_target_matches)
         assert torch.equal(valid_correspondences, gt_valid_correspondences)
-        assert torch.equal(deformed_points_idxs, gt_deformed_points_idxs)
+        assert torch.equal(deformed_point_indices, gt_deformed_points_idxs)
         assert torch.equal(deformed_points_subsampled, gt_deformed_points_subsampled)
