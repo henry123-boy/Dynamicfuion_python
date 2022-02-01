@@ -12,7 +12,7 @@ mkdir build && cd build
 ```
 Run CMake with the following arguments:
 ```shell
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON 
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON ..
 ```
 On Ubuntu , you may have to pass the (full) path to your Python 3 executable to CMake, e.g. `-DPYTHON_EXECUTABLE=/usr/bin/python3.8` CMake option.
 
