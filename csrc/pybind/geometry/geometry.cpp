@@ -149,22 +149,6 @@ void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
 	                             "min_x"_a, "min_y"_a, "min_z"_a,
 	                             "max_x"_a, "max_y"_a, "max_z"_a);
 
-	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const o3tg::Image&, const o3tg::Image&,
-			                             const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
-			                             const o3c::Tensor&, float, int, int, float, float, AnchorComputationMethod, bool>(
-			                             &WarpableTSDFVoxelGrid::IntegrateWarpedDQ),
-	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "warp_graph_nodes"_a, "warp_graph_edges"_a, "node_dual_quaternion_transformations"_a,
-	                             "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a, "depth_scale"_a,
-	                             "depth_max"_a, "compute_anchors_using"_a = AnchorComputationMethod::EUCLIDEAN,
-	                             "use_node_distance_thresholding"_a = true);
-	warpable_tsdf_voxel_grid.def("integrate_warped_dq", py::overload_cast<const o3tg::Image&, const o3c::Tensor&,
-			                             const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
-			                             float, int, int, float, float, AnchorComputationMethod, bool>(&WarpableTSDFVoxelGrid::IntegrateWarpedDQ),
-	                             "depth"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a, "warp_graph_nodes"_a, "warp_graph_edges"_a,
-	                             "node_dual_quaternion_transformations"_a, "node_coverage"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a,
-	                             "depth_scale"_a, "depth_max"_a, "compute_anchors_using"_a = AnchorComputationMethod::EUCLIDEAN,
-	                             "use_node_distance_thresholding"_a = true);
 	warpable_tsdf_voxel_grid.def("integrate_warped_mat", py::overload_cast<const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&,
 			                             const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
 			                             const o3c::Tensor&, float, int, int, float, float, AnchorComputationMethod, bool>(
