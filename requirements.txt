@@ -11,7 +11,6 @@ git+https://github.com/facebookresearch/pytorch3d.git@stable
 pillow>=8.1.1
 nnrt>=0.1.1
 pybind11>=2.6.2
-dq3d>=0.3.6
 vtk>=9.0.1
 tensorboardX>=2.1
 tqdm>=4.51.0

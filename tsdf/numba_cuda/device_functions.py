@@ -338,20 +338,6 @@ def normalize(x, y, z):
     return x / s, y / s, z / s
 
 
-@cuda.jit(device=True)
-def norm_quaternion(quaternion):
-    return math.sqrt(quaternion[0] * quaternion[0] +
-                     quaternion[1] * quaternion[1] +
-                     quaternion[2] * quaternion[2] +
-                     quaternion[3] * quaternion[3])
-
-
-@cuda.jit(device=True)
-def square_norm_quaternion(quaternion):
-    return quaternion[0] * quaternion[0] + quaternion[1] * quaternion[1] + \
-           quaternion[2] * quaternion[2] + quaternion[3] * quaternion[3]
-
-
 # region ================= vec3 =================================
 
 
@@ -456,135 +442,11 @@ def vec_mul_factor(vec_out, factor):
         vec_out[i_element] = vec_out[i_element] * factor
 
 
-@cuda.jit(device=True)
-def normalize_dual_quaternion(dual_quaternion):
-    real = dual_quaternion[:4]
-    dual = dual_quaternion[4:]
-    length = norm_quaternion(real)
-    squared_length = length * length
-
-    # make real part have unit length
-    for i_real in range(4):
-        real[i_real] = real[i_real] / length
-
-    # make dual part have unit length & orthogonal to real
-    for i_dual in range(4):
-        dual[i_dual] = dual[i_dual] / length
-
-    dual_delta = vec4_dot(real, dual) * squared_length
-    vec4_elementwise_sub_factor(dual, real, dual_delta)
-
-
-# endregion
-# region ================= dual_quaternions =================================
-@cuda.jit(device=True)
-def linearly_blend_dual_quaternions(final_dual_quaternion, dual_quaternions, anchors, weights, workload_index):
-    # initialize
-    for i_element in range(8):
-        final_dual_quaternion[i_element] = 0.0
-
-    # add up weighted coefficients
-    for i_anchor in range(anchors.shape[1]):
-        anchor = anchors[workload_index, i_anchor]
-        if anchor != -1:
-            weight = weights[workload_index, i_anchor]
-            dual_quaternion = dual_quaternions[anchor]
-            vec_elementwise_add_factor(final_dual_quaternion, dual_quaternion, weight)
-
-    normalize_dual_quaternion(final_dual_quaternion)
-    return final_dual_quaternion
-
-
-@cuda.jit(device=True)
-def quaternion_product(q_out, q1, q2):
-    q_out[0] = -q1[1] * q2[1] - q1[2] * q2[2] - q1[3] * q2[3] + q1[0] * q2[0]
-    q_out[1] = q1[1] * q2[0] + q1[2] * q2[3] - q1[3] * q2[2] + q1[0] * q2[1]
-    q_out[2] = -q1[1] * q2[3] + q1[2] * q2[0] + q1[3] * q2[1] + q1[0] * q2[2]
-    q_out[3] = q1[1] * q2[2] - q1[2] * q2[1] + q1[3] * q2[0] + q1[0] * q2[3]
-
-
-@cuda.jit(device=True)
-def dual_quaternion_product(dq_out, dq1, dq2):
-    """
-    Compute product of two dual quaternions (https://github.com/neka-nat/dq3d/blob/master/dq3d/DualQuaternion.h)
-    Note that dq_out cannot be the same as dq1 or dq2
-    :param dq_out:
-    :param dq1:
-    :param dq2:
-    :return:
-    """
-    dq1_real = dq1[:4]
-    dq1_dual = dq1[4:]
-    dq2_real = dq2[:4]
-    dq2_dual = dq2[4:]
-    dq_out_real = dq_out[:4]
-    dq_out_dual = dq_out[4:]
-
-    quaternion_product(dq_out_dual, dq1_real, dq2_dual)
-    # use dq_out_real as temporary value holder for dq_out_dual
-    quaternion_product(dq_out_real, dq1_dual, dq2_real)
-    vec4_elementwise_add(dq_out_dual, dq_out_dual, dq_out_real)
-    quaternion_product(dq_out_real, dq1_real, dq2_real)
-
-
-@cuda.jit(device=True)
-def dual_quaternion_conjugate(dq_out, dq_in):
-    dq_out[0] = dq_in[0]
-    dq_out[1] = -dq_in[1]
-    dq_out[2] = -dq_in[2]
-    dq_out[3] = -dq_in[3]
-
-    dq_out[4] = dq_in[4]
-    dq_out[5] = -dq_in[5]
-    dq_out[6] = -dq_in[6]
-    dq_out[7] = -dq_in[7]
-
-
-@cuda.jit(device=True)
-def transform_point_by_dual_quaternion(point_out, dual_quaternion,
-                                       temp_dual_quaternion_1,
-                                       temp_dual_quaternion_2,
-                                       temp_dual_quaternion_3,
-                                       point):
-    temp_dual_quaternion_1[0] = 1.0
-    temp_dual_quaternion_1[1] = 0.0
-    temp_dual_quaternion_1[2] = 0.0
-    temp_dual_quaternion_1[3] = 0.0
-    temp_dual_quaternion_1[4] = 0.0
-
-    temp_dual_quaternion_1[5] = point[0]
-    temp_dual_quaternion_1[6] = point[1]
-    temp_dual_quaternion_1[7] = point[2]
-
-    dual_quaternion_product(temp_dual_quaternion_2, dual_quaternion, temp_dual_quaternion_1)
-    dual_quaternion_conjugate(temp_dual_quaternion_1, dual_quaternion)
-    dual_quaternion_product(temp_dual_quaternion_3, temp_dual_quaternion_2, temp_dual_quaternion_1)
-
-    point_out[0] = temp_dual_quaternion_3[5]
-    point_out[1] = temp_dual_quaternion_3[6]
-    point_out[2] = temp_dual_quaternion_3[7]
-
-    # translation
-    dq_real_w = dual_quaternion[0]
-    dq_real_vec = dual_quaternion[1:4]
-    dq_dual_w = dual_quaternion[4]
-    dq_dual_vec = dual_quaternion[5:]
-    cross_real_dual_vecs = temp_dual_quaternion_1[:3]
-    vec3_cross(cross_real_dual_vecs, dq_real_vec, dq_dual_vec)
-    added_vec = temp_dual_quaternion_2[:3]
-    added_vec[0] = dq_dual_vec[0] * dq_real_w
-    added_vec[1] = dq_dual_vec[1] * dq_real_w
-    added_vec[2] = dq_dual_vec[2] * dq_real_w
-
-    vec3_elementwise_add_factor(added_vec, dq_real_vec, -dq_dual_w)
-    vec3_elementwise_add(added_vec, cross_real_dual_vecs)
-    vec3_elementwise_add_factor(point_out, added_vec, 2.0)
-
-
 # endregion
 # region ==================== matrix blending ==========================================================================
 @cuda.jit(device=True)
-def linearly_blend_matrices(warped_point, temp1, temp2, source_point, nodes, node_translations, node_rotations, anchors, weights, workload_index):
+def linearly_blend_matrices(warped_point, temp1, temp2, source_point, nodes, node_translations, node_rotations, anchors,
+                            weights, workload_index):
     # initialize
     for i_element in range(3):
         warped_point[i_element] = 0.0
@@ -607,3 +469,4 @@ def linearly_blend_matrices(warped_point, temp1, temp2, source_point, nodes, nod
             vec3_elementwise_add_factor(warped_point, temp2, weight)
 
     return warped_point
+# endregion

@@ -8,7 +8,6 @@ from typing import Union
 import numpy as np
 import open3d.core as o3c
 import open3d as o3d
-from dq3d import dualquat, quat
 import cv2
 
 # local
@@ -27,7 +26,7 @@ import image_processing
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
-from settings.fusion import SourceImageMode, VisualizationMode, TransformationMode, \
+from settings.fusion import SourceImageMode, VisualizationMode, \
     AnchorComputationMode, TrackingSpanMode, GraphGenerationMode
 from settings import Parameters
 from telemetry.telemetry_generator import TelemetryGenerator
@@ -35,10 +34,9 @@ from telemetry.telemetry_generator import TelemetryGenerator
 PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAIL = 1
 
-CPPAnchorComputationModeMap = {
-    AnchorComputationMode.EUCLIDEAN: nnrt.geometry.AnchorComputationMethod.EUCLIDEAN,
-    AnchorComputationMode.SHORTEST_PATH: nnrt.geometry.AnchorComputationMethod.SHORTEST_PATH
-}
+
+# NOTE: computation is currently performed using matrix math, not dual quaternions like in
+# DynamicFusion (Newcombe et al.). For an incomplete dual-quaternion implementation, see commit f5923da (<2022.02.01)
 
 
 class FusionPipeline:
@@ -116,10 +114,7 @@ class FusionPipeline:
 
         # TODO: perform topological graph update
         if self.framewise_warped_mesh_needed:
-            if Parameters.fusion.integration.transformation_mode.value == TransformationMode.QUATERNIONS:
-                raise NotImplementedError("Dual quaternion mesh warping not implemented in native code.")
-            else:
-                warped_mesh = self.graph.warp_mesh(canonical_mesh)
+            warped_mesh = self.graph.warp_mesh(canonical_mesh)
         return canonical_mesh, warped_mesh
 
     def run(self) -> int:
@@ -235,7 +230,7 @@ class FusionPipeline:
                             sample_random_shuffle=graph_parameters.graph_sample_random_shuffle.value,
                             neighbor_count=graph_parameters.graph_neighbor_count.value,
                             enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.value,
-                            node_coverage = node_coverage,
+                            node_coverage=node_coverage,
                             minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value
                         )
                 else:
@@ -262,7 +257,8 @@ class FusionPipeline:
 
                     # flip channels, i.e. RGB<-->BGR
                     source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
-                    if tracking_parameters.source_image_mode.value == SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
+                    if tracking_parameters.source_image_mode.value == \
+                            SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
                         # re-use pixel data from previous frame
                         source_depth[previous_mask_image_np] = previous_depth_image_np[previous_mask_image_np]
                         source_color[previous_mask_image_np] = previous_color_image_np[previous_mask_image_np]
@@ -278,7 +274,8 @@ class FusionPipeline:
                 #####################################################################################################
                 # region === prepare target point cloud, RGB image, normal map, pixel anchors, and pixel weights ====
                 #####################################################################################################
-                # TODO: replace options.depth_scale by a calibration/intrinsic property read from disk for each dataset, like InfiniTAM
+                # TODO: replace options.depth_scale by a calibration/intrinsic property read from disk for each dataset,
+                #  like InfiniTAM
                 target_point_image = image_processing.backproject_depth(depth_image_np, fx, fy, cx, cy,
                                                                         depth_scale=depth_scale)  # (h, w, 3)
                 target_rgbxyz, _, _ = DeformDataset.prepare_pytorch_input(
@@ -296,12 +293,6 @@ class FusionPipeline:
                 if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
                     pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
                         self.graph.nodes.cpu().numpy(), source_point_image, node_coverage
-                    )
-                elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
-                    # TODO: use nnrt.geometry.compute_anchors_and_weights_shortest_path version instead (and change uses of pixel_anchors & pixel_weights accordingly)
-                    pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_shortest_path(
-                        source_point_image, self.graph.nodes.cpu().numpy(), self.graph.edges.cpu().numpy(),
-                        integration_parameters.anchor_node_count.value, node_coverage
                     )
                 elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
                     if tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.ZERO_TO_T:
@@ -348,54 +339,20 @@ class FusionPipeline:
                 # region === fuse/integrate aligned data into the canonical/reference TSDF volume ====
                 #####################################################################################################
 
-                # use the resulting frame transformation predictions to update the global, cumulative node transformations
+                # use the resulting frame transformation predictions to update the global,
+                # cumulative node transformations
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
                     self.graph.rotations = o3c.Tensor(rotations_pred, device=device)
                     self.graph.translations = o3c.Tensor(translations_pred, device=device)
 
-                if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
-                    # TODO: either fix or deprecate QUATERNIONS
-                    raise NotImplementedError("This code is buggy!")
-                    for rotation, translation, i_node in zip(rotations_pred, translations_pred,
-                                                             np.arange(0, node_count)):
-                        if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
-                            self.graph.transformations_dq[i_node] = dualquat(quat(rotation), translation)
-                        elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.T_MINUS_ONE_TO_T:
-                            node_position = self.graph.nodes[i_node]
-                            current_rotation = self.graph.rotations[i_node] = \
-                                rotation.dot(self.graph.rotations[i_node])
-                            current_translation = self.graph.translations[i_node] = \
-                                translation + self.graph.translations[i_node]
-                            translation_global = node_position + current_translation - current_rotation.dot(
-                                node_position)
-                            self.graph.transformations_dq[i_node] = dualquat(quat(current_rotation), translation_global)
-                        else:
-                            raise NotImplementedError(
-                                f"{TrackingSpanMode.__class__:s} {tracking_parameters.tracking_span_mode.value.name:s} "
-                                f" post-processing not implemented for f{TransformationMode.__class__:s} "
-                                f"{integration_parameters.transformation_mode.value.name}.")
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(self.graph)
 
-                # TODO: outsource integration logic to a separate function.
+                cos_voxel_ray_to_normal = volume.integrate_warped(
+                    depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                    self.intrinsics_open3d_device, self.extrinsics_open3d_device, self.graph,
+                    depth_scale=depth_scale, depth_max=3.0)
 
-                if integration_parameters.transformation_mode.value == TransformationMode.QUATERNIONS:
-                    # prepare quaternion data for Open3D integration
-                    # TODO fix or deprecate QUATERNION MODE
-                    raise NotImplementedError(
-                        "Native GraphWarpField structure support for dual quaternions not implemented "
-                        "(dual-quaternion TSDF integration implemented but, most likely, buggy) ")
-
-                elif integration_parameters.transformation_mode.value == TransformationMode.MATRICES:
-                    if integration_parameters.voxel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
-                        cos_voxel_ray_to_normal = volume.integrate_warped(
-                            depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                            self.intrinsics_open3d_device, self.extrinsics_open3d_device, self.graph,
-                            depth_scale=depth_scale, depth_max=3.0)
-                else:
-                    raise NotImplementedError(f"Unsupported {TransformationMode.__name__:s} "
-                                              f"'{integration_parameters.voxel_anchor_computation_mode.value.name:s}' "
-                                              f"for motion blending of voxels during integration.")
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
                 #  Check BaldrLector's NeuralTracking fork code.
                 # endregion

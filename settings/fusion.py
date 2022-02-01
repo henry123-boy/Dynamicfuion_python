@@ -36,11 +36,6 @@ class SourceImageMode(Enum):
     RENDERED_WITH_PREVIOUS_FRAME_OVERLAY = 2
 
 
-class TransformationMode(Enum):
-    QUATERNIONS = 0
-    MATRICES = 1
-
-
 class GraphGenerationMode(Enum):
     FIRST_FRAME_EXTRACTED_MESH = 0
     FIRST_FRAME_DEPTH_IMAGE = 1
@@ -49,7 +44,6 @@ class GraphGenerationMode(Enum):
 
 class AnchorComputationMode(Enum):
     EUCLIDEAN = 0
-    SHORTEST_PATH = 1
     PRECOMPUTED = 2
 
 
@@ -87,16 +81,6 @@ class IntegrationParameters(ParameterEnum):
                   arg_help="TSDF voxels which have fewer than this number of valid anchors will not have any new data "
                            "fused in from an incoming RGBD image pair. Valid anchors for a specific voxel are graph "
                            "nodes that are closer than a specific distance threshold from this voxel.")
-    transformation_mode = \
-        Parameter(default=TransformationMode.MATRICES, arg_type=TransformationMode,
-                  arg_help="During fusion/integration, transformations (including rotations) can be handled in multiple "
-                           "ways mathematically. Use this setting to dictate how.")
-
-    voxel_anchor_computation_mode = \
-        Parameter(default=AnchorComputationMode.EUCLIDEAN, arg_type=AnchorComputationMode,
-                  arg_help="Stipulates how nodes are assigned as anchors to individual TSDF voxels. SHORTEST_PATH "
-                           "mode will add the euclidean distance from the voxel to the nearest node to the shortest "
-                           "path distance via this node to the target node.")
 
 
 class VerbosityParameters(ParameterEnum):

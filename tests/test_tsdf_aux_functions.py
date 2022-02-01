@@ -5,13 +5,12 @@ import numpy as np
 import open3d as o3d
 import open3d.core as o3c
 import pytest
-from dq3d import quat, dualquat, op
 
 import nnrt
 
 from image_processing import compute_normals
-from tsdf.numba_cuda.host_functions import cuda_compute_psdf_warped_voxel_centers, cuda_compute_voxel_center_anchors, \
-    cuda_update_warped_voxel_center_tsdf_and_weights_dq, cuda_update_warped_voxel_center_tsdf_and_weights_mat
+from tsdf.numba_cuda.host_functions import \
+    cuda_compute_voxel_center_anchors, cuda_update_warped_voxel_center_tsdf_and_weights
 from image_processing.numba_cuda.preprocessing import cuda_compute_normal
 
 import tests.shared.tsdf as utils
@@ -145,155 +144,6 @@ def test_compute_voxel_center_anchors(device):
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_compute_psdf_voxel_centers_static(device):
-    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
-    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
-    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
-    # Make it five.
-    nodes = np.array([[0.0, 0.0, 0.05],
-                      [0.02, 0.0, 0.05],
-                      [-0.02, 0.0, 0.05],
-                      [0.00, 0.02, 0.05],
-                      [0.00, -0.02, 0.05]],
-                     dtype=np.float32)
-
-    volume = utils.construct_test_volume1(device)
-    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
-    voxel_centers_np = voxel_centers.cpu().numpy()
-
-    node_coverage = 0.05
-    voxel_center_anchors, voxel_center_weights = \
-        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
-
-    # no motion at all for this case
-    node_dual_quaternions = [dualquat(quat.identity())] * len(nodes)
-    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions])
-
-    depth = 50  # mm
-    image_width = 100
-    image_height = 100
-    image_resolution = (image_width, image_height)
-    depth_image = utils.generate_xy_plane_depth_image(image_resolution, depth)
-
-    intrinsic_matrix = utils.construct_intrinsic_matrix1_4x4()
-
-    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                        node_dual_quaternions)
-    # voxel in the center of the plane is at 0, 0, 0.05,
-    # which should coincide with the first and only node
-    # voxel index is (0, 0, 5)
-    # voxel is, presumably, in block 3
-    # voxel's index in block 0 is 5 * (8*8) = 320
-    # each block holds 512 voxels
-
-    center_plane_voxel_index = 512 + 512 + 512 + 320
-    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-    assert math.isclose(voxel_psdf[center_plane_voxel_index], 0.0, abs_tol=1e-8)
-
-    voxel_x_plus_two_index = center_plane_voxel_index + 2
-    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
-    voxel_z_plus_one_index = center_plane_voxel_index + 64
-
-    assert math.isclose(voxel_psdf[voxel_x_plus_two_index], 0.0, abs_tol=1e-8)
-    assert math.isclose(voxel_psdf[voxel_y_plus_two_index], 0.0, abs_tol=1e-8)
-    # 0.01 distance beyond the surface should yield a projective signed
-    # distance of ~ -0.01 (note that it's not yet normalized to the truncation range)
-    assert math.isclose(voxel_psdf[voxel_z_plus_one_index], -0.01, abs_tol=1e-8)
-
-
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_compute_psdf_voxel_centers_simple_motion_dq(device):
-    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
-    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
-    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
-    # Make it five.
-    nodes = np.array([[0.0, 0.0, 0.05],
-                      [0.02, 0.0, 0.05],
-                      [-0.02, 0.0, 0.05],
-                      [0.00, 0.02, 0.05],
-                      [0.00, -0.02, 0.05]],
-                     dtype=np.float32)
-
-    volume = utils.construct_test_volume1(device)
-    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
-    voxel_centers_np = voxel_centers.cpu().numpy()
-
-    node_coverage = 0.05
-    voxel_center_anchors, voxel_center_weights = \
-        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
-
-    # the first node moves 1 cm along the negative z axis (towards the camera).
-    node_dual_quaternions_dq3d = [dualquat(quat.identity(), quat(1.0, 0.0, 0.0, -0.005))] + [dualquat(quat.identity())] * (len(nodes) - 1)
-    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions_dq3d])
-
-    depth = 50  # mm
-    image_width = 100
-    image_height = 100
-    image_resolution = (image_width, image_height)
-    depth_image = utils.generate_xy_plane_depth_image(image_resolution, depth)
-
-    # let's imagine that the central surface point is 1 cm closer to the camera as well, so we alter the depth
-    # to 40 mm there. Make the motion cease at the other four nodes, e.g. their depth should remain at 50.
-    # We can make a radial "pinch" in the center of the depth image.
-    # For our predefined camera, 1 px = 0.005 m, and the nodes are around the 0.002 m radius,
-    # which puts our pixel radius at 0.002 / 0.0005 = 40 px
-    pinch_diameter = 40
-    pinch_radius = pinch_diameter // 2
-    pinch_height = 10
-    y_coordinates = np.linspace(-1, 1, pinch_diameter)[None, :] * pinch_height
-    x_coordinates = np.linspace(-1, 1, pinch_diameter)[:, None] * pinch_height
-    delta = -pinch_height + np.sqrt(x_coordinates ** 2 + y_coordinates ** 2)
-    half_image_width = image_width // 2
-    half_image_height = image_height // 2
-    # @formatter:off
-    depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
-                half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
-    # @formatter:on
-
-    intrinsic_matrix = utils.construct_intrinsic_matrix1_4x4()
-
-    voxel_psdf = cuda_compute_psdf_warped_voxel_centers(depth_image, intrinsic_matrix, camera_rotation, camera_translation,
-                                                        voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                        node_dual_quaternions)
-
-    # voxel in the center of the plane is at 0, 0, 0.05,
-    # which should coincide with the first and only node
-    # voxel index is (0, 0, 5)
-    # voxel is, presumably, in block 3
-    # voxel's index in block 0 is 5 * (8*8) = 320
-    # each block holds 512 voxels
-
-    center_plane_voxel_index = 512 + 512 + 512 + 320
-    blended_dual_quaternion = op.dlb(voxel_center_weights[center_plane_voxel_index], node_dual_quaternions_dq3d)
-    expected_deformed_z = blended_dual_quaternion.transform_point(nodes[0])[2]
-    expected_depth = depth_image[50, 50] / 1000.
-    expected_psdf = expected_depth - expected_deformed_z
-    assert math.isclose(voxel_psdf[center_plane_voxel_index], expected_psdf, abs_tol=1e-8)
-
-    voxel_x_plus_two_index = center_plane_voxel_index + 2
-    voxel_y_plus_two_index = center_plane_voxel_index + 16  # as dictated by 8^3 block size
-    voxel_z_plus_one_index = center_plane_voxel_index + 64
-
-    indices = [voxel_x_plus_two_index, voxel_y_plus_two_index, voxel_z_plus_one_index]
-
-    blended_dual_quaternions = [op.dlb(voxel_center_weights[index], node_dual_quaternions_dq3d) for index in indices]
-    points = [voxel_centers_np[index] for index in indices]
-
-    deformed_points = [dq.transform_point(p) for dq, p in zip(blended_dual_quaternions, points)]
-    psdfs = [voxel_psdf[index] for index in indices]
-    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
-    for i_point in range(len(indices)):
-        deformed_point_x, deformed_point_y, deformed_point_z = deformed_points[i_point]
-        du = int(round(fx * (deformed_point_x / deformed_point_z) + cx))
-        dv = int(round(fy * (deformed_point_y / deformed_point_z) + cy))
-        depth = depth_image[dv, du] / 1000.
-        expected_psdf = depth - deformed_point_z
-        psdf = psdfs[i_point]
-        assert math.isclose(psdf, expected_psdf, abs_tol=1e-8)
-
-
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_extract_tsdf_values_and_weights(device):
     volume = utils.construct_test_volume1(device)
     voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
@@ -314,125 +164,7 @@ def test_extract_tsdf_values_and_weights(device):
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_update_voxel_center_values_simple_motion_dq(device):
-    print_ground_truth = False
-    camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
-    camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
-    # we need at least four nodes this time, otherwise psdf computation will consider voxel invalid and produce "NaN".
-    # Make it five.
-    nodes = np.array([[0.0, 0.0, 0.05],
-                      [0.02, 0.0, 0.05],
-                      [-0.02, 0.0, 0.05],
-                      [0.00, 0.02, 0.05],
-                      [0.00, -0.02, 0.05]],
-                     dtype=np.float32)
-
-    volume = utils.construct_test_volume1()
-    voxel_centers: o3c.Tensor = volume.extract_voxel_centers()
-    voxel_centers_np = voxel_centers.cpu().numpy()
-    voxel_tsdf_and_weights: o3c.Tensor = volume.extract_tsdf_values_and_weights()
-    voxel_tsdf_and_weights_np = voxel_tsdf_and_weights.cpu().numpy()
-
-    node_coverage = 0.05
-    voxel_center_anchors, voxel_center_weights = \
-        cuda_compute_voxel_center_anchors(voxel_centers_np, nodes, camera_rotation, camera_translation, node_coverage)
-
-    # the first node moves 1 cm along the negative z axis (towards the camera).
-    node_dual_quaternions_dq3d = [dualquat(quat.identity(), quat(1.0, 0.0, 0.0, -0.005))] + [dualquat(quat.identity())] * (len(nodes) - 1)
-    node_dual_quaternions = np.array([np.concatenate((dq.real.data, dq.dual.data)) for dq in node_dual_quaternions_dq3d])
-
-    depth = 50  # mm
-    image_width = 100
-    image_height = 100
-    image_resolution = (image_width, image_height)
-    depth_image = utils.generate_xy_plane_depth_image(image_resolution, depth)
-
-    # let's imagine that the central surface point is 1 cm closer to the camera as well, so we alter the depth
-    # to 40 mm there. Make the motion cease at the other four nodes, e.g. their depth should remain at 50.
-    # We can make a radial "pinch" in the center of the depth image.
-    # For our predefined camera, 1 px = 0.005 m, and the nodes are around the 0.002 m radius,
-    # which puts our pixel radius at 0.002 / 0.0005 = 40 px
-    pinch_diameter = 40
-    pinch_radius = pinch_diameter // 2
-    pinch_height = 10
-    y_coordinates = np.linspace(-1, 1, pinch_diameter)[None, :] * pinch_height
-    x_coordinates = np.linspace(-1, 1, pinch_diameter)[:, None] * pinch_height
-    delta = -pinch_height + np.sqrt(x_coordinates ** 2 + y_coordinates ** 2)
-    half_image_width = image_width // 2
-    half_image_height = image_height // 2
-    # @formatter:off
-    depth_image[half_image_height - pinch_radius:half_image_height + pinch_radius,
-                half_image_width - pinch_radius:half_image_width + pinch_radius] += np.round(delta).astype(np.uint16)
-    # @formatter:on
-
-    # ---- compute normals ----
-    intrinsic_matrix = utils.construct_intrinsic_matrix1_3x3()
-    fx, fy, cx, cy = intrinsic_matrix[0, 0], intrinsic_matrix[1, 1], intrinsic_matrix[0, 2], intrinsic_matrix[1, 2]
-
-    point_image = nnrt.backproject_depth_ushort(depth_image, fx, fy, cx, cy, 1000.0)
-    normals = compute_normals(device, point_image)
-
-    # ---- compute updates ----
-    voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights_np.copy()
-    truncation_distance = 0.02  # same value as in construct_test_volume1
-    cos_voxel_ray_to_normal = \
-        cuda_update_warped_voxel_center_tsdf_and_weights_dq(voxel_tsdf_and_weights_np, truncation_distance, depth_image, normals,
-                                                            intrinsic_matrix, camera_rotation, camera_translation,
-                                                            voxel_centers_np, voxel_center_anchors, voxel_center_weights,
-                                                            node_dual_quaternions)
-
-    # voxel in the center of the plane is at 0, 0, 0.05,
-    # which should coincide with the first and only node
-    # voxel index is (0, 0, 5)
-    # voxel is, presumably, in block 3
-    # voxel's index in block 0 is 5 * (8*8) = 320
-    # each block holds 512 voxels
-
-    center_plane_voxel_index = 512 + 512 + 512 + 320
-
-    indices_to_test = [center_plane_voxel_index,
-                       center_plane_voxel_index + 1,
-                       center_plane_voxel_index + 8,
-                       center_plane_voxel_index + 16,
-                       center_plane_voxel_index + 64]
-
-    def project(point, projection_matrix):
-        uv_prime = projection_matrix.dot(point)
-        uv = uv_prime / uv_prime[2]
-        return int(round(uv[0])), int(round(uv[1]))
-
-    def check_voxel_at(index):
-        blended_dual_quaternion = op.dlb(voxel_center_weights[index], node_dual_quaternions_dq3d)
-        expected_point = blended_dual_quaternion.transform_point(voxel_centers_np[index])
-        expected_u, expected_v = project(expected_point, intrinsic_matrix)
-        expected_depth = depth_image[expected_u, expected_v] / 1000.
-
-        view_direction = -(expected_point / np.linalg.norm(expected_point))
-        normals_center = normals[expected_u, expected_v]
-        cosine = view_direction.dot(normals_center)
-        if expected_depth > 0:
-            assert math.isclose(cos_voxel_ray_to_normal[expected_u, expected_v], cosine, abs_tol=1e-7)
-        expected_psdf = expected_depth - expected_point[2]
-        if expected_depth > 0 and expected_psdf > -truncation_distance and cosine > 0.5:
-            tsdf = min(1., expected_psdf / truncation_distance)
-            tsdf_prev, weight_prev = voxel_tsdf_and_weights_np_originals[index]
-            weight_new = 1
-            tsdf_new = (tsdf_prev * weight_prev + weight_new * tsdf) / (weight_prev + weight_new)
-            weight_new = min(weight_prev + weight_new, 255)
-            if print_ground_truth:
-                print(expected_u, expected_v, cosine, tsdf_new, weight_new, sep=", ")
-            assert np.allclose(voxel_tsdf_and_weights_np[index], [tsdf_new, weight_new], atol=1e-7)
-        elif print_ground_truth:
-            print(expected_u, expected_v, cosine, 0.0, 0.0, sep=", ")
-
-    if print_ground_truth:
-        print()  # output in tests often gets messed-up mildly on the first line without the newline
-    for index in indices_to_test:
-        check_voxel_at(index)
-
-
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_update_voxel_center_values_simple_motion_mat(device):
+def test_update_voxel_center_values_simple_motion(device):
     print_ground_truth = False
     camera_rotation = np.ascontiguousarray(np.eye(3, dtype=np.float32))
     camera_translation = np.ascontiguousarray(np.zeros(3, dtype=np.float32))
@@ -494,10 +226,10 @@ def test_update_voxel_center_values_simple_motion_mat(device):
     voxel_tsdf_and_weights_np_originals = voxel_tsdf_and_weights_np.copy()
     truncation_distance = 0.02  # same value as in construct_test_volume1
     cos_voxel_ray_to_normal = \
-        cuda_update_warped_voxel_center_tsdf_and_weights_mat(voxel_tsdf_and_weights_np, truncation_distance, depth_image, normals,
-                                                             intrinsic_matrix, camera_rotation, camera_translation,
-                                                             voxel_centers_np, voxel_center_anchors, voxel_center_weights, nodes,
-                                                             node_translations, node_rotations)
+        cuda_update_warped_voxel_center_tsdf_and_weights(voxel_tsdf_and_weights_np, truncation_distance, depth_image, normals,
+                                                         intrinsic_matrix, camera_rotation, camera_translation,
+                                                         voxel_centers_np, voxel_center_anchors, voxel_center_weights, nodes,
+                                                         node_translations, node_rotations)
 
     # voxel in the center of the plane is at 0, 0, 0.05,
     # which should coincide with the first and only node
