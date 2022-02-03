@@ -35,7 +35,7 @@ jobs:
     
     - name: Build Open3D
       run: |
-        cd ${GITHUB_ACTION_PATH}/Open3D
+        working-directory: ./Open3D
         mkdir install
         mkdir build && cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_ACTION_PATH}/Open3D/install ..
