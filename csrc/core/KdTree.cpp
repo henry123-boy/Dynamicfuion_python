@@ -57,10 +57,10 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 		              query_points.GetShape(), this->points.GetShape());
 	}
 	if (sort_output) {
-		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
+		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
 				*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	} else {
-		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::SearchStrategy::ITERATIVE, kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
+		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 				*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 	}
 

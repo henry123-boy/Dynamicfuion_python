@@ -21,12 +21,6 @@
 
 namespace nnrt::core::kernel::kdtree {
 
-
-
-enum SearchStrategy {
-	RECURSIVE, ITERATIVE
-};
-
 enum NeighborTrackingStrategy {
 	PLAIN, PRIORITY_QUEUE
 };
@@ -36,12 +30,12 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 template<open3d::core::Device::DeviceType DeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points);
 
-template<SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
+template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                               open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
                               const open3d::core::Tensor& kd_tree_points);
 
-template<open3d::core::Device::DeviceType DeviceType, SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
+template<open3d::core::Device::DeviceType DeviceType, NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                               open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
                               const open3d::core::Tensor& kd_tree_points);

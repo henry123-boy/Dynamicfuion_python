@@ -38,21 +38,20 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 }
 
-template<SearchStrategy TSearchStrategy, NeighborTrackingStrategy TTrackingStrategy>
-void
-FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
+template<NeighborTrackingStrategy TTrackingStrategy>
+void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                          open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
                          const open3d::core::Tensor& kd_tree_points) {
 	core::InferDeviceFromEntityAndExecute(
 			kd_tree_points,
 			[&] {
-				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TSearchStrategy, TTrackingStrategy>(
+				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TTrackingStrategy>(
 						index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, kd_tree_points
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA, TSearchStrategy, TTrackingStrategy>(
+						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA, TTrackingStrategy>(
 								index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, kd_tree_points
 						);
 				);
@@ -60,35 +59,18 @@ FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3
 	);
 }
 
-template
-void FindKNearestKdTreePoints<SearchStrategy::ITERATIVE, NeighborTrackingStrategy::PLAIN>(open3d::core::Blob& index_data, int index_length,
-                                                                                          open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                          open3d::core::Tensor& nearest_neighbor_distances,
-                                                                                          const open3d::core::Tensor& query_points, int32_t k,
-                                                                                          const open3d::core::Tensor& kd_tree_points);
+template void FindKNearestKdTreePoints<NeighborTrackingStrategy::PLAIN>(
+		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
+		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
+		const open3d::core::Tensor& kd_tree_points
+);
 
 template
-void FindKNearestKdTreePoints<SearchStrategy::ITERATIVE, NeighborTrackingStrategy::PRIORITY_QUEUE>(open3d::core::Blob& index_data, int index_length,
-                                                                                                   open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                                   open3d::core::Tensor& nearest_neighbor_distances,
-                                                                                                   const open3d::core::Tensor& query_points,
-                                                                                                   int32_t k,
-                                                                                                   const open3d::core::Tensor& kd_tree_points);
-
-template
-void FindKNearestKdTreePoints<SearchStrategy::RECURSIVE, NeighborTrackingStrategy::PLAIN>(open3d::core::Blob& index_data, int index_length,
-                                                                                          open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                          open3d::core::Tensor& nearest_neighbor_distances,
-                                                                                          const open3d::core::Tensor& query_points, int32_t k,
-                                                                                          const open3d::core::Tensor& kd_tree_points);
-
-template
-void FindKNearestKdTreePoints<SearchStrategy::RECURSIVE, NeighborTrackingStrategy::PRIORITY_QUEUE>(open3d::core::Blob& index_data, int index_length,
-                                                                                                   open3d::core::Tensor& nearest_neighbor_indices,
-                                                                                                   open3d::core::Tensor& nearest_neighbor_distances,
-                                                                                                   const open3d::core::Tensor& query_points,
-                                                                                                   int32_t k,
-                                                                                                   const open3d::core::Tensor& kd_tree_points);
+void FindKNearestKdTreePoints<NeighborTrackingStrategy::PRIORITY_QUEUE>(
+		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
+		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
+		const open3d::core::Tensor& kd_tree_points
+);
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const int index_length,
                          const open3d::core::Tensor& kd_tree_points, const int digit_length) {
@@ -167,7 +149,7 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 					&level_initialized, &point_to_string, &point_string_length, &tree_height, &nodes_cpu,
 					&index_length]
 					(int node_index, int level, bool right) {
-				if(node_index >= index_length) return;
+				if (node_index >= index_length) return;
 				KdTreeNode& node = nodes_cpu[node_index];
 				if (!node.Empty()) {
 					fill_tree_level_strings(GetLeftChildIndex(node_index), level + 1, false);
