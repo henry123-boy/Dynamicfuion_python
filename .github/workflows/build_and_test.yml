@@ -39,7 +39,7 @@ jobs:
         sudo apt install -y xorg-dev libglu1-mesa-dev
         mkdir install
         mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX=${GITHUB_ACTION_PATH}/Open3D/install ..
+        cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_CUDA_MODULE=ON -DCMAKE_INSTALL_PREFIX="${CMAKE_SOURCE_DIR}/install" ..
         make -j2 && make install
         cmake --build . --target install-pip-package -- -j2
         
