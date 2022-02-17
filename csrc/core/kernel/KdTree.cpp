@@ -18,7 +18,7 @@
 
 #include "string/join_string_separator.h"
 #include "core/kernel/KdTree.h"
-#include "core/kernel/KdTreeUtils.h"
+#include "core/kernel/KdTreeUtilities.h"
 #include "core/kernel/KdTreeNodeTypes.h"
 #include "core/DeviceSelection.h"
 #include "core/DimensionCount.h"
@@ -40,19 +40,19 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 
 template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
-                         open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
-                         const open3d::core::Tensor& kd_tree_points) {
+                              open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
+                              const open3d::core::Tensor& reference_points) {
 	core::InferDeviceFromEntityAndExecute(
-			kd_tree_points,
+			reference_points,
 			[&] {
 				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TTrackingStrategy>(
-						index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, kd_tree_points
+						index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, reference_points
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						FindKNearestKdTreePoints<o3c::Device::DeviceType::CUDA, TTrackingStrategy>(
-								index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, kd_tree_points
+								index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, reference_points
 						);
 				);
 			}
@@ -62,15 +62,33 @@ void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, 
 template void FindKNearestKdTreePoints<NeighborTrackingStrategy::PLAIN>(
 		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
 		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
-		const open3d::core::Tensor& kd_tree_points
+		const open3d::core::Tensor& reference_points
 );
 
 template
 void FindKNearestKdTreePoints<NeighborTrackingStrategy::PRIORITY_QUEUE>(
 		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
 		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
-		const open3d::core::Tensor& kd_tree_points
+		const open3d::core::Tensor& reference_points
 );
+
+
+void DecimateReferencePoints(open3d::core::Tensor& decimated_points, open3d::core::Blob& index_data, int node_count,
+                             const open3d::core::Tensor& reference_points, float downsampling_radius) {
+	core::InferDeviceFromEntityAndExecute(
+			reference_points,
+			[&] {
+				DecimateReferencePoints<o3c::Device::DeviceType::CPU>(decimated_points, index_data, node_count,
+																	  reference_points, downsampling_radius); },
+			[&] {
+				NNRT_IF_CUDA(
+						DecimateReferencePoints<o3c::Device::DeviceType::CUDA>(decimated_points, index_data, node_count,
+																			   reference_points, downsampling_radius);
+				);
+			}
+	);
+}
+
 
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const int index_length,
                          const open3d::core::Tensor& kd_tree_points, const int digit_length) {

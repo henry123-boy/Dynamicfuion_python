@@ -66,13 +66,14 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
     geometry/kernel/Comparison.h
     geometry/kernel/Comparison.cpp
+    geometry/kernel/ComparisonCPU.cpp
+    geometry/kernel/ComparisonCUDA.cu
+    geometry/kernel/ComparisonImpl.h
     geometry/AnchorComputationMethod.h
     geometry/TransformationMode.h
     geometry/Comparison.h
     geometry/Comparison.cpp
-    geometry/kernel/ComparisonCPU.cpp
-    geometry/kernel/ComparisonCUDA.cu
-    geometry/kernel/ComparisonImpl.h
+
     geometry/IndexedPointCloud.h
 
     string/split_string.h
@@ -104,10 +105,13 @@ set(NNRT_SOURCE_FILES
     core/kernel/KdTree.h
     core/kernel/KdTree.cpp
     core/kernel/BuildKdTreeImpl.h
+    core/kernel/SearchKdTreeImpl.h
+    core/kernel/DownsampleKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
 
-    core/kernel/KdTreeUtils.cpp
+
+    core/kernel/KdTreeUtilities.cpp
     core/kernel/KdTreeNodeTypes.h
 
     core/DimensionCount.h

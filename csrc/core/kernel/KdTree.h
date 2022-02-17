@@ -33,15 +33,25 @@ void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, cons
 template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                               open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
-                              const open3d::core::Tensor& kd_tree_points);
+                              const open3d::core::Tensor& reference_points);
 
 template<open3d::core::Device::DeviceType DeviceType, NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                               open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
-                              const open3d::core::Tensor& kd_tree_points);
+                              const open3d::core::Tensor& reference_points);
 
-void
-GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, int index_length, const open3d::core::Tensor& kd_tree_points,
-                    int digit_length);
+void DecimateReferencePoints(open3d::core::Tensor& decimated_points, open3d::core::Blob& index_data, int node_count,
+                             const open3d::core::Tensor& reference_points, float downsampling_radius);
+
+template<open3d::core::Device::DeviceType DeviceType>
+void DecimateReferencePoints(open3d::core::Tensor& decimated_points, open3d::core::Blob& index_data, int node_count,
+                             const open3d::core::Tensor& reference_points, float downsampling_radius);
+
+template<open3d::core::Device::DeviceType DeviceType, typename TPoint>
+void ProcessRadiusNeighborsForDecimation(open3d::core::Tensor& decimated_points, const open3d::core::Tensor& reference_points,
+										const open3d::core::Tensor& radius_neighbors, float downsampling_radius);
+
+void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, int index_length,
+                         const open3d::core::Tensor& kd_tree_points, int digit_length);
 
 } //  nnrt::core::kernel::kdtree

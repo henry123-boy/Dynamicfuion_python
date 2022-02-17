@@ -18,7 +18,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <Eigen/Dense>
 #include "core/kernel/KdTreeNodeTypes.h"
-#include "core/kernel/KdTreeUtils.h"
+#include "core/kernel/KdTreeUtilities.h"
 
 
 namespace o3c = open3d::core;
@@ -26,9 +26,9 @@ using namespace open3d::t::geometry::kernel;
 
 namespace nnrt::core::kernel::knn {
 
-template<o3c::Device::DeviceType TDeviceType>
+template<o3c::Device::DeviceType TDeviceType, typename TElementType>
 NNRT_DEVICE_WHEN_CUDACC
-inline void SetFloatsToValue(float* array, const int size, const float value) {
+inline void SetArrayElementsToValue(TElementType* array, const int size, const TElementType value) {
 	for (int i_value = 0; i_value < size; i_value++) {
 		array[i_value] = value;
 	}
@@ -64,7 +64,7 @@ NNRT_DEVICE_WHEN_CUDACC
 inline void FindEuclideanKnn_BruteForce(int32_t* nearest_neighbor_indices, float* squared_distances, const int k,
                                         const int reference_point_count, TPointVector& query_point, const NDArrayIndexer& reference_point_indexer,
                                         TMakePointVector&& make_point_vector) {
-	SetFloatsToValue<TDeviceType>(squared_distances, k, INFINITY);
+	SetArrayElementsToValue<TDeviceType>(squared_distances, k, INFINITY);
 
 	int max_at_index = 0;
 	float max_squared_distance = INFINITY;
@@ -105,7 +105,7 @@ NNRT_DEVICE_WHEN_CUDACC
 inline void FindEuclideanKnn_BruteForce(int32_t* nearest_neighbor_indices, float* squared_distances, const int k,
                                         const int reference_point_count, const Eigen::Vector3f& query_point,
                                         const NDArrayIndexer& reference_point_indexer) {
-	SetFloatsToValue<TDeviceType>(squared_distances, k, INFINITY);
+	SetArrayElementsToValue<TDeviceType>(squared_distances, k, INFINITY);
 
 	int max_at_index = 0;
 	float max_squared_distance = INFINITY;
@@ -122,7 +122,7 @@ inline void FindEuclideanKnn_BruteForce_ExcludingSet(int32_t* nearest_neighbor_i
                                                      const int reference_point_count, const Eigen::Vector3f& query_point,
                                                      const NDArrayIndexer& reference_point_indexer, const int32_t* excluded_set,
                                                      const int excluded_set_size) {
-	SetFloatsToValue<TDeviceType>(squared_distances, k, INFINITY);
+	SetArrayElementsToValue<TDeviceType>(squared_distances, k, INFINITY);
 
 	int max_at_index = 0;
 	float max_squared_distance = INFINITY;
@@ -145,14 +145,14 @@ template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void FindEuclideanKnn_KdTree(int32_t* nearest_neighbor_indices, float* nearest_neighbor_distances, const kdtree::KdTreeNode* nodes, const int node_count,
                                     const int k, const Eigen::Vector3f& query_point, const NDArrayIndexer& reference_point_indexer) {
-	SetFloatsToValue<TDeviceType>(nearest_neighbor_distances, k, INFINITY);
+	SetArrayElementsToValue<TDeviceType>(nearest_neighbor_distances, k, INFINITY);
 
 	int max_at_index = 0;
 	float max_squared_distance = INFINITY;
 
 	// Allocate traversal stack from thread-local memory,
 	// and push nullptr onto the stack to indicate that there are no deferred nodes.
-	int32_t stack[64];
+	int32_t stack[NNRT_KDTREE_STACK_SIZE];
 	int32_t* stack_cursor = stack;
 	*stack_cursor = -1; // push "-1" onto the bottom of the stuck
 	stack_cursor++; // advance the stack cursor

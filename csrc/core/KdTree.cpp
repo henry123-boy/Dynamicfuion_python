@@ -16,7 +16,7 @@
 
 #include "core/KdTree.h"
 #include "core/DeviceSelection.h"
-#include "core/kernel/KdTreeUtils.h"
+#include "core/kernel/KdTreeUtilities.h"
 #include "core/kernel/KdTree.h"
 #include "core/kernel/KdTreeNodeTypes.h"
 
@@ -82,6 +82,15 @@ const kernel::kdtree::KdTreeNode* KdTree::GetNodes() const{
 
 int64_t KdTree::GetNodeCount() const{
 	return this->node_count;
+}
+
+open3d::core::Tensor KdTree::DecimateReferencePoints(float downsampling_radius) {
+	if(downsampling_radius <= 0.0f){
+		o3u::LogError("downsampling_radius parameter needs to be greater than zero.");
+	}
+	o3c::Tensor decimated_points;
+	kernel::kdtree::DecimateReferencePoints(decimated_points, *this->nodes, this->node_count, this->points, downsampling_radius);
+	return decimated_points;
 }
 
 

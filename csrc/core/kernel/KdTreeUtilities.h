@@ -21,6 +21,9 @@
 
 namespace nnrt::core::kernel::kdtree {
 
+#define NNRT_KDTREE_STACK_SIZE 64
+#define NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS 16
+
 open3d::core::Blob BlobToDevice(const open3d::core::Blob& node_data, int64_t byte_count, const open3d::core::Device& device);
 
 NNRT_DEVICE_WHEN_CUDACC

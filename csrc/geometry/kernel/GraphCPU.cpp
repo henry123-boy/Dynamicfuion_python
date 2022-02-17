@@ -19,10 +19,7 @@
 #include "geometry/kernel/GraphImpl.h"
 
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph {
+namespace nnrt::geometry::kernel::graph {
 
 template
 void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CPU, true>(
@@ -55,7 +52,4 @@ void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CPU>
 		const float node_coverage
 );
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

@@ -55,7 +55,7 @@ inline void FindEuclideanKnn_BruteForce_PriorityQueue(int32_t* nearest_neighbor_
                                                       const int reference_point_count, TPointVector& query_point,
                                                       const NDArrayIndexer& reference_point_indexer,
                                                       TMakePointVector&& make_point_vector) {
-	SetFloatsToValue<TDeviceType>(squared_distances, k, INFINITY);
+	SetArrayElementsToValue<TDeviceType>(squared_distances, k, INFINITY);
 
 	auto* nearest_neighbor_data = new DistanceIndexPair<float, int32_t>[k];
 
