@@ -36,6 +36,7 @@ set(NNRT_SOURCE_FILES
     cpu/image_proc.cpp
     debugging/debugging.hpp
     core/PlatformIndependence.h
+    core/PlatformIndependentAtomics.h
 
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
