@@ -21,17 +21,6 @@
 #include "core/PlatformIndependence.h"
 #include "core/PlatformIndependentAtomics.h"
 
-//__DEBUG
-// #define __CUDACC__
-
-#ifdef __CUDACC__
-#include <stdgpu/atomic.cuh>
-#else
-
-#include <atomic>
-
-#endif
-
 
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
@@ -44,9 +33,9 @@ namespace {
 
 template<o3c::Device::DeviceType TDeviceType, typename TPoint, typename TMakePoint>
 NNRT_DEVICE_WHEN_CUDACC
-inline void FindRadiusNeighbors_KdTree(int32_t* radius_neighbor_indices, float* radius_neighbor_distances, const KdTreeNode* nodes,
-                                      const int node_count, float radius, const TPoint& query_point, int32_t query_point_index,
-                                      const NDArrayIndexer& reference_point_indexer, TMakePoint&& make_point) {
+inline void FindRadiusNeighbors_KdTree(int32_t* radius_neighbor_indices, const KdTreeNode* nodes,
+                                       const int node_count, float radius, const TPoint& query_point, int32_t query_point_index,
+                                       const NDArrayIndexer& reference_point_indexer, TMakePoint&& make_point) {
 
 
 	// Allocate traversal stack from thread-local memory,
@@ -67,7 +56,6 @@ inline void FindRadiusNeighbors_KdTree(int32_t* radius_neighbor_indices, float* 
 			// update the nearest neighbor heap if the distance is better than the greatest nearest-neighbor distance encountered so far
 			if (radius >= node_distance) {
 				radius_neighbor_indices[neighbor_count] = node.point_index;
-				radius_neighbor_distances[neighbor_count] = node_distance;
 				neighbor_count++; //just cross fingers and hope we don't run out of space here
 #ifdef NEIGHBOR_SPACE_CHECK
 				if (neighbor_count == NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS) {
@@ -132,25 +120,19 @@ void DecimateReferencePoints_Generic(
 
 	auto radius_neighbors = o3c::Tensor({reference_point_count, NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS}, o3c::Dtype::Int32,
 	                                    reference_points.GetDevice());
-	auto radius_neighbor_distances = o3c::Tensor({reference_point_count, NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS}, o3c::Dtype::Float32,
-	                                             reference_points.GetDevice());
 	radius_neighbors.template Fill(-1);
 	NDArrayIndexer radius_neighbor_indexer(radius_neighbors, 1);
-	NDArrayIndexer radius_neighbor_distance_indexer(radius_neighbor_distances, 1);
 	NDArrayIndexer reference_point_indexer(reference_points, 1);
 
 	// find fixed-radius neighbors for each point
 	open3d::core::ParallelFor(
 			reference_points.GetDevice(), reference_point_count,
-			[=]
-					OPEN3D_DEVICE(int64_t
-					              workload_idx) {
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				auto* point_radius_neighbors = radius_neighbor_indexer.GetDataPtr<int>(workload_idx);
-				auto* point_radius_neighbor_distances = radius_neighbor_distance_indexer.GetDataPtr<float>(workload_idx);
 				auto query_point = make_point(reference_point_indexer.template GetDataPtr<float>(workload_idx));
-				FindRadiusNeighbors_KdTree<TDeviceType>(point_radius_neighbors, point_radius_neighbor_distances, nodes, node_count,
-				                                        downsampling_radius, query_point, (int32_t) workload_idx, reference_point_indexer,
-														make_point);
+				FindRadiusNeighbors_KdTree<TDeviceType>(point_radius_neighbors, nodes, node_count, downsampling_radius,
+				                                        query_point, (int32_t) workload_idx, reference_point_indexer,
+				                                        make_point);
 			}
 	);
 
@@ -159,8 +141,9 @@ void DecimateReferencePoints_Generic(
 	point_mask.template Fill(true);
 	bool* point_mask_data = reinterpret_cast<bool*> (point_mask.GetDataPtr());
 
-	auto filtered_points = open3d::core::Tensor({reference_point_count}, o3c::Dtype::Int32, reference_points.GetDevice());
-	int* filtered_point_data = reinterpret_cast<int*>(filtered_points.GetDataPtr());
+	auto filtered_point_indices = open3d::core::Tensor({reference_point_count}, o3c::Dtype::Int32, reference_points.GetDevice());
+	int* filtered_point_index_data = reinterpret_cast<int*>(filtered_point_indices.GetDataPtr());
+
 
 	DECLARE_ATOMIC(int, candidate_filtered_point_count);
 	INITIALIZE_ATOMIC(int, candidate_filtered_point_count, 0);
@@ -173,9 +156,9 @@ void DecimateReferencePoints_Generic(
 	open3d::core::ParallelFor(
 			reference_points.GetDevice(), reference_point_count,
 #ifdef __CUDACC__
-			[=]
+			[=] // CUDA device lambdas can't handle references
 #else
-			[&]
+			[&] // necessary to access atomics by reference instead of by copy/value
 #endif
 					OPEN3D_DEVICE(int64_t
 					              workload_idx) {
@@ -185,33 +168,53 @@ void DecimateReferencePoints_Generic(
 				do {
 					do {
 						// wait until the points that are currently being added to filtered point array finish being added
-						filtered_point_count = GET_ATOMIC_VALUE(candidate_filtered_point_count);
-					} while (filtered_point_count < GET_ATOMIC_VALUE(ready_filtered_point_count) && point_mask_data[workload_idx]);
+						filtered_point_count = GET_ATOMIC_VALUE(ready_filtered_point_count);
+					} while (filtered_point_count < GET_ATOMIC_VALUE(candidate_filtered_point_count) && point_mask_data[workload_idx]);
 					for (; i_filtered_point < filtered_point_count; i_filtered_point++) {
 						if (!point_mask_data[workload_idx]) {
 							return;
 						}
-						auto filtered_point = make_point(reference_point_indexer.template GetDataPtr<float>(filtered_point_data[i_filtered_point]));
+						auto filtered_point = make_point(
+								reference_point_indexer.template GetDataPtr<float>(filtered_point_index_data[i_filtered_point]));
 						// if the point is within the radius of another point in the filtered list, we can safely ignore.
 						if ((filtered_point - query_point).squaredNorm() < downsampling_radius_squared) {
 							return;
 						}
 					}
-				} while (ATOMIC_CE(candidate_filtered_point_count, filtered_point_count, filtered_point_count + 1));
+				} while (!ATOMIC_CE(candidate_filtered_point_count, filtered_point_count, filtered_point_count + 1));
 				// we now know for certain this point's radius doesn't overlap with other filtered points' radii
-				filtered_point_data[filtered_point_count] = workload_idx;
+				filtered_point_index_data[filtered_point_count] = workload_idx;
 				// atomically increment the counter to indicate that the point's index has been added to the filtered point ledger
 				ATOMIC_ADD(ready_filtered_point_count, 1);
 
 				auto* point_radius_neighbors = radius_neighbor_indexer.GetDataPtr<int>(workload_idx);
-				int i_neighbor = 0;
-				while (i_neighbor < NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS && point_radius_neighbors[i_neighbor] != -1) {
+				for (int i_neighbor = 0; i_neighbor < NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS &&
+				                         point_radius_neighbors[i_neighbor] != -1; i_neighbor++) {
 					point_mask_data[point_radius_neighbors[i_neighbor]] = false;
 				}
-
 			}
 	);
-	decimated_points = reference_points.GetItem(o3c::TensorKey::IndexTensor(point_mask));
+	int64_t averaged_point_count = GET_ATOMIC_VALUE_CPU(ready_filtered_point_count);
+	decimated_points = o3c::Tensor({averaged_point_count, reference_points.GetShape(1)}, reference_points.GetDtype(), reference_points.GetDevice());
+	NDArrayIndexer averaged_point_indexer(decimated_points, 1);
+
+	open3d::core::ParallelFor(
+			reference_points.GetDevice(), averaged_point_count,
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				auto* point_radius_neighbors = radius_neighbor_indexer.GetDataPtr<int>(filtered_point_index_data[workload_idx]);
+				auto query_point = make_point(reference_point_indexer.template GetDataPtr<float>(filtered_point_index_data[workload_idx]));
+				auto average_point = make_point(averaged_point_indexer.template GetDataPtr<float>(workload_idx));
+				average_point += query_point;
+				int processed_neighbor_count;
+				for (processed_neighbor_count = 0; processed_neighbor_count < NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS &&
+				                                   point_radius_neighbors[processed_neighbor_count] != -1; processed_neighbor_count++) {
+					auto neighbor_point_data = reference_point_indexer.GetDataPtr<float>(point_radius_neighbors[processed_neighbor_count]);
+					auto neighbor_point = make_point(neighbor_point_data);
+					average_point += neighbor_point;
+				}
+				average_point /= (processed_neighbor_count + 1);
+			}
+	);
 }
 
 } // anonymous namespace

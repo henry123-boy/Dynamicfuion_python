@@ -75,7 +75,7 @@ unsigned int atomicAdd_CPU<unsigned int>(std::atomic<unsigned int>& variable, un
 
 template <typename T>
 inline bool CompareExchange_CPU(std::atomic<T>& variable, T expected, T desired){
-	return variable.compare_exchange_weak(expected, desired, std::memory_order_relaxed, std::memory_order_relaxed);
+	return variable.compare_exchange_weak(expected, desired);
 }
 #endif
 

@@ -19,6 +19,8 @@
 #include <core/LinearIndex.h>
 #include <open3d/core/Tensor.h>
 
+#include <Eigen/Dense>
+
 using namespace nnrt;
 namespace o3c = open3d::core;
 
@@ -446,4 +448,28 @@ void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<floa
 			nn_d_sorted[offset + i_neighbor] = nn_d[offset + idx[i_neighbor]];
 		}
 	}
+}
+
+template<typename TIndex = core::KdTree>
+void Test3DKDTreeAveragingDecimation(const o3c::Device& device, bool use_priority_queue = true) {
+	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
+	                              2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
+	                              2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
+	                              5.8, 0.5, 9.3, 0.5, 5.4, 0., 2.8, 7., 6.9, 5.2, 7.7,
+	                              8.6};
+	o3c::Tensor points(point_data, {15, 3}, o3c::Dtype::Float32, device);
+	TIndex index(points);
+
+	o3c::Tensor decimated_points = index.DecimateReferencePoints(3.0);
+	auto decimated_points_flat = decimated_points.template ToFlatVector<float>();
+	Eigen::Map<Eigen::MatrixXf> decimated_points_eigen(decimated_points_flat.data(), decimated_points.GetShape(0), decimated_points.GetShape(1));
+	std::cout << "HELLO!" << std::endl;
+	std::cout << decimated_points_eigen << std::endl;
+
+
+}
+
+TEST_CASE("Test 3D KD Tree Averaging Decimation - Plain") {
+	auto device = o3c::Device("CPU:0");
+	Test3DKDTreeAveragingDecimation<core::KdTree>(device, false);
 }
