@@ -96,25 +96,25 @@ inline void SetDataCPU(T* var, T var_val){
 template <typename T>
 __device__
 inline bool CompareExchange_CUDA(T* var, T expected, T desired){
-	return desired == atomicCAS(var, expected, desired);
+	return expected == atomicCAS(var, expected, desired);
 }
 
 #endif
 
 #if defined(__CUDACC__)
 // for CUDA device code
-#define DECLARE_ATOMIC(type, name) type* name = nullptr
-#define DECLARE_ATOMIC_INT(name)  int* name = nullptr
-#define DECLARE_ATOMIC_UINT(name) unsigned int* name = nullptr
-#define DECLARE_ATOMIC_FLOAT(name) float* name = nullptr
-#define DECLARE_ATOMIC_DOUBLE(name) double* name = nullptr
-#define CLEAN_UP_ATOMIC(name) ORcudaSafeCall (cudaFree(name))
-#define SET_ATOMIC_VALUE_CPU(name, value) SetDataCPU(name, value)
-#define GET_ATOMIC_VALUE(name) (* name)
-#define GET_ATOMIC_VALUE_CPU(name) GetDataCPU( name )
-#define ATOMIC_ARGUMENT(type) type *
-#define ATOMIC_FLOAT_ARGUMENT_TYPE float*
-#define ATOMIC_INT_ARGUMENT_TYPE int*
+#define NNRT_DECLARE_ATOMIC(type, name) type* name = nullptr
+#define NNRT_DECLARE_ATOMIC_INT(name)  int* name = nullptr
+#define NNRT_DECLARE_ATOMIC_UINT(name) unsigned int* name = nullptr
+#define NNRT_DECLARE_ATOMIC_FLOAT(name) float* name = nullptr
+#define NNRT_DECLARE_ATOMIC_DOUBLE(name) double* name = nullptr
+#define NNRT_CLEAN_UP_ATOMIC(name) ORcudaSafeCall (cudaFree(name))
+#define NNRT_SET_ATOMIC_VALUE_CPU(name, value) SetDataCPU(name, value)
+#define NNRT_GET_ATOMIC_VALUE(name) (* name)
+#define NNRT_GET_ATOMIC_VALUE_CPU(name) GetDataCPU( name )
+#define NNRT_ATOMIC_ARGUMENT(type) type *
+#define NNRT_ATOMIC_FLOAT_ARGUMENT_TYPE float*
+#define NNRT_ATOMIC_INT_ARGUMENT_TYPE int*
 
 #define INITIALIZE_ATOMIC(type, var, value) \
 { \
@@ -123,37 +123,39 @@ OPEN3D_CUDA_CHECK(cudaMalloc((void**)&var, sizeof( type ))); \
 OPEN3D_CUDA_CHECK(cudaMemcpy(var, &val, sizeof( type ), cudaMemcpyHostToDevice)); \
 }
 #else
-#define DECLARE_ATOMIC(type, name) std::atomic< type > name = {0}
-#define DECLARE_ATOMIC_INT(name)  std::atomic<int> name = {0}
-#define DECLARE_ATOMIC_UINT(name)  std::atomic<unsigned int> name = {0}
-#define DECLARE_ATOMIC_FLOAT(name) std::atomic<float> name = {0}
-#define DECLARE_ATOMIC_DOUBLE(name) std::atomic<double> name = {0}
-#define CLEAN_UP_ATOMIC(name) ;
-#define SET_ATOMIC_VALUE_CPU(name, value) (name .store(value))
-#define GET_ATOMIC_VALUE(name) (name .load())
-#define GET_ATOMIC_VALUE_CPU(name) GET_ATOMIC_VALUE(name)
-#define ATOMIC_ARGUMENT(type) std::atomic< type >&
-#define ATOMIC_FLOAT_ARGUMENT_TYPE std::atomic<float>&
-#define ATOMIC_INT_ARGUMENT_TYPE std::atomic<int>&
+#define NNRT_DECLARE_ATOMIC(type, name) std::atomic< type > name = {0}
+#define NNRT_DECLARE_ATOMIC_INT(name)  std::atomic<int> name = {0}
+#define NNRT_DECLARE_ATOMIC_UINT(name)  std::atomic<unsigned int> name = {0}
+#define NNRT_DECLARE_ATOMIC_FLOAT(name) std::atomic<float> name = {0}
+#define NNRT_DECLARE_ATOMIC_DOUBLE(name) std::atomic<double> name = {0}
+#define NNRT_CLEAN_UP_ATOMIC(name) ;
+#define NNRT_SET_ATOMIC_VALUE_CPU(name, value) (name .store(value))
+#define NNRT_GET_ATOMIC_VALUE(name) (name .load())
+#define NNRT_GET_ATOMIC_VALUE_CPU(name) NNRT_GET_ATOMIC_VALUE(name)
+#define NNRT_ATOMIC_ARGUMENT(type) std::atomic< type >&
+#define NNRT_ATOMIC_FLOAT_ARGUMENT_TYPE std::atomic<float>&
+#define NNRT_ATOMIC_INT_ARGUMENT_TYPE std::atomic<int>&
 
-#define INITIALIZE_ATOMIC(type, var, value) \
+#define NNRT_INITIALIZE_ATOMIC(type, var, value) \
 initializeAtomic_CPU< type > (var, value)
 
 #endif
 
-#if defined(__CUDACC__)
-#define ATOMIC_ADD(name, value) atomicAdd( name, value )
-#define ATOMIC_SUB(name, value) atomicSub( name, value )
-#define ATOMIC_MAX(name, value) atomicMax( name, value )
-#define ATOMIC_MIN(name, value) atomicMin( name, value )
-#define ATOMIC_CE(name, expected, desired) CompareExchange_CUDA( name, expected, desired )
 
+//region CAS-type operations on atomics
+#if defined(__CUDACC__)
+#define NNRT_ATOMIC_ADD(name, value) atomicAdd( name, value )
+#define NNRT_ATOMIC_SUB(name, value) atomicSub( name, value )
+#define NNRT_ATOMIC_MAX(name, value) atomicMax( name, value )
+#define NNRT_ATOMIC_MIN(name, value) atomicMin( name, value )
+#define NNRT_ATOMIC_CE(name, expected, desired) CompareExchange_CUDA( name, expected, desired )
 #else
-#define ATOMIC_ADD(name, value) atomicAdd_CPU( name, value )
-#define ATOMIC_SUB(name, value) atomicSub_CPU( name, value )
-#define ATOMIC_MAX(name, value) atomicMax_CPU( name, value )
-#define ATOMIC_MIN(name, value) atomicMin_CPU( name, value )
-#define ATOMIC_CE(name, expected, desired) CompareExchange_CPU( name, expected, desired )
+#define NNRT_ATOMIC_ADD(name, value) atomicAdd_CPU( name, value )
+#define NNRT_ATOMIC_SUB(name, value) atomicSub_CPU( name, value )
+#define NNRT_ATOMIC_MAX(name, value) atomicMax_CPU( name, value )
+#define NNRT_ATOMIC_MIN(name, value) atomicMin_CPU( name, value )
+#define NNRT_ATOMIC_CE(name, expected, desired) CompareExchange_CPU( name, expected, desired )
 #endif
+//endregion
 
 

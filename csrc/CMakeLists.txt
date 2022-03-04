@@ -75,6 +75,9 @@ set(NNRT_SOURCE_FILES
     geometry/Comparison.h
     geometry/Comparison.cpp
 
+    geometry/DownsamplePointsByRadius.h
+    geometry/DownsamplePointsByRadius.cpp
+
     geometry/IndexedPointCloud.h
 
     string/split_string.h
@@ -131,7 +134,7 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.cpp
 
 
-)
+    geometry/kernel/RadiusDownsampling.cpp geometry/kernel/RadiusDownsampling.h geometry/kernel/RadiusDownsamplingImpl.h geometry/kernel/RadiusDownsamplingCPU.cpp geometry/kernel/RadiusDownsamplingCUDA.cu core/kernel/HashTableUtilities.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

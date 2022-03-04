@@ -15,6 +15,10 @@
 //  ================================================================
 #pragma once
 
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <Eigen/Dense>
+
+//local
 #include "core/kernel/KdTree.h"
 #include "core/kernel/KdTreeUtilities.h"
 #include "core/kernel/KdTreeNodeTypes.h"
@@ -145,10 +149,10 @@ void DecimateReferencePoints_Generic(
 	int* filtered_point_index_data = reinterpret_cast<int*>(filtered_point_indices.GetDataPtr());
 
 
-	DECLARE_ATOMIC(int, candidate_filtered_point_count);
-	INITIALIZE_ATOMIC(int, candidate_filtered_point_count, 0);
-	DECLARE_ATOMIC(int, ready_filtered_point_count);
-	INITIALIZE_ATOMIC(int, candidate_filtered_point_count, 0);
+	NNRT_DECLARE_ATOMIC(int, candidate_filtered_point_count);
+	NNRT_INITIALIZE_ATOMIC(int, candidate_filtered_point_count, 0);
+	NNRT_DECLARE_ATOMIC(int, ready_filtered_point_count);
+	NNRT_INITIALIZE_ATOMIC(int, ready_filtered_point_count, 0);
 
 	float downsampling_radius_squared = downsampling_radius * downsampling_radius;
 
@@ -165,11 +169,12 @@ void DecimateReferencePoints_Generic(
 				auto query_point = make_point(reference_point_indexer.template GetDataPtr<float>(workload_idx));
 				int filtered_point_count = 0;
 				int i_filtered_point = 0;
+
 				do {
 					do {
 						// wait until the points that are currently being added to filtered point array finish being added
-						filtered_point_count = GET_ATOMIC_VALUE(ready_filtered_point_count);
-					} while (filtered_point_count < GET_ATOMIC_VALUE(candidate_filtered_point_count) && point_mask_data[workload_idx]);
+						filtered_point_count = NNRT_GET_ATOMIC_VALUE(ready_filtered_point_count);
+					} while (filtered_point_count < NNRT_GET_ATOMIC_VALUE(candidate_filtered_point_count) && point_mask_data[workload_idx]);
 					for (; i_filtered_point < filtered_point_count; i_filtered_point++) {
 						if (!point_mask_data[workload_idx]) {
 							return;
@@ -181,11 +186,19 @@ void DecimateReferencePoints_Generic(
 							return;
 						}
 					}
-				} while (!ATOMIC_CE(candidate_filtered_point_count, filtered_point_count, filtered_point_count + 1));
+				//__DEBUG
+#ifdef __CUDACC__
+						// printf("filtered_point_count: %i\n", filtered_point_count);
+#endif
+				} while (!NNRT_ATOMIC_CE(candidate_filtered_point_count, filtered_point_count, filtered_point_count + 1));
 				// we now know for certain this point's radius doesn't overlap with other filtered points' radii
 				filtered_point_index_data[filtered_point_count] = workload_idx;
 				// atomically increment the counter to indicate that the point's index has been added to the filtered point ledger
 				ATOMIC_ADD(ready_filtered_point_count, 1);
+				//__DEBUG
+#ifdef __CUDACC__
+				printf("ready_filtered_point_count: %i\n", *ready_filtered_point_count);
+#endif
 
 				auto* point_radius_neighbors = radius_neighbor_indexer.GetDataPtr<int>(workload_idx);
 				for (int i_neighbor = 0; i_neighbor < NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS &&
@@ -194,7 +207,7 @@ void DecimateReferencePoints_Generic(
 				}
 			}
 	);
-	int64_t averaged_point_count = GET_ATOMIC_VALUE_CPU(ready_filtered_point_count);
+	int64_t averaged_point_count = NNRT_GET_ATOMIC_VALUE_CPU(ready_filtered_point_count);
 	decimated_points = o3c::Tensor({averaged_point_count, reference_points.GetShape(1)}, reference_points.GetDtype(), reference_points.GetDevice());
 	NDArrayIndexer averaged_point_indexer(decimated_points, 1);
 

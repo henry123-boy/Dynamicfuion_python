@@ -239,7 +239,6 @@ void SortFinalKNNHelper_Indices(std::vector<int32_t>& nn_i_sorted, std::vector<f
 }
 
 
-
 template<typename TIndex = core::KdTree>
 void Test3DKnnSearch(const o3c::Device& device, bool use_priority_queue = true) {
 	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
@@ -450,6 +449,26 @@ void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<floa
 	}
 }
 
+void GetDistanceStatistics(float& ratio_below_threshold, float& average_point_distance,
+						   Eigen::Map<Eigen::MatrixXf> points, float distance_threshold) {
+
+	float cumulative_distance = 0.0f;
+	int64_t count_below_threshold = 0;
+	int64_t distance_count = 0;
+	for (int i_point = 0; i_point < points.rows()-1; i_point++) {
+		for (int j_point = i_point+1; j_point < points.rows(); j_point++, distance_count++) {
+			float distance = (points.row(i_point) - points.row(j_point)).norm();
+			if(distance < distance_threshold){
+				count_below_threshold++;
+			}
+			cumulative_distance += distance;
+		}
+	}
+
+	ratio_below_threshold = static_cast<float>(count_below_threshold) / static_cast<float>(distance_count);
+	average_point_distance = cumulative_distance / static_cast<float>(distance_count);
+}
+
 template<typename TIndex = core::KdTree>
 void Test3DKDTreeAveragingDecimation(const o3c::Device& device, bool use_priority_queue = true) {
 	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
@@ -460,16 +479,21 @@ void Test3DKDTreeAveragingDecimation(const o3c::Device& device, bool use_priorit
 	o3c::Tensor points(point_data, {15, 3}, o3c::Dtype::Float32, device);
 	TIndex index(points);
 
-	o3c::Tensor decimated_points = index.DecimateReferencePoints(3.0);
+	o3c::Tensor decimated_points = index.DecimateReferencePoints(5.0);
 	auto decimated_points_flat = decimated_points.template ToFlatVector<float>();
 	Eigen::Map<Eigen::MatrixXf> decimated_points_eigen(decimated_points_flat.data(), decimated_points.GetShape(0), decimated_points.GetShape(1));
-	std::cout << "HELLO!" << std::endl;
 	std::cout << decimated_points_eigen << std::endl;
 
 
 }
 
-TEST_CASE("Test 3D KD Tree Averaging Decimation - Plain") {
+TEST_CASE("Test 3D KD Tree Averaging Decimation CPU - Plain") {
 	auto device = o3c::Device("CPU:0");
 	Test3DKDTreeAveragingDecimation<core::KdTree>(device, false);
 }
+
+// Doesn't work
+// TEST_CASE("Test 3D KD Tree Averaging Decimation CUDA - Plain") {
+// 	auto device = o3c::Device("CUDA:0");
+// 	Test3DKDTreeAveragingDecimation<core::KdTree>(device, false);
+// }
