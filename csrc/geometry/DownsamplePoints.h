@@ -13,8 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <open3d/core/ParallelFor.h>
+#pragma once
+#include <open3d/core/Tensor.h>
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry{
 
-} // namespace nnrt::geometry::kernel::downsampling
+open3d::core::Tensor DownsamplePointsByRadius(const open3d::core::Tensor& original_points, float radius);
+open3d::core::Tensor GridDownsamplePoints(const open3d::core::Tensor& original_points, float grid_cell_size);
+
+} // nnrt::geometry

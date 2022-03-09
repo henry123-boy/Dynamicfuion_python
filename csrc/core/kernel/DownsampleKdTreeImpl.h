@@ -194,7 +194,7 @@ void DecimateReferencePoints_Generic(
 				// we now know for certain this point's radius doesn't overlap with other filtered points' radii
 				filtered_point_index_data[filtered_point_count] = workload_idx;
 				// atomically increment the counter to indicate that the point's index has been added to the filtered point ledger
-				ATOMIC_ADD(ready_filtered_point_count, 1);
+				NNRT_ATOMIC_ADD(ready_filtered_point_count, 1);
 				//__DEBUG
 #ifdef __CUDACC__
 				printf("ready_filtered_point_count: %i\n", *ready_filtered_point_count);

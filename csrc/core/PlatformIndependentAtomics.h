@@ -14,7 +14,24 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#if !defined(__CUDACC__)
+#if defined(__CUDACC__)
+__device__ __forceinline__ float atomicMin (float * addr, float value) {
+        float old;
+        old = (value >= 0) ? __int_as_float(atomicMin((int *)addr, __float_as_int(value))) :
+             __uint_as_float(atomicMax((unsigned int *)addr, __float_as_uint(value)));
+
+        return old;
+}
+
+__device__ __forceinline__ float atomicMax (float * addr, float value) {
+    float old;
+    old = (value >= 0) ? __int_as_float(atomicMax((int *)addr, __float_as_int(value))) :
+         __uint_as_float(atomicMin((unsigned int *)addr, __float_as_uint(value)));
+
+    return old;
+}
+
+#else
 #include <atomic>
 
 template<typename T>
@@ -53,6 +70,12 @@ T atomicSub_CPU(std::atomic<T>& variable, T subtracted) {
 template<>
 inline
 int atomicAdd_CPU<int>(std::atomic<int>& variable, int addend){
+	return variable.fetch_add(addend, std::memory_order_relaxed);
+}
+
+template<>
+inline
+int64_t atomicAdd_CPU<int64_t>(std::atomic<int64_t>& variable, int64_t addend){
 	return variable.fetch_add(addend, std::memory_order_relaxed);
 }
 
@@ -108,7 +131,7 @@ inline bool CompareExchange_CUDA(T* var, T expected, T desired){
 #define NNRT_DECLARE_ATOMIC_UINT(name) unsigned int* name = nullptr
 #define NNRT_DECLARE_ATOMIC_FLOAT(name) float* name = nullptr
 #define NNRT_DECLARE_ATOMIC_DOUBLE(name) double* name = nullptr
-#define NNRT_CLEAN_UP_ATOMIC(name) ORcudaSafeCall (cudaFree(name))
+#define NNRT_CLEAN_UP_ATOMIC(name) OPEN3D_CUDA_CHECK (cudaFree(name))
 #define NNRT_SET_ATOMIC_VALUE_CPU(name, value) SetDataCPU(name, value)
 #define NNRT_GET_ATOMIC_VALUE(name) (* name)
 #define NNRT_GET_ATOMIC_VALUE_CPU(name) GetDataCPU( name )
@@ -116,7 +139,7 @@ inline bool CompareExchange_CUDA(T* var, T expected, T desired){
 #define NNRT_ATOMIC_FLOAT_ARGUMENT_TYPE float*
 #define NNRT_ATOMIC_INT_ARGUMENT_TYPE int*
 
-#define INITIALIZE_ATOMIC(type, var, value) \
+#define NNRT_INITIALIZE_ATOMIC(type, var, value) \
 { \
 type val = value; \
 OPEN3D_CUDA_CHECK(cudaMalloc((void**)&var, sizeof( type ))); \
@@ -138,7 +161,6 @@ OPEN3D_CUDA_CHECK(cudaMemcpy(var, &val, sizeof( type ), cudaMemcpyHostToDevice))
 
 #define NNRT_INITIALIZE_ATOMIC(type, var, value) \
 initializeAtomic_CPU< type > (var, value)
-
 #endif
 
 

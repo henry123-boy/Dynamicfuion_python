@@ -13,20 +13,19 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/DownsamplePointsByRadius.h"
-#include <open3d/core/TensorCheck.h>
-#include "geometry/kernel/RadiusDownsampling.h"
+#include <open3d/core/ParallelFor.h>
+#include "geometry/kernel/PointDownsamplingImpl.h"
 
-namespace o3c = open3d::core;
+namespace nnrt::geometry::kernel::downsampling {
 
-namespace nnrt::geometry {
+template
+void DownsamplePointsByRadius<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius
+);
 
-open3d::core::Tensor DownsamplePointsByRadius(const open3d::core::Tensor& original_points, float radius) {
-	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
-	o3c::AssertTensorShape(original_points, {original_points.GetLength(), 3});
-	o3c::Tensor downsampled_points;
-	kernel::downsampling::DownsamplePointsByRadius(downsampled_points, original_points, radius);
-	return downsampled_points;
-}
+template
+void GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size
+);
 
-} // namespace nnrt::geometry
+} // namespace nnrt::geometry::kernel::downsampling

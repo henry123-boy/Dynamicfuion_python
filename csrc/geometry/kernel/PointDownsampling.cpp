@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/RadiusDownsampling.h"
+#include "geometry/kernel/PointDownsampling.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
@@ -25,6 +25,14 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 			original_points,
 			[&] { DownsamplePointsByRadius<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius); },
 			[&] { NNRT_IF_CUDA(DownsamplePointsByRadius<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius);); }
+	);
+}
+
+void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
+	core::InferDeviceFromEntityAndExecute(
+			original_points,
+			[&] { GridDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, grid_cell_size); },
+			[&] { NNRT_IF_CUDA(GridDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, grid_cell_size);); }
 	);
 }
 
