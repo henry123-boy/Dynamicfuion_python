@@ -33,7 +33,7 @@ open3d::core::Tensor GridDownsamplePoints(const open3d::core::Tensor& original_p
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, {original_points.GetLength(), 3});
 	o3c::Tensor downsampled_points;
-	kernel::downsampling::DownsamplePointsByRadius(downsampled_points, original_points, grid_cell_size);
+	kernel::downsampling::GridDownsamplePoints(downsampled_points, original_points, grid_cell_size);
 	return downsampled_points;
 }
 

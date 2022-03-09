@@ -100,6 +100,7 @@ template <typename T>
 inline bool CompareExchange_CPU(std::atomic<T>& variable, T expected, T desired){
 	return variable.compare_exchange_weak(expected, desired);
 }
+
 #endif
 
 #if defined(__CUDACC__)

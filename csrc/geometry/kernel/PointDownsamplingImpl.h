@@ -86,13 +86,7 @@ struct PointAggregationBin {
 };
 
 
-//TODO: Deprecated. To be replaced by simply using fetch_add (+=) when it dawns on CUDA to support C++20.
-void legacy_atomic_add(std::atomic<float>& value, float addend) {
-	float expected;
-	do {
-		expected = value.load();
-	} while (value.compare_exchange_weak(expected, expected + addend));
-}
+
 
 } // anonymous namespace
 
@@ -186,9 +180,9 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 				atomicAdd(&bin.z, point.z());
 				atomicAdd(&bin.count, 1);
 #else
-				legacy_atomic_add(bin.x, point.x());
-				legacy_atomic_add(bin.y, point.y());
-				legacy_atomic_add(bin.z, point.z());
+				atomicAdd_CPU(bin.x, point.x());
+				atomicAdd_CPU(bin.y, point.y());
+				atomicAdd_CPU(bin.z, point.z());
 				bin.count++;
 #endif
 			}
@@ -274,14 +268,9 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 	auto grid_spatial_extents = grid_bin_max_bound - grid_bin_min_bound;
 	auto grid_center = grid_bin_min_bound + (grid_spatial_extents / 2.f);
 
-	auto grid_bin_extents = Eigen::Vector3i(static_cast<int32_t>(std::ceil(grid_spatial_extents.x() / bin_size)),
-	                                        static_cast<int32_t>(std::ceil(grid_spatial_extents.y() / bin_size)),
-	                                        static_cast<int32_t>(std::ceil(grid_spatial_extents.z() / bin_size)));
-
-	// ensure each dimension is divisible by 2, so that later we can process grid directionally with step 2
-	grid_bin_extents.x() = grid_bin_extents.x() + grid_bin_extents.x() % 2;
-	grid_bin_extents.y() = grid_bin_extents.y() + grid_bin_extents.y() % 2;
-	grid_bin_extents.z() = grid_bin_extents.z() + grid_bin_extents.z() % 2;
+	auto grid_bin_extents = Eigen::Vector3i(std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.x() / bin_size)), 1),
+	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.y() / bin_size)), 1),
+	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.z() / bin_size)), 1));
 
 	const auto bin_count = grid_bin_extents.x() * grid_bin_extents.y() * grid_bin_extents.z();
 	// endregion
@@ -316,9 +305,9 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 				atomicAdd(&bin.z, point.z());
 				atomicAdd(&bin.count, 1);
 #else
-				legacy_atomic_add(bin.x, point.x());
-				legacy_atomic_add(bin.y, point.y());
-				legacy_atomic_add(bin.z, point.z());
+				atomicAdd_CPU(bin.x, point.x());
+				atomicAdd_CPU(bin.y, point.y());
+				atomicAdd_CPU(bin.z, point.z());
 				bin.count++;
 #endif
 			}
