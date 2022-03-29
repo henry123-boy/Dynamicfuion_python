@@ -28,7 +28,7 @@ from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, \
-    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode
+    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode
 from settings import Parameters
 from telemetry.telemetry_generator import TelemetryGenerator
 
@@ -118,6 +118,18 @@ class FusionPipeline:
         if self.framewise_warped_mesh_needed:
             warped_mesh = self.graph.warp_mesh(canonical_mesh)
         return canonical_mesh, warped_mesh
+
+    @staticmethod
+    def determine_mesh_extraction_threshold(frame_index: int) -> int:
+        tracking_parameters = Parameters.fusion.tracking
+        if tracking_parameters.mesh_extraction_weight_thresholding_mode.value == \
+                MeshExtractionWeightThresholdingMode.CONSTANT:
+            return tracking_parameters.mesh_extraction_weight_threshold.value
+        else:
+            if frame_index < tracking_parameters.mesh_extraction_weight_threshold.value:
+                return frame_index
+            else:
+                return tracking_parameters.mesh_extraction_weight_threshold.value
 
     def run(self) -> int:
         start_time = timeit.default_timer()
@@ -362,7 +374,10 @@ class FusionPipeline:
                 #  Check BaldrLector's NeuralTracking fork code.
                 # endregion
                 #####################################################################################################
-                canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
+                mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(current_frame.frame_index)
+                canonical_mesh, warped_mesh = \
+                    self.extract_and_warp_canonical_mesh_if_necessary(mesh_extraction_weight_threshold)
+
                 telemetry_generator.process_result_visualization_and_logging(
                     canonical_mesh, warped_mesh,
                     deform_net_data,
