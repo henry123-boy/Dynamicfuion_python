@@ -38,9 +38,9 @@ namespace nnrt::geometry::kernel::downsampling {
 
 namespace {
 
-template<open3d::core::Device::DeviceType DeviceType>
+template<open3d::core::Device::DeviceType DeviceType, typename TPoint>
 NNRT_DEVICE_WHEN_CUDACC inline Eigen::Vector3i
-DeterminePointsBinCoordinate(const Eigen::Map<Eigen::Vector3f>& point,
+DeterminePointsBinCoordinate(const TPoint& point,
                              const Eigen::Vector3f& grid_bin_minimum,
                              float bin_size) {
 	return {
@@ -83,6 +83,14 @@ struct PointAggregationBin {
 	std::atomic<float> z;
 	std::atomic<int> count;
 #endif
+	template<o3c::Device::DeviceType DeviceType>
+	NNRT_DEVICE_WHEN_CUDACC
+	void UpdateWithPointAndCount(const Eigen::Vector3f& point, int _count){
+		x = point.x();
+		y = point.y();
+		z = point.z();
+		this->count = _count;
+	}
 };
 
 
@@ -214,6 +222,9 @@ void ComputeBinAverages(o3c::Device& device,
 }
 
 
+
+
+
 } // anonymous namespace
 
 template<open3d::core::Device::DeviceType DeviceType>
@@ -268,7 +279,7 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 				bool has_point = false;
 				Eigen::Vector3f bin_point;
 				int bin_point_count;
-#ifdef __CUDACC__
+
 				if(bin.count != 0){
 					has_point = true;
 					bin_point.x() = bin.x;
@@ -276,15 +287,7 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 					bin_point.z() = bin.z;
 					bin_point_count = bin.count;
 				}
-#else
-				if (bin.count.load() != 0) {
-					has_point = true;
-					bin_point.x() = bin.x.load();
-					bin_point.y() = bin.y.load();
-					bin_point.z() = bin.z.load();
-					bin_point_count = bin.count.load();
-				}
-#endif
+
 				if (!has_point)
 					return;
 
@@ -297,34 +300,31 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 				Eigen::Vector3f next_bin_point;
 				int next_bin_point_count;
 				next_bin_point_count = next_bin.count;
-#ifdef __CUDACC__
+
 				if(next_bin.count != 0){
 					has_point = true;
 					next_bin_point.x() = next_bin.x;
 					next_bin_point.y() = next_bin.y;
 					next_bin_point.z() = next_bin.z;
+				}
 
-				}
-#else
-				if (next_bin.count.load() != 0) {
-					has_point = true;
-					next_bin_point.x() = next_bin.x.load();
-					next_bin_point.y() = next_bin.y.load();
-					next_bin_point.z() = next_bin.z.load();
-					next_bin_point_count = next_bin.count.load();
-				}
-#endif
 				if (!has_point)
 					return;
 
 				// merge points
 				if ((next_bin_point - bin_point).norm() < radius) {
+					int new_count = bin_point_count + next_bin_point_count;
 					auto average_point =
-							(bin_point * bin_point_count + next_bin_point * next_bin_point_count) / (bin_point_count + next_bin_point_count);
-					auto bin_coordinate = DeterminePointsBinCoordinate<DeviceType>(average_point, grid_bin_min_bound, bin_size);
+							(bin_point * bin_point_count + next_bin_point * next_bin_point_count) /
+							(new_count);
+					auto merged_bin_coordinate = DeterminePointsBinCoordinate<DeviceType>(average_point, grid_bin_min_bound, bin_size);
 					auto merged_bin_index = RavelBinLinearIndex<DeviceType>(bin_coordinate, grid_bin_extents);
-					if(merged_bin_index == bin_index){
-						//FIXME
+					if (merged_bin_index == bin_index) {
+						bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
+						next_bin.count = 0;
+					} else {
+						next_bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
+						bin.count = 0;
 					}
 				}
 

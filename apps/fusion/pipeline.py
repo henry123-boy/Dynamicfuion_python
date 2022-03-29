@@ -103,7 +103,8 @@ class FusionPipeline:
     def extract_and_warp_canonical_mesh_if_necessary(self):
         # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via
         #  dlpack for rendering where this can be done).
-        #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of these meshes
+        #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of
+        #  these meshes.
         #  The first step is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
