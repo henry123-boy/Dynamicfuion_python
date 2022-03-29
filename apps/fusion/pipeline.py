@@ -100,7 +100,7 @@ class FusionPipeline:
         self.extrinsics_open3d_device = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, self.device)
         # endregion
 
-    def extract_and_warp_canonical_mesh_if_necessary(self):
+    def extract_and_warp_canonical_mesh_if_necessary(self, weight_threshold: float = 0.0):
         # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via
         #  dlpack for rendering where this can be done).
         #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of
@@ -109,7 +109,7 @@ class FusionPipeline:
         #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
-            canonical_mesh = self.volume.extract_surface_mesh(-1, 0)
+            canonical_mesh = self.volume.extract_surface_mesh(-1, weight_threshold)
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 

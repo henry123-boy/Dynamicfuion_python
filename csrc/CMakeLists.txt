@@ -35,8 +35,7 @@ set(NNRT_SOURCE_FILES
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
     debugging/debugging.hpp
-    core/PlatformIndependence.h
-    core/PlatformIndependentAtomics.h
+
 
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
@@ -75,6 +74,12 @@ set(NNRT_SOURCE_FILES
     geometry/Comparison.h
     geometry/Comparison.cpp
 
+    geometry/kernel/PointDownsampling.cpp
+    geometry/kernel/PointDownsampling.h
+    geometry/kernel/PointDownsamplingImpl.h
+    geometry/kernel/PointDownsamplingCPU.cpp
+    geometry/kernel/PointDownsamplingCUDA.cu
+
     geometry/DownsamplePoints.h
     geometry/DownsamplePoints.cpp
 
@@ -84,6 +89,10 @@ set(NNRT_SOURCE_FILES
     string/split_string.cpp
     string/join_string_separator.cpp
     string/join_string_separator.h
+
+
+    core/PlatformIndependence.h
+    core/PlatformIndependentAtomics.h
 
     core/kernel/KnnUtilities.h
     core/kernel/KnnUtilities_PriorityQueue.h
@@ -133,8 +142,7 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
 
-
-    geometry/kernel/PointDownsampling.cpp geometry/kernel/PointDownsampling.h geometry/kernel/PointDownsamplingImpl.h geometry/kernel/PointDownsamplingCPU.cpp geometry/kernel/PointDownsamplingCUDA.cu core/kernel/HashTableUtilities.h)
+    core/kernel/HashTableUtilities.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
