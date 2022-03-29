@@ -3,6 +3,7 @@
 # experimental tsdf_management tsdf_management based on original NNRT code
 # Copyright 2021 Gregory Kramida
 from typing import Union
+import timeit
 
 # 3rd-party
 import numpy as np
@@ -119,6 +120,9 @@ class FusionPipeline:
         return canonical_mesh, warped_mesh
 
     def run(self) -> int:
+        start_time = timeit.default_timer()
+
+        verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
         integration_parameters = Parameters.fusion.integration
         deform_net_parameters = Parameters.deform_net
@@ -375,4 +379,8 @@ class FusionPipeline:
                 previous_depth_image_np = depth_image_np
                 previous_mask_image_np = mask_image_np
 
+        if verbosity_parameters.print_total_runtime.value:
+            end_time = timeit.default_timer()
+            print(f"Total runtime (in seconds, with graph generation, "
+                  f"without model + TSDF grid initialization): {end_time - start_time}")
         return PROGRAM_EXIT_SUCCESS
