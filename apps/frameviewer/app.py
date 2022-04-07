@@ -2,12 +2,14 @@
 import os
 import sys
 from enum import Enum
+from typing import Union
 
 import cv2
 
 import vtk
 import numpy as np
 
+from multiprocessing import Queue
 from apps.frameviewer import image_conversion, frameloading
 from apps.shared import trajectory_loading
 from apps.frameviewer.pixel_highlighter import PixelHighlighter
@@ -40,7 +42,7 @@ class FrameViewerApp:
     VOXEL_SIZE = 0.004
     VOXEL_BLOCK_SIZE_METERS = VOXEL_BLOCK_SIZE_VOXELS * VOXEL_SIZE
 
-    def __init__(self, input_folder, output_folder, frame_index_to_start_with):
+    def __init__(self, input_folder, output_folder, frame_index_to_start_with, queue: Union[None, Queue] = None):
         self.start_frame_index = frame_index_to_start_with
         self.input_folder = input_folder
         self.output_folder = output_folder
@@ -53,7 +55,7 @@ class FrameViewerApp:
                 os.unlink(state_path)
             else:
                 state = loaded_state
-
+        self.queue = queue
         self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_folder, input_folder)
 
         self.current_camera_matrix = None
@@ -144,7 +146,8 @@ class FrameViewerApp:
     def update_window(self, obj, event):
         (window_width, window_height) = self.render_window.GetSize()
         if window_width != self.last_window_width or window_height != self.last_window_height:
-            self.text_actor.SetDisplayPosition(window_width - 400, window_height - (self.number_of_lines + 2) * self.font_size)
+            self.text_actor.SetDisplayPosition(window_width - 400,
+                                               window_height - (self.number_of_lines + 2) * self.font_size)
             self.last_window_width = window_width
             self.last_window_height = window_height
 
@@ -263,6 +266,8 @@ class FrameViewerApp:
     def keypress(self, obj, event):
         key = obj.GetKeySym()
         print("Key:", key)
+        if self.queue is not None:
+            self.queue.put(key)
         if key == "q" or key == "Escape":
             image_x, image_y = self.image_actor.GetPosition()
             path = os.path.join(self.output_folder, "frameviewer_state.txt")

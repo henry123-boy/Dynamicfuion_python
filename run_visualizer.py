@@ -4,8 +4,11 @@ import sys
 import os
 import re
 from multiprocessing import Process, Queue
+import ctypes
 
 from typing import List
+
+import vtk
 
 from apps.visualizer.parameters import VisualizerParameters
 from apps.visualizer.app import VisualizerApp
@@ -19,7 +22,7 @@ PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAILURE = -1
 
 
-def start_synchronized_frameviewer(frameviewer_settings_path: Path):
+def start_synchronized_frameviewer(frameviewer_settings_path: Path, queue: Queue):
     process_arguments(FrameviewerParameters, "An app to view a masked RGB-D sequence frame-by-frame and analyze target"
                                              "hash blocks for the surface (in a spatially-hashed voxel volume)."
                                              "Also allows to determine the optimal threshold for masking. ",
@@ -36,9 +39,18 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path):
         os.path.join(FrameviewerParameters.input.value, "intrinsics.txt"))
     FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
 
-    app = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
-                         FrameviewerParameters.start_frame_index.value)
-    app.launch()
+    frameviewer = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
+                                 FrameviewerParameters.start_frame_index.value, queue)
+    frameviewer.launch()
+
+
+class TimerCallback:
+    def __init__(self, queue: Queue):
+        self.queue = queue
+
+    def execute(self, object, event):
+        if not self.queue.empty():
+            print("External process key:", self.queue.get())
 
 
 def main():
@@ -73,17 +85,26 @@ def main():
             experiment_folder = paths[0].name
 
     print(type(experiment_folder), experiment_folder)
-    frameviewer_info_path = Path(base_output_folder, experiment_folder, "frameviewer_info.yaml")
-    frameviewer_running = False
-    frameviewer_process = None
-    if frameviewer_info_path.exists():
-        frameviewer_process = Process(target=start_synchronized_frameviewer, args=(frameviewer_info_path,))
-        frameviewer_process.start()
-        frameviewer_running = True
 
     frame_output_folder = Path(base_output_folder, experiment_folder, "frame_output")
     print("Reading data from ", frame_output_folder)
     visualizer = VisualizerApp(frame_output_folder, VisualizerParameters.start_frame.value)
+
+    # launch frameviewer if we have info for it -- TODO also make a setting/parameter for this.
+    #  TODO: launching multiple VTK windows via multiprocessing fails on VTK 9.1 (at least w/ Xorg server).
+    #   Use VTK 9.0.1 for now if you're facing this issue...
+    frameviewer_info_path = Path(base_output_folder, experiment_folder, "frameviewer_info.yaml")
+    frameviewer_running = False
+    frameviewer_process = None
+    if frameviewer_info_path.exists():
+        queue = Queue()
+        frameviewer_process = Process(target=start_synchronized_frameviewer, args=(frameviewer_info_path, queue))
+        frameviewer_process.start()
+        frameviewer_running = True
+        timer_callback = TimerCallback(queue)
+        visualizer.interactor.AddObserver('TimerEvent', timer_callback.execute)
+        timer_id = visualizer.interactor.CreateRepeatingTimer(1000)
+
     visualizer.launch()
 
     if frameviewer_running:
