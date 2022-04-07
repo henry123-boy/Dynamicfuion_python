@@ -52,6 +52,11 @@ class TrackingSpanMode(Enum):
     T_MINUS_ONE_TO_T = 1
 
 
+class MeshExtractionWeightThresholdingMode(Enum):
+    CONSTANT = 0
+    RAMP_UP_TO_CONSTANT = 1
+
+
 class TrackingParameters(ParameterEnum):
     source_image_mode = \
         Parameter(default=SourceImageMode.REUSE_PREVIOUS_FRAME, arg_type=SourceImageMode,
@@ -63,19 +68,39 @@ class TrackingParameters(ParameterEnum):
                            "proxy data structure that is used to store and play back the estimated surface motion).")
     pixel_anchor_computation_mode = \
         Parameter(default=AnchorComputationMode.PRECOMPUTED, arg_type=AnchorComputationMode,
-                  arg_help="Method used to assign graph nodes as anchors to each pixel and compute their weights, which "
-                           "control the influence of the graph on the estimated surface.")
+                  arg_help="Method used to assign graph nodes as anchors to each pixel and compute their weights, "
+                           "which control the influence of the graph on the estimated surface.")
     tracking_span_mode = \
         Parameter(default=TrackingSpanMode.ZERO_TO_T, arg_type=TrackingSpanMode,
                   arg_help="Interval over which to perform alignment for tracking objects. ZERO_TO_T mode will make "
                            "the program track between the first frame and each incoming sequence frame. "
                            "T_MINUS_ONE_TO_T will make it track between each consecutive pair of frames.")
 
+    mesh_extraction_weight_thresholding_mode = \
+        Parameter(default=MeshExtractionWeightThresholdingMode.RAMP_UP_TO_CONSTANT,
+                  arg_type=MeshExtractionWeightThresholdingMode,
+                  arg_help="Mesh extraction from TSDF for both the canonical and the forward-warped mesh will be guided"
+                           " by this schema. When set to `CONSTANT`, the `mesh_extraction_weight_threshold` will "
+                           " dictate directly what is the minimum voxel weight for the voxel to be considered for "
+                           " extracting mesh geometry from. Per the weighted averaging integration schema, with each "
+                           " time a voxel has been integrated new data into, its weight increases by one. When set to"
+                           " `RAMP_UP_TO_CONSTANT, weight 0 will be considered for all voxels in the first frame,"
+                           " then the threshold will increase by one with each frame until reaching the specified "
+                           " threshold.")
+
+    mesh_extraction_weight_threshold = \
+        Parameter(default=10, arg_type=int,
+                  arg_help="The weight threshold used to control which voxels are considered for extracting the "
+                           "canonical and forward-warped mesh, see `mesh_extraction_weight_thresholding_mode` for "
+                           "details.")
+
 
 class IntegrationParameters(ParameterEnum):
     anchor_node_count = \
         Parameter(default=4, arg_type=int,
-                  arg_help="Number of nodes used as anchors for point on a surface.")
+                  arg_help="Number of nodes used as \"anchors\" for a point on a surface. The anchors are used to"
+                           " control the motion of the point they've been assigned to control by linearly blending"
+                           " the transformation matrices associated with each node.")
     fusion_minimum_valid_anchor_count = \
         Parameter(default=3, arg_type=int,
                   arg_help="TSDF voxels which have fewer than this number of valid anchors will not have any new data "
@@ -94,6 +119,9 @@ class VerbosityParameters(ParameterEnum):
     print_cuda_memory_info = \
         Parameter(default=False, arg_type='bool_flag',
                   arg_help="Print CUDA memory information before processing each frame.")
+    print_total_runtime = \
+        Parameter(default=False, arg_type='bool_flag',
+                  arg_help="Print the total runtime, in seconds, after processing the entire sequence.")
 
 
 class VisualizationParameters(ParameterEnum):

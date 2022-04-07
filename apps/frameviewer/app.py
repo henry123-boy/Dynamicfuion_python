@@ -212,7 +212,10 @@ class FrameViewerApp:
         print("Frame:", frame_index)
         self.current_camera_matrix = None if len(self.inverse_camera_matrices) <= frame_index \
             else self.inverse_camera_matrices[frame_index - self.start_frame_index]
-        if self.current_camera_matrix is not None:
+
+        print_inverted_camera_matrix = False
+
+        if print_inverted_camera_matrix and self.current_camera_matrix is not None:
             print("Inverted camera pose:")
             print(self.current_camera_matrix)
 

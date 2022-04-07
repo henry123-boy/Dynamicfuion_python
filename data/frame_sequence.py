@@ -61,9 +61,11 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             if self.segment_name is None:
                 segment_name = parts[1]
             if self.has_masks:
-                mask_filename_mask_with_segment = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
+                mask_filename_mask_with_segment = os.path.join(self._mask_frame_directory,
+                                                               "{:06d}_" + segment_name + ".png")
                 if os.path.isfile(mask_filename_mask_with_segment.format(0)):
-                    self._mask_image_filename_mask = os.path.join(self._mask_frame_directory, "{:06d}_" + segment_name + ".png")
+                    self._mask_image_filename_mask = os.path.join(self._mask_frame_directory,
+                                                                  "{:06d}_" + segment_name + ".png")
 
         if self.frame_count is None:
             frame_on_disk_count = 0

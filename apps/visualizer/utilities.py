@@ -1,12 +1,13 @@
 import os
 import re
+from pathlib import Path
 
 
-def get_start_and_end_frame(output_path):
-    filenames = os.listdir(output_path)
+def get_start_and_end_frame(output_path: Path):
+    filenames = list(output_path.iterdir())
     filenames.sort()
-    start_frame_ix = int(filenames[0][:6])
-    end_frame_ix = int(filenames[-1][:6])
+    start_frame_ix = int(filenames[0].stem[:6])
+    end_frame_ix = int(filenames[-1].stem[:6])
     return start_frame_ix, end_frame_ix
 
 
@@ -34,4 +35,3 @@ def source_and_target_point_clouds_are_present(start_frame_ix, output_path):
     start_frame_target_pc_filename = f"{start_frame_ix:06d}_target_rgbxyz.npy"
     all_filenames = os.listdir(output_path)
     return start_frame_source_pc_filename in all_filenames and start_frame_target_pc_filename in all_filenames
-

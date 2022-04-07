@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import vtk
 import vtk.util.numpy_support as vtk_np
 import numpy as np
@@ -57,8 +59,8 @@ class PointCloud:
             raise ValueError("Unsupported color mode: " + mode.name)
         self.color_mode = mode
 
-    def update(self, path_to_npy: str, render: bool = False) -> None:
-        points_np = np.load(path_to_npy)
+    def update(self, path_to_npy: Path, render: bool = False) -> None:
+        points_np = np.load(str(path_to_npy))
         point_count = points_np.shape[0]
 
         if points_np.shape[1] > 3:

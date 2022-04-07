@@ -1,21 +1,26 @@
+# system
 from typing import Union, List
 from datetime import datetime
 from pathlib import Path
+import pynvml
+import os
 
+# third-party
 import cv2
 import numpy as np
 import open3d as o3d
 import torch
+from ruamel.yaml import YAML
+import ext_argparse
 
-from data import SequenceFrameDataset
+# local
+from data import SequenceFrameDataset, FrameSequenceDataset
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
-import pynvml
-import os
+
 import telemetry.visualization.tracking as tracking_viz
-from settings.fusion import VisualizationMode
-from settings import Parameters
-import ext_argparse
+from settings.fusion import VisualizationMode, FusionParameters
+from settings import Parameters, TsdfParameters
 
 
 class TelemetryGenerator:
@@ -45,6 +50,7 @@ class TelemetryGenerator:
         self.record_source_and_target_point_clouds = record_source_and_target_point_clouds
         self.record_graph_transformations = record_graph_transformations
         self.visualization_mode = visualization_mode
+        self.parent_output_directory = output_directory
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
@@ -75,6 +81,28 @@ class TelemetryGenerator:
         # if self.record_gn_point_clouds and not os.path.exists(self.deformed_points_output_directory):
         #     os.makedirs(self.deformed_points_output_directory)
         self.frame_index = 0
+
+    def save_info_for_frameviewer(self, sequence: FrameSequenceDataset):
+        output_file_path = Path(self.frame_output_directory) / "frameviewer_info.yaml"
+        meta_info = YAML(typ='rt')
+        meta_info.default_flow_style = False
+        frame_count = sequence.frame_count
+        if -1 < FusionParameters.run_until_frame.value < (self.sequence.start_frame_index + self.sequence.frame_count):
+            frame_count = FusionParameters.run_until_frame.value - self.sequence.start_frame_index
+        meta_info.dump(
+            {
+                "input": sequence.get_sequence_directory(),
+                "start_frame_index": sequence.start_frame_index,
+                "frame_count": frame_count,
+                "output": self.output_directory,
+                "tsdf": {
+                    "voxel_size": TsdfParameters.voxel_size.value,
+                    "sdf_truncation_distance": TsdfParameters.sdf_truncation_distance.value,
+                    "block_resolution": TsdfParameters.block_resolution.value,
+                    "initial_block_count": TsdfParameters.initial_block_count.value
+                }
+            }, output_file_path
+        )
 
     def set_frame_index(self, frame_index):
         self.frame_index = frame_index
@@ -133,14 +161,17 @@ class TelemetryGenerator:
                 = deform_net_data["correspondence_info"]
 
             target_matches = target_matches.view(-1, tracking_image_height, tracking_image_width).cpu().numpy()
-            valid_source_points = valid_source_points.view(-1, tracking_image_height, tracking_image_width).cpu().numpy()
-            valid_correspondences = valid_correspondences.view(-1, tracking_image_height, tracking_image_width).cpu().numpy()
+            valid_source_points = valid_source_points.view(-1, tracking_image_height,
+                                                           tracking_image_width).cpu().numpy()
+            valid_correspondences = valid_correspondences.view(-1, tracking_image_height,
+                                                               tracking_image_width).cpu().numpy()
 
             additional_geometry = [item for item in additional_geometry if item is not None]
             tracking_viz.visualize_tracking(source_rgbxyz, target_rgbxyz, pixel_anchors, pixel_weights,
                                             graph.get_warped_nodes().cpu().numpy(), graph.edges.cpu().numpy(),
                                             rotations_pred, translations_pred, mask_pred,
-                                            valid_source_points, valid_correspondences, target_matches, additional_geometry)
+                                            valid_source_points, valid_correspondences, target_matches,
+                                            additional_geometry)
 
     def process_rendering_result(self, color_image, depth_image, frame_index):
         if self.record_rendered_mesh:
@@ -175,11 +206,13 @@ class TelemetryGenerator:
                                         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh],
                                         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh]):
         if self.record_framewise_canonical_mesh:
-            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
-                                       canonical_mesh.to_legacy())
+            o3d.io.write_triangle_mesh(
+                os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_canonical_mesh.ply"),
+                canonical_mesh.to_legacy())
         if self.record_framewise_warped_mesh:
-            o3d.io.write_triangle_mesh(os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
-                                       warped_mesh.to_legacy())
+            o3d.io.write_triangle_mesh(
+                os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_warped_mesh.ply"),
+                warped_mesh.to_legacy())
 
     def print_frame_info_if_needed(self, current_frame: SequenceFrameDataset):
         if self.print_frame_info:
@@ -187,7 +220,8 @@ class TelemetryGenerator:
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
 
-    def process_gn_point_cloud(self, deformed_points: torch.Tensor, source_colors: torch.Tensor, gauss_newton_iteration):
+    def process_gn_point_cloud(self, deformed_points: torch.Tensor, source_colors: torch.Tensor,
+                               gauss_newton_iteration):
         if self.record_gn_point_clouds:
             path = os.path.join(self.frame_output_directory,
                                 f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
@@ -209,5 +243,6 @@ class TelemetryGenerator:
             np.save(edges_path, graph.edges.cpu().numpy())
             rotations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_rotations.npy")
             np.save(rotations_path, graph.rotations.cpu().numpy())
-            translations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_translations.npy")
+            translations_path = os.path.join(self.frame_output_directory,
+                                             f"{self.frame_index:06d}_node_translations.npy")
             np.save(translations_path, graph.translations.cpu().numpy())

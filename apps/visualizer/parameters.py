@@ -21,12 +21,17 @@ class VisualizerParameters(ParameterEnum):
                                  default="/mnt/Data/Reconstruction/output/NeuralTracking_experiment_output",
                                  arg_help="Path to the output folder for all fusion pipeline run linear_loss.")
     experiment_folder = Parameter(arg_type=str, default="!LATEST!",
-                                  arg_help="Folder (relative to base_output_path) with output from a single fusion pipeline app run."
-                                           "If \"!LATEST!\" is specified instead of a folder name, the app will retrieve the folder "
-                                           "that's using the latest date & time in it's name (or, if no folders have "
-                                           "such a name in the proper sortable timestamp format, the folder with the "
-                                           "latest modification date.)")
+                                  arg_help=
+                                  "Folder (relative to base_output_path) with output from a single fusion pipeline app run."
+                                  "If \"!LATEST!\" is specified instead of a folder name, the app will retrieve the folder "
+                                  "that's using the latest date & time in it's name (or, if no folders have "
+                                  "such a name in the proper sortable timestamp format, the folder with the "
+                                  "latest modification date.)")
     start_frame = Parameter(arg_type=int, default=-1, shorthand="start",
                             arg_help="Frame in the sequence to start from. Passing '-1' will cause the program "
                                      "to automatically infer and utilize the entire available frame range by analyzing "
                                      "experiment_folder contents.")
+
+    add_synchronized_frameviewer = Parameter(arg_type='bool_flag', default=False, shorthand="fv",
+                                             arg_help="Start a frameviewer to show sequence input synchronized to the "
+                                                      "output frames.")

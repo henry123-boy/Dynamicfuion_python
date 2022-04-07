@@ -28,4 +28,12 @@ class FrameviewerParameters(ParameterEnum):
         Parameter(default="output/train/seq070", arg_type=str,
                   arg_help="Path to folder with output generated from the sequence (optional).")
 
+    start_frame_index = \
+        Parameter(default=0, arg_type=int,
+                  arg_help="The frame to start viewing with.")
+
+    frame_count = \
+        Parameter(default=0, arg_type=int,
+                  arg_help="The total number of frames to view.")
+
     tsdf: Type[TsdfParameters] = TsdfParameters

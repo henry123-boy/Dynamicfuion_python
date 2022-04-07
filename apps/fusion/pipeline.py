@@ -4,6 +4,7 @@
 # Copyright 2021 Gregory Kramida
 from typing import Union
 import timeit
+from pathlib import Path
 
 # 3rd-party
 import numpy as np
@@ -28,7 +29,7 @@ from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, \
-    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode
+    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode, FusionParameters
 from settings import Parameters
 from telemetry.telemetry_generator import TelemetryGenerator
 
@@ -173,6 +174,10 @@ class FusionPipeline:
         precomputed_weights = None
 
         check_for_end_frame = Parameters.fusion.run_until_frame.value != -1
+
+        # save info into file in output in order to sync a frameviewer when viewing results in visualizer --
+        # to observe both input and output
+        self.telemetry_generator.save_info_for_frameviewer(sequence)
 
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
@@ -399,3 +404,5 @@ class FusionPipeline:
             print(f"Total runtime (in seconds, with graph generation, "
                   f"without model + TSDF grid initialization): {end_time - start_time}")
         return PROGRAM_EXIT_SUCCESS
+
+

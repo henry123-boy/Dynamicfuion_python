@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import vtk
 from enum import Enum
 
@@ -55,8 +57,8 @@ class Mesh:
             raise ValueError("Unsupported color mode:" + mode.name)
         self.color_mode = mode
 
-    def update(self, path, render: bool = False) -> None:
-        self.reader.SetFileName(path)
+    def update(self, path: Path, render: bool = False) -> None:
+        self.reader.SetFileName(str(path))
         self.reader.Update()
         self.mapper.SetInputConnection(self.reader.GetOutputPort())
         self.mapper.Modified()

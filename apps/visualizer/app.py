@@ -1,6 +1,7 @@
 import os
 import re
 from enum import Enum
+from pathlib import Path
 
 import vtk
 import sys
@@ -13,7 +14,7 @@ from apps.visualizer.point_cloud import PointCloud, PointColorMode
 
 class VisualizerApp:
 
-    def __init__(self, output_path, start_frame_ix=-1):
+    def __init__(self, output_path: Path, start_frame_ix=-1):
         self.__alt_pressed = False
 
         minimum_start_frame, self.frame_index_upper_bound = utilities.get_start_and_end_frame(output_path)
@@ -34,7 +35,7 @@ class VisualizerApp:
         # renderer & render window initialization
         self.renderer = vtk.vtkRenderer()
         self.render_window = vtk.vtkRenderWindow()
-        self.render_window.SetWindowName("Visualizer: " + output_path)
+        self.render_window.SetWindowName("Visualizer: " + str(output_path))
         set_up_render_window_bounds(self.render_window, None, 1)
         self.render_window.AddRenderer(self.renderer)
 
@@ -151,9 +152,9 @@ class VisualizerApp:
         self._pixel_labels_visible = False
 
     def load_frame_meshes(self, i_frame):
-        canonical_path = os.path.join(self.output_path, f"{i_frame:06d}_canonical_mesh.ply")
+        canonical_path = self.output_path / f"{i_frame:06d}_canonical_mesh.ply"
         self.canonical_mesh.update(canonical_path)
-        warped_live_path = os.path.join(self.output_path, f"{i_frame:06d}_warped_mesh.ply")
+        warped_live_path = self.output_path / f"{i_frame:06d}_warped_mesh.ply"
         self.warped_live_mesh.update(warped_live_path)
 
     def load_frame_point_clouds(self, i_frame):
@@ -161,11 +162,11 @@ class VisualizerApp:
         i_point_cloud_index = 0
         for point_cloud in self.point_clouds:
             if self.have_source_and_target_point_clouds and i_point_cloud_index == 0:
-                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_source_rgbxyz.npy"))
+                point_cloud.update(self.output_path / f"{i_frame:06d}_source_rgbxyz.npy")
             elif self.have_source_and_target_point_clouds and i_point_cloud_index == len(self.point_clouds) - 1:
-                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_target_rgbxyz.npy"))
+                point_cloud.update(self.output_path / f"{i_frame:06d}_target_rgbxyz.npy")
             else:
-                point_cloud.update(os.path.join(self.output_path, f"{i_frame:06d}_deformed_points_iter_{i_gn_iteration:03d}.npy"))
+                point_cloud.update(self.output_path / f"{i_frame:06d}_deformed_points_iter_{i_gn_iteration:03d}.npy")
                 i_gn_iteration += 1
             i_point_cloud_index += 1
 

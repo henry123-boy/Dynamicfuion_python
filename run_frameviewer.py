@@ -29,7 +29,8 @@ def main():
     fx, fy, cx, cy = load_intrinsic_matrix_entries_from_text_4x4_matrix(os.path.join(FrameviewerParameters.input.value, "intrinsics.txt"))
     FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
 
-    app = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value, 0)
+    app = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
+                         FrameviewerParameters.start_frame_index.value)
     app.launch()
 
     return PROGRAM_EXIT_SUCCESS
