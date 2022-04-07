@@ -1,21 +1,25 @@
 import os
 import re
 from enum import Enum
+from multiprocessing import Queue
 from pathlib import Path
+from typing import Union
 
 import vtk
 import sys
 
 from apps.shared.screen_management import set_up_render_window_bounds
+from apps.shared.app import App
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh, MeshColorMode
 from apps.visualizer.point_cloud import PointCloud, PointColorMode
 
 
-class VisualizerApp:
+class VisualizerApp(App):
 
-    def __init__(self, output_path: Path, start_frame_ix=-1):
+    def __init__(self, output_path: Path, start_frame_ix=-1, outgoing_queue: Union[None, Queue] = None):
         self.__alt_pressed = False
+        self.outgoing_queue = outgoing_queue
 
         minimum_start_frame, self.frame_index_upper_bound = utilities.get_start_and_end_frame(output_path)
 
@@ -51,7 +55,8 @@ class VisualizerApp:
         self.shown_point_cloud_index = 0
 
         # point cloud setup
-        self.have_source_and_target_point_clouds = utilities.source_and_target_point_clouds_are_present(self.start_frame_ix, output_path)
+        self.have_source_and_target_point_clouds = utilities.source_and_target_point_clouds_are_present(
+            self.start_frame_ix, output_path)
         gn_iteration_count = utilities.get_gn_iteration_count(self.start_frame_ix, output_path)
         self.point_color_mode = PointColorMode.UNIFORM
         self.point_clouds = []
@@ -372,9 +377,14 @@ class VisualizerApp:
 
     def keypress(self, obj, event):
         key = obj.GetKeySym()
+        self.handle_key(key)
+        if self.outgoing_queue is not None:
+            self.outgoing_queue.put(key)
+
+    def handle_key(self, key):
         print("Key:", key)
         if key == "q" or key == "Escape":
-            obj.InvokeEvent("DeleteAllObjects")
+            self.interactor.InvokeEvent("DeleteAllObjects")
             sys.exit()
         elif key == "bracketright":
             if self.current_frame < self.frame_index_upper_bound - 1:
@@ -418,7 +428,8 @@ class VisualizerApp:
     def update_window(self, obj, event):
         (window_width, window_height) = self.render_window.GetSize()
         if window_width != self.last_window_width or window_height != self.last_window_height:
-            self.text_actor.SetDisplayPosition(window_width - 400, window_height - (self.number_of_text_lines + 2) * self.font_size)
+            self.text_actor.SetDisplayPosition(window_width - 400,
+                                               window_height - (self.number_of_text_lines + 2) * self.font_size)
             self.last_window_width = window_width
             self.last_window_height = window_height
 

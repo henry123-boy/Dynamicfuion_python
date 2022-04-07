@@ -8,11 +8,12 @@ import ctypes
 
 from typing import List
 
-import vtk
+import vtkmodules.all as vtk
 
+from apps.shared.app import App
 from apps.visualizer.parameters import VisualizerParameters
 from apps.visualizer.app import VisualizerApp
-from ext_argparse import process_arguments
+from ext_argparse import process_arguments, process_settings_file
 
 from apps.frameviewer.app import FrameViewerApp, CameraProjection
 from data.camera import load_intrinsic_matrix_entries_from_text_4x4_matrix
@@ -22,13 +23,23 @@ PROGRAM_EXIT_SUCCESS = 0
 PROGRAM_EXIT_FAILURE = -1
 
 
-def start_synchronized_frameviewer(frameviewer_settings_path: Path, queue: Queue):
-    process_arguments(FrameviewerParameters, "An app to view a masked RGB-D sequence frame-by-frame and analyze target"
-                                             "hash blocks for the surface (in a spatially-hashed voxel volume)."
-                                             "Also allows to determine the optimal threshold for masking. ",
-                      default_settings_file=frameviewer_settings_path,
-                      generate_default_settings_if_missing=True)
-    print("Reading data from ", FrameviewerParameters.input.value)
+class TimerCallback:
+    def __init__(self, queue: Queue, name: str, app: App):
+        self.queue = queue
+        self.name = name
+        self.app = app
+
+    def execute(self, object, event):
+        if not self.queue.empty():
+            self.app.handle_key(self.queue.get())
+
+
+def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_incoming_queue: Queue,
+                                   frameviewer_incoming_queue: Queue):
+    process_settings_file(FrameviewerParameters, str(frameviewer_settings_path),
+                          generate_default_settings_if_missing=True)
+
+    print("Reading input frame data from ", FrameviewerParameters.input.value)
 
     FrameViewerApp.VOXEL_BLOCK_SIZE_METERS = \
         FrameviewerParameters.tsdf.voxel_size.value * FrameviewerParameters.tsdf.block_resolution.value
@@ -40,17 +51,13 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path, queue: Queue
     FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
 
     frameviewer = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
-                                 FrameviewerParameters.start_frame_index.value, queue)
+                                 FrameviewerParameters.start_frame_index.value, visualizer_incoming_queue)
+
+    timer_callback = TimerCallback(frameviewer_incoming_queue, "frameviewer", frameviewer)
+    frameviewer.interactor.AddObserver('TimerEvent', timer_callback.execute)
+    timer_id = frameviewer.interactor.CreateRepeatingTimer(100)
+
     frameviewer.launch()
-
-
-class TimerCallback:
-    def __init__(self, queue: Queue):
-        self.queue = queue
-
-    def execute(self, object, event):
-        if not self.queue.empty():
-            print("External process key:", self.queue.get())
 
 
 def main():
@@ -97,13 +104,17 @@ def main():
     frameviewer_running = False
     frameviewer_process = None
     if frameviewer_info_path.exists():
-        queue = Queue()
-        frameviewer_process = Process(target=start_synchronized_frameviewer, args=(frameviewer_info_path, queue))
+        visualizer_incoming_queue = Queue()
+        frameviewer_incoming_queue = Queue()
+        visualizer.outgoing_queue = frameviewer_incoming_queue
+        frameviewer_process = Process(target=start_synchronized_frameviewer,
+                                      args=(frameviewer_info_path, visualizer_incoming_queue, frameviewer_incoming_queue))
         frameviewer_process.start()
         frameviewer_running = True
-        timer_callback = TimerCallback(queue)
+        timer_callback = TimerCallback(visualizer_incoming_queue, "visualizer", visualizer)
         visualizer.interactor.AddObserver('TimerEvent', timer_callback.execute)
-        timer_id = visualizer.interactor.CreateRepeatingTimer(1000)
+        timer_id = visualizer.interactor.CreateRepeatingTimer(100)
+
 
     visualizer.launch()
 

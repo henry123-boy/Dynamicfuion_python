@@ -12,6 +12,7 @@ import numpy as np
 from multiprocessing import Queue
 from apps.frameviewer import image_conversion, frameloading
 from apps.shared import trajectory_loading
+from apps.shared.app import App
 from apps.frameviewer.pixel_highlighter import PixelHighlighter
 from apps.shared.screen_management import set_up_render_window_bounds
 
@@ -36,13 +37,13 @@ class CameraProjection:
         return x, y, depth
 
 
-class FrameViewerApp:
+class FrameViewerApp(App):
     PROJECTION = CameraProjection(fx=517, fy=517, cx=320, cy=240)
     VOXEL_BLOCK_SIZE_VOXELS = 8
     VOXEL_SIZE = 0.004
     VOXEL_BLOCK_SIZE_METERS = VOXEL_BLOCK_SIZE_VOXELS * VOXEL_SIZE
 
-    def __init__(self, input_folder, output_folder, frame_index_to_start_with, queue: Union[None, Queue] = None):
+    def __init__(self, input_folder, output_folder, frame_index_to_start_with, outgoing_queue: Union[None, Queue] = None):
         self.start_frame_index = frame_index_to_start_with
         self.input_folder = input_folder
         self.output_folder = output_folder
@@ -55,7 +56,7 @@ class FrameViewerApp:
                 os.unlink(state_path)
             else:
                 state = loaded_state
-        self.queue = queue
+        self.outgoing_queue = outgoing_queue
         self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_folder, input_folder)
 
         self.current_camera_matrix = None
@@ -265,14 +266,17 @@ class FrameViewerApp:
 
     def keypress(self, obj, event):
         key = obj.GetKeySym()
+        self.handle_key(key)
+        if self.outgoing_queue is not None:
+            self.outgoing_queue.put(key)
+
+    def handle_key(self, key):
         print("Key:", key)
-        if self.queue is not None:
-            self.queue.put(key)
         if key == "q" or key == "Escape":
             image_x, image_y = self.image_actor.GetPosition()
             path = os.path.join(self.output_folder, "frameviewer_state.txt")
             np.savetxt(path, (image_x, image_y, self.scale, self.frame_index, self.image_mask_threshold))
-            obj.InvokeEvent("DeleteAllObjects")
+            self.interactor.InvokeEvent("DeleteAllObjects")
             sys.exit()
         elif key == "bracketright":
             self.set_frame(self.frame_index + 1)
