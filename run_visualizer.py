@@ -32,6 +32,7 @@ class TimerCallback:
     def execute(self, object, event):
         if not self.queue.empty():
             self.app.handle_key(self.queue.get())
+            self.app.render_window.Render()
 
 
 def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_incoming_queue: Queue,
@@ -51,7 +52,7 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_i
     FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
 
     frameviewer = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
-                                 FrameviewerParameters.start_frame_index.value, visualizer_incoming_queue)
+                                 FrameviewerParameters.start_frame_index.value, False, visualizer_incoming_queue)
 
     timer_callback = TimerCallback(frameviewer_incoming_queue, "frameviewer", frameviewer)
     frameviewer.interactor.AddObserver('TimerEvent', timer_callback.execute)
@@ -114,6 +115,7 @@ def main():
         timer_callback = TimerCallback(visualizer_incoming_queue, "visualizer", visualizer)
         visualizer.interactor.AddObserver('TimerEvent', timer_callback.execute)
         timer_id = visualizer.interactor.CreateRepeatingTimer(100)
+        visualizer.trigger_own_exit = False
 
 
     visualizer.launch()

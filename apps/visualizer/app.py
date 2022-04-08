@@ -17,7 +17,7 @@ from apps.visualizer.point_cloud import PointCloud, PointColorMode
 
 class VisualizerApp(App):
 
-    def __init__(self, output_path: Path, start_frame_ix=-1, outgoing_queue: Union[None, Queue] = None):
+    def __init__(self, output_path: Path, start_frame_ix: int = -1, outgoing_queue: Union[None, Queue] = None):
         self.__alt_pressed = False
         self.outgoing_queue = outgoing_queue
 
@@ -377,13 +377,13 @@ class VisualizerApp(App):
 
     def keypress(self, obj, event):
         key = obj.GetKeySym()
-        self.handle_key(key)
         if self.outgoing_queue is not None:
             self.outgoing_queue.put(key)
+        self.handle_key(key)
 
     def handle_key(self, key):
         print("Key:", key)
-        if key == "q" or key == "Escape":
+        if key == "q" or key == "Escape" and self.trigger_own_exit:
             self.interactor.InvokeEvent("DeleteAllObjects")
             sys.exit()
         elif key == "bracketright":
