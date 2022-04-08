@@ -56,7 +56,7 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_i
 
     timer_callback = TimerCallback(frameviewer_incoming_queue, "frameviewer", frameviewer)
     frameviewer.interactor.AddObserver('TimerEvent', timer_callback.execute)
-    timer_id = frameviewer.interactor.CreateRepeatingTimer(100)
+    frameviewer.interactor.CreateRepeatingTimer(100)
 
     frameviewer.launch()
 
@@ -98,13 +98,12 @@ def main():
     print("Reading data from ", frame_output_folder)
     visualizer = VisualizerApp(frame_output_folder, VisualizerParameters.start_frame.value)
 
-    # launch frameviewer if we have info for it -- TODO also make a setting/parameter for this.
     #  TODO: launching multiple VTK windows via multiprocessing fails on VTK 9.1 (at least w/ Xorg server).
     #   Use VTK 9.0.1 for now if you're facing this issue...
     frameviewer_info_path = Path(base_output_folder, experiment_folder, "frameviewer_info.yaml")
     frameviewer_running = False
     frameviewer_process = None
-    if frameviewer_info_path.exists():
+    if frameviewer_info_path.exists() and VisualizerParameters.add_synchronized_frameviewer.value:
         visualizer_incoming_queue = Queue()
         frameviewer_incoming_queue = Queue()
         visualizer.outgoing_queue = frameviewer_incoming_queue
@@ -114,9 +113,8 @@ def main():
         frameviewer_running = True
         timer_callback = TimerCallback(visualizer_incoming_queue, "visualizer", visualizer)
         visualizer.interactor.AddObserver('TimerEvent', timer_callback.execute)
-        timer_id = visualizer.interactor.CreateRepeatingTimer(100)
+        visualizer.interactor.CreateRepeatingTimer(100)
         visualizer.trigger_own_exit = False
-
 
     visualizer.launch()
 

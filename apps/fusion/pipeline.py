@@ -68,6 +68,7 @@ class FusionPipeline:
                                                       log_parameters.record_rendered_warped_mesh.value,
                                                       log_parameters.record_gn_point_clouds.value,
                                                       log_parameters.record_source_and_target_point_clouds.value,
+                                                      False,
                                                       log_parameters.record_graph_transformations.value,
                                                       verbosity_parameters.print_cuda_memory_info.value,
                                                       verbosity_parameters.print_frame_info.value,

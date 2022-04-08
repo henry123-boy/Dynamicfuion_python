@@ -377,6 +377,7 @@ class VisualizerApp(App):
 
     def keypress(self, obj, event):
         key = obj.GetKeySym()
+        # send key to linked process, if any
         if self.outgoing_queue is not None:
             self.outgoing_queue.put(key)
         self.handle_key(key)

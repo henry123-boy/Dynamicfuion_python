@@ -24,13 +24,13 @@ from settings import Parameters, TsdfParameters
 
 
 class TelemetryGenerator:
-    def __init__(self,
-                 record_visualization_to_disk: bool,
+    def __init__(self, record_visualization_to_disk: bool,
                  record_framewise_canonical_mesh: bool,
                  record_framewise_warped_mesh: bool,
                  record_rendered_warped_mesh: bool,
                  record_gn_point_clouds: bool,
                  record_source_and_target_point_clouds: bool,
+                 record_correspondences: bool,
                  record_graph_transformations: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
@@ -48,6 +48,7 @@ class TelemetryGenerator:
         self.record_rendered_mesh = record_rendered_warped_mesh
         self.record_gn_point_clouds = record_gn_point_clouds
         self.record_source_and_target_point_clouds = record_source_and_target_point_clouds
+        self.record_correspondences = record_correspondences
         self.record_graph_transformations = record_graph_transformations
         self.visualization_mode = visualization_mode
         self.parent_output_directory = output_directory
