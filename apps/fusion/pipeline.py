@@ -352,6 +352,8 @@ class FusionPipeline:
                 deform_net_data = run_non_rigid_alignment(self.deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
                                                           pixel_weights, self.graph, cropped_intrinsics_numpy, device)
                 telemetry_generator.process_gn_point_clouds(deform_net_data["gn_point_clouds"])
+                telemetry_generator.process_correspondences(deform_net_data["correspondence_info"],
+                                                            deform_net_data["mask_pred"])
 
                 # Get some of the results
                 node_count = len(self.graph.nodes)

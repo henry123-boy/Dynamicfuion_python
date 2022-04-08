@@ -35,3 +35,13 @@ def source_and_target_point_clouds_are_present(start_frame_ix, output_path):
     start_frame_target_pc_filename = f"{start_frame_ix:06d}_target_rgbxyz.npy"
     all_filenames = os.listdir(output_path)
     return start_frame_source_pc_filename in all_filenames and start_frame_target_pc_filename in all_filenames
+
+
+def correspondence_info_is_present(start_frame_ix, output_path):
+    start_frame_vcm_filename = f"{start_frame_ix:06d}_valid_correspondence_mask.npy"
+    start_frame_pm_filename = f"{start_frame_ix:06d}_prediction_mask.npy"
+    start_frame_tm_filename = f"{start_frame_ix:06d}_target_matches.npy"
+    all_filenames = os.listdir(output_path)
+    return start_frame_vcm_filename in all_filenames \
+           and start_frame_pm_filename in all_filenames \
+           and start_frame_tm_filename in all_filenames

@@ -1,18 +1,19 @@
-import os
-import re
-from enum import Enum
+# standard library
 from multiprocessing import Queue
 from pathlib import Path
 from typing import Union
-
-import vtk
 import sys
 
+# third-party
+import vtkmodules.all as vtk
+
+# local (visualizer app & apps.shared)
 from apps.shared.screen_management import set_up_render_window_bounds
 from apps.shared.app import App
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh, MeshColorMode
 from apps.visualizer.point_cloud import PointCloud, PointColorMode
+from apps.visualizer.correspondence_line_set import CorrespondenceColorMode, CorrespondenceLineSet
 
 
 class VisualizerApp(App):
@@ -61,17 +62,27 @@ class VisualizerApp(App):
         self.point_color_mode = PointColorMode.UNIFORM
         self.point_clouds = []
         self.point_cloud_names = []
+        # source
         if self.have_source_and_target_point_clouds:
             self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("Blue")))
             self.point_cloud_names.append("source")
-
+        # GN iterations
         for i_point_cloud in range(0, gn_iteration_count):
             self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("White")))
             self.point_cloud_names.append(f"GN iteration {i_point_cloud:03d}")
-
+        # target
         if self.have_source_and_target_point_clouds:
             self.point_clouds.append(PointCloud(self.renderer, self.render_window, colors.GetColor3d("Red")))
             self.point_cloud_names.append("target")
+
+        # correspondence line set setup
+        self.have_correspondence_info = utilities.correspondence_info_is_present(self.start_frame_ix, output_path)
+        self.correspondence_line_sets = []
+        self.correspondence_color_mode = CorrespondenceColorMode.PREDICTION_WEIGHTED
+        self.correspondence_set = None
+        if self.have_correspondence_info:
+            self.correspondence_set = CorrespondenceLineSet(self.renderer, self.render_window,
+                                                            colors.GetColor3d("Grey"))
 
         # text setup
         self.text_mapper = vtk.vtkTextMapper()
@@ -175,6 +186,13 @@ class VisualizerApp(App):
                 i_gn_iteration += 1
             i_point_cloud_index += 1
 
+    def load_frame_correspondences(self, i_frame):
+        if self.correspondence_set is not None:
+            self.correspondence_set.update(self.output_path / f"{i_frame:06d}_source_rgbxyz.npy",
+                                           self.output_path / f"{i_frame:06d}_target_matches.npy",
+                                           self.output_path / f"{i_frame:06d}_valid_correspondence_mask.npy",
+                                           self.output_path / f"{i_frame:06d}_prediction_mask.npy")
+
     def launch(self):
         # Start the event loop.
         self.interactor.Start()
@@ -223,6 +241,7 @@ class VisualizerApp(App):
 
         self.load_frame_meshes(i_frame)
         self.load_frame_point_clouds(i_frame)
+        self.load_frame_correspondences(i_frame)
         self.current_frame = i_frame
 
         self.update_text()
@@ -451,3 +470,5 @@ class VisualizerApp(App):
                                   f"Mesh color mode: {self.mesh_color_mode.name:s}\n"
                                   f"Showing point cloud: {point_cloud_iteration_text:s}\n"
                                   f"Point color mode: {self.point_color_mode.name:s}\n")
+
+

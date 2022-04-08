@@ -1,5 +1,5 @@
 # system
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Dict
 from datetime import datetime
 from pathlib import Path
 import pynvml
@@ -221,41 +221,35 @@ class TelemetryGenerator:
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
 
+    def save_frame_numpy_array(self, numpy_array: np.array, name: str):
+        path = \
+            os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_{name}.npy")
+        np.save(path, numpy_array)
+
     def process_gn_point_clouds(self, point_clouds: List[Tuple[torch.Tensor, torch.Tensor]]):
         if self.record_gn_point_clouds:
             for gauss_newton_iteration, (deformed_points, source_colors) in enumerate(point_clouds):
-                path = os.path.join(self.frame_output_directory,
-                                    f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
-                np.save(path, np.concatenate((source_colors.cpu().detach().numpy().reshape(-1, 3),
-                                              deformed_points.cpu().detach().numpy().reshape(-1, 3)), axis=1))
-
-    def process_gn_point_cloud(self, deformed_points: torch.Tensor, source_colors: torch.Tensor,
-                               gauss_newton_iteration):
-        if self.record_gn_point_clouds:
-            path = os.path.join(self.frame_output_directory,
-                                f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
-            np.save(path, np.concatenate((source_colors.cpu().detach().numpy().reshape(-1, 3),
-                                          deformed_points.cpu().detach().numpy().reshape(-1, 3)), axis=1))
+                self.save_frame_numpy_array(
+                    np.concatenate((source_colors.cpu().detach().numpy().reshape(-1, 3),
+                                    deformed_points.cpu().detach().numpy().reshape(-1, 3)), axis=1),
+                    f"deformed_points_iter_{gauss_newton_iteration:03d}")
 
     def process_source_and_target_point_clouds(self, source_rgbxyz, target_rgbxyz):
         if self.record_source_and_target_point_clouds:
-            source_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_source_rgbxyz.npy")
-            np.save(source_path, source_rgbxyz.reshape(6, -1).T)
-            target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
-            np.save(target_path, target_rgbxyz.reshape(6, -1).T)
+            self.save_frame_numpy_array(source_rgbxyz.reshape(6, -1).T, "source_rgbxyz")
+            self.save_frame_numpy_array(target_rgbxyz.reshape(6, -1).T, "target_rgbxyz")
 
-    def process_correspondences(self, correspondences):
+    def process_correspondences(self, correspondence_info: List, prediction_mask: torch.Tensor):
         if self.record_correspondences:
-            pass
+            _, _, _, target_matches, _, valid_correspondence_mask, _, _ \
+                = correspondence_info
+            self.save_frame_numpy_array(valid_correspondence_mask[0].cpu().numpy(), "valid_correspondence_mask")
+            self.save_frame_numpy_array(target_matches[0].cpu().numpy().reshape(3, -1).T, "target_matches")
+            self.save_frame_numpy_array(prediction_mask[0].cpu().numpy(), "prediction_mask")
 
     def process_graph_transformation(self, graph: GraphWarpFieldOpen3DNative):
         if self.record_graph_transformations:
-            nodes_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_nodes.npy")
-            np.save(nodes_path, graph.nodes.cpu().numpy())
-            edges_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_edges.npy")
-            np.save(edges_path, graph.edges.cpu().numpy())
-            rotations_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_node_rotations.npy")
-            np.save(rotations_path, graph.rotations.cpu().numpy())
-            translations_path = os.path.join(self.frame_output_directory,
-                                             f"{self.frame_index:06d}_node_translations.npy")
-            np.save(translations_path, graph.translations.cpu().numpy())
+            self.save_frame_numpy_array(graph.nodes.cpu().numpy(), "nodes")
+            self.save_frame_numpy_array(graph.edges.cpu().numpy(), "edges")
+            self.save_frame_numpy_array(graph.rotations.cpu().numpy(), "rotations")
+            self.save_frame_numpy_array(graph.translations.cpu().numpy(), "translations")

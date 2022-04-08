@@ -165,6 +165,7 @@ def visualize_tracking(
         good_target_matches_corresp = good_target_matches_corresp[sampled_idxs]
         good_mask_pred = good_mask_pred[sampled_idxs]
         n_good_matches = N
+
     # both good_source and good_target points together into one vector
     good_matches_points = np.concatenate([good_source_points_corresp, good_target_matches_corresp], axis=0)
     good_matches_lines = [[i, i + n_good_matches] for i in range(0, n_good_matches, 1)]

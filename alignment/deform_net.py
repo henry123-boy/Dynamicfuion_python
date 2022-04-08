@@ -599,7 +599,7 @@ class DeformNet(torch.nn.Module):
         source_anchor_validity = torch.all(pixel_anchors >= 0.0, dim=3)
 
         # Sample target points at computed pixel locations.
-        target_points = target[:, 3:, :, :].clone()
+        target_points = target[:, 3:, :, :].clone()  # get only 3D coordinates
         target_matches = torch.nn.functional.grid_sample(
             target_points, xy_coords_warped, mode=self._depth_sampling_mode, padding_mode='zeros', align_corners=False
         )
