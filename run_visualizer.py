@@ -40,6 +40,8 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_i
     process_settings_file(FrameviewerParameters, str(frameviewer_settings_path),
                           generate_default_settings_if_missing=True)
 
+    FrameviewerParameters.output.argument = str(frameviewer_settings_path.parent)
+
     print("Reading input frame data from ", FrameviewerParameters.input.value)
 
     FrameViewerApp.VOXEL_BLOCK_SIZE_METERS = \
@@ -51,8 +53,14 @@ def start_synchronized_frameviewer(frameviewer_settings_path: Path, visualizer_i
         os.path.join(FrameviewerParameters.input.value, "intrinsics.txt"))
     FrameViewerApp.PROJECTION = CameraProjection(fx, fy, cx, cy)
 
-    frameviewer = FrameViewerApp(FrameviewerParameters.input.value, FrameviewerParameters.output.value,
-                                 FrameviewerParameters.start_frame_index.value, False, visualizer_incoming_queue)
+    frameviewer = FrameViewerApp(FrameviewerParameters.input.value,
+                                 FrameviewerParameters.output.value,
+                                 FrameviewerParameters.start_frame_index.value,
+                                 FrameviewerParameters.masking_threshold.value,
+                                 FrameviewerParameters.tsdf.voxel_size.value,
+                                 FrameviewerParameters.tsdf.block_resolution.value,
+                                 save_sequence_parameter_state=False,
+                                 outgoing_queue=visualizer_incoming_queue)
 
     timer_callback = TimerCallback(frameviewer_incoming_queue, "frameviewer", frameviewer)
     frameviewer.interactor.AddObserver('TimerEvent', timer_callback.execute)

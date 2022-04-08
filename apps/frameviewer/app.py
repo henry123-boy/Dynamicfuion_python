@@ -1,15 +1,18 @@
 #!/usr/bin/python3
+
+# standard library
 import os
 import sys
 from enum import Enum
 from typing import Union
+from multiprocessing import Queue
 
+# third-party
 import cv2
-
 import vtk
 import numpy as np
 
-from multiprocessing import Queue
+# local (frameviewer app, apps shared)
 from apps.frameviewer import image_conversion, frameloading
 from apps.shared import trajectory_loading
 from apps.shared.app import App
@@ -38,26 +41,37 @@ class CameraProjection:
 
 
 class FrameViewerApp(App):
-    PROJECTION = CameraProjection(fx=517, fy=517, cx=320, cy=240)
-    VOXEL_BLOCK_SIZE_VOXELS = 8
-    VOXEL_SIZE = 0.004
-    VOXEL_BLOCK_SIZE_METERS = VOXEL_BLOCK_SIZE_VOXELS * VOXEL_SIZE
-
-    def __init__(self, input_folder, output_folder, frame_index_to_start_with, save_state_start=True,
+    def __init__(self, input_folder, output_folder, frame_index_to_start_with, initial_mask_threshold,
+                 voxel_size: float = 0.004, voxel_block_resolution: int = 8,
+                 save_sequence_parameter_state=True,
                  outgoing_queue: Union[None, Queue] = None):
+        intrinsic_matrix = np.loadtxt(os.path.join(input_folder, "intrinsics.txt"))
+
+        self.voxel_size = voxel_size
+        self.voxel_block_resolution = voxel_block_resolution
+        self.voxel_block_size = voxel_size * voxel_block_resolution
+
+        fx = intrinsic_matrix[0, 0]
+        fy = intrinsic_matrix[1, 1]
+        cx = intrinsic_matrix[0, 2]
+        cy = intrinsic_matrix[1, 2]
+
+        self.camera_projection = CameraProjection(fx, fy, cx, cy)
+
         self.start_frame_index = frame_index_to_start_with
+        self.initial_mask_threshold = initial_mask_threshold
         self.input_folder = input_folder
         self.output_folder = output_folder
 
         state_path = os.path.join(self.output_folder, "frameviewer_state.txt")
-        state = (20.0, 20.0, 2.0, frame_index_to_start_with, 175)
+        state = (20.0, 20.0, 2.0, frame_index_to_start_with, initial_mask_threshold)
         if os.path.isfile(state_path):
             loaded_state = np.loadtxt(state_path)
             if len(loaded_state) < len(state):
                 os.unlink(state_path)
             else:
                 state = loaded_state
-        self.save_frame_index = save_state_start
+        self.save_sequence_parameter_state = save_sequence_parameter_state
         self.outgoing_queue = outgoing_queue
         self.inverse_camera_matrices = trajectory_loading.load_inverse_matrices(output_folder, input_folder)
 
@@ -277,8 +291,12 @@ class FrameViewerApp(App):
         if key == "q" or key == "Escape":
             image_x, image_y = self.image_actor.GetPosition()
             path = os.path.join(self.output_folder, "frameviewer_state.txt")
-            frame_index_to_save = self.frame_index if self.save_frame_index else self.start_frame_index
-            np.savetxt(path, (image_x, image_y, self.scale, frame_index_to_save, self.image_mask_threshold))
+            frame_index_to_save = self.start_frame_index
+            masking_threshold_to_save = self.initial_mask_threshold
+            if self.save_sequence_parameter_state:
+                frame_index_to_save = self.frame_index
+                masking_threshold_to_save = self.image_mask_threshold
+            np.savetxt(path, (image_x, image_y, self.scale, frame_index_to_save, masking_threshold_to_save))
             self.interactor.InvokeEvent("DeleteAllObjects")
             sys.exit()
         elif key == "bracketright":
@@ -343,16 +361,15 @@ class FrameViewerApp(App):
         frame_y = self.color_numpy_image.shape[0] - ((y - image_start_y + 1) / self.scale)
         return frame_x, frame_y
 
-    @staticmethod
-    def get_block_coordinate(point_world):
-        return (point_world / FrameViewerApp.VOXEL_BLOCK_SIZE_METERS) + 1 / (
-                2 * FrameViewerApp.VOXEL_BLOCK_SIZE_VOXELS)
+    def get_block_coordinate(self, point_world):
+        return (point_world / self.voxel_block_size) + 1 / (
+                2 * self.voxel_block_resolution)
 
     def update_location_text(self, u, v, depth, color):
-        camera_coords = FrameViewerApp.PROJECTION.project_to_camera_space(u, v, depth)
+        camera_coords = self.camera_projection.project_to_camera_space(u, v, depth)
         camera_coords_homogenized = np.array((camera_coords[0], camera_coords[1], camera_coords[2], 1.0)).T
         world_coords = self.current_camera_matrix.dot(camera_coords_homogenized)
-        block_coords = FrameViewerApp.get_block_coordinate(world_coords)
+        block_coords = self.get_block_coordinate(world_coords)
         self.text_mapper.SetInput(
             "Frame: {:d} | Scale: {:f}\nPixel: {:d}, {:d}\nDepth: {:f} m\nColor: {:d}, {:d}, {:d}\n"
             "Camera-space: {:02.4f}, {:02.4f}, {:02.4f}\nWorld-space: {:02.4f}, {:02.4f}, {:02.4f}\n"

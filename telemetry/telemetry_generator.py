@@ -93,9 +93,9 @@ class TelemetryGenerator:
         meta_info.dump(
             {
                 "input": sequence.get_sequence_directory(),
-                "start_frame_index": sequence.start_frame_index,
-                "frame_count": frame_count,
-                "output": self.output_directory,
+                "start_frame_index": sequence.start_frame_index + 1,
+                "frame_count": frame_count - 1,
+                "masking_threshold": sequence.mask_lower_threshold,
                 "tsdf": {
                     "voxel_size": TsdfParameters.voxel_size.value,
                     "sdf_truncation_distance": TsdfParameters.sdf_truncation_distance.value,
