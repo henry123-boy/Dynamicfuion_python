@@ -8,7 +8,7 @@ from settings.model import get_saved_model, ModelParameters
 from telemetry.telemetry_generator import TelemetryGenerator
 
 
-def load_default_nnrt_network(device_type: o3c.Device.DeviceType, telemetry_generator: typing.Union[TelemetryGenerator, None] = None) -> DeformNet:
+def load_default_nnrt_network(device_type: o3c.Device.DeviceType, output_gn_point_clouds=False) -> DeformNet:
     saved_model = get_saved_model()
 
     assert os.path.isfile(saved_model), f"Model {saved_model} does not exist."
@@ -16,9 +16,9 @@ def load_default_nnrt_network(device_type: o3c.Device.DeviceType, telemetry_gene
 
     # Construct alignment
     if device_type == o3c.Device.CUDA:
-        deform_net = DeformNet(telemetry_generator).cuda()
+        deform_net = DeformNet(output_gn_point_clouds).cuda()
     elif device_type == o3c.Device.CPU:
-        deform_net = DeformNet(telemetry_generator)
+        deform_net = DeformNet(output_gn_point_clouds)
     else:
         raise ValueError(f"Unsupported device type: {device_type}")
 

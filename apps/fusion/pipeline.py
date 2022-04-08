@@ -68,7 +68,7 @@ class FusionPipeline:
                                                       log_parameters.record_rendered_warped_mesh.value,
                                                       log_parameters.record_gn_point_clouds.value,
                                                       log_parameters.record_source_and_target_point_clouds.value,
-                                                      False,
+                                                      log_parameters.record_correspondences.value,
                                                       log_parameters.record_graph_transformations.value,
                                                       verbosity_parameters.print_cuda_memory_info.value,
                                                       verbosity_parameters.print_frame_info.value,
@@ -76,7 +76,8 @@ class FusionPipeline:
                                                       Parameters.path.output_directory.value)
 
         # === load alignment network, configure device ===
-        self.deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA, self.telemetry_generator)
+        self.deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA,
+                                                               log_parameters.record_gn_point_clouds.value)
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===
@@ -150,7 +151,6 @@ class FusionPipeline:
         alignment_image_height = alignment_parameters.image_height.value
 
         telemetry_generator = self.telemetry_generator
-        deform_net = self.deform_net
         device = self.device
         volume = self.volume
 
@@ -349,8 +349,9 @@ class FusionPipeline:
                 # region === run the motion prediction & optimization (non-rigid alignment) ====
                 #####################################################################################################
 
-                deform_net_data = run_non_rigid_alignment(deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
+                deform_net_data = run_non_rigid_alignment(self.deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
                                                           pixel_weights, self.graph, cropped_intrinsics_numpy, device)
+                telemetry_generator.process_gn_point_clouds(deform_net_data["gn_point_clouds"])
 
                 # Get some of the results
                 node_count = len(self.graph.nodes)
@@ -405,5 +406,3 @@ class FusionPipeline:
             print(f"Total runtime (in seconds, with graph generation, "
                   f"without model + TSDF grid initialization): {end_time - start_time}")
         return PROGRAM_EXIT_SUCCESS
-
-

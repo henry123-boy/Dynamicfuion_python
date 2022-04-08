@@ -1,5 +1,5 @@
 # system
-from typing import Union, List
+from typing import Union, List, Tuple
 from datetime import datetime
 from pathlib import Path
 import pynvml
@@ -84,12 +84,12 @@ class TelemetryGenerator:
         self.frame_index = 0
 
     def save_info_for_frameviewer(self, sequence: FrameSequenceDataset):
-        output_file_path = Path(self.frame_output_directory) / "frameviewer_info.yaml"
+        output_file_path = Path(self.output_directory) / "frameviewer_info.yaml"
         meta_info = YAML(typ='rt')
         meta_info.default_flow_style = False
         frame_count = sequence.frame_count
-        if -1 < FusionParameters.run_until_frame.value < (self.sequence.start_frame_index + self.sequence.frame_count):
-            frame_count = FusionParameters.run_until_frame.value - self.sequence.start_frame_index
+        if -1 < FusionParameters.run_until_frame.value < (sequence.start_frame_index + sequence.frame_count):
+            frame_count = FusionParameters.run_until_frame.value - sequence.start_frame_index
         meta_info.dump(
             {
                 "input": sequence.get_sequence_directory(),
@@ -221,6 +221,14 @@ class TelemetryGenerator:
             print("Color path:", current_frame.color_image_path)
             print("Depth path:", current_frame.depth_image_path)
 
+    def process_gn_point_clouds(self, point_clouds: List[Tuple[torch.Tensor, torch.Tensor]]):
+        if self.record_gn_point_clouds:
+            for gauss_newton_iteration, (deformed_points, source_colors) in enumerate(point_clouds):
+                path = os.path.join(self.frame_output_directory,
+                                    f"{self.frame_index:06d}_deformed_points_iter_{gauss_newton_iteration:03d}.npy")
+                np.save(path, np.concatenate((source_colors.cpu().detach().numpy().reshape(-1, 3),
+                                              deformed_points.cpu().detach().numpy().reshape(-1, 3)), axis=1))
+
     def process_gn_point_cloud(self, deformed_points: torch.Tensor, source_colors: torch.Tensor,
                                gauss_newton_iteration):
         if self.record_gn_point_clouds:
@@ -235,6 +243,10 @@ class TelemetryGenerator:
             np.save(source_path, source_rgbxyz.reshape(6, -1).T)
             target_path = os.path.join(self.frame_output_directory, f"{self.frame_index:06d}_target_rgbxyz.npy")
             np.save(target_path, target_rgbxyz.reshape(6, -1).T)
+
+    def process_correspondences(self, correspondences):
+        if self.record_correspondences:
+            pass
 
     def process_graph_transformation(self, graph: GraphWarpFieldOpen3DNative):
         if self.record_graph_transformations:
