@@ -280,9 +280,11 @@ class FrameViewerApp(App):
         elif event == "MouseWheelBackwardEvent":
             self.zoom_scale(-1, self.interactor.GetControlKey())
 
+    KEYS_TO_SEND = {"q", "Escape", "bracketright", "bracketleft"}
+
     def keypress(self, obj, event):
         key = obj.GetKeySym()
-        if self.outgoing_queue is not None:
+        if key in FrameViewerApp.KEYS_TO_SEND and self.outgoing_queue is not None:
             self.outgoing_queue.put(key)
         self.handle_key(key)
 

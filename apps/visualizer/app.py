@@ -90,7 +90,9 @@ class VisualizerApp(App):
                                   f"Showing mesh: {self.mesh_names[self.shown_mesh_index]:s}\n"
                                   f"Mesh color mode: f{self.mesh_color_mode.name:s}\n"
                                   f"Showing point cloud: {self.point_cloud_names[self.shown_point_cloud_index]:s}\n"
-                                  f"Point color mode: f{self.point_color_mode.name:s}")
+                                  f"Point color mode: f{self.point_color_mode.name:s}"
+                                  f"Visible correspondences: 0%\n"
+                                  f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
 
         text_lines = self.text_mapper.GetInput().splitlines()
         self.number_of_text_lines = len(text_lines)
@@ -158,11 +160,16 @@ class VisualizerApp(App):
         self.show_mesh_at_index(self.shown_mesh_index)
         self.show_point_cloud_at_index(self.shown_point_cloud_index)  # hide all but one GN point cloud
 
-        # start with GN point cloud hidden
+        # start with point cloud hidden
         if len(self.point_clouds) > self.shown_point_cloud_index:
             self.point_clouds[self.shown_point_cloud_index].hide()
             self.update_text()
 
+        # start with correspondences hidden
+        if self.correspondence_set is not None:
+            self.correspondence_set.hide()
+
+        self.update_text()
         self.render_window.Render()
 
         self._pixel_labels_visible = False
@@ -234,6 +241,11 @@ class VisualizerApp(App):
         self.point_color_mode = self.point_color_mode.next()
         for point_cloud in self.point_clouds:
             point_cloud.set_color_mode(self.point_color_mode)
+        self.update_text()
+
+    def cycle_correspondence_color_mode(self):
+        self.correspondence_color_mode = self.correspondence_color_mode.next()
+        self.correspondence_set.set_color_mode(self.correspondence_color_mode)
         self.update_text()
 
     def set_frame(self, i_frame):
@@ -394,32 +406,62 @@ class VisualizerApp(App):
 
         self.render_window.Render()
 
+    KEYS_TO_SEND = {"q", "Escape", "bracketright", "bracketleft"}
+
     def keypress(self, obj, event):
         key = obj.GetKeySym()
         # send key to linked process, if any
-        if self.outgoing_queue is not None:
+        if key in VisualizerApp.KEYS_TO_SEND and self.outgoing_queue is not None:
             self.outgoing_queue.put(key)
         self.handle_key(key)
 
     def handle_key(self, key):
         print("Key:", key)
-        if key == "q" or key == "Escape" and self.trigger_own_exit:
+        # ==== window controls ===========
+        if key == "q" or key == "Escape":
             self.interactor.InvokeEvent("DeleteAllObjects")
             sys.exit()
+        # ==== frame controls ===========
         elif key == "bracketright":
             if self.current_frame < self.frame_index_upper_bound - 1:
                 self.set_frame(self.current_frame + 1)
         elif key == "bracketleft":
-            if self.current_frame > 0:
+            if self.current_frame > self.start_frame_ix:
                 self.set_frame(self.current_frame - 1)
+        # ==== mesh controls ===========
         elif key == "Right":
             self.advance_mesh()
         elif key == "Left":
             self.retreat_mesh()
-        elif key == "Up":
-            self.retreat_point_cloud()
-        elif key == "Down":
-            self.advance_point_cloud()
+        elif key == "m":
+            if self.__alt_pressed:
+                self.cycle_mesh_color_mode()
+                self.render_window.Render()
+            else:
+                self.meshes[self.shown_mesh_index].toggle_visibility()
+                self.update_text()
+                self.render_window.Render()
+        # ==== correspondence controls ===========
+        elif key == "c":
+            if self.correspondence_set is not None:
+                if self.__alt_pressed:
+                    self.cycle_correspondence_color_mode()
+                    self.render_window.Render()
+                else:
+                    self.correspondence_set.toggle_visibility()
+                    self.update_text()
+                    self.render_window.Render()
+        elif key == "period":
+            if self.correspondence_set is not None:
+                self.correspondence_set.increase_visible_match_ratio()
+                self.update_text()
+                self.render_window.Render()
+        elif key == "comma":
+            if self.correspondence_set is not None:
+                self.correspondence_set.decrease_visible_match_ratio()
+                self.update_text()
+                self.render_window.Render()
+        # ==== point cloud controls ===========
         elif key == "p":
             if self.__alt_pressed:
                 self.cycle_point_color_mode()
@@ -429,14 +471,11 @@ class VisualizerApp(App):
                     self.point_clouds[self.shown_point_cloud_index].toggle_visibility()
                     self.update_text()
                     self.render_window.Render()
-        elif key == "m":
-            if self.__alt_pressed:
-                self.cycle_mesh_color_mode()
-                self.render_window.Render()
-            else:
-                self.meshes[self.shown_mesh_index].toggle_visibility()
-                self.update_text()
-                self.render_window.Render()
+        elif key == "Up":
+            self.retreat_point_cloud()
+        elif key == "Down":
+            self.advance_point_cloud()
+        # ==== modifier keys ==================
         elif key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = True
 
@@ -448,7 +487,7 @@ class VisualizerApp(App):
     def update_window(self, obj, event):
         (window_width, window_height) = self.render_window.GetSize()
         if window_width != self.last_window_width or window_height != self.last_window_height:
-            self.text_actor.SetDisplayPosition(window_width - 400,
+            self.text_actor.SetDisplayPosition(window_width - 500,
                                                window_height - (self.number_of_text_lines + 2) * self.font_size)
             self.last_window_width = window_width
             self.last_window_height = window_height
@@ -465,10 +504,13 @@ class VisualizerApp(App):
             point_cloud_iteration_text = self.point_cloud_names[self.shown_point_cloud_index]
         else:
             point_cloud_iteration_text = "none"
+        showing_correspondences = self.correspondence_set is not None and self.correspondence_set.is_visible()
+        visible_correspondence_percentage = 0 if not showing_correspondences else \
+            self.correspondence_set.visible_match_percentage
         self.text_mapper.SetInput(f"Frame: {self.current_frame:d}\n"
                                   f"Showing mesh: {mesh_mode:s}\n"
                                   f"Mesh color mode: {self.mesh_color_mode.name:s}\n"
                                   f"Showing point cloud: {point_cloud_iteration_text:s}\n"
-                                  f"Point color mode: {self.point_color_mode.name:s}\n")
-
-
+                                  f"Point color mode: {self.point_color_mode.name:s}\n"
+                                  f"Visible correspondences: {visible_correspondence_percentage}%\n"
+                                  f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
