@@ -68,6 +68,7 @@ public:
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::TensorList GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
+	void UpdateRotations(const open3d::core::Tensor& rotation_updates);
 
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
 	const open3d::core::Tensor nodes;

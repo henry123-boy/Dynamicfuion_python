@@ -11,6 +11,7 @@ import numpy as np
 import open3d.core as o3c
 import open3d as o3d
 import cv2
+import torch.utils.dlpack as torch_dlpack
 
 # local
 import nnrt
@@ -357,8 +358,8 @@ class FusionPipeline:
 
                 # Get some of the results
                 node_count = len(self.graph.nodes)
-                rotations_pred = deform_net_data["node_rotations"].view(node_count, 3, 3).cpu().numpy()
-                translations_pred = deform_net_data["node_translations"].view(node_count, 3).cpu().numpy()
+                rotations_pred = deform_net_data["node_rotations"].view(node_count, 3, 3)
+                translations_pred = deform_net_data["node_translations"].view(node_count, 3)
 
                 # endregion
                 #####################################################################################################
@@ -368,8 +369,11 @@ class FusionPipeline:
                 # use the resulting frame transformation predictions to update the global,
                 # cumulative node transformations
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
-                    self.graph.rotations = o3c.Tensor(rotations_pred, device=device)
-                    self.graph.translations = o3c.Tensor(translations_pred, device=device)
+                    self.graph.rotations = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
+                    self.graph.translations = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
+                elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.T_MINUS_ONE_TO_T:
+                    self.graph.rotations = np.matmul(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred)),
+                    self.graph.translations += o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
 
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(self.graph)

@@ -34,8 +34,8 @@ set(NNRT_SOURCE_FILES
     cpu/image_proc.h
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
-    debugging/debugging.hpp
 
+    debugging/debugging.hpp
 
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
@@ -69,16 +69,17 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/ComparisonCPU.cpp
     geometry/kernel/ComparisonCUDA.cu
     geometry/kernel/ComparisonImpl.h
-    geometry/AnchorComputationMethod.h
-    geometry/TransformationMode.h
-    geometry/Comparison.h
-    geometry/Comparison.cpp
 
     geometry/kernel/PointDownsampling.cpp
     geometry/kernel/PointDownsampling.h
     geometry/kernel/PointDownsamplingImpl.h
     geometry/kernel/PointDownsamplingCPU.cpp
     geometry/kernel/PointDownsamplingCUDA.cu
+
+    geometry/AnchorComputationMethod.h
+    geometry/TransformationMode.h
+    geometry/Comparison.h
+    geometry/Comparison.cpp
 
     geometry/DownsamplePoints.h
     geometry/DownsamplePoints.cpp
@@ -142,7 +143,18 @@ set(NNRT_SOURCE_FILES
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
 
-    core/kernel/HashTableUtilities.h)
+    core/kernel/HashTableUtilities.h
+
+    core/kernel/Matmul3D.cpp
+    core/kernel/Matmul3D.h
+    core/kernel/Matmul3D_CPU.cpp
+    core/kernel/Matmul3D_CUDA.cu
+
+    core/linalg/BlasWrapper.h
+    core/linalg/LinalgHeadersCUDA.h
+    core/linalg/LinalgHeadersCPU.h
+    core/linalg/LinalgUtils.h
+    core/linalg/LinalgUtils.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

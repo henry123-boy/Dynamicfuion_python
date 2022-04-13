@@ -17,36 +17,43 @@
 
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::core{
+namespace nnrt::core {
 
 #ifdef BUILD_CUDA_MODULE
-	#define NNRT_IF_CUDA(...) __VA_ARGS__ static_assert(true)
+#define NNRT_IF_CUDA(...) __VA_ARGS__ static_assert(true)
 #else
-	#define NNRT_IF_CUDA(...) static_assert(true)
+#define NNRT_IF_CUDA(...) static_assert(true)
 #endif
 
-	template<typename TEntity, typename FExecuteOnCPU, typename  FExecuteOnCUDA>
-	void InferDeviceFromEntityAndExecute(const TEntity& guiding_entity,
-	                                     FExecuteOnCPU&& execute_on_cpu,
-	                                     FExecuteOnCUDA&& execute_on_cuda){
-		open3d::core::Device device = guiding_entity.GetDevice();
-		open3d::core::Device::DeviceType device_type = device.GetType();
+template<typename FExecuteOnCPU, typename FExecuteOnCUDA>
+void ExecuteOnDevice(open3d::core::Device device,
+                     FExecuteOnCPU&& execute_on_cpu,
+                     FExecuteOnCUDA&& execute_on_cuda) {
+	open3d::core::Device::DeviceType device_type = device.GetType();
 
-		switch (device_type) {
-			case open3d::core::Device::DeviceType::CPU:
-				execute_on_cpu();
-				break;
-			case open3d::core::Device::DeviceType::CUDA:
+	switch (device_type) {
+		case open3d::core::Device::DeviceType::CPU:
+			execute_on_cpu();
+			break;
+		case open3d::core::Device::DeviceType::CUDA:
 #ifdef BUILD_CUDA_MODULE
-				execute_on_cuda();
+			execute_on_cuda();
 #else
-				open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+			open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
-				break;
-			default:
-				open3d::utility::LogError("Unimplemented device");
-				break;
-		}
+			break;
+		default:
+			open3d::utility::LogError("Unimplemented device");
+			break;
 	}
+}
+
+template<typename TEntity, typename FExecuteOnCPU, typename FExecuteOnCUDA>
+void InferDeviceFromEntityAndExecute(const TEntity& guiding_entity,
+                                     FExecuteOnCPU&& execute_on_cpu,
+                                     FExecuteOnCUDA&& execute_on_cuda) {
+	open3d::core::Device device = guiding_entity.GetDevice();
+	ExecuteOnDevice(device, execute_on_cpu, execute_on_cuda);
+}
 
 } // nnrt::core

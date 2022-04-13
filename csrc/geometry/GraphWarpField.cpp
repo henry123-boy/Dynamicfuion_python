@@ -306,5 +306,10 @@ const core::KdTree& GraphWarpField::GetIndex() const {
 	return this->index;
 }
 
+void GraphWarpField::UpdateRotations(const open3d::core::Tensor& rotation_updates) {
+	auto node_count = this->nodes.GetLength();
+	o3u::LogError("Not yet supported!");
+}
+
 
 } // namespace nnrt::geometry

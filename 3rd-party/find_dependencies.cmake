@@ -105,8 +105,8 @@ function(nnrt_find_package_3rdparty_library name)
     endif()
 endfunction()
 
-# List of linker options for libOpen3D client binaries (eg: pybind) to hide Open3D 3rd
-# party dependencies. Only needed with GCC, not AppleClang.
+# List of linker options for nnrt_cpp client binaries (eg: pybind) to hide 3rd-party
+# dependencies. Only needed with GCC, not AppleClang.
 set(NNRT_HIDDEN_3RDPARTY_LINK_OPTIONS)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL AppleClang)
@@ -163,7 +163,7 @@ set(ExternalProject_CMAKE_ARGS_hidden
 #        install all files in the include directories. Default is *.h, *.hpp
 #    HIDDEN
 #         Symbols from this library will not be exported to client code during
-#         linking with Open3D. This is the opposite of the VISIBLE option in
+#         linking with NNRT. This is the opposite of the VISIBLE option in
 #         nnrt_build_3rdparty_library.  Prefer hiding symbols during building 3rd
 #         party libraries, since this option is not supported by the MSVC linker.
 #    INCLUDE_DIRS
@@ -175,7 +175,7 @@ set(ExternalProject_CMAKE_ARGS_hidden
 #        need to pass "/path/to/libx".
 #    LIBRARIES
 #        the built library name(s). It is assumed that the library is static.
-#        If the library is PUBLIC, it will be renamed to Open3D_${name} at
+#        If the library is PUBLIC, it will be renamed to NNRT_${name} at
 #        install time to prevent name collisions in the install space.
 #    LIB_DIR
 #        the temporary location of the library. Defaults to
@@ -499,6 +499,13 @@ if(NOT USE_SYSTEM_FMT)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS NNRT::3rdparty_fmt)
 
+# Threads
+nnrt_find_package_3rdparty_library(3rdparty_threads
+    REQUIRED
+    PACKAGE Threads
+    TARGETS Threads::Threads
+)
+
 # Pybind11
 if(USE_SYSTEM_PYBIND11)
     find_package(pybind11)
@@ -512,23 +519,7 @@ if(TARGET pybind11::module)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS "${PYBIND11_TARGET}")
 
-# TBB
-include(${NNRT_3RDPARTY_DIR}/tbb/tbb.cmake)
-nnrt_import_3rdparty_library(3rdparty_tbb
-    INCLUDE_DIRS ${STATIC_TBB_INCLUDE_DIR}
-    LIB_DIR      ${STATIC_TBB_LIB_DIR}
-    LIBRARIES    ${STATIC_TBB_LIBRARIES}
-    DEPENDS      ext_tbb
-)
-list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_tbb)
 
-# Pytorch
-
-#find_package(Pytorch REQUIRED)
-#list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS torch)
-
-# Threads
-find_package(Threads REQUIRED)
 
 # Catch2
 if(USE_SYSTEM_CATCH2)
@@ -579,7 +570,7 @@ if(NOT WIN32)
     list(APPEND Open3D_LIBRARIES dl)
     list(APPEND Open3D_LIBRARIES stdc++fs)
 endif()
-list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS ${Open3D_LIBRARIES})
+list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS Open3D::Open3D)
 
 # Stdgpu
 if (BUILD_CUDA_MODULE)
@@ -632,6 +623,170 @@ list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_libpng)
 
 if(SET_UP_U_2_NET)
     include(${NNRT_3RDPARTY_DIR}/U-2-Net/u-2-net.cmake)
+endif()
+
+# TBB
+include(${NNRT_3RDPARTY_DIR}/tbb/tbb.cmake)
+nnrt_import_3rdparty_library(3rdparty_tbb
+    INCLUDE_DIRS ${STATIC_TBB_INCLUDE_DIR}
+    LIB_DIR      ${STATIC_TBB_LIB_DIR}
+    LIBRARIES    ${STATIC_TBB_LIBRARIES}
+    DEPENDS      ext_tbb
+    )
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_tbb)
+
+# MKL/BLAS
+if(USE_BLAS)
+    if (NOT BUILD_BLAS_FROM_SOURCE)
+        find_package(BLAS)
+        find_package(LAPACK)
+        find_package(LAPACKE)
+        if(BLAS_FOUND AND LAPACK_FOUND AND LAPACKE_FOUND)
+            message(STATUS "System BLAS/LAPACK/LAPACKE found.")
+            list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS
+                ${BLAS_LIBRARIES}
+                ${LAPACK_LIBRARIES}
+                ${LAPACKE_LIBRARIES}
+                )
+        else()
+            message(STATUS "System BLAS/LAPACK/LAPACKE not found, setting BUILD_BLAS_FROM_SOURCE=ON.")
+            set(BUILD_BLAS_FROM_SOURCE ON)
+        endif()
+    endif()
+
+    if (BUILD_BLAS_FROM_SOURCE)
+        # Install gfortran first for compiling OpenBLAS/Lapack from source.
+        message(STATUS "Building OpenBLAS with LAPACK from source")
+
+        find_program(gfortran_bin "gfortran")
+        if (gfortran_bin)
+            message(STATUS "gfortran found at ${gfortran}")
+        else()
+            message(FATAL_ERROR "gfortran is required to compile LAPACK from source. "
+                "On Ubuntu, please install by `apt install gfortran`. "
+                "On macOS, please install by `brew install gfortran`. ")
+        endif()
+
+        include(${NNRT_3RDPARTY_DIR}/openblas/openblas.cmake)
+        nnrt_import_3rdparty_library(3rdparty_blas
+            HIDDEN
+            INCLUDE_DIRS ${OPENBLAS_INCLUDE_DIR}
+            LIB_DIR      ${OPENBLAS_LIB_DIR}
+            LIBRARIES    ${OPENBLAS_LIBRARIES}
+            DEPENDS      ext_openblas
+            )
+        # Get gfortran library search directories.
+        execute_process(COMMAND ${gfortran_bin} -print-search-dirs
+            OUTPUT_VARIABLE gfortran_search_dirs
+            RESULT_VARIABLE RET
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+        if(RET AND NOT RET EQUAL 0)
+            message(FATAL_ERROR "Failed to run `${gfortran_bin} -print-search-dirs`")
+        endif()
+
+        # Parse gfortran library search directories into CMake list.
+        string(REGEX MATCH "libraries: =(.*)" match_result ${gfortran_search_dirs})
+        if (match_result)
+            string(REPLACE ":" ";" gfortran_lib_dirs ${CMAKE_MATCH_1})
+        else()
+            message(FATAL_ERROR "Failed to parse gfortran_search_dirs: ${gfortran_search_dirs}")
+        endif()
+
+        if(LINUX_AARCH64 OR APPLE_AARCH64)
+            # Find libgfortran.a and libgcc.a inside the gfortran library search
+            # directories. This ensures that the library matches the compiler.
+            # On ARM64 Ubuntu and ARM64 macOS, libgfortran.a is compiled with `-fPIC`.
+            find_library(gfortran_lib NAMES libgfortran.a PATHS ${gfortran_lib_dirs} REQUIRED)
+            find_library(gcc_lib      NAMES libgcc.a      PATHS ${gfortran_lib_dirs} REQUIRED)
+            target_link_libraries(3rdparty_blas INTERFACE
+                ${gfortran_lib}
+                ${gcc_lib}
+                )
+            if(APPLE_AARCH64)
+                # Suppress Apple compiler warnigns.
+                target_link_options(3rdparty_blas INTERFACE "-Wl,-no_compact_unwind")
+            endif()
+        elseif(UNIX AND NOT APPLE)
+            # On Ubuntu 20.04 x86-64, libgfortran.a is not compiled with `-fPIC`.
+            # The temporary solution is to link the shared library libgfortran.so.
+            # If we distribute a Python wheel, the user's system will also need
+            # to have libgfortran.so preinstalled.
+            #
+            # If you have to link libgfortran.a statically
+            # - Read https://gcc.gnu.org/wiki/InstallingGCC
+            # - Run `gfortran --version`, e.g. you get 9.3.0
+            # - Checkout gcc source code to the corresponding version
+            # - Configure with
+            #   ${PWD}/../gcc/configure --prefix=${HOME}/gcc-9.3.0 \
+            #                           --enable-languages=c,c++,fortran \
+            #                           --with-pic --disable-multilib
+            # - make install -j$(nproc) # This will take a while
+            # - Change this cmake file to libgfortran.a statically.
+            # - Link
+            #   - libgfortran.a
+            #   - libgcc.a
+            #   - libquadmath.a
+            target_link_libraries(3rdparty_blas INTERFACE gfortran)
+        endif()
+        list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_blas)
+    endif()
+else()
+    include(${NNRT_3RDPARTY_DIR}/mkl/mkl.cmake)
+    # MKL, cuSOLVER, cuBLAS
+    # We link MKL statically. For MKL link flags, refer to:
+    # https://software.intel.com/content/www/us/en/develop/articles/intel-mkl-link-line-advisor.html
+    message(STATUS "Using MKL to support BLAS and LAPACK functionalities.")
+    nnrt_import_3rdparty_library(3rdparty_blas
+        HIDDEN
+        INCLUDE_DIRS ${STATIC_MKL_INCLUDE_DIR}
+        LIB_DIR      ${STATIC_MKL_LIB_DIR}
+        LIBRARIES    ${STATIC_MKL_LIBRARIES}
+        DEPENDS      ext_tbb ext_mkl_include ext_mkl
+        )
+    if(UNIX)
+        target_compile_options(3rdparty_blas INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:-m64>")
+        target_link_libraries(3rdparty_blas INTERFACE NNRT::3rdparty_threads ${CMAKE_DL_LIBS})
+    endif()
+    target_compile_definitions(3rdparty_blas INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:MKL_ILP64>")
+    target_compile_definitions(3rdparty_blas INTERFACE "$<$<COMPILE_LANGUAGE:CUDA>:MKL_ILP64>")
+    list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_blas)
+endif()
+
+# cuBLAS
+if(BUILD_CUDA_MODULE)
+    if(WIN32)
+        # Nvidia does not provide static libraries for Windows. We don't release
+        # pip wheels for Windows with CUDA support at the moment. For the pip
+        # wheels to support CUDA on Windows out-of-the-box, we need to either
+        # ship the CUDA toolkit with the wheel (e.g. PyTorch can make use of the
+        # cudatoolkit conda package), or have a mechanism to locate the CUDA
+        # toolkit from the system.
+        list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS CUDA::cusolver CUDA::cublas)
+    else()
+        # CMake docs   : https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html
+        # cusolver 11.0: https://docs.nvidia.com/cuda/archive/11.0/cusolver/index.html#static-link-lapack
+        # cublas   11.0: https://docs.nvidia.com/cuda/archive/11.0/cublas/index.html#static-library
+        # The link order below is important. Theoretically we should use
+        # nnrt_find_package_3rdparty_library, but we have to insert
+        # liblapack_static.a in the middle of the targets.
+        add_library(3rdparty_cublas INTERFACE)
+        target_link_libraries(3rdparty_cublas INTERFACE
+            CUDA::cusolver_static
+            ${CUDAToolkit_LIBRARY_DIR}/liblapack_static.a
+            CUDA::cusparse_static
+            CUDA::cublas_static
+            CUDA::cublasLt_static
+            CUDA::culibos
+            )
+        if(NOT BUILD_SHARED_LIBS)
+            # Listed in ${CMAKE_INSTALL_PREFIX}/lib/cmake/NNRT/NNRTTargets.cmake.
+            install(TARGETS 3rdparty_cublas EXPORT NNRTTargets)
+            list(APPEND NNRT_3RDPARTY_EXTERNAL_MODULES "CUDAToolkit")
+        endif()
+        add_library(NNRT::3rdparty_cublas ALIAS 3rdparty_cublas)
+        list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_cublas)
+    endif()
 endif()
 
 

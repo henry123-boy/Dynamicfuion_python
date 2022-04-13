@@ -1,30 +1,50 @@
 cmake_minimum_required(VERSION 3.18)
 
-### Define switches
+# region ====================== Define switches ====================================================
 # the user can use these to control the build
 option(WITH_OPENMP                "Use OpenMP multi-threading"               ON )
 option(DEVELOPER_BUILD            "Add +commit_hash to the project version number" ON )
+
+
+# 3rd-party build options
+if(LINUX_AARCH64 OR APPLE_AARCH64)
+    option(USE_BLAS               "Use BLAS/LAPACK instead of MKL"           ON )
+else()
+    option(USE_BLAS               "Use BLAS/LAPACK instead of MKL"           OFF)
+endif()
+
 option(USE_SYSTEM_EIGEN3          "Use system pre-installed eigen3"          OFF)
 option(USE_SYSTEM_FLANN           "Use system pre-installed flann"           OFF)
 option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF)
 option(USE_SYSTEM_CATCH2          "Use system pre-installed Catch2"          OFF)
-option(GLIBCXX_USE_CXX11_ABI      "Set use the newer (C++11 and later) ABI (Relevant to GCC compiler only)"           OFF)
-option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
 option(USE_SYSTEM_GLEW            "Use system pre-installed glew"            OFF)
 option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF)
+
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
+option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
 option(SET_UP_U_2_NET             "Set up a slimmed-down version of U^2 Net for mask generation using Saliency Object Detection (requires a large ~177 Mb  download to a local folder)" ON)
 
+option(GLIBCXX_USE_CXX11_ABI      "Set use the newer (C++11 and later) ABI (Relevant to GCC compiler only)"           OFF)
+# endregion =======================================================================================
+
+### CMake configuration based on switches
 if(BUILD_CPP_TESTS)
     enable_testing()
 endif()
+if(USE_BLAS)
+    option(BUILD_BLAS_FROM_SOURCE "Build OpenBLAS from source"               ON )
+else()
+    option(BUILD_BLAS_FROM_SOURCE "Build OpenBLAS from source"               OFF)
+endif()
 
 if(GLIBCXX_USE_CXX11_ABI)
-    set(usage "1")
+    set(CXX11_ABI_usage "1")
 else()
-    set(usage "0")
+    set(CXX11_ABI_usage "0")
 endif()
-message(STATUS "Force GLIBCXX_USE_CXX11_ABI=" "${usage}")
+
+### Diagnostic/reporting CMAKE messaging
+message(STATUS "Force GLIBCXX_USE_CXX11_ABI=" "${CXX11_ABI_usage}")
 
 ### Set up CCACHE as the default compiler launcher
 # (to speed up builds on compatible systems)
@@ -203,6 +223,9 @@ function(nnrt_set_global_properties target)
 #    else()
 #        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=0)
 #    endif()
+    if (USE_BLAS)
+        target_compile_definitions(${target} PRIVATE USE_BLAS)
+    endif()
 endfunction()
 
 ### includes for dependency processing
