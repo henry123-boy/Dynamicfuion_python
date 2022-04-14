@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
+
 # region ====================== Define switches ====================================================
 # the user can use these to control the build
 option(WITH_OPENMP                "Use OpenMP multi-threading"               ON )

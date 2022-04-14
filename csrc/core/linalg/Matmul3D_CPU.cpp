@@ -16,28 +16,32 @@
 
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Logging.h>
-#include "core/kernel/Matmul3D.h"
+#include "Matmul3D.h"
 #include "core/linalg/BlasWrapper.h"
 #include "core/linalg/LinalgUtils.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
 
-namespace nnrt::core::kernel {
+namespace nnrt::core::linalg {
 
 template<>
-void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
-													  int64_t batch_size, open3d::core::Dtype dtype) {
+void Matmul3D<open3d::core::Device::DeviceType::CPU>(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
+                                                      int64_t batch_size, open3d::core::Dtype dtype) {
 
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(dtype, [&]() {
-		float alpha = 1, beta = 0;
-		const float* A_data_cast = static_cast<const float*>(A);
-		const float* B_data_cast = static_cast<const float*>(B);
-		float* C_data_cast = static_cast<float*>(C);
-		gemm_batched_cpu<float>(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, &alpha,
-		                        &A_data_cast, m, &B_data_cast, k, &beta, &C_data_cast, m, batch_size);
+		scalar_t
+		alpha = 1, beta = 0;
+
+		const scalar_t* A_array[batch_size];
+		const scalar_t* B_array[batch_size];
+		scalar_t* C_array[batch_size];
+
+		get_matrix_pointers_from_contiguous_array_of_matrices<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
+		gemm_batched_cpu<scalar_t>(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha,
+		                           A_array, m, B_array, k, beta, C_array, m, batch_size);
 	});
 
-}//nnrt::core::kernel
+}
 
-} // nnrt::core::kernel
+} // nnrt::core::linalg

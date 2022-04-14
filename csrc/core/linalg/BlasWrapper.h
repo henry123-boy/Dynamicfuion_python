@@ -24,20 +24,40 @@
 
 namespace nnrt::core {
 
+template<typename scalar_t>
+inline void get_matrix_pointers_from_contiguous_array_of_matrices(
+		const scalar_t* A_array[], const scalar_t* B_array[], scalar_t* C_array[],
+		const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
+		int64_t batch_size) {
+	auto A_data = static_cast<const scalar_t*>(A);
+	auto B_data = static_cast<const scalar_t*>(B);
+	auto C_data = static_cast<scalar_t*>(C);
+
+	auto matrix_A_coefficient_count = m * k;
+	auto matrix_B_coefficient_count = k * n;
+	auto matrix_C_coefficient_count = m * n;
+
+	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
+		A_array[i_matrix] = A_data + i_matrix * matrix_A_coefficient_count;
+		B_array[i_matrix] = B_data + i_matrix * matrix_B_coefficient_count;
+		C_array[i_matrix] = C_data + i_matrix * matrix_C_coefficient_count;
+	}
+}
+
 
 template<typename scalar_t>
 inline void gemm_batched_cpu(const CBLAS_LAYOUT layout,
-                             const CBLAS_TRANSPOSE trans_A_array,
-                             const CBLAS_TRANSPOSE trans_B_array,
+                             const CBLAS_TRANSPOSE trans_A,
+                             const CBLAS_TRANSPOSE trans_B,
                              const NNRT_CPU_LINALG_INT m,
                              const NNRT_CPU_LINALG_INT n,
                              const NNRT_CPU_LINALG_INT k,
-                             const scalar_t* alpha,
+                             const scalar_t alpha,
                              const scalar_t* A_array[],
                              const NNRT_CPU_LINALG_INT lda,
                              const scalar_t* B_array[],
                              const NNRT_CPU_LINALG_INT ldb,
-                             const scalar_t* beta,
+                             const scalar_t beta,
                              scalar_t* C_array[],
                              const NNRT_CPU_LINALG_INT ldc,
                              const NNRT_CPU_LINALG_INT batch_size) {
@@ -46,53 +66,52 @@ inline void gemm_batched_cpu(const CBLAS_LAYOUT layout,
 
 template<>
 inline void gemm_batched_cpu<float>(const CBLAS_LAYOUT layout,
-                                    const CBLAS_TRANSPOSE trans_A_array,
-                                    const CBLAS_TRANSPOSE trans_B_array,
+                                    const CBLAS_TRANSPOSE trans_A,
+                                    const CBLAS_TRANSPOSE trans_B,
                                     const NNRT_CPU_LINALG_INT m,
                                     const NNRT_CPU_LINALG_INT n,
                                     const NNRT_CPU_LINALG_INT k,
-                                    const float* alpha,
+                                    const float alpha,
                                     const float* A_array[],
                                     const NNRT_CPU_LINALG_INT lda,
                                     const float* B_array[],
                                     const NNRT_CPU_LINALG_INT ldb,
-                                    const float* beta,
+                                    const float beta,
                                     float* C_array[],
                                     const NNRT_CPU_LINALG_INT ldc,
                                     const NNRT_CPU_LINALG_INT batch_size) {
 #ifdef USE_BLAS
 	open3d::utility::LogError("Not currently supported with usage of USE_BLAS (OpenBLAS + LAPACKE).");
 #else
-	cblas_sgemm_batch(layout, &trans_A_array, &trans_B_array, &m, &n, &k, alpha, A_array, &lda, B_array,
-	                  &ldb, beta, C_array, &ldc, 1, &batch_size);
+
+		cblas_sgemm_batch(layout, &trans_A, &trans_B, &m, &n, &k, &alpha, A_array, &lda, B_array,
+		                  &ldb, &beta, C_array, &ldc, 1, &batch_size);
 #endif
 }
 
 template<>
 inline void gemm_batched_cpu<double>(const CBLAS_LAYOUT layout,
-                                     const CBLAS_TRANSPOSE trans_A_array,
-                                     const CBLAS_TRANSPOSE trans_B_array,
+                                     const CBLAS_TRANSPOSE trans_A,
+                                     const CBLAS_TRANSPOSE trans_B,
                                      const NNRT_CPU_LINALG_INT m,
                                      const NNRT_CPU_LINALG_INT n,
                                      const NNRT_CPU_LINALG_INT k,
-                                     const double* alpha,
+                                     const double alpha,
                                      const double* A_array[],
                                      const NNRT_CPU_LINALG_INT lda,
                                      const double* B_array[],
                                      const NNRT_CPU_LINALG_INT ldb,
-                                     const double* beta,
+                                     const double beta,
                                      double* C_array[],
                                      const NNRT_CPU_LINALG_INT ldc,
                                      const NNRT_CPU_LINALG_INT batch_size) {
 #ifdef USE_BLAS
 	open3d::utility::LogError("Not currently supported with usage of USE_BLAS (OpenBLAS + LAPACKE).");
 #else
-	cblas_dgemm_batch(layout, &trans_A_array, &trans_B_array, &m, &n, &k, alpha, A_array, &lda, B_array,
-	                  &ldb, beta, C_array, &ldc, 1, &batch_size);
+	cblas_dgemm_batch(layout, &trans_A, &trans_B, &m, &n, &k, &alpha, A_array, &lda, B_array,
+	                  &ldb, &beta, C_array, &ldc, 1, &batch_size);
 #endif
 }
-
-
 
 
 #ifdef BUILD_CUDA_MODULE
@@ -138,17 +157,17 @@ inline cublasStatus_t gemm_batched_cuda<float>(cublasHandle_t handle,
 
 template<>
 inline cublasStatus_t gemm_batched_cuda<double>(cublasHandle_t handle,
-                                               cublasOperation_t transa,
-                                               cublasOperation_t transb,
-                                               int m,
-                                               int n,
-                                               int k,
-                                               const double* alpha,
-                                               const double* Aarray[], int lda,
-                                               const double* Barray[], int ldb,
-                                               const double* beta,
-                                               double* Carray[], int ldc,
-                                               int batchCount) {
+                                                cublasOperation_t transa,
+                                                cublasOperation_t transb,
+                                                int m,
+                                                int n,
+                                                int k,
+                                                const double* alpha,
+                                                const double* Aarray[], int lda,
+                                                const double* Barray[], int ldb,
+                                                const double* beta,
+                                                double* Carray[], int ldc,
+                                                int batchCount) {
 	return cublasDgemmBatched(handle, transa, transb,
 	                          m, n, k,
 	                          alpha,

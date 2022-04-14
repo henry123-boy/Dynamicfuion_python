@@ -17,11 +17,12 @@
 
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::core::kernel {
+namespace nnrt::core::linalg {
 
 void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of_matrices_A, const open3d::core::Tensor& array_of_matrices_B);
 
 template<open3d::core::Device::DeviceType DeviceType>
-void Matmul3D(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n, int64_t batch_size, open3d::core::Dtype dtype);
+void Matmul3D(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
+              int64_t batch_size, open3d::core::Dtype dtype);
 
-} // nnrt::core::kernel
+} // nnrt::core::linalg

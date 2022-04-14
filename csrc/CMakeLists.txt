@@ -145,10 +145,10 @@ set(NNRT_SOURCE_FILES
 
     core/kernel/HashTableUtilities.h
 
-    core/kernel/Matmul3D.cpp
-    core/kernel/Matmul3D.h
-    core/kernel/Matmul3D_CPU.cpp
-    core/kernel/Matmul3D_CUDA.cu
+    core/linalg/Matmul3D.cpp
+    core/linalg/Matmul3D.h
+    core/linalg/Matmul3D_CPU.cpp
+    core/linalg/Matmul3D_CUDA.cpp
 
     core/linalg/BlasWrapper.h
     core/linalg/LinalgHeadersCUDA.h

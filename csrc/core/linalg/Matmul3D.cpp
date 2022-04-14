@@ -17,14 +17,17 @@
 #include "core/DeviceSelection.h"
 namespace o3c = open3d::core;
 
-namespace nnrt::core::kernel {
+namespace nnrt::core::linalg {
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
 
 void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of_matrices_A, const open3d::core::Tensor& array_of_matrices_B){
 	o3c::Device device = array_of_matrices_A.GetDevice();
-	o3c::Dtype dtype_original = array_of_matrices_B.GetDtype();
+	o3c::Dtype dtype_original = array_of_matrices_A.GetDtype();
 	o3c::Dtype dtype;
+
+	o3c::AssertTensorDtype(array_of_matrices_B, dtype_original);
+	o3c::AssertTensorDevice(array_of_matrices_B, device);
 
 	if (dtype_original != o3c::Float32 && dtype_original != o3c::Float64) {
 		o3u::LogDebug("Converting to Float32 dtype to from {}.",
@@ -37,6 +40,7 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 	o3c::SizeVector A_shape = array_of_matrices_A.GetShape();
 	o3c::SizeVector B_shape = array_of_matrices_B.GetShape();
 
+
 	if (A_shape.size() != 3) {
 		o3u::LogError("Tensor A must be 3D (array of matrices), but got {}D.", A_shape.size());
 	}
@@ -46,15 +50,17 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 	if (A_shape[2] != B_shape[1]) {
 		o3u::LogError("Tensor A columns {} mismatch with Tensor B rows {}.", A_shape[2], B_shape[1]);
 	}
+	if(A_shape[0] != B_shape[0]){
+		o3u::LogError("Tensors A and B should have matching first dimension. Got: {} vs. {}",A_shape[0], B_shape[0]);
+	}
 
 	int64_t m = A_shape[1];
 	int64_t k = A_shape[2];
 	int64_t n = B_shape.size() == 3 ? B_shape[2] : 1;
-	int64_t batch_size = A_shape[0];
+	const int64_t batch_size = A_shape[0];
 
 	o3c::Tensor A_contiguous = array_of_matrices_A.Contiguous().To(dtype);
 	o3c::Tensor B_contiguous = array_of_matrices_B.Contiguous().To(dtype);
-
 
 	const void* A_data = A_contiguous.GetDataPtr();
 	const void* B_data = B_contiguous.GetDataPtr();
@@ -71,4 +77,4 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 
 }
 
-} // nnrt::core::kernel
+} // nnrt::core::linalg

@@ -19,4 +19,5 @@
 
 namespace nnrt::core{
 	open3d::core::Tensor CombineAlongAxis0(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
+	open3d::core::Tensor Matmul3D(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
 } // nnrt::core

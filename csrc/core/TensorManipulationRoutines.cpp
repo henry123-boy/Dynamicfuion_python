@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "core/TensorManipulationRoutines.h"
-#include "core/kernel/Matmul3D.h"
+#include "core/linalg/Matmul3D.h"
 
 namespace o3u = open3d::utility;
 namespace o3c = open3d::core;
@@ -48,19 +48,9 @@ namespace nnrt::core{
 	}
 
 	open3d::core::Tensor Matmul3D(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2){
-		o3c::AssertTensorDtype(tensor2, tensor1.GetDtype());
-		o3c::AssertTensorDevice(tensor2, tensor1.GetDevice());
 
-		auto tensor1_shape = tensor1.GetShape();
-		auto tensor2_shape = tensor2.GetShape();
-		if(tensor1_shape[0] != tensor2_shape[0]){
-			o3u::LogError(
-					"Shape mismatch. Tensors should have matching first dimension. Got: {} vs. {}",
-					tensor1_shape[0], tensor2_shape[0]);
-		}
-		auto sub_tensor_count = tensor1_shape[0];
 		o3c::Tensor output;
-		core::kernel::Matmul3D(output, tensor1, tensor2);
+		core::linalg::Matmul3D(output, tensor1, tensor2);
 		return output;
 
 	}
