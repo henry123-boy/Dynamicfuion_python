@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/13/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/14/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,18 +14,10 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+#include "pybind/nnrt_pybind.h"
 
-#pragma once
+namespace nnrt::core {
+void pybind_core(py::module& m);
+void pybind_tensor_routines(py::module& m);
 
-#ifdef USE_BLAS
-#define NNRT_CPU_LINALG_INT int32_t
-#define lapack_int int32_t
-#include <cblas.h>
-#include <lapacke.h>
-#else
-#include <mkl.h>
-static_assert(
-        sizeof(MKL_INT) == 8,
-        "MKL_INT must be 8 bytes: please link with MKL 64-bit int library.");
-#define NNRT_CPU_LINALG_INT MKL_INT
-#endif
+} //  nnrt::core

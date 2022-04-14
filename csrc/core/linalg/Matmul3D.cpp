@@ -57,6 +57,7 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 	int64_t m = A_shape[1];
 	int64_t k = A_shape[2];
 	int64_t n = B_shape.size() == 3 ? B_shape[2] : 1;
+
 	const int64_t batch_size = A_shape[0];
 
 	o3c::Tensor A_contiguous = array_of_matrices_A.Contiguous().To(dtype);

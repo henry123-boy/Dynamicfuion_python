@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/13/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/14/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,19 +13,18 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+#include "pybind/core.h"
+#include "core/TensorManipulationRoutines.h"
+namespace nnrt::core{
+void pybind_core(py::module& m) {
+	py::module m_submodule = m.def_submodule(
+			"core", "Open3D-tensor-based core module.");
 
-#pragma once
+	pybind_tensor_routines(m_submodule);
+}
 
-#ifdef USE_BLAS
-#define NNRT_CPU_LINALG_INT int32_t
-#define lapack_int int32_t
-#include <cblas.h>
-#include <lapacke.h>
-#else
-#include <mkl.h>
-static_assert(
-        sizeof(MKL_INT) == 8,
-        "MKL_INT must be 8 bytes: please link with MKL 64-bit int library.");
-#define NNRT_CPU_LINALG_INT MKL_INT
-#endif
+void pybind_tensor_routines(pybind11::module& m) {
+	m.def("matmul3d", &core::Matmul3D, "array_of_matrices_a"_a, "array_of_matrices_b"_a);
+}
+
+} // nnrt::core

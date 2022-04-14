@@ -63,12 +63,12 @@ void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void*
 
 		NNRT_CUBLAS_CHECK(
 				gemm_batched_cuda<scalar_t>(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-				                            m, n, k,
+				                            n, m, k,
 				                            &alpha,
-				                            A_array_device, m,
-				                            B_array_device, k,
+				                            B_array_device, n,
+				                            A_array_device, k,
 				                            &beta,
-				                            C_array_device, m,
+				                            C_array_device, n,
 				                            batch_size),
 				"cuda batched gemm failed");
 		OPEN3D_CUDA_CHECK(cudaFree(A_array_device));

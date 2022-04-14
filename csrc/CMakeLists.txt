@@ -154,7 +154,7 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCUDA.h
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
-    core/linalg/LinalgUtils.cpp)
+    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

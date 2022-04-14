@@ -3,6 +3,7 @@
 #include "cpu/graph_proc.h"
 
 #include "pybind/geometry/geometry.h"
+#include "pybind/core.h"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -16,6 +17,7 @@ int add(int i, int j) {
 
 // Definitions of all methods in the module.
 PYBIND11_MODULE(nnrt, m) {
+	nnrt::core::pybind_core(m);
 	nnrt::geometry::pybind_geometry(m);
 
 

@@ -38,8 +38,8 @@ void Matmul3D<open3d::core::Device::DeviceType::CPU>(const void* A, const void* 
 		scalar_t* C_array[batch_size];
 
 		get_matrix_pointers_from_contiguous_array_of_matrices<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
-		gemm_batched_cpu<scalar_t>(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha,
-		                           A_array, m, B_array, k, beta, C_array, m, batch_size);
+		gemm_batched_cpu<scalar_t>(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha,
+		                           A_array, k, B_array, n, beta, C_array, n, batch_size);
 	});
 
 }

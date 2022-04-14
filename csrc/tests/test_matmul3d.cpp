@@ -32,17 +32,26 @@ void TestMatmul3D(const o3c::Device& device) {
 	// Note: inner matrices are column-major, so...
 	// Be sure to run moveaxis in numpy before copy/pasting the values for testing:
 	// np.moveaxis(A, (0,1,2),(0,2,1)).flatten()
-	std::vector<float> A_data = {7., 5., 2., 4., 1., 4., 2., 2., 9., 8., 7., 7., 1., 9., 1., 6., 2., 0.};
+	// std::vector<float> A_data = {7., 5., 2., 4., 1., 4., 2., 2., 9., 8., 7., 7., 1., 9., 1., 6., 2., 0.};
+	// o3c::Tensor A(A_data, {3, 2, 3}, o3c::Dtype::Float32, device);
+	// std::vector<float> B_data = {9.,  6.,  5.,  4.,  9., 10.,  2.,  3.,  5.,  6.,  6.,  1.,  6., 7.,  2.,  4.,  4.,  5.};
+	// o3c::Tensor B(B_data, {3, 3, 2}, o3c::Dtype::Float32, device);
+	//
+	// auto C = core::Matmul3D(A,B);
+	//
+	// auto C_data = C.ToFlatVector<float>();
+	//
+	// std::vector<float> C_gt_data = {80., 89., 56., 96., 66., 63., 73., 67., 17., 96., 18., 60.};
+	std::vector<float> A_data = {7., 2., 1., 5., 4., 4., 2., 9., 7., 2., 8., 7., 1., 1., 2., 9., 6.,0.};
 	o3c::Tensor A(A_data, {3, 2, 3}, o3c::Dtype::Float32, device);
-	std::vector<float> B_data = {9.,  6.,  5.,  4.,  9., 10.,  2.,  3.,  5.,  6.,  6.,  1.,  6., 7.,  2.,  4.,  4.,  5.};
+	std::vector<float> B_data = {9.,  4.,  6.,  9.,  5., 10.,  2.,  6.,  3.,  6.,  5.,  1.,  6., 4.,  7.,  4.,  2.,  5.};
 	o3c::Tensor B(B_data, {3, 3, 2}, o3c::Dtype::Float32, device);
 
 	auto C = core::Matmul3D(A,B);
 
 	auto C_data = C.ToFlatVector<float>();
 
-	std::vector<float> C_gt_data = {80., 89., 56., 96., 66., 63., 73., 67., 17., 96., 18., 60.};
-
+	std::vector<float> C_gt_data = {80., 56., 89., 96., 66., 73., 63., 67., 17., 18., 96., 60.};
 
 
 	REQUIRE(std::equal(C_data.begin(), C_data.end(), C_gt_data.begin(),

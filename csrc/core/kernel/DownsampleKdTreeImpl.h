@@ -186,19 +186,11 @@ void DecimateReferencePoints_Generic(
 							return;
 						}
 					}
-				//__DEBUG
-#ifdef __CUDACC__
-						// printf("filtered_point_count: %i\n", filtered_point_count);
-#endif
 				} while (!NNRT_ATOMIC_CE(candidate_filtered_point_count, filtered_point_count, filtered_point_count + 1));
 				// we now know for certain this point's radius doesn't overlap with other filtered points' radii
 				filtered_point_index_data[filtered_point_count] = workload_idx;
 				// atomically increment the counter to indicate that the point's index has been added to the filtered point ledger
 				NNRT_ATOMIC_ADD(ready_filtered_point_count, 1);
-				//__DEBUG
-#ifdef __CUDACC__
-				printf("ready_filtered_point_count: %i\n", *ready_filtered_point_count);
-#endif
 
 				auto* point_radius_neighbors = radius_neighbor_indexer.GetDataPtr<int>(workload_idx);
 				for (int i_neighbor = 0; i_neighbor < NNRT_KDTREE_MAX_EXPECTED_RADIUS_NEIGHBORS &&
