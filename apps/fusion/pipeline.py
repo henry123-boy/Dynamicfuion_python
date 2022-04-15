@@ -368,11 +368,13 @@ class FusionPipeline:
 
                 # use the resulting frame transformation predictions to update the global,
                 # cumulative node transformations
+                node_rotation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
+                node_translation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.ZERO_TO_T:
-                    self.graph.rotations = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
-                    self.graph.translations = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
+                    self.graph.rotations = node_rotation_predictions
+                    self.graph.translations = node_translation_predictions
                 elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.T_MINUS_ONE_TO_T:
-                    self.graph.rotations = np.matmul(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred)),
+                    self.graph.rotations = nnrt.core.matmul3d(self.graph.rotations, node_rotation_predictions)
                     self.graph.translations += o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
 
                 # handle logging/vis of the graph data
