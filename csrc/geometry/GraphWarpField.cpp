@@ -247,7 +247,7 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
                                int minimum_valid_anchor_count) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
 		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
-		rotations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
+		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
 		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes){
 	auto device = this->nodes.GetDevice();
@@ -277,6 +277,9 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 	}
 	if (clusters_shape[0] != node_count) {
 		o3u::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
+	}
+	for(int i_node = 0; i_node < this->nodes.GetLength(); i_node++){
+		rotations.Slice(0,i_node,i_node+1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
 	}
 }
 
