@@ -156,7 +156,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         nodes_o3d = o3c.Tensor(graph_nodes, device=device)
         edges_o3d = o3c.Tensor(graph_edges, device=device)
         edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
-        clusters_o3d = o3c.Tensor(graph_clusters, device=device)
+        clusters_o3d = o3c.Tensor(graph_clusters.flatten(), device=device)
         graph = GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
 
         return graph

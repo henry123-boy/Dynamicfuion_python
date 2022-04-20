@@ -246,8 +246,8 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
                                o3c::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance, int anchor_count,
                                int minimum_valid_anchor_count) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
-		translations({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
-		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
+		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
+		rotations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
 		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
 		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes){
 	auto device = this->nodes.GetDevice();

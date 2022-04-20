@@ -1,4 +1,6 @@
 import math
+from pathlib import Path
+
 import open3d as o3d
 import open3d.core as o3c
 import pytest
@@ -174,7 +176,7 @@ def test_warp_mesh_open3d_pythonic_mat(device, ground_truth_vertices):
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_warp_mesh_open3d_native_mat(device, ground_truth_vertices):
+def test_warp_mesh_open3d_native(device, ground_truth_vertices):
     mesh_legacy = o3d.geometry.TriangleMesh.create_box()
     mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
     mesh_legacy.compute_vertex_normals()
@@ -242,5 +244,52 @@ def test_warp_mesh_open3d_native_mat(device, ground_truth_vertices):
                                           lookat=[0.5, 0.5, 0.5],
                                           up=[0, 1, 0])
     new_vertices = np.array(warped_mesh_legacy.vertices)
+
+    assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)
+
+
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_warp_mesh_2_open3d_native(device):
+    test_path = Path(__file__).parent.resolve()
+    test_data_path = test_path / "test_data" / "mesh_warping"
+
+    input_mesh_legacy = o3d.io.read_triangle_mesh(str(test_data_path / "test_input_mesh.ply"))
+
+    gt_mesh_legacy : o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(test_data_path / "test_gt_mesh.ply"))
+
+    nodes = np.load(str(test_data_path / "nodes.npy"))
+    nodes_o3d = o3c.Tensor(nodes, device=device)
+
+    edges = np.load(str(test_data_path / "edges.npy"))
+    edges_o3d = o3c.Tensor(edges, device=device)
+
+    edge_weights_o3d = o3c.Tensor(np.array([[1] * edges.shape[1]] * edges.shape[0]), device=device)
+    clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
+
+    node_coverage = 0.05
+
+    graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
+
+    rotations = np.load(str(test_data_path / "rotations.npy"))
+    translations = np.load(str(test_data_path / "translations.npy"))
+
+    graph_open3d.rotations = o3c.Tensor(rotations, device=device)
+    graph_open3d.translations = o3c.Tensor(translations, device=device)
+
+    mesh = o3d.t.geometry.TriangleMesh.from_legacy(input_mesh_legacy, device=device)
+
+    warped_mesh = graph_open3d.warp_mesh(mesh)
+    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
+    warped_mesh_legacy.compute_vertex_normals()
+
+    visualize_results = False
+    if visualize_results:
+        o3d.visualization.draw_geometries([warped_mesh_legacy],
+                                          zoom=0.8,
+                                          front=[0.0, 0., 2.],
+                                          lookat=[0.5, 0.5, 0.5],
+                                          up=[0, 1, 0])
+    new_vertices = np.array(warped_mesh_legacy.vertices)
+    ground_truth_vertices = np.array(gt_mesh_legacy.vertices)
 
     assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)

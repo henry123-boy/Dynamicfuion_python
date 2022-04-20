@@ -2,6 +2,7 @@
 
 # experimental tsdf_management tsdf_management based on original NNRT code
 # Copyright 2021 Gregory Kramida
+import sys
 from typing import Union
 import timeit
 from pathlib import Path
@@ -15,6 +16,7 @@ import torch.utils.dlpack as torch_dlpack
 
 # local
 import nnrt
+from icecream import ic
 
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
@@ -106,12 +108,6 @@ class FusionPipeline:
         # endregion
 
     def extract_and_warp_canonical_mesh_if_necessary(self, weight_threshold: float = 0.0):
-        # TODO: try to speed up by using the extracted CUDA-based mesh directly (and converting to torch tensors via
-        #  dlpack for rendering where this can be done).
-        #  Conversion to legacy mesh can be delegated to before visualization, and only we're trying to visualize one of
-        #  these meshes.
-        #  The first step is to provide warping for the o3d.t.geometry.TriangleMesh (see graph.py).
-        #  This may involve augmenting the Open3D extension in the local C++/CUDA code.
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
             canonical_mesh = self.volume.extract_surface_mesh(-1, weight_threshold)

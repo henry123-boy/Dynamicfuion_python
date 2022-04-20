@@ -100,7 +100,7 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
 				open3d::core::ParallelFor(
-						depth_tensor.GetDevice(),n_voxels,
+						depth_tensor.GetDevice(), n_voxels,
 						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
 				// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
