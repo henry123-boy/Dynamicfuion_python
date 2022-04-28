@@ -295,7 +295,7 @@ def build_deformation_graph_from_mesh(mesh: o3d.t.geometry.TriangleMesh, node_co
                                       minimum_valid_anchor_count=minimum_valid_anchor_count)
 
 
-def draw_deformation_graph(deformation_graph: GraphWarpFieldNumpy,
+def draw_deformation_graph(deformation_graph: GraphWarpFieldOpen3DNative,
                            background_image: o3d.geometry.Image = None) -> None:
     line_set = deformation_graph.as_line_set_canonical()
 

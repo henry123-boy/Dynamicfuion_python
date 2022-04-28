@@ -87,14 +87,16 @@ class TelemetryGenerator:
         output_file_path = Path(self.output_directory) / "frameviewer_info.yaml"
         meta_info = YAML(typ='rt')
         meta_info.default_flow_style = False
-        frame_count = sequence.frame_count
-        if -1 < FusionParameters.run_until_frame.value < (sequence.start_frame_index + sequence.frame_count):
-            frame_count = FusionParameters.run_until_frame.value - sequence.start_frame_index
+        start_at_frame_index = max(sequence.start_frame_index, FusionParameters.input_data.start_at_frame.value)
+        end_before_frame_index = sequence.frame_count if FusionParameters.input_data.run_until_frame.value <= -1 \
+            else min(sequence.start_frame_index + sequence.frame_count,
+                     FusionParameters.input_data.run_until_frame.value)
+        frame_count = end_before_frame_index - start_at_frame_index
         meta_info.dump(
             {
                 "input": sequence.get_sequence_directory(),
-                "start_frame_index": sequence.start_frame_index + 1,
-                "frame_count": frame_count - 1,
+                "start_frame_index": start_at_frame_index,
+                "frame_count": frame_count - 1,  # TODO why -1 here? explain or fix
                 "masking_threshold": sequence.mask_lower_threshold,
                 "tsdf": {
                     "voxel_size": TsdfParameters.voxel_size.value,

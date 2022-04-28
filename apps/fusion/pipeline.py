@@ -2,10 +2,8 @@
 
 # experimental tsdf_management tsdf_management based on original NNRT code
 # Copyright 2021 Gregory Kramida
-import sys
 from typing import Union
 import timeit
-from pathlib import Path
 
 # 3rd-party
 import numpy as np
@@ -16,7 +14,6 @@ import torch.utils.dlpack as torch_dlpack
 
 # local
 import nnrt
-from icecream import ic
 
 from alignment.deform_net import DeformNet
 from alignment.default import load_default_nnrt_network
@@ -32,7 +29,7 @@ from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
 from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, \
-    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode, FusionParameters
+    AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode
 from settings import Parameters
 from telemetry.telemetry_generator import TelemetryGenerator
 
@@ -90,7 +87,7 @@ class FusionPipeline:
         #####################################################################################################
         # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
         #####################################################################################################
-        self.sequence: FrameSequenceDataset = Parameters.fusion.sequence_preset.value.value
+        self.sequence: FrameSequenceDataset = Parameters.fusion.input_data.sequence_preset.value.value
         self.sequence.load()
         first_frame = self.sequence.get_frame_at(0)
 
@@ -171,7 +168,12 @@ class FusionPipeline:
         precomputed_anchors = None
         precomputed_weights = None
 
-        check_for_end_frame = Parameters.fusion.run_until_frame.value != -1
+        # process sequence start/end bound parameters
+        check_for_end_frame = Parameters.fusion.input_data.run_until_frame.value != -1
+        start_frame_index = sequence.start_frame_index
+        if Parameters.fusion.input_data.start_at_frame.value != -1:
+            start_frame_index = Parameters.fusion.input_data.start_at_frame.value
+            sequence.advance_to_frame(start_frame_index)
 
         # save info into file in output in order to sync a frameviewer when viewing results in visualizer --
         # to observe both input and output
@@ -179,7 +181,7 @@ class FusionPipeline:
 
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
-            if check_for_end_frame and current_frame.frame_index >= Parameters.fusion.run_until_frame.value:
+            if check_for_end_frame and current_frame.frame_index >= Parameters.fusion.input_data.run_until_frame.value:
                 break
             self.telemetry_generator.set_frame_index(current_frame.frame_index)
             #####################################################################################################
@@ -212,12 +214,14 @@ class FusionPipeline:
             color_image_open3d = o3d.t.geometry.Image(o3c.Tensor(color_image_np, device=device))
 
             # endregion
-            if current_frame.frame_index == sequence.start_frame_index:
+            # noinspection PyArgumentList
+            if current_frame.frame_index == start_frame_index:
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device,
                                  self.extrinsics_open3d_device,
                                  depth_scale, sequence.far_clipping_distance)
-                # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____ C++ functions
+                # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____
+                #  C++ functions
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
 

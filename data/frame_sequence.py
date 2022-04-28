@@ -105,6 +105,12 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             self._next_frame_index += 1
             return frame
 
+    def advance_to_frame(self, index):
+        if index < self.start_frame_index or index >= self._end_before_index:
+            raise ValueError(f"Provided index not within frame range, {self.start_frame_index, self._end_before_index}")
+        else:
+            self._next_frame_index = index
+
     def get_current_graph_name(self):
         if not self._loaded:
             raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")

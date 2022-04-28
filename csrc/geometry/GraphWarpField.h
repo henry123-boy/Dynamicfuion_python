@@ -20,6 +20,7 @@
 #include <open3d/core/TensorList.h>
 
 #include <pybind11/pybind11.h>
+#include <open3d/core/Tensor.h>
 
 #include "core/KdTree.h"
 
@@ -66,7 +67,7 @@ public:
 	virtual ~GraphWarpField() = default;
 
 	open3d::core::Tensor GetWarpedNodes() const;
-	open3d::core::TensorList GetNodeExtent() const;
+	open3d::core::Tensor GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
 
 	//TODO: gradually hide these fields and expose only on a need-to-know basis

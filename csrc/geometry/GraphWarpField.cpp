@@ -249,7 +249,7 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
 		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
-		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes){
+		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes) {
 	auto device = this->nodes.GetDevice();
 	o3c::AssertTensorDevice(this->edges, device);
 	o3c::AssertTensorDevice(this->edge_weights, device);
@@ -278,8 +278,8 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 	if (clusters_shape[0] != node_count) {
 		o3u::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
 	}
-	for(int i_node = 0; i_node < this->nodes.GetLength(); i_node++){
-		rotations.Slice(0,i_node,i_node+1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
+	for (int i_node = 0; i_node < this->nodes.GetLength(); i_node++) {
+		rotations.Slice(0, i_node, i_node + 1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
 	}
 }
 
@@ -287,10 +287,11 @@ o3c::Tensor GraphWarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
 }
 
-o3c::TensorList GraphWarpField::GetNodeExtent() const {
-	auto max = nodes.Max({0});
-	auto min = nodes.Min({0});
-	return o3c::TensorList({min, max});
+o3c::Tensor GraphWarpField::GetNodeExtent() const {
+	o3c::Tensor minMax({2, 3}, nodes.GetDtype(), nodes.GetDevice());
+	minMax.Slice(0, 0, 1) = nodes.Min({0});
+	minMax.Slice(0, 1, 2) = nodes.Max({0});
+	return minMax;
 }
 
 open3d::t::geometry::TriangleMesh

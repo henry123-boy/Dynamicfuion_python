@@ -293,3 +293,27 @@ def test_warp_mesh_2_open3d_native(device):
     ground_truth_vertices = np.array(gt_mesh_legacy.vertices)
 
     assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)
+
+
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_get_node_extent_open3d_native(device):
+    test_path = Path(__file__).parent.resolve()
+    test_data_path = test_path / "test_data" / "mesh_warping"
+
+    nodes = np.load(str(test_data_path / "nodes.npy"))
+    nodes_o3d = o3c.Tensor(nodes, device=device)
+
+    edges = np.load(str(test_data_path / "edges.npy"))
+    edges_o3d = o3c.Tensor(edges, device=device)
+
+    edge_weights_o3d = o3c.Tensor(np.array([[1] * edges.shape[1]] * edges.shape[0]), device=device)
+    clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
+
+    node_coverage = 0.05
+
+    graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
+
+    list = graph_open3d.get_node_extent()
+    print(list)
+
+    # assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)
