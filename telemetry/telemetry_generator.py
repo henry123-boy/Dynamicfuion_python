@@ -95,8 +95,9 @@ class TelemetryGenerator:
         meta_info.dump(
             {
                 "input": sequence.get_sequence_directory(),
-                "start_frame_index": start_at_frame_index,
-                "frame_count": frame_count - 1,  # TODO why -1 here? explain or fix
+                # we don't want index-0 frame, since we don't have data for it in visualizer. Hence +1 & -1 below.
+                "start_frame_index": start_at_frame_index + 1,
+                "frame_count": frame_count - 1,
                 "masking_threshold": sequence.mask_lower_threshold,
                 "tsdf": {
                     "voxel_size": TsdfParameters.voxel_size.value,
