@@ -1,5 +1,5 @@
 # system
-from typing import Union, List, Tuple, Dict
+from typing import Union, List, Tuple
 from datetime import datetime
 from pathlib import Path
 import pynvml

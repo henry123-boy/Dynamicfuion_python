@@ -39,5 +39,16 @@ class FrameSequencePreset(Enum):
     BLUE_MAN_SOD_MASKS = FrameSequenceDataset(76, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=2.4,
                                               has_masks=True, masks_subfolder="sod")
 
-    DOG_TRAINING_SOD_MASKS = FrameSequenceDataset(0, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=3.5,
-                                                  has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+    DOG_TRAINING_1_SOD_MASKS = FrameSequenceDataset(0, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=3.5,
+                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+
+    DOG_TRAINING_2_SOD_MASKS = FrameSequenceDataset(0, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=3.5,
+                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+
+    BLUE_BACKPACK_FLIP_SOD_MASKS = \
+        FrameSequenceDataset(sequence_id=32, split=DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=1.5,
+                             has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+
+    BLUE_BACKPACK_FLIP = \
+        FrameSequenceDataset(sequence_id=32, split=DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=1.5,
+                             has_masks=False)

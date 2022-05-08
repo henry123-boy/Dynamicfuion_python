@@ -60,7 +60,7 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             parts = os.path.splitext(os.listdir(graph_edges_dir)[0])[0].split('_')
             if self.segment_name is None:
                 segment_name = parts[1]
-            if self.has_masks:
+            if self.has_masks():
                 mask_filename_mask_with_segment = os.path.join(self._mask_frame_directory,
                                                                "{:06d}_" + segment_name + ".png")
                 if os.path.isfile(mask_filename_mask_with_segment.format(0)):
