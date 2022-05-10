@@ -1,7 +1,7 @@
 [project]
 name = "nnrt_fusion"
 authors = [
-    {name="Gregory Kramida", email="algomorph@gmail.com"},
+    {name="Gregory Kramida"},
     {name="Pablo Palafox"},
     {name="Aljaz Bozic"}
 ]
@@ -17,4 +17,10 @@ minversion = "6.0"
 addopts = "-ra -q"
 testpaths = [
     "tests"
+]
+
+[tool.setuptools]
+packages = [
+    "cli", "csrc", "data", "apps", "tsdf", "settings",
+    "alignment", "telemetry", "rendering", "warp_field",
 ]
