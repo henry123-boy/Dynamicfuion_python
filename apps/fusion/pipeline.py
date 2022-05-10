@@ -70,6 +70,7 @@ class FusionPipeline:
                                                       log_parameters.record_source_and_target_point_clouds.value,
                                                       log_parameters.record_correspondences.value,
                                                       log_parameters.record_graph_transformations.value,
+                                                      log_parameters.record_frameviewer_metadata.value,
                                                       verbosity_parameters.print_cuda_memory_info.value,
                                                       verbosity_parameters.print_frame_info.value,
                                                       viz_parameters.visualization_mode.value,

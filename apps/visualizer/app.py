@@ -86,10 +86,12 @@ class VisualizerApp(App):
 
         # text setup
         self.text_mapper = vtk.vtkTextMapper()
+        shown_point_cloud = "none" if len(self.point_cloud_names) == 0 \
+            else self.point_cloud_names[self.shown_point_cloud_index]
         self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
                                   f"Showing mesh: {self.mesh_names[self.shown_mesh_index]:s}\n"
                                   f"Mesh color mode: f{self.mesh_color_mode.name:s}\n"
-                                  f"Showing point cloud: {self.point_cloud_names[self.shown_point_cloud_index]:s}\n"
+                                  f"Showing point cloud: {shown_point_cloud:s}\n"
                                   f"Point color mode: f{self.point_color_mode.name:s}"
                                   f"Visible correspondences: 0%\n"
                                   f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
@@ -500,7 +502,7 @@ class VisualizerApp(App):
         else:
             mesh_mode = "none"
 
-        if self.point_clouds[self.shown_point_cloud_index].is_visible():
+        if len(self.point_clouds) > 0 and self.point_clouds[self.shown_point_cloud_index].is_visible():
             point_cloud_iteration_text = self.point_cloud_names[self.shown_point_cloud_index]
         else:
             point_cloud_iteration_text = "none"

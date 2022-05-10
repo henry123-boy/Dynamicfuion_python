@@ -117,7 +117,7 @@ class TrainingParameters(ParameterEnum):
                   arg_help="Training experiment name.")
     timestamp = \
         Parameter(default=datetime.now().strftime('%y-%m-%d-%H-%M-%S'), arg_type=str,
-                  arg_help="Timestamp in the format \"%y-%m-%d-%H-%M-%S\" (if you do not want to use the current time).")
+                  arg_help="Timestamp in the format \"y-m-d-H-M-S\" (if you do not want to use the current time).")
     use_pretrained_model = \
         Parameter(default=False, arg_type='bool_flag',
                   arg_help="Resume training from a pretrained model rather than from scratch.")

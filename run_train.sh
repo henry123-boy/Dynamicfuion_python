@@ -10,6 +10,6 @@ echo ${experiment}
 GPU=${1:-0}
 
 export PYTHONPATH="$(pwd):$PYTHONPATH"
-CUDA_VISIBLE_DEVICES=${GPU} python3 apps/train.py --train.train_labels_name="${train_labels_name}" \
-                                            --train.validation_labels_name="${validation_labels_name}" \
+CUDA_VISIBLE_DEVICES=${GPU} python3 apps/train.py --training.train_labels_name="${train_labels_name}" \
+                                            --training.validation_labels_name="${validation_labels_name}" \
                                             --training.experiment="${experiment}"

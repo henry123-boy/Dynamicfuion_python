@@ -160,7 +160,12 @@ class LoggingParameters(ParameterEnum):
                            "that are destinations of each source vector.")
     record_graph_transformations = \
         Parameter(default=True, arg_type='bool_flag',
-                  arg_help="Record node original positions, rotations, and translations at each frame after non-rigid alignment.")
+                  arg_help="Record node original positions, rotations, and translations at each frame after non-rigid "
+                           "alignment.")
+    record_frameviewer_metadata = \
+        Parameter(default=True, arg_type='bool_flag',
+                  arg_help="Enables setting up settings for the frameviewer app, in order for the (potentially masked)"
+                           "input frames to be viewed concurrently with the output in the visualizer app")
 
 
 class TelemetryParameters(ParameterEnum):

@@ -32,6 +32,7 @@ class TelemetryGenerator:
                  record_source_and_target_point_clouds: bool,
                  record_correspondences: bool,
                  record_graph_transformations: bool,
+                 record_frameviewer_metadata: bool,
                  print_cuda_memory_info: bool,
                  print_frame_info: bool,
                  visualization_mode: VisualizationMode,
@@ -50,6 +51,7 @@ class TelemetryGenerator:
         self.record_source_and_target_point_clouds = record_source_and_target_point_clouds
         self.record_correspondences = record_correspondences
         self.record_graph_transformations = record_graph_transformations
+        self.record_frameviewer_metadata = record_frameviewer_metadata
         self.visualization_mode = visualization_mode
         self.parent_output_directory = output_directory
         self.output_directory = os.path.join(output_directory, record_over_run_time.strftime("%y-%m-%d-%H-%M-%S"))
@@ -84,29 +86,30 @@ class TelemetryGenerator:
         self.frame_index = 0
 
     def save_info_for_frameviewer(self, sequence: FrameSequenceDataset):
-        output_file_path = Path(self.output_directory) / "frameviewer_info.yaml"
-        meta_info = YAML(typ='rt')
-        meta_info.default_flow_style = False
-        start_at_frame_index = max(sequence.start_frame_index, FusionParameters.input_data.start_at_frame.value)
-        end_before_frame_index = sequence.frame_count if FusionParameters.input_data.run_until_frame.value <= -1 \
-            else min(sequence.start_frame_index + sequence.frame_count,
-                     FusionParameters.input_data.run_until_frame.value)
-        frame_count = end_before_frame_index - start_at_frame_index
-        meta_info.dump(
-            {
-                "input": sequence.get_sequence_directory(),
-                # we don't want index-0 frame, since we don't have data for it in visualizer. Hence +1 & -1 below.
-                "start_frame_index": start_at_frame_index + 1,
-                "frame_count": frame_count - 1,
-                "masking_threshold": sequence.mask_lower_threshold,
-                "tsdf": {
-                    "voxel_size": TsdfParameters.voxel_size.value,
-                    "sdf_truncation_distance": TsdfParameters.sdf_truncation_distance.value,
-                    "block_resolution": TsdfParameters.block_resolution.value,
-                    "initial_block_count": TsdfParameters.initial_block_count.value
-                }
-            }, output_file_path
-        )
+        if self.record_frameviewer_metadata:
+            output_file_path = Path(self.output_directory) / "frameviewer_info.yaml"
+            meta_info = YAML(typ='rt')
+            meta_info.default_flow_style = False
+            start_at_frame_index = max(sequence.start_frame_index, FusionParameters.input_data.start_at_frame.value)
+            end_before_frame_index = sequence.frame_count if FusionParameters.input_data.run_until_frame.value <= -1 \
+                else min(sequence.start_frame_index + sequence.frame_count,
+                         FusionParameters.input_data.run_until_frame.value)
+            frame_count = end_before_frame_index - start_at_frame_index
+            meta_info.dump(
+                {
+                    "input": sequence.get_sequence_directory(),
+                    # we don't want index-0 frame, since we don't have data for it in visualizer. Hence +1 & -1 below.
+                    "start_frame_index": start_at_frame_index + 1,
+                    "frame_count": frame_count - 1,
+                    "masking_threshold": sequence.mask_lower_threshold,
+                    "tsdf": {
+                        "voxel_size": TsdfParameters.voxel_size.value,
+                        "sdf_truncation_distance": TsdfParameters.sdf_truncation_distance.value,
+                        "block_resolution": TsdfParameters.block_resolution.value,
+                        "initial_block_count": TsdfParameters.initial_block_count.value
+                    }
+                }, output_file_path
+            )
 
     def set_frame_index(self, frame_index):
         self.frame_index = frame_index
