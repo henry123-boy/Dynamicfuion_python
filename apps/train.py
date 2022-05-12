@@ -7,7 +7,7 @@ import numpy as np
 from timeit import default_timer as timer
 import math
 
-from alignment import evaluate, nn_utilities
+from alignment import evaluate, nn_utilities, DeformNet
 
 import torch
 import open3d.core as o3c
@@ -84,7 +84,10 @@ if __name__ == "__main__":
 
     iteration_number = 0
 
-    model = load_default_nnrt_network(o3c.Device.CUDA)
+    if Parameters.training.use_pretrained_model.value:
+        model = load_default_nnrt_network(o3c.Device.CUDA)
+    else:
+        model = DeformNet(False).cuda()
 
     # Criterion.
     criterion = DeformLoss(Parameters.training.loss.lambda_flow.value, Parameters.training.loss.lambda_graph.value,
