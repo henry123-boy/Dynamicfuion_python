@@ -3,7 +3,6 @@ import sys
 import struct
 import re
 
-
 import numpy as np
 from telemetry import visualization as im_aux
 from telemetry.visualization import flow
@@ -16,7 +15,8 @@ def save_rgb_image(filename, image_numpy):
     if image_to_save.shape[0] == 3:
         image_to_save = np.moveaxis(image_to_save, 0, -1)
 
-    assert image_to_save.shape[-1] == 3, "image has {} channels, so it's not rgb, you liar!".format(image_to_save.shape[-1])
+    assert image_to_save.shape[-1] == 3, "image has {} channels, so it's not rgb, you liar!".format(
+        image_to_save.shape[-1])
 
     if image_to_save.dtype == "float32":
         assert np.max(image_to_save) <= 1.0
@@ -197,7 +197,7 @@ def save_flow(filename, flow):
         exit()
 
 
-def load_graph_nodes(filename):
+def load_graph_nodes_or_deformations(filename):
     # Node positions are stored row-wise in order [num_nodes, 3].
     assert os.path.isfile(filename), "File not found: {}".format(filename)
 
@@ -269,20 +269,6 @@ def save_graph_edges_weights(filename, edges_weights):
         fout.write(struct.pack('I', edges_weights.shape[0]))
         fout.write(struct.pack('I', edges_weights.shape[1]))
         fout.write(struct.pack('={}f'.format(edges_weights.size), *edges_weights.flatten("C")))
-
-
-def load_graph_node_deformations(filename):
-    # Node deformations are stored row-wise in order [num_nodes, 3].
-    assert os.path.isfile(filename), "File not found: {}".format(filename)
-
-    node_deformations = None
-    with open(filename, 'rb') as fin:
-        num_nodes = struct.unpack('I', fin.read(4))[0]
-
-        node_deformations = struct.unpack('f' * num_nodes * 3, fin.read(num_nodes * 3 * 4))
-        node_deformations = np.asarray(node_deformations, dtype=np.float32).reshape([num_nodes, 3])
-
-    return node_deformations
 
 
 def save_graph_node_deformations(filename, node_deformations):

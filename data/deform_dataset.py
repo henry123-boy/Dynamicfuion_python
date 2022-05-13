@@ -8,7 +8,7 @@ import numpy as np
 import skimage.io
 from multipledispatch import dispatch
 
-from data.io import load_flow, load_graph_nodes, load_graph_edges, load_graph_edges_weights, load_graph_node_deformations, \
+from data.io import load_flow, load_graph_nodes_or_deformations, load_graph_edges, load_graph_edges_weights, \
     load_graph_clusters, load_int_image, load_float_image
 import image_processing
 
@@ -236,10 +236,10 @@ class DeformDataset(Dataset):
             graph_node_deformations_path: typing.Union[None, str], graph_clusters_path: str
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray, typing.Union[np.ndarray, None], np.ndarray]:
         # Load data.
-        graph_nodes = load_graph_nodes(graph_nodes_path)
+        graph_nodes = load_graph_nodes_or_deformations(graph_nodes_path)
         graph_edges = load_graph_edges(graph_edges_path)
         graph_edges_weights = load_graph_edges_weights(graph_edges_weights_path)
-        graph_node_deformations = load_graph_node_deformations(graph_node_deformations_path) \
+        graph_node_deformations = load_graph_nodes_or_deformations(graph_node_deformations_path) \
             if graph_node_deformations_path is not None else None
         graph_clusters = load_graph_clusters(graph_clusters_path)
 

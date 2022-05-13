@@ -3,7 +3,7 @@ model:
     # flow_net part will be loaded.
     model_module_to_load: full_model
     # Name of the pre-trained model to use.
-    model_name: model_A
+    model_name: 22-05-13-15-32-19_debug_refine_0
     # Iteration number of the model to load.
     model_iteration: 0
 alignment:
@@ -24,7 +24,7 @@ deform_net:
     # The minimum number of nodes in graph required for the Gauss-Newton solver to work.
     gn_min_nodes: 4
     # Number of nodes in graph not to be exceeded for the Gauss-Newton solver to work.
-    gn_max_nodes: 3000
+    gn_max_nodes: 300
     # Maximum number of matching points when working on a sequence in the 'train' split of the DeepDeform dataset. If the
     # actual number of matches exceeds, excess matches will be filtered out and discarded at random.
     gn_max_matches_train: 10000
@@ -39,7 +39,7 @@ deform_net:
     # deformed points.
     gn_max_warped_points: 100000
     # Print telemetry info during the Gauss-Newton optimization.
-    gn_debug: true
+    gn_debug: false
     # Print timing information for each term and the composite during the Gauss-Newton optimization.
     gn_print_timings: false
     # Use edge weight information within the ARAP energy term during the Gauss-Newton optimization.
@@ -177,7 +177,7 @@ training:
     # The name (sans extension) of the json file with labels for the validation data.
     validation_labels_name: val_graphs
     # Training experiment name.
-    experiment: debug_flow
+    experiment: debug_refine
     # Resume training from a pretrained model rather than from scratch.
     use_pretrained_model: false
     # Passed to num_workers parameter of torch.utils.data.DataLoader constructor during training.

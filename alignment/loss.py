@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 from settings import Parameters
 import numpy as np
+from alignment.batch_graph_L2 import BatchGraphL2
 
 
 class DeformLoss(torch.nn.Module):
-    def __init__(self, lambda_flow=0, lambda_graph=0, lambda_warp=0, lambda_mask=0, flow_loss_type="L2"):  # L1, L2, MSE (like L2 but w/o sqrt)
+    def __init__(self, lambda_flow=0, lambda_graph=0, lambda_warp=0, lambda_mask=0,
+                 flow_loss_type="L2"):  # L1, L2, MSE (like L2 but w/o sqrt)
         super(DeformLoss, self).__init__()
         self.lambda_flow = lambda_flow
         self.lambda_graph = lambda_graph
@@ -49,6 +51,7 @@ class DeformLoss(torch.nn.Module):
             d_total += self.lambda_flow * d_flow
 
         d_graph = None
+        # Graph loss: l2 loss on node translations
         if Parameters.training.loss.use_graph_loss.value:
             d_graph = self.graph_loss(deformations_gt, deformations_pred, valid_solve, deformations_validity)
             d_total += self.lambda_graph * d_graph
@@ -117,45 +120,6 @@ class DeformLoss(torch.nn.Module):
             return torch.sum(loss_bce) / torch.sum(valid_pixels_float)
         else:
             return torch.zeros((1), dtype=loss_bce.dtype, device=loss_bce.device)
-
-
-# TODO more documentation here
-class BatchGraphL2(nn.Module):
-    def __init__(self):
-        super(BatchGraphL2, self).__init__()
-
-    def forward(self, flow_gt, flow_pred, valid_solve, deformations_validity):
-        batch_size = flow_gt.shape[0]
-
-        assert flow_gt.shape[2] == 3
-        assert flow_pred.shape[2] == 3
-
-        assert torch.isfinite(flow_gt).all(), flow_gt
-
-        diff = flow_pred - flow_gt
-        diff2 = diff * diff
-
-        deformations_mask = deformations_validity.type(torch.float32)
-        deformations_mask = deformations_mask.view(batch_size, -1, 1).repeat(1, 1, 3)
-
-        diff2_masked = deformations_mask * diff2
-
-        loss = torch.zeros((batch_size), dtype=diff2.dtype, device=diff2.device)
-        mask = []
-        for i in range(batch_size):
-            num_valid_nodes = deformations_validity[i].sum()
-
-            if valid_solve[i] and num_valid_nodes > 0:
-                loss[i] = torch.sum(diff2_masked[i]) / num_valid_nodes
-                mask.append(i)
-
-        assert torch.isfinite(loss).all()
-
-        if len(mask) == 0:
-            return torch.zeros((1), dtype=diff2.dtype, device=flow_gt.device)
-        else:
-            loss = loss[mask]
-            return torch.sum(loss) / len(mask)
 
 
 class RobustL1(nn.Module):
@@ -334,7 +298,8 @@ def EPE_3D(flow_gt, flow_pred, deformations_validity):
     epe = deformations_mask * epe
     assert torch.isfinite(epe).all()
 
-    return {"sum": epe.sum().item(), "num": deformations_validity.sum().item(), "raw": epe[deformations_mask_bool].cpu().numpy()}
+    return {"sum": epe.sum().item(), "num": deformations_validity.sum().item(),
+            "raw": epe[deformations_mask_bool].cpu().numpy()}
 
 
 def EPE_3D_eval(flow_gt, flow_pred):
