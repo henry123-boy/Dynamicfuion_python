@@ -9,7 +9,7 @@ imageio>=2.9.0
 # Note: I found that the easiest way to install PyTorch3D w/ CUDA is from git
 git+https://github.com/facebookresearch/pytorch3d.git@stable
 pillow>=8.1.1
-nnrt>=0.1.1
+# nnrt>=0.1.1 # Install manually for now
 pybind11>=2.6.2
 vtk>=9.0.1
 tensorboardX>=2.1

@@ -18,7 +18,10 @@ from timeit import default_timer as timer
 import math
 import numpy as np
 import torch
+
 import kornia
+if kornia.__version__ >= '0.5.0':
+    import kornia.geometry.conversions as kornia
 
 from alignment.common.linear_solver_lu import LinearSolverLU
 from settings import DeformNetParameters

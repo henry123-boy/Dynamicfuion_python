@@ -11,7 +11,7 @@ class DepthSamplingMode(Enum):
 #  remove the prefix 'gn' and move the parameters to GaussNewtonParameters instead
 class DeformNetParameters(ParameterEnum):
     depth_sampling_mode = \
-        Parameter(default="bilinear", arg_type=DepthSamplingMode,
+        Parameter(default=DepthSamplingMode.BILINEAR, arg_type=DepthSamplingMode,
                   arg_help="Sampling mode to use within the Gauss-Newton solver")
     gn_max_depth = \
         Parameter(default=6.0, arg_type=float,
