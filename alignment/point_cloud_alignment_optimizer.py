@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+import gc
 from typing import Tuple, Union, List
 from timeit import default_timer as timer
 import math
@@ -316,8 +317,7 @@ class PointCloudAlignmentOptimizer:
             node_idxs_k = source_anchors[:, k]  # (num_matches)
             nodes_k = graph_nodes_i[node_idxs_k].view(match_count, 3, 1)  # (num_matches, 3, 1)
 
-            weights_k = source_weights[:,
-                        k] * correspondence_weights_filtered  # (num_matches) #TODO: check arm pixel correspondence_weights
+            weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches)
 
             # Compute skew-symmetric part.
             rotated_points_k = torch.matmul(rotations_current[node_idxs_k],
