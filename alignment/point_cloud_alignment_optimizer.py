@@ -369,12 +369,12 @@ class PointCloudAlignmentOptimizer:
                 minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 2]
 
             # DEPTH PART
-            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += lambda_data_depth * skew_symetric_mat_data[:,
-                                                                                              2, 0]
-            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 1] += lambda_data_depth * skew_symetric_mat_data[:,
-                                                                                              2, 1]
-            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 2] += lambda_data_depth * skew_symetric_mat_data[:,
-                                                                                              2, 2]
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += \
+                lambda_data_depth * skew_symetric_mat_data[:, 2, 0]
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 1] += \
+                lambda_data_depth * skew_symetric_mat_data[:, 2, 1]
+            jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 2] += \
+                lambda_data_depth * skew_symetric_mat_data[:, 2, 2]
 
             assert torch.isfinite(jacobian_data).all(), jacobian_data
 

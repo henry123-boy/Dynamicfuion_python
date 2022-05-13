@@ -96,15 +96,18 @@ if __name__ == "__main__":
 
     # Count parameters.
     n_all_model_params = int(sum([np.prod(p.size()) for p in model.parameters()]))
-    n_trainable_model_params = int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.parameters())]))
+    n_trainable_model_params = \
+        int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.parameters())]))
     print("Number of parameters: {0} / {1}".format(n_trainable_model_params, n_all_model_params))
 
     n_all_flownet_params = int(sum([np.prod(p.size()) for p in model.flow_net.parameters()]))
-    n_trainable_flownet_params = int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.flow_net.parameters())]))
+    n_trainable_flownet_params = \
+        int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.flow_net.parameters())]))
     print("-> Flow network: {0} / {1}".format(n_trainable_flownet_params, n_all_flownet_params))
 
     n_all_masknet_params = int(sum([np.prod(p.size()) for p in model.mask_net.parameters()]))
-    n_trainable_masknet_params = int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.mask_net.parameters())]))
+    n_trainable_masknet_params =\
+        int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.mask_net.parameters())]))
     print("-> Mask network: {0} / {1}".format(n_trainable_masknet_params, n_all_masknet_params))
     print()
 

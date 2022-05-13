@@ -1,60 +1,18 @@
-from icecream import ic
-
 from alignment import pwcnet
 
 import torch
 import torch.nn as nn
 import numpy as np
-import math
 
 from timeit import default_timer as timer
 from typing import Tuple, Union, List
 
 from alignment.point_cloud_alignment_optimizer import PointCloudAlignmentOptimizer
 from settings import DeformNetParameters, AlignmentParameters
-from alignment.nn_utilities import make_conv_2d, ResBlock2d, Identity
+from alignment.mask_net import MaskNet
 
 
-class MaskNet(torch.nn.Module):
-    def __init__(self, use_batch_normalization: bool = False):
-
-        super().__init__()
-
-        fn_0 = 16
-        self.input_fn = fn_0 + 6 * 2
-        fn_1 = 16
-
-        self.upconv1 = torch.nn.ConvTranspose2d(in_channels=565, out_channels=2 * fn_0, kernel_size=4, stride=2,
-                                                padding=1)
-        self.upconv2 = torch.nn.ConvTranspose2d(in_channels=2 * fn_0, out_channels=fn_0, kernel_size=4, stride=2,
-                                                padding=1)
-
-        if use_batch_normalization:
-            custom_batch_norm = torch.nn.BatchNorm2d
-        else:
-            custom_batch_norm = Identity
-
-        self.model = nn.Sequential(
-            make_conv_2d(self.input_fn, fn_1, n_blocks=1, normalization=custom_batch_norm),
-            ResBlock2d(fn_1, normalization=custom_batch_norm),
-            ResBlock2d(fn_1, normalization=custom_batch_norm),
-            ResBlock2d(fn_1, normalization=custom_batch_norm),
-            nn.Conv2d(fn_1, 1, kernel_size=3, padding=1),
-            torch.nn.Sigmoid()
-        )
-
-    def forward(self, features, x):
-        # Reduce number of channels and upscale to highest resolution
-        features = self.upconv1(features)
-        features = self.upconv2(features)
-
-        x = torch.cat([features, x], 1)
-        assert x.shape[1] == self.input_fn
-
-        return self.model(x)
-
-
-class DeformNet(torch.nn.Module):
+class DeformNet(nn.Module):
 
     # TODO: to provide looser coupling, instead of passing in a TelemetryGenerator here, have a boolean parameter to
     #  optionally record the optimization-deformed point clouds at every step into the output dict from
@@ -360,7 +318,7 @@ class DeformNet(torch.nn.Module):
                     # Mark invalid nodes
                     valid_nodes_mask_i[node_ids_for_removal] = False
 
-                    # Kepp only nodes and edges for valid nodes
+                    # Keep only nodes and edges for valid nodes
                     graph_nodes_i = graph_nodes_i[valid_nodes_mask_i.squeeze()]
                     graph_edges_i = graph_edges_i[valid_nodes_mask_i.squeeze()]
                     graph_edges_weights_i = graph_edges_weights_i[valid_nodes_mask_i.squeeze()]
@@ -460,10 +418,12 @@ class DeformNet(torch.nn.Module):
                 source_points_i = source_points_i[valid_correspondences_idxs[0], valid_correspondences_idxs[1], :].view(
                     -1, 3, 1)
 
-                source_anchors_i = pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1],
-                                   :]  # (match_count, 4)
-                source_weights_i = pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1],
-                                   :]  # (match_count, 4)
+                # dims: (match_count, 4)
+                source_anchors_i = \
+                    pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]
+                # dims: (match_count, 4)
+                source_weights_i = \
+                    pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]
 
                 num_points = source_points_i.shape[0]
 

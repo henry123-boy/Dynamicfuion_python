@@ -398,13 +398,13 @@ def check_graph_data_against_ground_truth(seq_dir: str, ground_truth_pair_name: 
                                                 ground_truth_pair_name + "_{}_{:.2f}.bin".format("geodesic",
                                                                                                  node_coverage))
 
-    assert np.array_equal(node_coords, dio.load_graph_nodes(gt_output_graph_nodes_path))
+    assert np.array_equal(node_coords, dio.load_graph_nodes_or_deformations(gt_output_graph_nodes_path))
     assert np.array_equal(graph_edges, dio.load_graph_edges(gt_output_graph_edges_path))
     assert np.array_equal(graph_edges_weights, dio.load_graph_edges_weights(gt_output_graph_edges_weights_path))
     assert np.array_equal(graph_clusters, dio.load_graph_clusters(gt_output_graph_clusters_path))
 
     if node_deformations is not None:
-        assert np.allclose(node_deformations, dio.load_graph_node_deformations(gt_output_node_deformations_path))
+        assert np.allclose(node_deformations, dio.load_graph_nodes_or_deformations(gt_output_node_deformations_path))
     if pixel_anchors is not None:
         assert np.array_equal(pixel_anchors, dio.load_int_image(gt_output_pixel_anchors_path))
     if pixel_weights is not None:

@@ -3,7 +3,7 @@ model:
     # flow_net part will be loaded.
     model_module_to_load: full_model
     # Name of the pre-trained model to use.
-    model_name: model_A
+    model_name: flow
     # Iteration number of the model to load.
     model_iteration: 0
 alignment:
@@ -39,7 +39,7 @@ deform_net:
     # deformed points.
     gn_max_warped_points: 100000
     # Print telemetry info during the Gauss-Newton optimization.
-    gn_debug: true
+    gn_debug: false
     # Print timing information for each term and the composite during the Gauss-Newton optimization.
     gn_print_timings: false
     # Use edge weight information within the ARAP energy term during the Gauss-Newton optimization.
