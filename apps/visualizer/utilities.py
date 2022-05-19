@@ -45,3 +45,15 @@ def correspondence_info_is_present(start_frame_ix, output_path):
     return start_frame_vcm_filename in all_filenames \
            and start_frame_pm_filename in all_filenames \
            and start_frame_tm_filename in all_filenames
+
+
+def graph_info_is_present(start_frame_ix: int, output_path: Path) -> bool:
+    start_frame_nodes_filename = f"{start_frame_ix:06d}_nodes.npy"
+    start_frame_edges_filename = f"{start_frame_ix:06d}_edges.npy"
+    start_frame_rotations_filename = f"{start_frame_ix:06d}_rotations.npy"
+    start_frame_translations_filename = f"{start_frame_ix:06d}_translations.npy"
+    all_filenames = os.listdir(output_path)
+    return start_frame_nodes_filename in all_filenames \
+        and start_frame_edges_filename in all_filenames \
+        and start_frame_rotations_filename in all_filenames \
+        and start_frame_translations_filename in all_filenames

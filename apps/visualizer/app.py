@@ -14,6 +14,7 @@ from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh, MeshColorMode
 from apps.visualizer.point_cloud import PointCloud, PointColorMode
 from apps.visualizer.correspondence_line_set import CorrespondenceColorMode, CorrespondenceLineSet
+from apps.visualizer.graph import Graph
 
 
 class VisualizerApp(App):
@@ -83,6 +84,12 @@ class VisualizerApp(App):
         if self.have_correspondence_info:
             self.correspondence_set = CorrespondenceLineSet(self.renderer, self.render_window,
                                                             colors.GetColor3d("Grey"))
+
+        # graph setup
+        self.have_graph_info = utilities.graph_info_is_present(self.start_frame_ix, output_path)
+        self.graph = None
+        if self.have_graph_info:
+            self.graph = Graph(self.renderer, self.render_window, colors.GetColor3d("Green"))
 
         # text setup
         self.text_mapper = vtk.vtkTextMapper()
@@ -202,6 +209,12 @@ class VisualizerApp(App):
                                            self.output_path / f"{i_frame:06d}_valid_correspondence_mask.npy",
                                            self.output_path / f"{i_frame:06d}_prediction_mask.npy")
 
+    def load_frame_graph(self, i_frame):
+        if self.graph is not None:
+            self.graph.update(self.output_path / f"{i_frame:06d}_nodes.npy",
+                              self.output_path / f"{i_frame:06d}_edges.npy",
+                              self.output_path / f"{i_frame:06d}_translations.npy")
+
     def launch(self):
         # Start the event loop.
         self.interactor.Start()
@@ -256,6 +269,7 @@ class VisualizerApp(App):
         self.load_frame_meshes(i_frame)
         self.load_frame_point_clouds(i_frame)
         self.load_frame_correspondences(i_frame)
+        self.load_frame_graph(i_frame)
         self.current_frame = i_frame
 
         self.update_text()
@@ -477,6 +491,11 @@ class VisualizerApp(App):
             self.retreat_point_cloud()
         elif key == "Down":
             self.advance_point_cloud()
+        # ==== graph controls =================
+        elif key == "g":
+            if self.graph is not None:
+                self.graph.toggle_visibility()
+                self.render_window.Render()
         # ==== modifier keys ==================
         elif key == "Alt_L" or key == "Alt_R":
             self.__alt_pressed = True
@@ -516,3 +535,5 @@ class VisualizerApp(App):
                                   f"Point color mode: {self.point_color_mode.name:s}\n"
                                   f"Visible correspondences: {visible_correspondence_percentage}%\n"
                                   f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
+
+
