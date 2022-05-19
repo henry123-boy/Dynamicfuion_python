@@ -21,6 +21,7 @@ import numpy as np
 import torch
 
 import kornia
+
 if kornia.__version__ >= '0.5.0':
     import kornia.geometry.conversions as kornia
 
@@ -186,7 +187,7 @@ class PointCloudAlignmentOptimizer:
 
         timer_system_start = timer()
 
-        # Compute A = J^TJ and b = -J^Tr.
+        # Compute A = (J^T)J and b = -(J^T)r.
         jacobian_transpose = torch.transpose(jacobian, 0, 1)
         A = torch.matmul(jacobian_transpose, jacobian)
         b = torch.matmul(-jacobian_transpose, residual)
@@ -418,6 +419,7 @@ class PointCloudAlignmentOptimizer:
                                            translations_current: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         timer_arap_start = timer()
 
+        # TODO: initialize somewhere else and zero out here instead to avoid extra memory allocations + deallocations
         jacobian_arap = torch.zeros((batch_edge_count * 3, opt_num_nodes_i * 6), dtype=arap_one_vec.dtype,
                                     device=arap_one_vec.device)  # (batch_edge_count*3, opt_num_nodes_i*6)
 
@@ -440,41 +442,47 @@ class PointCloudAlignmentOptimizer:
         lambda_arap = self.lambda_arap
 
         # Compute residual.
+        # Rotated edges (between nodes)
         rotated_node_delta = torch.matmul(rotations_current[node_idxs_0], nodes_1 - nodes_0)  # (batch_edge_count, 3)
+        # node 0 + node 0 translation + rotated edge to node 1 = node 0 current position + rotated edge to node 1
+        #                        vs.
+        # node 1 + node 1 translation = node 1 current position
         residuals_arap = lambda_arap * w_repeat * (rotated_node_delta + nodes_0 + translations_current[node_idxs_0]
                                                    - (nodes_1 + translations_current[node_idxs_1]))
         residuals_arap = residuals_arap.view(batch_edge_count * 3, 1)
 
         # Compute jacobian wrt. translations.
-        jacobian_arap[
-            arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 0] += lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[
-            arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 1] += lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[
-            arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 2] += lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 0] += \
+            lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 1] += \
+            lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 2] += \
+            lambda_arap * w * arap_one_vec  # (batch_edge_count)
 
-        jacobian_arap[
-            arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 0] += -lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[
-            arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 1] += -lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[
-            arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 2] += -lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 0] += \
+            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 1] += \
+            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 2] += \
+            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
 
-        # Compute jacobian wrt. rotations.
+        # Compute Jacobian wrt. rotations.
         # Derivative wrt. R_1 is equal to 0.
-        skew_symetric_mat_arap = -lambda_arap * w_repeat_repeat * \
-                                 torch.matmul(self.vec_to_skew_mat, rotated_node_delta).view(batch_edge_count, 3,
-                                                                                             3)  # (batch_edge_count, 3, 3)
+        skew_symmetric_mat_arap = \
+            -lambda_arap * w_repeat_repeat * \
+            torch.matmul(self.vec_to_skew_mat, rotated_node_delta).view(
+                batch_edge_count, 3, 3
+            )  # (batch_edge_count, 3, 3)
 
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 0, 0]
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 0, 1]
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 0, 2]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 1, 0]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 1, 1]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 1, 2]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 0] += skew_symetric_mat_arap[:, 2, 0]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 1] += skew_symetric_mat_arap[:, 2, 1]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 2] += skew_symetric_mat_arap[:, 2, 2]
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 0, 0]
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 0, 1]
+        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 0, 2]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 1, 0]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 1, 1]
+        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 1, 2]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 2, 0]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 2, 1]
+        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 2, 2]
 
         assert torch.isfinite(jacobian_arap).all(), jacobian_arap
 
