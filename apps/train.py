@@ -1,3 +1,4 @@
+import gc
 import os
 import argparse
 from datetime import datetime
@@ -453,6 +454,9 @@ if __name__ == "__main__":
                     snapshot_manager.save_model(model, iteration_number)
 
                 iteration_number = iteration_number + 1
+
+            gc.collect()
+            torch.cuda.empty_cache()
 
             print()
             print("Epoch {} complete".format(epoch))

@@ -113,10 +113,22 @@ class DeformNetParameters(ParameterEnum):
                   arg_help="During alignment, keep only those matches for which the mask prediction is above a "
                            "threshold (Only applies if evaluating, must be disabled for generation).")
     threshold = \
-        Parameter(default=0.30, arg_type=float,
+        Parameter(default=0.35, arg_type=float,
                   arg_help="During alignment, keep only those matches for which the mask prediction is above this "
                            "threshold (Only applies if evaluating, must be disabled for generation). "
                            "Used only when threshold_mask_predictions is passed in / set to True")
+    enforce_bidirectional_consistency = \
+        Parameter(default=False, arg_type='bool_flag',
+                  arg_help="Re-weight the correspondences based on bidirectional consistency (see "
+                           "bidirectional_consistency_threshold).")
+    bidirectional_consistency_threshold = \
+        Parameter(default=0.20, arg_type=float,
+                  arg_help="In meters, the bidirectional consistency error which will be used to filter out a "
+                           "correspondence. Each point is transformed using keyframe/canonical<--->current frame "
+                           "correspondence, then a backward correspondence is computed from the current to the "
+                           "keyframe/canonical frame for all projected points. Ideally, each point should end up"
+                           "at its origin. If the back-projection results in a displacement from the origin higher"
+                           "than this threshold, the correspondence is rejected.")
     patchwise_threshold_mask_predictions = \
         Parameter(default=False, arg_type='bool_flag',
                   arg_help="Use patch-wise threshold when applying mask during the alignment process instead of the "

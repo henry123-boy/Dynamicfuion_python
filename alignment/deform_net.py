@@ -12,6 +12,65 @@ from settings import DeformNetParameters, AlignmentParameters
 from alignment.mask_net import MaskNet
 
 
+def make_pixel_coordinate_grid(image_height: int, image_width: int, batch_count: int,
+                               device: torch.device) -> torch.Tensor:
+    x_coords = torch.arange(image_width, dtype=torch.float32, device=device) \
+        .unsqueeze(0).expand(image_height, image_width).unsqueeze(0)
+    y_coords = torch.arange(image_height, dtype=torch.float32, device=device) \
+        .unsqueeze(1).expand(image_height, image_width).unsqueeze(0)
+
+    xy_coords = torch.cat([x_coords, y_coords], 0)
+    xy_coords = xy_coords.unsqueeze(0).repeat(batch_count, 1, 1, 1)  # (bs, 2, 448, 640)
+    return xy_coords
+
+
+def project_using_correspondences(points: torch.Tensor, xy_pixels_warped: torch.Tensor, intrinsics: torch.Tensor,
+                                  image_height: int, image_width: int) -> torch.Tensor:
+    # ==== project points using correspondences ===
+    # note: z-coordinate remains the same
+    # x_proj = (z * u_warped - c_x) / f_x
+    # y_proj = (z * v_warped - c_y) / f_y
+    # z_proj = z
+    points_z = points[:, 2, :, :].view(-1, 1, image_height, image_width)
+    c_xy = intrinsics[:, 2:].view(-1, 2, 1, 1)
+    f_xy = intrinsics[:, :2].view(-1, 2, 1, 1)
+    return torch.cat((points_z * (xy_pixels_warped - c_xy) / f_xy, points_z), 1)
+
+
+def flow_bidirectional_projection_error(points: torch.Tensor, pixel_flow_forward: torch.Tensor,
+                                        pixel_flow_back: torch.Tensor, intrinsics: torch.Tensor,
+                                        image_height: int, image_width: int, batch_count: int):
+    z_source = points[:, 2, :, :].view(-1, 1, image_height, image_width)
+    flow_forward_and_back = pixel_flow_forward + pixel_flow_back
+    f_xy = intrinsics[:, :2].view(-1, 2, 1, 1)
+
+    flow_camera_space = flow_forward_and_back * z_source / f_xy
+    return torch.linalg.vector_norm(flow_camera_space, axis=1)
+
+
+def compute_flow_pixel_and_normalized_targets(flow: torch.Tensor, image_height: int, image_width: int,
+                                              batch_count: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    ########################################################################
+    # region Apply dense flow to warp the source points to target frame.
+    ########################################################################
+    xy_coords = make_pixel_coordinate_grid(image_height, image_width, batch_count, flow.device)
+
+    # Apply the flow to pixel coordinates.
+    xy_coords_warped = xy_coords + flow
+    xy_pixels_warped = xy_coords_warped.clone()
+
+    # Normalize the flow coordinates to be between -1 and 1 (i.e. camera-space).
+    # Since we use "align_corners=False" during interpolation above, the boundaries of corner pixels
+    # are -1 and 1, not their centers.
+    xy_coords_warped[:, 0, :, :] = (xy_coords_warped[:, 0, :, :]) / (image_width - 1)
+    xy_coords_warped[:, 1, :, :] = (xy_coords_warped[:, 1, :, :]) / (image_height - 1)
+    xy_coords_warped = xy_coords_warped * 2 - 1
+
+    # Permute the warped coordinates to fit the grid_sample format.
+    xy_coords_warped = xy_coords_warped.permute(0, 2, 3, 1)
+    return xy_pixels_warped, xy_coords_warped
+
+
 class DeformNet(nn.Module):
 
     # TODO: to provide looser coupling, instead of passing in a TelemetryGenerator here, have a boolean parameter to
@@ -92,14 +151,23 @@ class DeformNet(nn.Module):
         source_color = torch.clone(source[:, :3, :, :])
         target_color = torch.clone(target[:, :3, :, :])
 
-        flow2, flow3, flow4, flow5, flow6, features2, xy_pixels_warped, xy_coords_warped = \
-            self.apply_flow_net(source_color, target_color, image_height, image_width, batch_count)
+        # features2: 2nd features layer of the encoder
+        flow, flow2, flow3, flow4, flow5, flow6, features2 = \
+            self.apply_flow_net(source_color, target_color, image_height, image_width)
+
+        # xy_pixels_warped: 2D correspondence flow-field grid in raw, pixel coordinates,
+        #   each vector represents the pixel coordinate + flow vector
+        # xy_coords_warped: 2D correspondence flow-field grid in camera-space coordinates, i.e. -1 to 1 in
+        #   both x & y axes; each vector represents the (normalized) pixel coordinate + flow vector
+        xy_pixels_warped, xy_coords_warped = \
+            compute_flow_pixel_and_normalized_targets(flow, image_height, image_width, batch_count)
 
         source_points = source[:, 3:, :, :].clone()
         source_colors = source[:, :3, :, :].clone()
 
-        valid_source_points, target_matches, valid_target_matches, valid_correspondences, valid_correspondence_counts = \
-            self.construct_point_to_point_correspondences(source_points, target, pixel_anchors, xy_coords_warped)
+        target_points = target[:, 3:, :, :].clone()  # get only 3D coordinates
+        valid_source_points, target_matches, valid_target_matches, correspondence_mask, valid_correspondence_counts = \
+            self.construct_point_to_point_correspondences(source_points, target_points, pixel_anchors, xy_coords_warped)
 
         mask_net_prediction = None
         # Initialize correspondence weights with 1's. We might overwrite them with MaskNet-predicted weights next.
@@ -112,6 +180,19 @@ class DeformNet(nn.Module):
             mask_net_prediction, correspondence_weights = \
                 self.apply_mask_net(evaluate, target[:, :3, :, :].clone(), xy_coords_warped,
                                     source, target_matches, features2, batch_count, image_height, image_width)
+
+        ################################################################################################################
+        # Enforce bidirectional correspondence consistency
+        ################################################################################################################
+        if DeformNetParameters.enforce_bidirectional_consistency.value:
+            flow_back, _, _, _, _, _, _ = self.apply_flow_net(target_color, source_color, image_height, image_width)
+            projection_error = flow_bidirectional_projection_error(source_points, flow, flow_back, intrinsics,
+                                                                   image_height, image_width, batch_count)
+            bidirectional_correspondence_mask = \
+                (projection_error < DeformNetParameters.bidirectional_consistency_threshold.value)
+            correspondence_mask = correspondence_mask & bidirectional_correspondence_mask
+            correspondence_weights = torch.where(bidirectional_correspondence_mask, correspondence_weights,
+                                                 torch.zeros_like(correspondence_weights))
 
         ########################################################################
         # region Initialize graph structures.
@@ -203,7 +284,7 @@ class DeformNet(nn.Module):
             ###############################################################################################################
             # region Filter invalid matches.
             ###############################################################################################################
-            valid_correspondences_idxs = torch.where(valid_correspondences[i_batch])
+            valid_correspondences_idxs = torch.where(correspondence_mask[i_batch])
 
             source_points_filtered = source_points[i_batch].permute(1, 2, 0)
             source_points_filtered = source_points_filtered[valid_correspondences_idxs[0],
@@ -223,25 +304,26 @@ class DeformNet(nn.Module):
             correspondence_weights_filtered = correspondence_weights[
                 i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1]].view(
                 -1)  # (match_count)
-
-            source_anchors = pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1],
-                             :]  # (match_count, 4)
-            source_weights = pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1],
-                             :]  # (match_count, 4)
+            # (match_count, 4)
+            source_anchors = \
+                pixel_anchors[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]
+            # (match_count, 4)
+            source_weights = \
+                pixel_weights[i_batch, valid_correspondences_idxs[0], valid_correspondences_idxs[1], :]
 
             match_count = source_points_filtered.shape[0]
             # endregion
-            ###############################################################################################################
+            ############################################################################################################
             # region Generate weight info to estimate average weight.
-            ###############################################################################################################
+            ############################################################################################################
             weight_info = {
                 "total_corres_num": correspondence_weights_filtered.shape[0],
                 "total_corres_weight": float(correspondence_weights_filtered.sum())
             }
             # endregion
-            ###############################################################################################################
+            ############################################################################################################
             # region Randomly subsample matches, if necessary.
-            ###############################################################################################################
+            ############################################################################################################
             if split == "val" or split == "test":
                 max_num_matches = self.gn_max_matches_eval
             elif split == "train":
@@ -262,10 +344,10 @@ class DeformNet(nn.Module):
                 match_count = max_num_matches
             # endregion
 
-            ###############################################################################################################
+            ############################################################################################################
             # region Remove nodes if their corresponding clusters don't have enough correspondences
             # (Correspondences that have "bad" nodes as anchors will also be removed)
-            ###############################################################################################################
+            ############################################################################################################
             map_opt_nodes_to_complete_nodes_i = list(range(0, num_nodes_i))
             optimized_node_count = num_nodes_i
 
@@ -498,19 +580,16 @@ class DeformNet(nn.Module):
                 xy_coords_warped,
                 source_points, valid_source_points,
                 target_matches, valid_target_matches,
-                valid_correspondences, deformed_points_indices, deformed_points_subsampled
+                correspondence_mask, deformed_points_indices, deformed_points_subsampled
             ],
             "convergence_info": convergence_info,
             "weight_info": weight_info,
             "gn_point_clouds": gn_point_clouds
         }
 
-    def apply_flow_net(self, source_color: torch.Tensor, target_color: torch.Tensor,
-                       image_height: int, image_width: int, batch_count: int) -> \
-            Tuple[
-                torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor,
-                torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-            ]:
+    def apply_flow_net(self, source_color: torch.Tensor, target_color: torch.Tensor, image_height: int,
+                       image_width: int) \
+            -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         ########################################################################
         # region Compute dense flow from source to target.
         ########################################################################
@@ -523,52 +602,42 @@ class DeformNet(nn.Module):
         flow = 20.0 * torch.nn.functional.interpolate(input=flow2, size=(image_height, image_width), mode='bilinear',
                                                       align_corners=False)
         # endregion
+        return flow, flow2, flow3, flow4, flow5, flow6, features2
 
-        ########################################################################
-        # region Apply dense flow to warp the source points to target frame.
-        ########################################################################
-        x_coords = torch.arange(image_width, dtype=torch.float32, device=source_color.device) \
-            .unsqueeze(0).expand(image_height, image_width).unsqueeze(0)
-        y_coords = torch.arange(image_height, dtype=torch.float32, device=source_color.device) \
-            .unsqueeze(1).expand(image_height, image_width).unsqueeze(0)
-
-        xy_coords = torch.cat([x_coords, y_coords], 0)
-        xy_coords = xy_coords.unsqueeze(0).repeat(batch_count, 1, 1, 1)  # (bs, 2, 448, 640)
-
-        # Apply the flow to pixel coordinates.
-        xy_coords_warped = xy_coords + flow
-        xy_pixels_warped = xy_coords_warped.clone()
-
-        # Normalize to be between -1 and 1.
-        # Since we use "align_corners=False" during interpolation above, the boundaries of corner pixels
-        # are -1 and 1, not their centers.
-        xy_coords_warped[:, 0, :, :] = (xy_coords_warped[:, 0, :, :]) / (image_width - 1)
-        xy_coords_warped[:, 1, :, :] = (xy_coords_warped[:, 1, :, :]) / (image_height - 1)
-        xy_coords_warped = xy_coords_warped * 2 - 1
-
-        # Permute the warped coordinates to fit the grid_sample format.
-        xy_coords_warped = xy_coords_warped.permute(0, 2, 3, 1)
-
-        # endregion
-        return flow2, flow3, flow4, flow5, flow6, features2, xy_pixels_warped, xy_coords_warped
-
-    def construct_point_to_point_correspondences(self, source_points, target, pixel_anchors, xy_coords_warped) \
+    def construct_point_to_point_correspondences(self, source_points, target_points, pixel_anchors, xy_coords_warped) \
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Sample the target point cloud given the 2D correspondence / flow-field, compile filtering masks
+        :param source_points: source 3D point cloud of size (batch_size, 3, height, width)
+        :param target_points: target 3D point cloud of size (batch_size, 3, height, width)
+        :param pixel_anchors: array of per-pixel anchor node indices, size (batch_size, K, height, width)
+        :param xy_coords_warped: estimated 2D correspondence flow-field
+        :return: tuple in the form of:
+         (valid_source_points, target_matches, valid_target_matches, valid_correspondences, valid_correspondence_counts)
+            valid_source_points: boolean array of shape (bs, height, width), where "true" entries correspond to points 
+                from the source point cloud whose depth falls within the appropriate depth range, 
+                i.e. 0 < depth < max_depth, and all of whose anchors are valid (i.e. nodes have index >= 0)
+            target_matches: points from target point cloud sampled at the 2D correspondence flow-field grid
+            valid_target_matches: boolean array of shape (bs, height, width), where "true" fields correspond to 
+                target_matches points whose depth falls within the appropriate depth range (i.e. 0 < depth < max_depth)
+            valid_correspondences: boolean array of shape (bs, height, width) which is a logical combination of
+                valid_source_points and valid_target_matches 
+        """
         # Construct point-to-point correspondences between source <-> target points.
         # Mask out invalid source points.
-        source_anchor_validity = torch.all(pixel_anchors >= 0.0, dim=3)
+        source_anchor_validity = torch.all(pixel_anchors >= 0, dim=3)
 
         # Sample target points at computed pixel locations.
-        target_points = target[:, 3:, :, :].clone()  # get only 3D coordinates
+
         target_matches = torch.nn.functional.grid_sample(
             target_points, xy_coords_warped, mode=self._depth_sampling_mode, padding_mode='zeros', align_corners=False
         )
 
         # We filter out any boundary matches where any of the four pixels are invalid.
         # target_validity: mask for all points that are within the desired depth range
-        target_validity = ((target_points > 0.0) & (target_points <= self.gn_max_depth)).type(torch.float32)
+        target_point_validity = ((target_points > 0.0) & (target_points <= self.gn_max_depth)).type(torch.float32)
         target_matches_validity = torch.nn.functional.grid_sample(
-            target_validity, xy_coords_warped, mode="bilinear", padding_mode='zeros', align_corners=False
+            target_point_validity, xy_coords_warped, mode="bilinear", padding_mode='zeros', align_corners=False
         )
         # match validity mask
         target_matches_validity = target_matches_validity[:, 2, :, :] >= 0.999
@@ -591,8 +660,8 @@ class DeformNet(nn.Module):
                                                             align_corners=False)
 
         mask_input = torch.cat([source, target_rgb_warped, target_matches], 1)
-        mask_net_prediction: torch.Tensor = self.mask_net(features2, mask_input).view(batch_count, image_height,
-                                                                                      image_width)
+        mask_net_prediction: torch.Tensor = \
+            self.mask_net(features2, mask_input).view(batch_count, image_height, image_width)
         correspondence_weights = mask_net_prediction
 
         if evaluate:
