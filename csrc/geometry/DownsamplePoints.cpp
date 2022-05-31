@@ -21,7 +21,7 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry {
 
-open3d::core::Tensor DownsamplePointsByRadius(const open3d::core::Tensor& original_points, float radius) {
+open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, {original_points.GetLength(), 3});
 	o3c::Tensor downsampled_points;
@@ -29,7 +29,7 @@ open3d::core::Tensor DownsamplePointsByRadius(const open3d::core::Tensor& origin
 	return downsampled_points;
 }
 
-open3d::core::Tensor GridDownsamplePoints(const open3d::core::Tensor& original_points, float grid_cell_size) {
+open3d::core::Tensor GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, {original_points.GetLength(), 3});
 	o3c::Tensor downsampled_points;

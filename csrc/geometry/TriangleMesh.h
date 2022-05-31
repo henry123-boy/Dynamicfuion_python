@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 2/25/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/31/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
 #pragma once
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::geometry{
+namespace nnrt::geometry {
 
-open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius);
-open3d::core::Tensor GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size);
+class TriangleMesh {
+public:
+	explicit TriangleMesh(const open3d::core::Tensor& points);
+};
 
 } // nnrt::geometry

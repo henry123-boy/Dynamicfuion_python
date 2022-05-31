@@ -120,7 +120,6 @@ set(NNRT_SOURCE_FILES
     core/kernel/KdTree.cpp
     core/kernel/BuildKdTreeImpl.h
     core/kernel/SearchKdTreeImpl.h
-    core/kernel/DownsampleKdTreeImpl.h
     core/kernel/KdTreeCPU.cpp
     core/kernel/KdTreeCUDA.cu
 
@@ -154,7 +153,7 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCUDA.h
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
-    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h)
+    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h geometry/TriangleMesh.cpp geometry/TriangleMesh.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

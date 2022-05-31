@@ -21,6 +21,7 @@
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
 #include "geometry/Comparison.h"
+#include "geometry/DownsamplePoints.h"
 #include "geometry.h"
 
 
@@ -35,10 +36,10 @@ void pybind_geometry(py::module& m) {
 			"geometry", "Open3D-tensor-based geometry defining module.");
 
 	pybind_geometry_enums(m_submodule);
-	pybind_geometry_extended_tsdf_voxelgrid(m_submodule);
+	pybind_geometry_extended_tsdf_voxel_grid(m_submodule);
 	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
-
+	pybind_geometry_downsampling(m_submodule);
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
@@ -49,7 +50,7 @@ void pybind_geometry_enums(pybind11::module& m) {
 
 // #define USE_BASE_CLASS_TEMPLATE_PARAMETER
 
-void pybind_geometry_extended_tsdf_voxelgrid(pybind11::module& m) {
+void pybind_geometry_extended_tsdf_voxel_grid(pybind11::module& m) {
 #ifdef USE_BASE_CLASS_TEMPLATE_PARAMETER
 	// import has to be here in order to load the base class into python,
 	// otherwise there will be errors if the module isn't imported on the python end
@@ -217,6 +218,10 @@ void pybind_geometry_comparison(pybind11::module& m) {
 	m.def("compute_point_to_plane_distances",
 	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::PointCloud&>
 			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
+}
+
+void pybind_geometry_downsampling(pybind11::module& m) {
+	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a);
 }
 
 } // namespace nnrt

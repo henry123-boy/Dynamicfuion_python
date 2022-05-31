@@ -21,8 +21,6 @@
 #include "core/CPU/DeviceHeapCPU.h"
 #include "core/kernel/BuildKdTreeImpl.h"
 #include "core/kernel/SearchKdTreeImpl.h"
-#include "core/kernel/DownsampleKdTreeImpl.h"
-
 
 namespace nnrt::core::kernel::kdtree {
 
@@ -42,13 +40,6 @@ void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTra
 		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
 		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
 		const open3d::core::Tensor& reference_points);
-
-template
-void DecimateReferencePoints<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& decimated_points, open3d::core::Blob& index_data, int node_count,
-		const open3d::core::Tensor& reference_points, float downsampling_radius);
-
-
 
 
 } // nnrt::core::kernel::kdtree

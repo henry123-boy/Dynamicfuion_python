@@ -15,7 +15,7 @@ from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
-from nnrt import get_vertex_erosion_mask as erode_mesh_c
+from nnrt import get_vertex_erosion_mask as get_vertex_erosion_mask_c
 from nnrt import sample_nodes as sample_nodes_c
 from nnrt import compute_edges_shortest_path as compute_edges_shortest_path_c
 from nnrt import node_and_edge_clean_up as node_and_edge_clean_up_c
@@ -90,7 +90,10 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
     assert num_vertices > 0 and num_faces > 0
 
     # Erode mesh, to not sample unstable nodes on the mesh boundary.
-    non_eroded_vertices = erode_mesh_c(
+    # Legacy variable name in original NNRT code: valid_vertices
+    # Legacy name for get_vertex_erosion_mask/get_vertex_erosion_mask_c: erode_mesh/erode_mesh_c;
+    # naming is still inaccurate, since we're talking about getting the mask of remaining, rather than eroded, vertices
+    non_eroded_vertices = get_vertex_erosion_mask_c(
         vertices, faces, erosion_num_iterations, erosion_min_neighbors
     )
 
@@ -116,11 +119,10 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
     #########################################################################
     # Sample graph nodes.
     #########################################################################
-    valid_vertices = non_eroded_vertices
 
     # Sample graph nodes.
     node_coords, node_indices = sample_nodes_c(
-        vertices, valid_vertices,
+        vertices, non_eroded_vertices,
         node_coverage, use_only_valid_vertices,
         sample_random_shuffle
     )
@@ -149,7 +151,7 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
     #########################################################################
     # Compute edges between nodes.
 
-    visible_vertices = np.ones_like(valid_vertices)
+    visible_vertices = np.ones_like(non_eroded_vertices)
 
     graph_edges, graph_edge_weights, graph_edges_distances, node_to_vertex_distances = \
         compute_edges_shortest_path_c(

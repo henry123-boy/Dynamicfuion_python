@@ -2,7 +2,7 @@
 
 # experimental tsdf_management tsdf_management based on original NNRT code
 # Copyright 2021 Gregory Kramida
-from typing import Union
+from typing import Union, List
 import timeit
 
 # 3rd-party
@@ -85,6 +85,7 @@ class FusionPipeline:
 
         # === initialize structures ===
         self.active_graph: Union[GraphWarpFieldOpen3DNative, None] = None
+        self.keyframe_graphs: List[GraphWarpFieldOpen3DNative] = []
         self.volume = default_tsdf.make_default_tsdf_voxel_grid(self.device)
 
         #####################################################################################################

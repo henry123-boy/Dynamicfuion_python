@@ -112,9 +112,9 @@ fusion:
     sequence_preset: BERLIN_50_SOD_MASKS
     tracking:
         # How to generate the image source RGBD image pair for tracking/alignment toward the target image (next RGBD
-        # image pair in the sequence.)| Can be set to one of: ['REUSE_PREVIOUS_FRAME', 'RENDERED_ONLY',
+        # image pair in the sequence.)| Can be set to one of: ['IMAGE_ONLY', 'RENDERED_ONLY',
         # 'RENDERED_WITH_PREVIOUS_FRAME_OVERLAY']
-        source_image_mode: REUSE_PREVIOUS_FRAME
+        source_image_mode: IMAGE_ONLY
         # Method used to generate the graph inside the moving structures in the scene (i.e. a motion proxy data
         # structure that is used to store and play back the estimated surface motion).| Can be set to one of:
         # ['FIRST_FRAME_EXTRACTED_MESH', 'FIRST_FRAME_DEPTH_IMAGE', 'FIRST_FRAME_LOADED_GRAPH']

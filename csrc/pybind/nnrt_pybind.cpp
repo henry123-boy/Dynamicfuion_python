@@ -140,12 +140,12 @@ PYBIND11_MODULE(nnrt, m) {
 	      "vertex_positions_in"_a, "face_indices_in"_a, "node_indices_in"_a,
 	      "max_neighbor_count"_a, "node_coverage"_a, "enforce_total_num_neighbors"_a);
 
-
 	m.def("compute_edges_euclidean", &graph_proc::compute_edges_euclidean, "nodes"_a, "max_neighbor_count"_a,
 	      "Compute Euclidean edges between given graph nodes.\n"
 	      "The output is returned as an array of (node_count, max_neighbor_count), where row index represents a source node index and\n"
 	      "the row's entries, if >=0, represent destination node indices, ordered by euclidean distance between source and destination.");
 
+	// valid nodes mask
 	m.def("compute_pixel_anchors_shortest_path", py::overload_cast<const py::array_t<float>&,
 			      const py::array_t<int>&, const py::array_t<float>&, const py::array_t<int>&, py::array_t<int>&, py::array_t<float>&, int, int, float>(
 			&graph_proc::compute_pixel_anchors_shortest_path),
@@ -163,8 +163,15 @@ PYBIND11_MODULE(nnrt, m) {
 	      "node_to_vertex_distance"_a, "valid_nodes_mask"_a, "vertices"_a, "vertex_pixels"_a,
 	      "width"_a, "height"_a, "node_coverage"_a,
 	      "Compute anchor ids and skinning weights for every pixel using graph connectivity.\n");
-	
-	
+
+	m.def("compute_pixel_anchors_shortest_path",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, const py::array_t<int>&, int, float>(
+			      &graph_proc::compute_pixel_anchors_shortest_path),
+	      "point_image"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage"_a,
+	      "Finds pixel anchor nodes based on shortest path distance from point (in point image) to closest nodes by "
+	      "path distance. The shortest path distance between a vertex and a target node is computed by finding the closest"
+	      "node by euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
+	);
 
 	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float,
 			      py::array_t<int>&, py::array_t<float>&>(&graph_proc::compute_pixel_anchors_euclidean),
@@ -175,6 +182,16 @@ PYBIND11_MODULE(nnrt, m) {
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
 
+	// === vertex anchors
+	m.def("compute_vertex_anchors_shortest_path",
+	      py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, const py::array_t<int>&, int, float>(
+			      &graph_proc::compute_vertex_anchors_shortest_path),
+	      "vertices"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage"_a,
+	      "Finds vertex anchor nodes based on shortest path distance from point to closest nodes by path distance. "
+	      "The shortest path distance between a vertex and a target node is computed by finding the closest node by "
+	      "euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
+	);
+
 	m.def("compute_pixel_anchors_euclidean", py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, float>(
 			&graph_proc::compute_pixel_anchors_euclidean),
 	      "graph_nodes"_a, "point_image"_a, "node_coverage"_a);
@@ -184,6 +201,7 @@ PYBIND11_MODULE(nnrt, m) {
 	      "nodes that influence the corresponding point in the point_image. K is currently hard-coded to " STRINGIFY(GRAPH_K) ". \n"
 	      "\n The output pixel weights array of the same dimensions contains the corresponding node weights based "
 	      "\n on distance d from point to node: weight = e^( -d^(2) / (2*node_coverage^(2)) ).");
+	// ===
 
 
 	m.def("node_and_edge_clean_up", &graph_proc::node_and_edge_clean_up,
@@ -213,23 +231,4 @@ PYBIND11_MODULE(nnrt, m) {
 	      "point_image"_a, "x_nodes"_a, "y_nodes"_a,
 	      "edge_threshold"_a, "node_coverage"_a, "max_depth"_a,
 	      "Samples graph uniformly in pixel space, and computes pixel anchors");
-
-	m.def("compute_vertex_anchors_shortest_path",
-	      py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, const py::array_t<int>&, int, float>(
-			      &graph_proc::compute_vertex_anchors_shortest_path),
-			      "vertices"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage"_a,
-			      "Finds vertex anchor nodes based on shortest path distance from point to closest nodes by path distance. "
-				  "The shortest path distance between a vertex and a target node is computed by finding the closest node by "
-				  "euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
-		  );
-	m.def("compute_pixel_anchors_shortest_path",
-	      py::overload_cast<const py::array_t<float>&, const py::array_t<float>&, const py::array_t<int>&, int, float>(
-			      &graph_proc::compute_pixel_anchors_shortest_path),
-	      "point_image"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage"_a,
-	      "Finds pixel anchor nodes based on shortest path distance from point (in point image) to closest nodes by "
-		  "path distance. The shortest path distance between a vertex and a target node is computed by finding the closest"
-		  "node by euclidean distance as the first waypoint, then finding the shortest path from that node to the target node."
-	);
-
-
 }

@@ -9,7 +9,6 @@ def load_intrinsic_3x3_matrix_from_text_4x4_matrix(path_matrix: str) -> np.ndarr
 
 
 def load_intrinsic_matrix_entries_from_text_4x4_matrix(path_matrix: str) -> Tuple[float, float, float, float]:
-    print(path_matrix)
     intrinsic_matrix = np.loadtxt(path_matrix)
     fx = intrinsic_matrix[0, 0]
     fy = intrinsic_matrix[1, 1]

@@ -73,23 +73,6 @@ void FindKNearestKdTreePoints<NeighborTrackingStrategy::PRIORITY_QUEUE>(
 );
 
 
-void DecimateReferencePoints(open3d::core::Tensor& decimated_points, open3d::core::Blob& index_data, int node_count,
-                             const open3d::core::Tensor& reference_points, float downsampling_radius) {
-	core::InferDeviceFromEntityAndExecute(
-			reference_points,
-			[&] {
-				DecimateReferencePoints<o3c::Device::DeviceType::CPU>(decimated_points, index_data, node_count,
-																	  reference_points, downsampling_radius); },
-			[&] {
-				NNRT_IF_CUDA(
-						DecimateReferencePoints<o3c::Device::DeviceType::CUDA>(decimated_points, index_data, node_count,
-																			   reference_points, downsampling_radius);
-				);
-			}
-	);
-}
-
-
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const int index_length,
                          const open3d::core::Tensor& kd_tree_points, const int digit_length) {
 

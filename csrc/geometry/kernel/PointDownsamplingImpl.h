@@ -266,7 +266,8 @@ void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor
 
 	ComputeBinAverages<DeviceType>(device, bin_count, bins);
 
-	//TODO  MERGE BINS AS NECESSARY
+	//TODO  MERGE BINS AS NECESSARY -- there are some interesting ways to do this on a per-direction basis, but most likely will need to be run twice
+	// for some directions
 
 	o3c::ParallelFor(
 			device, bin_count / 2,

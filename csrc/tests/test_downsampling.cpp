@@ -51,7 +51,7 @@ void TestGridDownsampling(const o3c::Device& device) {
 	                                 1.40168875e-01, 2.65022850e+00, 0.00000000e+00, 3.76163363e+00,
 	                                 3.85235727e-01, 0.00000000e+00};
 	o3c::Tensor points(point_data, {30, 3}, o3c::Dtype::Float32, device);
-	auto downsampled_points = geometry::GridDownsamplePoints(points, 5.0);
+	auto downsampled_points = geometry::GridDownsample3DPoints(points, 5.0);
 	auto downsampled_points_data = downsampled_points.ToFlatVector<float>();
 	std::vector<Eigen::Vector3f> downsampled_points_eigen;
 	for (int i_point = 0; i_point < downsampled_points.GetLength(); i_point++) {
