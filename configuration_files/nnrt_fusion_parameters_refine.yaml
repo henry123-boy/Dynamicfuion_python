@@ -125,10 +125,10 @@ fusion:
         # influence of the graph on the estimated surface.| Can be set to one of: ['EUCLIDEAN', 'SHORTEST_PATH',
         # 'PRECOMPUTED']
         pixel_anchor_computation_mode: PRECOMPUTED
-        # Interval over which to perform alignment for tracking objects. ZERO_TO_T mode will make the program track
-        # between the first frame and each incoming sequence frame. T_MINUS_ONE_TO_T will make it track between each
-        # consecutive pair of frames.| Can be set to one of: ['ZERO_TO_T', 'T_MINUS_ONE_TO_T']
-        tracking_span_mode: ZERO_TO_T
+        # Interval over which to perform alignment for tracking objects. FIRST_TO_CURRENT mode will make the program track
+        # between the first frame and each incoming sequence frame. PREVIOUS_TO_CURRENT will make it track between each
+        # consecutive pair of frames.| Can be set to one of: ['FIRST_TO_CURRENT', 'PREVIOUS_TO_CURRENT']
+        tracking_span_mode: FIRST_TO_CURRENT
     integration:
         # Number of nodes used as anchors for point on a surface.
         anchor_node_count: 4

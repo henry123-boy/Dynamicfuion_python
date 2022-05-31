@@ -31,7 +31,7 @@ class VisualizationMode(Enum):
 
 
 class SourceImageMode(Enum):
-    REUSE_PREVIOUS_FRAME = 0
+    IMAGE_ONLY = 0
     RENDERED_ONLY = 1
     RENDERED_WITH_PREVIOUS_FRAME_OVERLAY = 2
 
@@ -48,8 +48,9 @@ class AnchorComputationMode(Enum):
 
 
 class TrackingSpanMode(Enum):
-    ZERO_TO_T = 0
-    T_MINUS_ONE_TO_T = 1
+    FIRST_TO_CURRENT = 0
+    PREVIOUS_TO_CURRENT = 1
+    KEYFRAME_TO_CURRENT = 2
 
 
 class MeshExtractionWeightThresholdingMode(Enum):
@@ -59,7 +60,7 @@ class MeshExtractionWeightThresholdingMode(Enum):
 
 class TrackingParameters(ParameterEnum):
     source_image_mode = \
-        Parameter(default=SourceImageMode.REUSE_PREVIOUS_FRAME, arg_type=SourceImageMode,
+        Parameter(default=SourceImageMode.IMAGE_ONLY, arg_type=SourceImageMode,
                   arg_help="How to generate the image source RGBD image pair for tracking/alignment toward the target "
                            "image (next RGBD image pair in the sequence.)")
     graph_generation_mode = \
@@ -71,10 +72,17 @@ class TrackingParameters(ParameterEnum):
                   arg_help="Method used to assign graph nodes as anchors to each pixel and compute their weights, "
                            "which control the influence of the graph on the estimated surface.")
     tracking_span_mode = \
-        Parameter(default=TrackingSpanMode.ZERO_TO_T, arg_type=TrackingSpanMode,
-                  arg_help="Interval over which to perform alignment for tracking objects. ZERO_TO_T mode will make "
-                           "the program track between the first frame and each incoming sequence frame. "
-                           "T_MINUS_ONE_TO_T will make it track between each consecutive pair of frames.")
+        Parameter(default=TrackingSpanMode.KEYFRAME_TO_CURRENT, arg_type=TrackingSpanMode,
+                  arg_help="Interval over which to perform alignment for tracking objects. FIRST_TO_CURRENT mode will "
+                           "make the program track between the first frame and each incoming sequence frame. "
+                           "PREVIOUS_TO_CURRENT will make it track between each consecutive pair of frames."
+                           "KEYFRAME_TO_CURRENT will track between the latest keyframe and the current frame, keyframes"
+                           "being sampled sparsely from the sequence.")
+
+    keyframe_interval = \
+        Parameter(default=50, arg_type=int,
+                  arg_help="When KEYFRAME_TO_T tracking_span_mode is used, controls the uniform intervals between "
+                           "which keyframes are sampled.")
 
     mesh_extraction_weight_thresholding_mode = \
         Parameter(default=MeshExtractionWeightThresholdingMode.RAMP_UP_TO_CONSTANT,
