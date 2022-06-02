@@ -2,7 +2,7 @@
 
 # experimental tsdf_management tsdf_management based on original NNRT code
 # Copyright 2021 Gregory Kramida
-from typing import Union, List
+from typing import Union, List, Tuple
 import timeit
 
 # 3rd-party
@@ -43,7 +43,10 @@ PROGRAM_EXIT_FAIL = 1
 
 
 class FusionPipeline:
+
     def __init__(self):
+        FusionPipeline.perform_complex_logic_parameter_validation()
+
         viz_parameters = Parameters.fusion.telemetry.visualization
         log_parameters = Parameters.fusion.telemetry.logging
         verbosity_parameters = Parameters.fusion.telemetry.verbosity
@@ -93,7 +96,9 @@ class FusionPipeline:
         #####################################################################################################
         self.sequence: FrameSequenceDataset = Parameters.fusion.input_data.sequence_preset.value.value
         self.sequence.load()
-        first_frame = self.sequence.get_frame_at(0)
+        self.start_at_frame_index = max(self.sequence.start_frame_index,
+                                        Parameters.fusion.input_data.start_at_frame.value)
+        first_frame = self.sequence.get_frame_at(self.start_at_frame_index)
 
         intrinsics_open3d_cpu, self.intrinsic_matrix_np = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
             self.sequence.get_intrinsics_path(), first_frame.get_depth_image_path())
@@ -106,6 +111,8 @@ class FusionPipeline:
         self.intrinsics_open3d_device = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix,
                                                         o3d.core.Dtype.Float32, self.device)
         self.extrinsics_open3d_device = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, self.device)
+        # TODO: initialize cropper here -- you can already get the first frame
+        self.cropper: Union[None, StaticCenterCrop] = None
         # endregion
 
     def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int):
@@ -116,29 +123,28 @@ class FusionPipeline:
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
-        if self.framewise_warped_mesh_needed or \
-                FusionPipeline.current_frame_is_keyframe(frame_index):
+        if self.framewise_warped_mesh_needed or self.frame_is_keyframe(frame_index):
             warped_mesh = self.active_graph.warp_mesh(canonical_mesh)
 
         return canonical_mesh, warped_mesh
 
-    @staticmethod
-    def determine_mesh_extraction_threshold(frame_index: int) -> int:
+    def determine_mesh_extraction_threshold(self, frame_index: int) -> int:
+        frame_count = frame_index - self.start_at_frame_index
         tracking_parameters = Parameters.fusion.tracking
         if tracking_parameters.mesh_extraction_weight_thresholding_mode.value == \
                 MeshExtractionWeightThresholdingMode.CONSTANT:
             return tracking_parameters.mesh_extraction_weight_threshold.value
         else:
-            if frame_index < tracking_parameters.mesh_extraction_weight_threshold.value:
-                return frame_index
+            if frame_count < tracking_parameters.mesh_extraction_weight_threshold.value:
+                return frame_count
             else:
                 return tracking_parameters.mesh_extraction_weight_threshold.value
 
-    @staticmethod
-    def current_frame_is_keyframe(frame_index: int) -> bool:
+    def frame_is_keyframe(self, frame_index: int) -> bool:
+        frame_count = frame_index - self.start_at_frame_index
         tracking_parameters = Parameters.fusion.tracking
         return tracking_parameters.tracking_span_mode.value == TrackingSpanMode.KEYFRAME_TO_CURRENT and \
-               frame_index % tracking_parameters.keyframe_interval.value == 0
+               frame_count % tracking_parameters.keyframe_interval.value == 0
 
     def run(self) -> int:
         start_time = timeit.default_timer()
@@ -178,8 +184,8 @@ class FusionPipeline:
         warped_mesh: Union[None, o3d.geometry.TriangleMesh] = None
         keyframe_mesh: Union[None, o3d.geometry.TriangleMesh] = None
 
-        precomputed_anchors = None
-        precomputed_weights = None
+        saved_pixel_anchors: Union[None, o3d.core.Tensor] = None
+        saved_pixel_weights: Union[None, o3d.core.Tensor] = None
 
         # process sequence start/end bound parameters
         check_for_end_frame = Parameters.fusion.input_data.run_until_frame.value != -1
@@ -228,6 +234,8 @@ class FusionPipeline:
 
             # endregion
             if current_frame.frame_index == start_frame_index:
+                self.cropper = \
+                    StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device,
                                  self.extrinsics_open3d_device, depth_scale, sequence.far_clipping_distance)
@@ -236,9 +244,9 @@ class FusionPipeline:
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
 
-                precomputed_anchors, precomputed_weights = \
-                    self.initialize_graph_and_anchors(volume, device, sequence, current_frame, depth_image_np,
-                                                      mask_image_np)
+                saved_pixel_anchors, saved_pixel_weights = \
+                    self.initialize_graph_and_anchors(volume, device, sequence, current_frame.frame_index,
+                                                      depth_image_np, mask_image_np)
 
                 # TODO: save initial meshes somehow specially maybe (line below will extract)?
                 # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
@@ -272,11 +280,11 @@ class FusionPipeline:
                         source_depth[saved_mask_image_np] = saved_depth_image_np[saved_mask_image_np]
                         source_color[saved_mask_image_np] = saved_color_image_np[saved_mask_image_np]
 
-                source_point_image = image_processing.backproject_depth(source_depth, fx, fy, cx, cy,
-                                                                        depth_scale=depth_scale)  # (h, w, 3)
+                source_point_image_np = image_processing.backproject_depth(source_depth, fx, fy, cx, cy,
+                                                                           depth_scale=depth_scale)  # (h, w, 3)
 
                 source_rgbxyz, _, cropper = DeformDataset.prepare_pytorch_input(
-                    source_color, source_point_image, self.intrinsics_dict,
+                    source_color, source_point_image_np, self.intrinsics_dict,
                     alignment_image_height, alignment_image_width
                 )
                 # endregion
@@ -298,27 +306,15 @@ class FusionPipeline:
                     target_normal_map = cpu_compute_normal(target_point_image)
                 target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
 
-                # TODO outsource pixel_anchors & pixel_weights computation logic to a separate function
-                if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
-                    pixel_anchors, pixel_weights = nnrt.compute_pixel_anchors_euclidean(
-                        self.active_graph.nodes.cpu().numpy(), source_point_image, node_coverage
-                    )
-                elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
-                    if tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.FIRST_TO_CURRENT:
-                        raise ValueError(f"Illegal value: {AnchorComputationMode.__name__:s} "
-                                         f"{AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
-                                         f"{TrackingSpanMode.__name__} is set to {TrackingSpanMode.FIRST_TO_CURRENT}")
-                    pixel_anchors = precomputed_anchors
-                    pixel_weights = precomputed_weights
+                if tracking_parameters.pixel_anchor_computation_mode.value is not AnchorComputationMode.PRECOMPUTED or \
+                        tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT or \
+                        (tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT and
+                         self.frame_is_keyframe(current_frame.frame_index)):
+                    pixel_anchors, pixel_weights = \
+                        self.compute_pixel_anchors(source_point_image_np, device)
                 else:
-                    raise NotImplementedError(
-                        f"{AnchorComputationMode.__name__:s} '{tracking_parameters.pixel_anchor_computation_mode.name:s}' not "
-                        f"implemented for computation of pixel anchors & weights."
-                    )
-
-                # adjust anchor & weight maps to alignment input resolution
-                pixel_anchors = cropper(pixel_anchors)
-                pixel_weights = cropper(pixel_weights)
+                    pixel_anchors = saved_pixel_anchors
+                    pixel_weights = saved_pixel_weights
 
                 # endregion
                 #####################################################################################################
@@ -378,7 +374,7 @@ class FusionPipeline:
                 #####################################################################################################
                 canonical_mesh, warped_mesh = \
                     self.extract_and_warp_canonical_mesh_if_necessary(current_frame.frame_index)
-                if FusionPipeline.current_frame_is_keyframe(current_frame.frame_index):
+                if self.frame_is_keyframe(current_frame.frame_index):
                     keyframe_mesh = warped_mesh
 
                 telemetry_generator.process_result_visualization_and_logging(
@@ -407,15 +403,16 @@ class FusionPipeline:
 
     def initialize_graph_and_anchors(self, volume: nnrt.geometry.WarpableTSDFVoxelGrid,
                                      device: o3c.Device, sequence: FrameSequenceDataset,
-                                     current_frame: SequenceFrameDataset,
-                                     depth_image_np: numpy.ndarray, mask_image_np: numpy.ndarray):
+                                     frame_index: int,
+                                     depth_image_np: numpy.ndarray, mask_image_np: numpy.ndarray) \
+            -> Tuple[Union[None, o3c.Tensor], Union[None, o3c.Tensor]]:
         tracking_parameters = Parameters.fusion.tracking
         integration_parameters = Parameters.fusion.integration
         graph_parameters = Parameters.graph
         node_coverage = Parameters.graph.node_coverage.value
         deform_net_parameters = Parameters.deform_net
-        precomputed_anchors = None
-        precomputed_weights = None
+        precomputed_pixel_anchors = None
+        precomputed_pixel_weights = None
         if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
             canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy()
             canonical_mesh = o3d.t.geometry.TrinagleMesh.from_legacy(canonical_mesh_legacy, device=device)
@@ -426,9 +423,9 @@ class FusionPipeline:
         elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
             self.active_graph = sequence.get_current_frame_graph_warp_field(device)
             if self.active_graph is None:
-                raise ValueError(f"Could not load graph for frame {current_frame.frame_index}.")
+                raise ValueError(f"Could not load graph for frame {frame_index}.")
         elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
-            self.active_graph, _, precomputed_anchors, precomputed_weights = \
+            self.active_graph, _, precomputed_pixel_anchors, precomputed_pixel_weights = \
                 build_graph_warp_field_from_depth_image(
                     depth_image_np, mask_image_np,
                     intrinsic_matrix=self.intrinsic_matrix_np, device=device,
@@ -447,6 +444,53 @@ class FusionPipeline:
         else:
             raise NotImplementedError(
                 f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
+
         if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
-            precomputed_anchors, precomputed_weights = sequence.get_current_pixel_anchors_and_weights()
-        return precomputed_anchors, precomputed_weights
+            precomputed_pixel_anchors, precomputed_pixel_weights = sequence.get_current_pixel_anchors_and_weights()
+
+        if tracking_parameters.tracking_span_mode.value != TrackingSpanMode.PREVIOUS_TO_CURRENT and \
+                (precomputed_pixel_anchors is None or precomputed_pixel_weights is None):
+            depth_scale = deform_net_parameters.depth_scale.value
+            source_point_image = image_processing.backproject_depth(depth_image_np, self.fx, self.fy, self.cx, self.cy,
+                                                                    depth_scale=depth_scale)  # (h, w, 3)
+            return self.compute_pixel_anchors(source_point_image, device)
+
+        precomputed_pixel_anchors = self.cropper(precomputed_pixel_anchors)
+        precomputed_pixel_weights = self.cropper(precomputed_pixel_weights)
+        return o3c.Tensor(precomputed_pixel_anchors, device=device), o3c.Tensor(precomputed_pixel_weights,
+                                                                                device=device)
+
+    def compute_pixel_anchors(self, source_point_image: np.ndarray, device: o3c.Device) \
+            -> Tuple[o3c.Tensor, o3c.Tensor]:
+        tracking_parameters = Parameters.fusion.tracking
+        node_coverage = Parameters.graph.node_coverage.value
+        source_point_image_o3d = o3c.Tensor(source_point_image, device=device)
+
+        if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
+            pixel_anchors, pixel_weights = \
+                nnrt.geometry.compute_anchors_and_weights_euclidean(
+                    source_point_image_o3d, self.active_graph.nodes, 4, 0, node_coverage
+                )
+        elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
+            pixel_anchors, pixel_weights = \
+                nnrt.geometry.compute_anchors_and_weights_shortest_path(
+                    source_point_image_o3d, self.active_graph.nodes, 4, 0, node_coverage
+                )
+        else:
+            raise NotImplementedError(
+                f"{AnchorComputationMode.__name__:s} '{tracking_parameters.pixel_anchor_computation_mode.name:s}' not "
+                f"implemented for computation of pixel anchors & weights."
+            )
+        # adjust anchor & weight maps to alignment input resolution
+        pixel_anchors = self.cropper(pixel_anchors)
+        pixel_weights = self.cropper(pixel_weights)
+        return pixel_anchors, pixel_weights
+
+    @staticmethod
+    def perform_complex_logic_parameter_validation():
+        tracking_parameters = Parameters.fusion.tracking
+        if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED and \
+                tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.FIRST_TO_CURRENT:
+            raise ValueError(f"Illegal value: {AnchorComputationMode.__name__:s} "
+                             f"{AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
+                             f"{TrackingSpanMode.__name__} is set to {TrackingSpanMode.FIRST_TO_CURRENT}")

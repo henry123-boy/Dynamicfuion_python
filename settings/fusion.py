@@ -44,6 +44,7 @@ class GraphGenerationMode(Enum):
 
 class AnchorComputationMode(Enum):
     EUCLIDEAN = 0
+    SHORTEST_PATH = 1
     PRECOMPUTED = 2
 
 
