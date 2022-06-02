@@ -5,7 +5,6 @@ import open3d as o3d
 import open3d.core as o3c
 import pytest
 import numpy as np
-from warp_field.graph_warp_field import GraphWarpFieldNumpy, GraphWarpFieldOpen3DPythonic
 from nnrt.geometry import GraphWarpField
 
 
