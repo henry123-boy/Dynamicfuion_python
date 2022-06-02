@@ -204,19 +204,18 @@ def test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(device):
         vertices, faces, 10, 4
     )
 
-    visible_vertices = np.ones_like(non_eroded_vertices)
     node_coords, node_indices = nnrt.sample_nodes(
         vertices, non_eroded_vertices,
         node_coverage, True, False
     )
+
     graph_edges, graph_edge_weights, graph_edges_distances, node_to_vertex_distances = \
         nnrt.compute_edges_shortest_path(
-            vertices, visible_vertices, faces, node_indices,
+            vertices, faces, node_indices,
             4, node_coverage, True
         )
 
     nodes = vertices[node_indices.flatten()]
-    vertices = vertices[visible_vertices.flatten()]
     nodes_o3d = o3c.Tensor(nodes, device=device)
     vertices_o3d = o3c.Tensor(vertices, device=device)
     edges_o3d = o3c.Tensor(graph_edges, device=device)

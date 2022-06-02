@@ -84,8 +84,6 @@ set(NNRT_SOURCE_FILES
     geometry/DownsamplePoints.h
     geometry/DownsamplePoints.cpp
 
-    geometry/IndexedPointCloud.h
-
     string/split_string.h
     string/split_string.cpp
     string/join_string_separator.cpp
@@ -153,7 +151,7 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCUDA.h
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
-    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h geometry/TriangleMesh.cpp geometry/TriangleMesh.h)
+    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h geometry/TriangleMesh.cpp geometry/TriangleMesh.h geometry/FindKNearestNeighbors.cpp geometry/FindKNearestNeighbors.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -29,7 +29,7 @@ namespace o3u = open3d::utility;
 namespace nnrt::core {
 KdTree::KdTree(const open3d::core::Tensor& points)
 		: points(points),
-		  node_count(core::kernel::kdtree::FindBalancedTreeIndexLength((int)points.GetLength())),
+		  node_count(core::kernel::kdtree::FindBalancedTreeIndexLength((int) points.GetLength())),
 		  nodes(std::make_shared<open3d::core::Blob>(node_count * sizeof(kernel::kdtree::KdTreeNode), points.GetDevice())) {
 	auto dimensions = points.GetShape();
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
@@ -38,12 +38,12 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
 	if (points.GetLength() > std::numeric_limits<int32_t>::max() || points.GetLength() < 1) {
-		o3u::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
+		o3u::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.",
+		              std::numeric_limits<int32_t>::max(),
 		              points.GetLength());
 	}
 	kernel::kdtree::BuildKdTreeIndex(*this->nodes, this->node_count, this->points);
 }
-
 
 
 void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
@@ -57,8 +57,17 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 		              query_points.GetShape(), this->points.GetShape());
 	}
 	if (sort_output) {
-		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
-				*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+		if (k > 20) {
+			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
+					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+		} else {
+			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
+					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+
+			o3u::LogError("Not fully implemented: sort the resulting rows when rows are short."
+						  "Consult https://stackoverflow.com/questions/28150098/how-to-use-thrust-to-sort-the-rows-of-a-matrix"
+						  "for reference on how to use thrust in the CUDA kernel for this.");
+		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 				*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
@@ -76,11 +85,11 @@ std::string KdTree::GenerateTreeDiagram(int digit_length) const {
 	return diagram;
 }
 
-const kernel::kdtree::KdTreeNode* KdTree::GetNodes() const{
+const kernel::kdtree::KdTreeNode* KdTree::GetNodes() const {
 	return reinterpret_cast<const kernel::kdtree::KdTreeNode*>(this->nodes->GetDataPtr());
 }
 
-int64_t KdTree::GetNodeCount() const{
+int64_t KdTree::GetNodeCount() const {
 	return this->node_count;
 }
 
