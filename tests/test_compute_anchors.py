@@ -212,14 +212,14 @@ def test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(device):
     graph_edges, graph_edge_weights, graph_edges_distances, node_to_vertex_distances = \
         nnrt.compute_edges_shortest_path(
             vertices, visible_vertices, faces, node_indices,
-            8, node_coverage, True
+            4, node_coverage, True
         )
 
-    nodes = vertices[node_indices]
-    vertices = vertices[visible_vertices]
-    nodes_o3d = o3c.Tensor(nodes, device)
-    vertices_o3d = o3c.Tensor(vertices, device)
-    edges_o3d = o3c.Tensor(graph_edges, device)
+    nodes = vertices[node_indices.flatten()]
+    vertices = vertices[visible_vertices.flatten()]
+    nodes_o3d = o3c.Tensor(nodes, device=device)
+    vertices_o3d = o3c.Tensor(vertices, device=device)
+    edges_o3d = o3c.Tensor(graph_edges, device=device)
 
     legacy_vertex_anchors, legacy_vertex_weights = \
         nnrt.compute_vertex_anchors_shortest_path(vertices, nodes, graph_edges, anchor_count, node_coverage)
