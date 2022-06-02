@@ -41,141 +41,6 @@ def ground_truth_vertices() -> np.ndarray:
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_warp_mesh_numpy_mat(device, ground_truth_vertices):
-    mesh = o3d.geometry.TriangleMesh.create_box()
-    # increase number of iterations for a "pretty" twisted box mesh (test will fail, of course, due to wrong GT data)
-    mesh = mesh.subdivide_midpoint(number_of_iterations=1)
-
-    mesh.compute_vertex_normals()
-    nodes = np.array([
-        [0., 0., 0.],  # bottom
-        [1., 0., 0.],  # bottom
-        [0., 0., 1.],  # bottom
-        [1., 0., 1.],  # bottom
-        [0., 1., 0.],  # top
-        [1., 1., 0.],  # top
-        [0., 1., 1.],  # top
-        [1., 1., 1.]  # top
-    ], dtype=np.float32)
-
-    nodes += np.array([0.1, 0.2, 0.3])
-
-    edges = np.array([[1, 2, 4],
-                      [0, 5, 3],
-                      [0, 3, 6],
-                      [1, 2, 7],
-                      [0, 5, 6],
-                      [1, 4, 7],
-                      [2, 4, 7],
-                      [3, 5, 6]], dtype=np.int32)
-
-    graph_numpy = GraphWarpFieldNumpy(nodes, edges, np.array([1] * len(edges), dtype=np.float32),
-                                      np.array([0] * len(nodes), dtype=np.int32))
-
-    mesh_rotation_angle = math.radians(22.5)
-    global_rotation_matrix_top = np.array([[math.cos(mesh_rotation_angle), 0.0, math.sin(mesh_rotation_angle)],
-                                           [0., 1., 0.],
-                                           [-math.sin(mesh_rotation_angle), 0.0, math.cos(mesh_rotation_angle)]],
-                                          dtype=np.float32)
-    global_rotation_matrix_bottom = np.array([[math.cos(-mesh_rotation_angle), 0.0, math.sin(-mesh_rotation_angle)],
-                                              [0., 1., 0.],
-                                              [-math.sin(-mesh_rotation_angle), 0.0, math.cos(-mesh_rotation_angle)]],
-                                             dtype=np.float32)
-
-    nodes_center = nodes.mean(axis=0)
-    nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
-                                                   (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
-
-    # graph_numpy.rotations = np.stack([global_rotation_matrix_bottom] * 4 + [global_rotation_matrix_top] * 4)
-    # TODO why should rotations be flipped??? Should they be inverted during warping?
-    graph_numpy.rotations = np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4)
-    for i_node, (node, node_rotated) in enumerate(zip(nodes, nodes_rotated)):
-        graph_numpy.translations[i_node] = node_rotated - node
-
-    warped_mesh = graph_numpy.warp_mesh(mesh, 0.5)
-
-    visualize_results = False
-    if visualize_results:
-        o3d.visualization.draw_geometries([warped_mesh],
-                                          zoom=0.8,
-                                          front=[0.0, 0., 2.],
-                                          lookat=[0.5, 0.5, 0.5],
-                                          up=[0, 1, 0])
-    assert np.allclose(np.array(warped_mesh.vertices), ground_truth_vertices, atol=1e-6)
-
-
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_warp_mesh_open3d_pythonic_mat(device, ground_truth_vertices):
-    mesh_legacy = o3d.geometry.TriangleMesh.create_box()
-    mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
-    mesh_legacy.compute_vertex_normals()
-    nodes = np.array([
-        [0., 0., 0.],  # bottom
-        [1., 0., 0.],  # bottom
-        [0., 0., 1.],  # bottom
-        [1., 0., 1.],  # bottom
-        [0., 1., 0.],  # top
-        [1., 1., 0.],  # top
-        [0., 1., 1.],  # top
-        [1., 1., 1.]  # top
-    ], dtype=np.float32)
-    nodes += np.array([0.1, 0.2, 0.3])  # to make distances unique
-
-    nodes_o3d = o3c.Tensor(nodes, device=device)
-
-    edges = np.array([[1, 2, 4],
-                      [0, 5, 3],
-                      [0, 3, 6],
-                      [1, 2, 7],
-                      [0, 5, 6],
-                      [1, 4, 7],
-                      [2, 4, 7],
-                      [3, 5, 6]], dtype=np.int32)
-    edges_o3d = o3c.Tensor(edges, device=device)
-    edge_weights_o3d = o3c.Tensor(np.array([1] * len(edges)), device=device)
-    clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
-
-    graph_open3d = GraphWarpFieldOpen3DPythonic(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
-
-    mesh_rotation_angle = math.radians(22.5)
-    global_rotation_matrix_top = np.array([[math.cos(mesh_rotation_angle), 0.0, math.sin(mesh_rotation_angle)],
-                                           [0., 1., 0.],
-                                           [-math.sin(mesh_rotation_angle), 0.0, math.cos(mesh_rotation_angle)]],
-                                          dtype=np.float32)
-    global_rotation_matrix_bottom = np.array([[math.cos(-mesh_rotation_angle), 0.0, math.sin(-mesh_rotation_angle)],
-                                              [0., 1., 0.],
-                                              [-math.sin(-mesh_rotation_angle), 0.0, math.cos(-mesh_rotation_angle)]],
-                                             dtype=np.float32)
-
-    nodes_center = nodes.mean(axis=0)
-    nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
-                                                   (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
-
-    graph_open3d.rotations = o3c.Tensor(
-        np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
-        device=device)
-    translations = nodes_rotated - nodes
-    graph_open3d.translations = o3c.Tensor(translations, device=device)
-
-    mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
-
-    warped_mesh = graph_open3d.warp_mesh(mesh, 0.5)
-    warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
-    warped_mesh_legacy.compute_vertex_normals()
-
-    visualize_results = False
-    if visualize_results:
-        o3d.visualization.draw_geometries([warped_mesh_legacy],
-                                          zoom=0.8,
-                                          front=[0.0, 0., 2.],
-                                          lookat=[0.5, 0.5, 0.5],
-                                          up=[0, 1, 0])
-    new_vertices = np.array(warped_mesh_legacy.vertices)
-
-    assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)
-
-
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_warp_mesh_open3d_native(device, ground_truth_vertices):
     mesh_legacy = o3d.geometry.TriangleMesh.create_box()
     mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
@@ -255,7 +120,7 @@ def test_warp_mesh_2_open3d_native(device):
 
     input_mesh_legacy = o3d.io.read_triangle_mesh(str(test_data_path / "test_input_mesh.ply"))
 
-    gt_mesh_legacy : o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(test_data_path / "test_gt_mesh.ply"))
+    gt_mesh_legacy: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(str(test_data_path / "test_gt_mesh.ply"))
 
     nodes = np.load(str(test_data_path / "nodes.npy"))
     nodes_o3d = o3c.Tensor(nodes, device=device)
@@ -313,7 +178,8 @@ def test_get_node_extent_open3d_native(device):
 
     graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
 
-    list = graph_open3d.get_node_extent()
-    print(list)
+    # FIXME
+    ext = graph_open3d.get_node_extent()
+    print(ext)
 
     # assert np.allclose(new_vertices, ground_truth_vertices, atol=1e-6)

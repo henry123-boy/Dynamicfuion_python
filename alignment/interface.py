@@ -6,7 +6,7 @@ import torch.utils.dlpack
 import numpy as np
 
 from alignment.deform_net import DeformNet
-from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
+from nnrt.geometry import GraphWarpField
 
 
 def run_non_rigid_alignment(deform_net: DeformNet,
@@ -14,7 +14,7 @@ def run_non_rigid_alignment(deform_net: DeformNet,
                             target_rgbxyz: np.ndarray,
                             pixel_anchors: open3d.core.Tensor,
                             pixel_weights: open3d.core.Tensor,
-                            graph: GraphWarpFieldOpen3DNative,
+                            graph: GraphWarpField,
                             cropped_intrinsics: np.ndarray,
                             device: open3d.core.Device) -> dict:
     torch_device = torch.device(repr(device).lower())

@@ -28,7 +28,7 @@ from image_processing.numpy_cpu.preprocessing import cpu_compute_normal
 import image_processing
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 import tsdf.default_voxel_grid as default_tsdf
-from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative, build_deformation_graph_from_mesh
+from warp_field.graph_warp_field import build_deformation_graph_from_mesh
 from settings.fusion import SourceImageMode, VisualizationMode, \
     AnchorComputationMode, TrackingSpanMode, GraphGenerationMode, MeshExtractionWeightThresholdingMode
 from settings import Parameters
@@ -87,8 +87,8 @@ class FusionPipeline:
         self.device = o3d.core.Device('cuda:0')
 
         # === initialize structures ===
-        self.active_graph: Union[GraphWarpFieldOpen3DNative, None] = None
-        self.keyframe_graphs: List[GraphWarpFieldOpen3DNative] = []
+        self.active_graph: Union[nnrt.geometry.GraphWarpField, None] = None
+        self.keyframe_graphs: List[nnrt.geometry.GraphWarpField] = []
         self.volume = default_tsdf.make_default_tsdf_voxel_grid(self.device)
 
         #####################################################################################################
@@ -320,6 +320,8 @@ class FusionPipeline:
                 #####################################################################################################
                 # region === adjust intrinsic / projection parameters due to cropping ====
                 #####################################################################################################
+                # TODO: we assume entire sequence has same resolution. Just like making cropper in another TODO,
+                #   cropped intrinsics should be pre-computed in the __init__ method.
                 fx_cropped, fy_cropped, cx_cropped, cy_cropped = image_processing.modify_intrinsics_due_to_cropping(
                     fx, fy, cx, cy, alignment_image_height, alignment_image_width, original_h=cropper.h,
                     original_w=cropper.w
@@ -359,6 +361,9 @@ class FusionPipeline:
                     self.active_graph.rotations = nnrt.core.matmul3d(self.active_graph.rotations,
                                                                      node_rotation_predictions)
                     self.active_graph.translations += o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
+                elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
+                    raise NotImplementedError(f"graph handling for {TrackingSpanMode.KEYFRAME_TO_CURRENT} mode not"
+                                              f"yet implemented")
 
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(self.active_graph)

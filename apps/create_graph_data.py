@@ -11,7 +11,7 @@ import skimage.io
 
 from settings import Parameters
 import image_processing
-from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
+from nnrt.geometry import GraphWarpField
 
 from nnrt import compute_mesh_from_depth_and_flow as compute_mesh_from_depth_and_flow_c
 from nnrt import compute_mesh_from_depth as compute_mesh_from_depth_c
@@ -36,7 +36,7 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
                                             enable_visual_debugging: bool = False,
                                             node_coverage: float = 0.05,
                                             minimum_valid_anchor_count: int = 3) -> \
-        typing.Tuple[GraphWarpFieldOpen3DNative, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
+        typing.Tuple[GraphWarpField, typing.Union[None, np.ndarray], np.ndarray, np.ndarray]:
     # options
 
     node_coverage = Parameters.graph.node_coverage.value
@@ -289,10 +289,10 @@ def build_graph_warp_field_from_depth_image(depth_image: np.ndarray, mask_image:
     edge_weights_o3d = o3c.Tensor(graph_edge_weights, device=device)
     clusters_o3d = o3c.Tensor(graph_clusters.flatten(), device=device)
 
-    return GraphWarpFieldOpen3DNative(nodes_o3d, edges_o3d, edge_weights_o3d,
-                                      clusters_o3d, node_coverage=node_coverage,
-                                      threshold_nodes_by_distance=minimum_valid_anchor_count > 0,
-                                      minimum_valid_anchor_count=minimum_valid_anchor_count), \
+    return GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d,
+                          clusters_o3d, node_coverage=node_coverage,
+                          threshold_nodes_by_distance=minimum_valid_anchor_count > 0,
+                          minimum_valid_anchor_count=minimum_valid_anchor_count), \
            node_deformations, pixel_anchors, pixel_weights
 
 

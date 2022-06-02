@@ -15,7 +15,7 @@ import ext_argparse
 
 # local
 from data import SequenceFrameDataset, FrameSequenceDataset
-from warp_field.graph_warp_field import GraphWarpFieldOpen3DNative
+from nnrt.geometry import GraphWarpField
 from telemetry.visualization.fusion_visualization_recorder import FusionVisualizationRecorder
 
 import telemetry.visualization.tracking as tracking_viz
@@ -152,7 +152,7 @@ class TelemetryGenerator:
                               target_rgbxyz: np.ndarray,
                               pixel_anchors: np.ndarray,
                               pixel_weights: np.ndarray,
-                              graph: GraphWarpFieldOpen3DNative,
+                              graph: GraphWarpField,
                               additional_geometry: List = []):
         if self.visualization_mode == VisualizationMode.POINT_CLOUD_TRACKING:
             node_count = len(graph.nodes)
@@ -192,7 +192,7 @@ class TelemetryGenerator:
                                                  tracking_image_height: int, tracking_image_width: int,
                                                  source_rgbxyz: np.ndarray, target_rgbxyz: np.ndarray,
                                                  pixel_anchors: np.ndarray, pixel_weights: np.ndarray,
-                                                 graph: GraphWarpFieldOpen3DNative):
+                                                 graph: GraphWarpField):
         if self.visualization_mode == VisualizationMode.CANONICAL_MESH:
             self.process_canonical_mesh(canonical_mesh)
         elif self.visualization_mode == VisualizationMode.WARPED_MESH:
@@ -253,7 +253,7 @@ class TelemetryGenerator:
             self.save_frame_numpy_array(target_matches[0].cpu().numpy().reshape(3, -1).T, "target_matches")
             self.save_frame_numpy_array(prediction_mask[0].cpu().numpy(), "prediction_mask")
 
-    def process_graph_transformation(self, graph: GraphWarpFieldOpen3DNative):
+    def process_graph_transformation(self, graph: GraphWarpField):
         if self.record_graph_transformations:
             self.save_frame_numpy_array(graph.nodes.cpu().numpy(), "nodes")
             self.save_frame_numpy_array(graph.edges.cpu().numpy(), "edges")

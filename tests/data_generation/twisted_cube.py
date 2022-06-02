@@ -136,6 +136,7 @@ def main():
         print(re.sub(r'[\[\]]', '', np.array_str(intrinsics_open3d_cuda.cpu().numpy())), file=f)
 
     # setup deformation graph and subroutine
+    # FIXME : replace with GraphWarpField directly from nnrt package
     graph_open3d = GraphWarpFieldOpen3DPythonic(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
 
     def rotate_cube(current_mesh: o3d.geometry.TriangleMesh, angle: float) -> o3d.geometry.TriangleMesh:
