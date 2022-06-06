@@ -40,7 +40,7 @@ def ground_truth_vertices() -> np.ndarray:
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_warp_mesh_open3d_native(device, ground_truth_vertices):
+def test_warp_mesh(device, ground_truth_vertices):
     mesh_legacy = o3d.geometry.TriangleMesh.create_box()
     mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
     mesh_legacy.compute_vertex_normals()
@@ -113,7 +113,7 @@ def test_warp_mesh_open3d_native(device, ground_truth_vertices):
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_warp_mesh_2_open3d_native(device):
+def test_warp_mesh_2(device):
     test_path = Path(__file__).parent.resolve()
     test_data_path = test_path / "test_data" / "mesh_warping"
 
@@ -160,7 +160,44 @@ def test_warp_mesh_2_open3d_native(device):
 
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
-def test_get_node_extent_open3d_native(device):
+def test_warp_field_clone(device: o3c.Device) -> None:
+    nodes = np.array([
+        [0., 0., 0.],  # bottom
+        [1., 0., 0.],  # bottom
+        [0., 0., 1.],  # bottom
+        [1., 0., 1.],  # bottom
+        [0., 1., 0.],  # top
+        [1., 1., 0.],  # top
+        [0., 1., 1.],  # top
+        [1., 1., 1.]  # top
+    ], dtype=np.float32)
+    nodes += np.array([0.1, 0.2, 0.3])  # to make distances unique
+
+    nodes_o3d = o3c.Tensor(nodes, device=device)
+
+    edges = np.array([[1, 2, 4],
+                      [0, 5, 3],
+                      [0, 3, 6],
+                      [1, 2, 7],
+                      [0, 5, 6],
+                      [1, 4, 7],
+                      [2, 4, 7],
+                      [3, 5, 6]], dtype=np.int32)
+    edges_o3d = o3c.Tensor(edges, device=device)
+    edge_weights_o3d = o3c.Tensor(np.array([[1] * edges.shape[1]] * edges.shape[0]), device=device)
+    clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
+    node_coverage = 0.5
+    graph = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
+    graph.translations[0] += o3c.Tensor([0.2, 0.3, 0.4], dtype=o3c.Dtype.Float32, device=device)
+    gt_translation0 = graph.translations.cpu().numpy()[0]
+    clone_graph = graph.clone()
+    clone_graph.translations[0] += o3c.Tensor([0.4, 0.6, 0.2], dtype=o3c.Dtype.Float32, device=device)
+    translation0 = graph.translations.cpu().numpy()[0]
+    assert np.allclose(gt_translation0, translation0)
+
+
+@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def test_get_node_extent(device):
     test_path = Path(__file__).parent.resolve()
     test_data_path = test_path / "test_data" / "mesh_warping"
 

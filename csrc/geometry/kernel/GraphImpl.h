@@ -31,7 +31,9 @@
 
 using namespace open3d;
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 using namespace open3d::t::geometry::kernel;
+
 
 
 namespace nnrt::geometry::kernel::graph {
@@ -93,7 +95,8 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	NDArrayIndexer node_indexer(nodes, 1);
 	NDArrayIndexer edge_indexer(edges, 1);
 
-	o3c::AssertTensorShape(edges, {node_count, GRAPH_DEGREE});
+	o3c::AssertTensorShape(edges, {node_count, o3u::nullopt});
+	int graph_degree = static_cast<int>(edges.GetShape()[1]);
 
 	//output indexers
 	NDArrayIndexer anchor_indexer(anchors, 1);
@@ -110,7 +113,8 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 				auto anchor_weights = weight_indexer.template GetDataPtr<float>(workload_idx);
 
 				warp::FindAnchorsAndWeightsForPointShortestPath<TDeviceType>(anchor_indices, anchor_weights, anchor_count, node_count,
-				                                                              point, node_indexer, edge_indexer, node_coverage_squared);
+				                                                             point, node_indexer, edge_indexer, node_coverage_squared,
+																			 graph_degree);
 				// endregion
 			}
 	);

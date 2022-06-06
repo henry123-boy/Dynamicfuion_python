@@ -322,10 +322,23 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 	if (clusters_shape[0] != node_count) {
 		o3u::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
 	}
-	for (int i_node = 0; i_node < this->nodes.GetLength(); i_node++) {
-		rotations.Slice(0, i_node, i_node + 1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
-	}
+	this->ResetRotations();
 }
+
+//TODO: optimize by making some kind of clone method in KdTree that simply shifts all the KD node pointers instead of reindexing
+GraphWarpField::GraphWarpField(const GraphWarpField& original) :
+	nodes(original.nodes.Clone()),
+	edges(original.edges.Clone()),
+	edge_weights(original.edge_weights.Clone()),
+	clusters(original.clusters.Clone()),
+	translations(original.translations.Clone()),
+	rotations(original.rotations.Clone()),
+	node_coverage(original.node_coverage),
+	anchor_count(original.anchor_count),
+	threshold_nodes_by_distance(original.threshold_nodes_by_distance),
+	minimum_valid_anchor_count(original.minimum_valid_anchor_count),
+	index(this->nodes)
+	{}
 
 o3c::Tensor GraphWarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
@@ -353,6 +366,19 @@ GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bo
 const core::KdTree& GraphWarpField::GetIndex() const {
 	return this->index;
 }
+
+void GraphWarpField::ResetRotations() {
+	for (int i_node = 0; i_node < this->nodes.GetLength(); i_node++) {
+		rotations.Slice(0, i_node, i_node + 1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
+	}
+}
+
+GraphWarpField GraphWarpField::ApplyTransformations() const {
+	return GraphWarpField(this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
+						  this->threshold_nodes_by_distance, this->anchor_count, this->minimum_valid_anchor_count);
+}
+
+
 
 
 } // namespace nnrt::geometry

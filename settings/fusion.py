@@ -82,8 +82,8 @@ class TrackingParameters(ParameterEnum):
 
     keyframe_interval = \
         Parameter(default=50, arg_type=int,
-                  arg_help="When KEYFRAME_TO_T tracking_span_mode is used, controls the uniform intervals between "
-                           "which keyframes are sampled.")
+                  arg_help="When KEYFRAME_TO_CURRENT tracking_span_mode is used, controls the uniform intervals "
+                           "between which keyframes are sampled.")
 
     mesh_extraction_weight_thresholding_mode = \
         Parameter(default=MeshExtractionWeightThresholdingMode.RAMP_UP_TO_CONSTANT,

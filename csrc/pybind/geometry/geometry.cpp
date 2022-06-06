@@ -213,6 +213,8 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def_readonly("clusters", &GraphWarpField::clusters);
 	graph_warp_field.def_readwrite("translations", &GraphWarpField::translations);
 	graph_warp_field.def_readwrite("rotations", &GraphWarpField::rotations);
+	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);
+	graph_warp_field.def("apply_transformations", &GraphWarpField::ApplyTransformations);
 }
 
 void pybind_geometry_comparison(pybind11::module& m) {

@@ -145,12 +145,12 @@ FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold(int32_t* anchor_indices,
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void
-FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                                          const int node_count, const Eigen::Vector3f& point,
-                                          const NDArrayIndexer& node_indexer, const NDArrayIndexer& edge_indexer, const float node_coverage_squared) {
+FindAnchorsAndWeightsForPointShortestPath(int32_t* anchor_indices, float* anchor_weights, const int anchor_count, const int node_count,
+                                          const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer, const NDArrayIndexer& edge_indexer,
+                                          const float node_coverage_squared, const int graph_degree) {
 	auto distances = anchor_weights; // repurpose the anchor weights array to hold the shortest path distances to anchors
 	core::kernel::knn::FindShortestPathKnn_PriorityQueue<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer,
-	                                                                  edge_indexer, GRAPH_DEGREE);
+	                                                                  edge_indexer, graph_degree);
 	float weight_sum = 0.0;
 	ComputeAnchorWeights<TDeviceType, false>(anchor_weights, weight_sum, distances, anchor_count, node_coverage_squared);
 	NormalizeAnchorWeights<TDeviceType>(anchor_weights, weight_sum, anchor_count, anchor_count);
@@ -162,10 +162,10 @@ inline bool
 FindAnchorsAndWeightsForPointShortestPath_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
                                                     const int minimum_valid_anchor_count, const int node_count, const Eigen::Vector3f& point,
                                                     const NDArrayIndexer& node_indexer, const NDArrayIndexer& edge_indexer,
-                                                    const float node_coverage_squared) {
+                                                    const float node_coverage_squared, const int graph_degree) {
 	auto distances = anchor_weights; // repurpose the anchor weights array to hold shortest path distances
 	core::kernel::knn::FindShortestPathKnn_PriorityQueue<TDeviceType>(anchor_indices, distances, anchor_count, node_count, point, node_indexer,
-	                                                                  edge_indexer, GRAPH_DEGREE);
+	                                                                  edge_indexer, graph_degree);
 	float weight_sum;
 	int valid_anchor_count;
 	ComputeAnchorWeights_Threshold<TDeviceType, false>(anchor_indices, anchor_weights, weight_sum, valid_anchor_count, distances, anchor_count,

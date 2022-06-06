@@ -115,7 +115,8 @@ class FusionPipeline:
         self.cropper: Union[None, StaticCenterCrop] = None
         # endregion
 
-    def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int):
+    def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int, graph: nnrt.geometry.GraphWarpField) -> \
+            Tuple[Union[None, o3d.t.geometry.TriangleMesh], Union[None, o3d.t.geometry.TriangleMesh]]:
         mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(frame_index)
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         if self.extracted_framewise_canonical_mesh_needed:
@@ -124,7 +125,7 @@ class FusionPipeline:
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
         if self.framewise_warped_mesh_needed or self.frame_is_keyframe(frame_index):
-            warped_mesh = self.active_graph.warp_mesh(canonical_mesh)
+            warped_mesh = graph.warp_mesh(canonical_mesh)
 
         return canonical_mesh, warped_mesh
 
@@ -232,6 +233,8 @@ class FusionPipeline:
             depth_image_open3d = o3d.t.geometry.Image(o3c.Tensor(depth_image_np, device=device))
             color_image_open3d = o3d.t.geometry.Image(o3c.Tensor(color_image_np, device=device))
 
+            current_frame_is_keyframe = self.frame_is_keyframe(current_frame.frame_index)
+
             # endregion
             if current_frame.frame_index == start_frame_index:
                 self.cropper = \
@@ -252,12 +255,15 @@ class FusionPipeline:
                 # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
             else:
+
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image for non-rigid alignment  ====
                 #####################################################################################################
                 #  when we track 0-to-t, we force reusing original frame for the source.
                 if tracking_parameters.source_image_mode.value is SourceImageMode.IMAGE_ONLY \
-                        or tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
+                        or tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT \
+                        or (tracking_parameters.tracking_span_mode is TrackingSpanMode.KEYFRAME_TO_CURRENT
+                            and not current_frame_is_keyframe):
                     source_depth = saved_depth_image_np
                     source_color = saved_color_image_np
                 else:
@@ -289,7 +295,7 @@ class FusionPipeline:
                 )
                 # endregion
                 #####################################################################################################
-                # region === prepare target point cloud, RGB image, normal map, pixel anchors, and pixel weights ====
+                # region === prepare target point cloud, RGB image, normal map ====
                 #####################################################################################################
                 # TODO: replace options.depth_scale by a calibration/intrinsic property read from disk for each dataset,
                 #  like InfiniTAM
@@ -305,17 +311,19 @@ class FusionPipeline:
                 else:
                     target_normal_map = cpu_compute_normal(target_point_image)
                 target_normal_map_o3d = o3c.Tensor(target_normal_map, dtype=o3c.Dtype.Float32, device=device)
+                # endregion
+                ########################################################################################################
+                # region prepare pixel anchors, and pixel weights
+                ########################################################################################################
+                if current_frame_is_keyframe:
+                    saved_pixel_anchors, saved_pixel_weights = self.compute_pixel_anchors(source_point_image_np, device)
 
-                if tracking_parameters.pixel_anchor_computation_mode.value is not AnchorComputationMode.PRECOMPUTED or \
-                        tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT or \
-                        (tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT and
-                         self.frame_is_keyframe(current_frame.frame_index)):
+                if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
                     pixel_anchors, pixel_weights = \
                         self.compute_pixel_anchors(source_point_image_np, device)
                 else:
                     pixel_anchors = saved_pixel_anchors
                     pixel_weights = saved_pixel_weights
-
                 # endregion
                 #####################################################################################################
                 # region === adjust intrinsic / projection parameters due to cropping ====
@@ -354,23 +362,36 @@ class FusionPipeline:
                 # cumulative node transformations
                 node_rotation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
                 node_translation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
+                graph_for_integration = None
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
                     self.active_graph.rotations = node_rotation_predictions
                     self.active_graph.translations = node_translation_predictions
+                    graph_for_integration = self.active_graph
                 elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
                     self.active_graph.rotations = nnrt.core.matmul3d(self.active_graph.rotations,
                                                                      node_rotation_predictions)
                     self.active_graph.translations += o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
+                    graph_for_integration = self.active_graph
                 elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
-                    raise NotImplementedError(f"graph handling for {TrackingSpanMode.KEYFRAME_TO_CURRENT} mode not"
-                                              f"yet implemented")
+                    self.active_graph.rotations = node_rotation_predictions
+                    self.active_graph.translations = node_translation_predictions
+                    if len(self.keyframe_graphs) == 0:
+                        graph_for_integration = self.active_graph
+                    else:
+                        graph_for_integration = self.keyframe_graphs[-1].clone()
+                        graph_for_integration.rotations = \
+                            nnrt.core.matmul3d(graph_for_integration.rotations, self.active_graph.rotations)
+                        graph_for_integration.translations += self.active_graph.translations
+                    if current_frame_is_keyframe:
+                        self.active_graph = graph_for_integration.apply_transformations()
+                        self.keyframe_graphs.append(graph_for_integration)
 
                 # handle logging/vis of the graph data
-                telemetry_generator.process_graph_transformation(self.active_graph)
+                telemetry_generator.process_graph_transformation(graph_for_integration)
 
                 cos_voxel_ray_to_normal = volume.integrate_warped(
                     depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                    self.intrinsics_open3d_device, self.extrinsics_open3d_device, self.active_graph,
+                    self.intrinsics_open3d_device, self.extrinsics_open3d_device, graph_for_integration,
                     depth_scale=depth_scale, depth_max=3.0)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
@@ -378,8 +399,8 @@ class FusionPipeline:
                 # endregion
                 #####################################################################################################
                 canonical_mesh, warped_mesh = \
-                    self.extract_and_warp_canonical_mesh_if_necessary(current_frame.frame_index)
-                if self.frame_is_keyframe(current_frame.frame_index):
+                    self.extract_and_warp_canonical_mesh_if_necessary(current_frame.frame_index, graph_for_integration)
+                if current_frame_is_keyframe:
                     keyframe_mesh = warped_mesh
 
                 telemetry_generator.process_result_visualization_and_logging(
@@ -388,13 +409,14 @@ class FusionPipeline:
                     alignment_image_height, alignment_image_width,
                     source_rgbxyz, target_rgbxyz,
                     pixel_anchors, pixel_weights,
-                    self.active_graph
+                    graph_for_integration
                 )
                 telemetry_generator.record_meshes_to_disk_if_needed(canonical_mesh, warped_mesh)
 
+            # ==== determine if we need to cache the current color & depth image
+            # TODO: optimize by caching projected point cloud as well
             if tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT \
-                    or (tracking_parameters.tracking_span_mode.value == TrackingSpanMode.KEYFRAME_TO_CURRENT and
-                        current_frame.frame_index % tracking_parameters.keyframe_interval.value == 0) \
+                    or current_frame_is_keyframe \
                     or current_frame.frame_index == sequence.start_frame_index:
                 saved_color_image_np = color_image_np
                 saved_depth_image_np = depth_image_np
@@ -479,7 +501,7 @@ class FusionPipeline:
         elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
             pixel_anchors, pixel_weights = \
                 nnrt.geometry.compute_anchors_and_weights_shortest_path(
-                    source_point_image_o3d, self.active_graph.nodes, 4, 0, node_coverage
+                    source_point_image_o3d, self.active_graph.nodes, self.active_graph.edges, 4, node_coverage
                 )
         else:
             raise NotImplementedError(

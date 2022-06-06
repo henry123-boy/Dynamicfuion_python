@@ -7,14 +7,6 @@ from scipy.sparse.csgraph import connected_components
 from nnrt.geometry import GraphWarpField
 
 
-def apply_own_transformations(graph: GraphWarpField) -> GraphWarpField:
-    pass
-    # TODO: fix this...
-    # return GraphWarpField(graph.nodes + graph.translations, graph.edges, graph.edge_weights, graph.clusters, node_coverage=graph.node,
-    #                threshold_nodes_by_distance=minimum_valid_anchor_count > 0,
-    #                minimum_valid_anchor_count=minimum_valid_anchor_count)
-
-
 def find_knn_graph_connected_components(knn_edges: np.ndarray) -> np.ndarray:
     source_node_index = 0
     edge_matrix = lil_matrix((knn_edges.shape[0], knn_edges.shape[0]), dtype=int)

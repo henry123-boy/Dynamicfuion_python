@@ -27,27 +27,27 @@ class StandaloneFramePreset(Enum):
 class FrameSequencePreset(Enum):
     RED_SHORTS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=False, far_clipping_distance=1.2)
     RED_SHORTS_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=True, masks_subfolder="sod",
-                                                mask_lower_threshold=20)
+                                                mask_lower_threshold=1)
 
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False, far_clipping_distance=2.4)
     BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False,
                                                far_clipping_distance=2.4)
 
     BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True,
-                                            masks_subfolder="sod", mask_lower_threshold=20, far_clipping_distance=2.4)
+                                            masks_subfolder="sod", mask_lower_threshold=1, far_clipping_distance=2.4)
 
     BLUE_MAN_SOD_MASKS = FrameSequenceDataset(76, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=2.4,
-                                              has_masks=True, masks_subfolder="sod")
+                                              has_masks=True, masks_subfolder="sod", mask_lower_threshold=1)
 
     DOG_TRAINING_1_SOD_MASKS = FrameSequenceDataset(0, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=3.5,
-                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=1)
 
     DOG_TRAINING_2_SOD_MASKS = FrameSequenceDataset(2, DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=3.5,
-                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+                                                    has_masks=True, masks_subfolder="sod", mask_lower_threshold=1)
 
     BLUE_BACKPACK_FLIP_SOD_MASKS = \
         FrameSequenceDataset(sequence_id=32, split=DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=1.5,
-                             has_masks=True, masks_subfolder="sod", mask_lower_threshold=20)
+                             has_masks=True, masks_subfolder="sod", mask_lower_threshold=1)
 
     BLUE_BACKPACK_FLIP = \
         FrameSequenceDataset(sequence_id=32, split=DataSplit.TRAIN, start_frame_index=0, far_clipping_distance=1.5,

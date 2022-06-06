@@ -64,11 +64,14 @@ class GraphWarpField {
 public:
 	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
 	               float node_coverage = 0.05, bool threshold_nodes_by_distance = false, int anchor_count = 4, int minimum_valid_anchor_count = 0);
+	GraphWarpField ( const GraphWarpField & original);
 	virtual ~GraphWarpField() = default;
 
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::Tensor GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
+	void ResetRotations();
+	GraphWarpField ApplyTransformations() const;
 
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
 	const open3d::core::Tensor nodes;
