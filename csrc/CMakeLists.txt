@@ -11,7 +11,7 @@ get_python_local_site_packages_dir(${PYTHON_EXECUTABLE} PYTHON_LOCAL_PACKAGES_DI
 
 if (NOT PYTHON_EXECUTABLE)
     message(FATAL_ERROR "PYTHON_EXECUTABLE should be set in top level CMakeLists.txt")
-endif()
+endif ()
 
 # We need to get python version to configure some meta files
 message(STATUS "Using Python version: ${PYTHON_VERSION}")
@@ -40,11 +40,15 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/Defines.h
     geometry/WarpableTSDFVoxelGrid.cpp
     geometry/WarpableTSDFVoxelGrid.h
+
     geometry/kernel/WarpableTSDFVoxelGrid.cpp
     geometry/kernel/WarpableTSDFVoxelGrid.h
     geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
     geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
     geometry/kernel/WarpableTSDFVoxelGridImpl.h
+    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
+    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
+    geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
 
     geometry/GraphWarpField.h
     geometry/GraphWarpField.cpp
@@ -61,14 +65,17 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/WarpCPU.cpp
     geometry/kernel/WarpCUDA.cu
     geometry/kernel/WarpImpl.h
-    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
-    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
-    geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
+
     geometry/kernel/Comparison.h
     geometry/kernel/Comparison.cpp
     geometry/kernel/ComparisonCPU.cpp
     geometry/kernel/ComparisonCUDA.cu
     geometry/kernel/ComparisonImpl.h
+
+    geometry/kernel/Segment.h
+
+    geometry/DownsamplePoints.h
+    geometry/DownsamplePoints.cpp
 
     geometry/kernel/PointDownsampling.cpp
     geometry/kernel/PointDownsampling.h
@@ -81,8 +88,11 @@ set(NNRT_SOURCE_FILES
     geometry/Comparison.h
     geometry/Comparison.cpp
 
-    geometry/DownsamplePoints.h
-    geometry/DownsamplePoints.cpp
+    geometry/TriangleMesh.cpp
+    geometry/TriangleMesh.h
+
+    geometry/FindKNearestNeighbors.cpp
+    geometry/FindKNearestNeighbors.h
 
     string/split_string.h
     string/split_string.cpp
@@ -151,17 +161,18 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCUDA.h
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
-    core/linalg/LinalgUtils.cpp pybind/core.cpp pybind/core.h geometry/TriangleMesh.cpp geometry/TriangleMesh.h geometry/FindKNearestNeighbors.cpp geometry/FindKNearestNeighbors.h)
+    core/linalg/LinalgUtils.cpp
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
-)
+    )
 
 target_include_directories(nnrt_cpp PUBLIC
     ${PYTHON_INCLUDE_DIR}
     ${TORCH_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
-)
+    )
 
 nnrt_link_3rdparty_libraries(nnrt_cpp)
 nnrt_set_global_properties(nnrt_cpp)
@@ -177,35 +188,37 @@ set(PYBIND_SOURCE_FILES
     pybind/geometry/geometry.cpp
     pybind/geometry/geometry.h
     pybind/enum_export.h
-)
+    pybind/core.cpp
+    pybind/core.h
+    )
 
 pybind11_add_module(nnrt
     ${PYBIND_SOURCE_FILES}
-)
+    )
 
 target_include_directories(nnrt PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-)
+    )
 
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
 
 include(ProcessorCount)
 set(N_PROCESSORS 1)
-ProcessorCount(N)
-if(NOT N LESS 2)
+processorcount(N)
+if (NOT N LESS 2)
     math(EXPR N_PROCESSORS "${N} - 1")
-endif()
+endif ()
 
 set(Open3D_DIRECTIVE)
-if(Open3D_DIR)
+if (Open3D_DIR)
     set(Open3D_DIRECTIVE "Open3D_DIR=${Open3D_DIR}")
-endif()
+endif ()
 
 set(Python3_VERSION_DIRECTIVE)
-if(DEFINED Python3_VERSION)
+if (DEFINED Python3_VERSION)
     set(Python3_VERSION_DIRECTIVE "Python3_VERSION=${Python3_VERSION}")
-endif()
+endif ()
 
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
@@ -214,7 +227,7 @@ add_custom_target(pip-package
     ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --bdist-dir ${PYTHON_PACKAGE_DIR} --dist-dir ${PIP_PACKAGE_DST_DIR} --keep-temp
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
+    )
 
 # Use `make install-pip-package` to install pip wheel package to the current
 # python environment.
@@ -223,12 +236,12 @@ add_custom_target(install-pip-package
     -DPIP_PACKAGE_DST_DIR=${PIP_PACKAGE_DST_DIR}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/make_install_pip_package.cmake
     DEPENDS pip-package
-)
+    )
 
 
-if(NOT DEFINED STUBGEN_EXECUTABLE)
+if (NOT DEFINED STUBGEN_EXECUTABLE)
     set(STUBGEN_EXECUTABLE stubgen)
-endif()
+endif ()
 
 add_custom_target(install-python-stubs
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${STUBS_PACKAGE_DST_DIR}/nnrt
@@ -245,8 +258,7 @@ add_custom_target(install-python-stubs
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${STUBS_PACKAGE_DST_DIR}/nnrt ${PYTHON_LOCAL_PACKAGES_DIR}/nnrt
     COMMAND ${CMAKE_COMMAND} -E echo "copied ${STUBS_PACKAGE_DST_DIR}/nnrt to ${PYTHON_LOCAL_PACKAGES_DIR}"
     DEPENDS install-pip-package
-)
-
+    )
 
 
 add_subdirectory(tests)

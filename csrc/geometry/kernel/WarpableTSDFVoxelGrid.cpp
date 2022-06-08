@@ -41,42 +41,50 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 				NNRT_IF_CUDA(
 						IntegrateWarped<open3d::core::Device::DeviceType::CUDA>(
 								block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size,
-								sdf_truncation_distance,
-								depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale, depth_max
+								sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale,
+								depth_max
 						);
 				);
 			}
 	);
 }
 
-// void DetermineWhichBlocksToActivateWithWarp(core::Tensor& blocks_to_activate_mask, const core::Tensor& candidate_block_coordinates,
-//                                             const core::Tensor& depth_downsampled, const core::Tensor& intrinsics_downsampled,
-//                                             const core::Tensor& extrinsics, const core::Tensor& graph_nodes, const core::Tensor& node_rotations,
-//                                             const core::Tensor& node_translations, float node_coverage, int64_t block_resolution, float voxel_size,
-//                                             float sdf_truncation_distance) {
-// 	core::Device device = candidate_block_coordinates.GetDevice();
-// 	core::Device::DeviceType device_type = device.GetType();
-// 	if (device_type == core::Device::DeviceType::CPU) {
-//
-// 		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CPU>(
-// 				blocks_to_activate_mask, candidate_block_coordinates, depth_downsampled,
-// 				intrinsics_downsampled, extrinsics, graph_nodes, node_rotations,
-// 				node_translations, node_coverage, block_resolution, voxel_size, sdf_truncation_distance
-// 		);
-// 	} else if (device_type == core::Device::DeviceType::CUDA) {
-// #ifdef BUILD_CUDA_MODULE
-// 		DetermineWhichBlocksToActivateWithWarp<core::Device::DeviceType::CUDA>(
-// 				blocks_to_activate_mask, candidate_block_coordinates, depth_downsampled,
-// 				intrinsics_downsampled, extrinsics, graph_nodes, node_rotations,
-// 				node_translations, node_coverage, block_resolution, voxel_size, sdf_truncation_distance
-// 		);
-// #else
-// 		utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-// #endif
-// 	} else {
-// 		utility::LogError("Unimplemented device");
-// 	}
-// }
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_addresses,
+                                    const GraphWarpField& warp_field, float voxel_size, int64_t block_resolution,
+                                    const open3d::core::Tensor& extrinsics) {
+	core::ExecuteOnDevice(
+			block_addresses.GetDevice(),
+			[&] {
+				GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CPU>(bounding_boxes, block_addresses, warp_field, voxel_size,
+				                                                                      block_resolution, extrinsics);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+					GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CUDA>(bounding_boxes, block_addresses, warp_field,
+					                                                                      voxel_size, block_resolution, extrinsics);
+				);
+			}
+	);
+}
+
+void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
+                                                const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
+                                                float truncation_distance) {
+	core::ExecuteOnDevice(
+			boxes.GetDevice(),
+			[&]{
+				GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CPU>(mask, boxes, intrinsics, depth,
+				                                                                                  depth_scale, depth_max, 0, 0);
+			},
+			[&]{
+				NNRT_IF_CUDA(
+						GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CUDA>(mask, boxes, intrinsics, depth,
+						                                                                                   depth_scale, depth_max, 0, 0);
+				);
+			}
+
+	);
+}
 
 
 } // namespace nnrt::geometry::kernel::tsdf

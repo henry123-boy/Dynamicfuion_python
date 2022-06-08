@@ -42,14 +42,19 @@ void IntegrateWarped<open3d::core::Device::DeviceType::CPU>(
 		float depth_scale, float depth_max
 );
 
+template
+void GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& bounding_boxes,
+                                                                           const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+                                                                           float voxel_size, int64_t block_resolution,
+                                                                           const open3d::core::Tensor& extrinsics);
 
-// template
-// void DetermineWhichBlocksToActivateWithWarp<o3c::Device::DeviceType::CPU>(
-// 		o3c::Tensor& blocks_to_activate_mask, const o3c::Tensor& candidate_block_coordinates,
-// 		const o3c::Tensor& depth_downsampled, const o3c::Tensor& intrinsics_downsampled,
-// 		const o3c::Tensor& extrinsics, const o3c::Tensor& graph_nodes, const o3c::Tensor& graph_edges,
-// 		const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
-// 		float node_coverage, int64_t block_resolution, float voxel_size, float sdf_truncation_distance
-// );
+template
+void GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& mask, const open3d::core::Tensor& boxes,
+		const open3d::core::Tensor& intrinsics,
+		const open3d::core::Tensor& depth, float depth_scale,
+		float depth_max, int32_t stride,
+		float truncation_distance
+);
 
 } // namespace nnrt::geometry::kernel::tsdf

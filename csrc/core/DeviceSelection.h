@@ -48,6 +48,7 @@ void ExecuteOnDevice(open3d::core::Device device,
 	}
 }
 
+//TODO: this function is a bit too convoluted. Replace its usages with direct usages of ExecuteOnDevice
 template<typename TEntity, typename FExecuteOnCPU, typename FExecuteOnCUDA>
 void InferDeviceFromEntityAndExecute(const TEntity& guiding_entity,
                                      FExecuteOnCPU&& execute_on_cpu,

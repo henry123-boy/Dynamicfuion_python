@@ -82,8 +82,6 @@ public:
 	open3d::core::Tensor translations;
 	open3d::core::Tensor rotations;
 
-	//TODO: these really describe the behaviors of (a) anchor & weight computation and (b) warping.
-	// Perhaps they shouldn't be contained in the graph, but some-place else.
 	const float node_coverage;
 	const int anchor_count;
 	const bool threshold_nodes_by_distance;

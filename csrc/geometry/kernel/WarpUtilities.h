@@ -121,6 +121,23 @@ FindAnchorsAndWeightsForPointEuclidean_Threshold(int32_t* anchor_indices, float*
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
+inline void
+FindAnchorsAndWeightsForPointEuclidean_KDTree(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
+                                                        const kdtree::KdTreeNode* kd_tree_nodes,
+                                                        const int kd_tree_node_count, const NDArrayIndexer& node_indexer,
+                                                        const Eigen::Vector3f& point, const float node_coverage_squared) {
+	auto anchor_distances = anchor_weights; // repurpose the anchor weights array to hold anchor distances
+	// note that in this function, some nomenclature gets flipped around. Whereas we're still calling the motion graph control nodes as "nodes" here,
+	// in the KdTree context, KD Tree nodes become more relevant, whereas the old "graph" nodes are called "reference points".
+	core::kernel::knn::FindEuclideanKnn_KdTree<TDeviceType>(anchor_indices, anchor_distances, kd_tree_nodes, kd_tree_node_count, anchor_count, point,
+	                                                        node_indexer);
+	float weight_sum;
+	ComputeAnchorWeights<TDeviceType, false>(anchor_weights, weight_sum, anchor_distances, anchor_count, node_coverage_squared);
+	NormalizeAnchorWeights<TDeviceType>(anchor_weights, weight_sum, anchor_count, anchor_count);
+}
+
+template<o3c::Device::DeviceType TDeviceType>
+NNRT_DEVICE_WHEN_CUDACC
 inline bool
 FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
                                                         const int minimum_valid_anchor_count, const kdtree::KdTreeNode* kd_tree_nodes,

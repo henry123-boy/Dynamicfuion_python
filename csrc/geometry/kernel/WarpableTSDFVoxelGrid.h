@@ -37,20 +37,21 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
                      const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
                      float depth_scale, float depth_max);
 
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+                               float voxel_size, int64_t block_resolution, const open3d::core::Tensor& extrinsics);
 
-// TODO: implement
-// void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
-//                                             const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
-//                                             const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-//                                             const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-//                                             int64_t block_resolution, float voxel_size, float sdf_truncation_distance);
-//
-// template<open3d::core::Device::DeviceType TDeviceType>
-// void DetermineWhichBlocksToActivateWithWarp(open3d::core::Tensor& blocks_to_activate_mask, const open3d::core::Tensor& candidate_block_coordinates,
-//                                             const open3d::core::Tensor& depth_downsampled, const open3d::core::Tensor& intrinsics_downsampled,
-//                                             const open3d::core::Tensor& extrinsics, const open3d::core::Tensor& graph_nodes,
-//                                             const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, float node_coverage,
-//                                             int64_t block_resolution, float voxel_size, float sdf_truncation_distance);
+template<open3d::core::Device::DeviceType TDeviceType>
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+                               float voxel_size, int64_t block_resolution, const open3d::core::Tensor& extrinsics);
+
+void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
+                                                const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
+                                                float truncation_distance);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
+                                                const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
+                                                float truncation_distance);
 
 
 } // namespace nnrt::geometry::kernel::tsdf

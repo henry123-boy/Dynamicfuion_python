@@ -18,6 +18,7 @@
 #include <open3d/core/TensorKey.h>
 #include <open3d/core/Device.h>
 #include <geometry/kernel/Defines.h>
+#include <open3d/t/geometry/Utility.h>
 
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 #include "geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h"
@@ -78,10 +79,7 @@ o3c::Tensor WarpableTSDFVoxelGrid::ExtractValuesInExtent(int min_voxel_x, int mi
 inline
 static void PrepareDepthAndColorForIntegration(o3c::Tensor& depth_tensor, o3c::Tensor& color_tensor, const Image& depth, const Image& color,
                                                const std::unordered_map<std::string, o3c::Dtype>& attr_dtype_map_) {
-	if (depth.IsEmpty()) {
-		o3u::LogError(
-				"[TSDFVoxelGrid] input depth is empty for integration.");
-	}
+	open3d::t::geometry::CheckDepthTensor(depth_tensor);
 
 	depth_tensor = depth.AsTensor().To(o3c::Dtype::Float32).Contiguous();
 
@@ -115,18 +113,22 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const open3d::t::geom
 									   float depth_scale, float depth_max) {
 	// TODO note the difference from TSDFVoxelGrid::Integrate
 	//  IntegrateWarpedEuclideanDQ currently assumes that all of the relevant hash blocks have already been activated. This will probably change in the future.
-
+	// TODO: make checks consistent with ones in IntegrateWarped (use Open3D routines from Utility.h directly)
 	o3c::AssertTensorDtype(intrinsics, o3c::Dtype::Float32);
 	o3c::AssertTensorDtype(extrinsics, o3c::Dtype::Float32);
 
 	o3c::Tensor depth_tensor, color_tensor;
 	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->GetAttrDtypeMap());
 
-	// Query active blocks and their nearest neighbors to handle boundary cases.
+	// Query active blocks.
 	o3c::Tensor active_block_addresses;
 	auto block_hashmap = this->GetBlockHashMap();
 	block_hashmap->GetActiveIndices(active_block_addresses);
 	o3c::Tensor block_values = block_hashmap->GetValueTensor();
+
+	// query neighbors
+	o3c::Tensor neighboring_inactive_block_keys = this->BufferCoordinatesOfInactiveNeighborBlocks(active_block_addresses);
+
 
 
 	o3c::Tensor cos_voxel_ray_to_normal;
@@ -150,27 +152,27 @@ o3c::Tensor WarpableTSDFVoxelGrid::BufferCoordinatesOfInactiveNeighborBlocks(con
 
 	o3c::Tensor active_keys = key_buffer_int3_tensor.IndexGet(
 			{active_block_addresses.To(o3c::Dtype::Int64)});
-	int64_t n = active_keys.GetShape()[0];
+	int64_t current_block_count = active_keys.GetShape()[0];
 
 	// Fill in radius nearest neighbors.
-	o3c::Tensor keys_nb({27, n, 3}, o3c::Dtype::Int32, this->GetDevice());
-	for (int nb = 0; nb < 27; ++nb) {
-		int dz = nb / 9;
-		int dy = (nb % 9) / 3;
-		int dx = nb % 3;
+	o3c::Tensor neighbor_block_keys({27, current_block_count, 3}, o3c::Dtype::Int32, this->GetDevice());
+	for (int neighbor_index = 0; neighbor_index < 27; neighbor_index++) {
+		int dz = neighbor_index / 9;
+		int dy = (neighbor_index % 9) / 3;
+		int dx = neighbor_index % 3;
 		o3c::Tensor dt = o3c::Tensor(std::vector<int>{dx - 1, dy - 1, dz - 1},
 		                             {1, 3}, o3c::Dtype::Int32, this->GetDevice());
-		keys_nb[nb] = active_keys + dt;
+		neighbor_block_keys[neighbor_index] = active_keys + dt;
 	}
-	keys_nb = keys_nb.View({27 * n, 3});
+	neighbor_block_keys = neighbor_block_keys.View({27 * current_block_count, 3});
 
 	o3c::Tensor neighbor_block_addresses, neighbor_mask;
-	block_hashmap->Find(keys_nb, neighbor_block_addresses, neighbor_mask);
+	block_hashmap->Find(neighbor_block_keys, neighbor_block_addresses, neighbor_mask);
 
 	// ~ binary "or" to get the inactive address/coordinate mask instead of the active one
 	neighbor_mask = neighbor_mask.LogicalNot();
 
-	return keys_nb.GetItem(o3c::TensorKey::IndexTensor(neighbor_mask));
+	return neighbor_block_keys.GetItem(o3c::TensorKey::IndexTensor(neighbor_mask));
 }
 
 int64_t WarpableTSDFVoxelGrid::ActivateSleeveBlocks() {
@@ -205,6 +207,33 @@ std::ostream& operator<<(std::ostream& out, const WarpableTSDFVoxelGrid& grid) {
 	throw std::runtime_error("Not implemented.");
 
 	return out;
+}
+
+open3d::core::Tensor
+WarpableTSDFVoxelGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+                                                      const open3d::core::Tensor& extrinsics) {
+	o3c::Tensor bounding_boxes;
+	o3c::AssertTensorDtype(block_keys, o3c::Dtype::Int32);
+	o3c::AssertTensorShape(block_keys, {o3u::nullopt, 3});
+
+	kernel::tsdf::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, warp_field, this->GetVoxelSize(), this->GetBlockResolution(), extrinsics);
+	return bounding_boxes;
+}
+
+open3d::core::Tensor
+WarpableTSDFVoxelGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes,
+                                                                  const Image& depth, const open3d::core::Tensor& intrinsics, float depth_scale,
+                                                                  float depth_max) {
+	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
+	open3d::t::geometry::CheckDepthTensor(depth.AsTensor());
+	o3c::AssertTensorDtype(boxes,o3c::Dtype::Float32);
+	o3c::AssertTensorShape(boxes,{o3u::nullopt, 6});
+
+	o3c::Tensor mask;
+	int32_t downsampling_factor = 4;
+	kernel::tsdf::GetAxisAlignedBoxesInterceptingSurfaceMask(mask, boxes, intrinsics, depth.AsTensor(), depth_scale, depth_max, downsampling_factor,
+	                                                         this->GetSDFTrunc());
+	return mask;
 }
 
 
