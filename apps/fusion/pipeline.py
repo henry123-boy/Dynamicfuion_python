@@ -237,6 +237,7 @@ class FusionPipeline:
 
             # endregion
             if current_frame.frame_index == start_frame_index:
+                # ====== initial (canonical) frame ======
                 self.cropper = \
                     StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
@@ -244,26 +245,28 @@ class FusionPipeline:
                                  self.extrinsics_open3d_device, depth_scale, sequence.far_clipping_distance)
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____
                 #  C++ functions
+                # __DEBUG
                 volume.activate_sleeve_blocks()
                 volume.activate_sleeve_blocks()
 
                 saved_pixel_anchors, saved_pixel_weights = \
                     self.initialize_graph_and_anchors(volume, device, sequence, current_frame.frame_index,
                                                       depth_image_np, mask_image_np)
+                # cache first-frame images in every possible scenario
+                saved_color_image_np = color_image_np
+                saved_depth_image_np = depth_image_np
+                saved_mask_image_np = mask_image_np
 
                 # TODO: save initial meshes somehow specially maybe (line below will extract)?
                 # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
             else:
-
+                # ====== any subsequent frame ======
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image for non-rigid alignment  ====
                 #####################################################################################################
                 #  when we track 0-to-t, we force reusing original frame for the source.
-                if tracking_parameters.source_image_mode.value is SourceImageMode.IMAGE_ONLY \
-                        or tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT \
-                        or (tracking_parameters.tracking_span_mode is TrackingSpanMode.KEYFRAME_TO_CURRENT
-                            and not current_frame_is_keyframe):
+                if tracking_parameters.source_image_mode.value is SourceImageMode.IMAGE_ONLY:
                     source_depth = saved_depth_image_np
                     source_color = saved_color_image_np
                 else:
@@ -416,8 +419,7 @@ class FusionPipeline:
             # ==== determine if we need to cache the current color & depth image
             # TODO: optimize by caching projected point cloud as well
             if tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT \
-                    or current_frame_is_keyframe \
-                    or current_frame.frame_index == sequence.start_frame_index:
+                    or current_frame_is_keyframe:
                 saved_color_image_np = color_image_np
                 saved_depth_image_np = depth_image_np
                 saved_mask_image_np = mask_image_np

@@ -79,7 +79,8 @@ o3c::Tensor WarpableTSDFVoxelGrid::ExtractValuesInExtent(int min_voxel_x, int mi
 inline
 static void PrepareDepthAndColorForIntegration(o3c::Tensor& depth_tensor, o3c::Tensor& color_tensor, const Image& depth, const Image& color,
                                                const std::unordered_map<std::string, o3c::Dtype>& attr_dtype_map_) {
-	open3d::t::geometry::CheckDepthTensor(depth_tensor);
+	//TODO: make this check pass when upgrading to Open3D > 0.15.1
+	// open3d::t::geometry::CheckDepthTensor(depth_tensor);
 
 	depth_tensor = depth.AsTensor().To(o3c::Dtype::Float32).Contiguous();
 
@@ -105,37 +106,48 @@ static void PrepareDepthAndColorForIntegration(o3c::Tensor& depth_tensor, o3c::T
 
 
 
-
+// TODO: adapt to adhere to the new allocation / integration function split, as in Open3D v >0.15.1
 open3d::core::Tensor
-WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const open3d::t::geometry::Image& color,
+WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
                                        const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& intrinsics,
                                        const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
 									   float depth_scale, float depth_max) {
-	// TODO note the difference from TSDFVoxelGrid::Integrate
-	//  IntegrateWarpedEuclideanDQ currently assumes that all of the relevant hash blocks have already been activated. This will probably change in the future.
-	// TODO: make checks consistent with ones in IntegrateWarped (use Open3D routines from Utility.h directly)
+
+
+
+	// TODO: make checks consistent with ones in IntegrateWarped (use Open3D v >0.15.1 routines from Utility.h directly)
 	o3c::AssertTensorDtype(intrinsics, o3c::Dtype::Float32);
 	o3c::AssertTensorDtype(extrinsics, o3c::Dtype::Float32);
 
+	// Prepare intrisics, extrinsics, depth, and color
 	o3c::Tensor depth_tensor, color_tensor;
 	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->GetAttrDtypeMap());
+	static const o3c::Device host("CPU:0");
+	o3c::Tensor intrinsics_host_double = intrinsics.To(host, o3c::Dtype::Float64).Contiguous();
+	o3c::Tensor extrinsics_host_double = extrinsics.To(host, o3c::Dtype::Float64).Contiguous();
 
 	// Query active blocks.
 	o3c::Tensor active_block_addresses;
 	auto block_hashmap = this->GetBlockHashMap();
 	block_hashmap->GetActiveIndices(active_block_addresses);
+
+	// FIXME
+	// Assert which neighboring inactive blocks need to be activated and activate them
+	o3c::Tensor inactive_neighbor_block_coords = this->BufferCoordinatesOfInactiveNeighborBlocks(active_block_addresses);
+	o3c::Tensor inactive_neighbor_bounding_boxes =
+			this->GetBoundingBoxesOfWarpedBlocks(inactive_neighbor_block_coords, warp_field, extrinsics_host_double);
+	o3c::Tensor inactive_neighbor_mask =
+			this->GetAxisAlignedBoxesIntersectingSurfaceMask(inactive_neighbor_bounding_boxes, depth, intrinsics_host_double, depth_scale, depth_max, 4);
+
+	// o3c::Tensor neighbor_coords_to_activate = inactive_neighbor_block_coords.GetItem(o3c::TensorKey::IndexTensor(inactive_neighbor_mask));
+	// // __DEBUG
+	// std::cout << "Activating " << neighbor_coords_to_activate.GetLength() << " new blocks" << std::endl;
+	// o3c::Tensor buffer_indices, masks;
+	// block_hashmap->Activate(neighbor_coords_to_activate, buffer_indices, masks);
+
+
 	o3c::Tensor block_values = block_hashmap->GetValueTensor();
-
-	// query neighbors
-	o3c::Tensor neighboring_inactive_block_keys = this->BufferCoordinatesOfInactiveNeighborBlocks(active_block_addresses);
-
-
-
 	o3c::Tensor cos_voxel_ray_to_normal;
-
-	static const o3c::Device host("CPU:0");
-	o3c::Tensor intrinsics_host_double = intrinsics.To(host, o3c::Dtype::Float64).Contiguous();
-	o3c::Tensor extrinsics_host_double = extrinsics.To(host, o3c::Dtype::Float64).Contiguous();
 
 	kernel::tsdf::IntegrateWarped(active_block_addresses.To(o3c::Dtype::Int64), block_hashmap->GetKeyTensor(), block_values,
 	                              cos_voxel_ray_to_normal, this->GetBlockResolution(), this->GetVoxelSize(), this->GetSDFTrunc(),
@@ -212,25 +224,25 @@ std::ostream& operator<<(std::ostream& out, const WarpableTSDFVoxelGrid& grid) {
 open3d::core::Tensor
 WarpableTSDFVoxelGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
                                                       const open3d::core::Tensor& extrinsics) {
-	o3c::Tensor bounding_boxes;
 	o3c::AssertTensorDtype(block_keys, o3c::Dtype::Int32);
 	o3c::AssertTensorShape(block_keys, {o3u::nullopt, 3});
 
+	o3c::Tensor bounding_boxes;
 	kernel::tsdf::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, warp_field, this->GetVoxelSize(), this->GetBlockResolution(), extrinsics);
 	return bounding_boxes;
 }
 
 open3d::core::Tensor
-WarpableTSDFVoxelGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes,
-                                                                  const Image& depth, const open3d::core::Tensor& intrinsics, float depth_scale,
-                                                                  float depth_max) {
+WarpableTSDFVoxelGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes, const Image& depth,
+                                                                  const open3d::core::Tensor& intrinsics, float depth_scale,
+                                                                  float depth_max, int downsampling_factor) {
 	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
-	open3d::t::geometry::CheckDepthTensor(depth.AsTensor());
+	//TODO: figure out why we need NumElements > 0, make this check pass
+	// open3d::t::geometry::CheckDepthTensor(depth.AsTensor());
 	o3c::AssertTensorDtype(boxes,o3c::Dtype::Float32);
 	o3c::AssertTensorShape(boxes,{o3u::nullopt, 6});
 
 	o3c::Tensor mask;
-	int32_t downsampling_factor = 4;
 	kernel::tsdf::GetAxisAlignedBoxesInterceptingSurfaceMask(mask, boxes, intrinsics, depth.AsTensor(), depth_scale, depth_max, downsampling_factor,
 	                                                         this->GetSDFTrunc());
 	return mask;

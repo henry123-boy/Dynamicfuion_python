@@ -239,6 +239,7 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 	NDArrayIndexer node_rotation_indexer(warp_field.rotations, 1);
 	NDArrayIndexer node_translation_indexer(warp_field.translations, 1);
 
+	//__DEBUG
 	open3d::core::ParallelFor(
 			device, block_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
@@ -267,17 +268,19 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				auto* bounding_box_ptr = block_key_indexer.GetDataPtr<float>(workload_idx);
+				auto* bounding_box_min_ptr = bounding_box_indexer.GetDataPtr<float>(workload_idx);
 
-				Eigen::Map<Eigen::Vector3f> box_min(bounding_box_ptr);
+				Eigen::Map<Eigen::Vector3f> box_min(bounding_box_min_ptr);
 				box_min.x() = FLT_MAX;
 				box_min.y() = FLT_MAX;
 				box_min.z() = FLT_MAX;
 
-				Eigen::Map<Eigen::Vector3f> box_max(bounding_box_ptr + 3);
+				Eigen::Map<Eigen::Vector3f> box_max(bounding_box_min_ptr + 3);
+
 				box_max.x() = -FLT_MAX;
 				box_max.y() = -FLT_MAX;
 				box_max.z() = -FLT_MAX;
+
 
 				for (auto& corner: block_corners) {
 					Eigen::Vector3f corner_camera;
@@ -298,14 +301,14 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 					else if (box_max.z() < warped_corner.z()) box_max.z() = warped_corner.z();
 				}
 			}
-	);
+		);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
                                                 const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
                                                 float truncation_distance) {
-	o3c::Device device = mask.GetDevice();
+	o3c::Device device = boxes.GetDevice();
 	int64_t box_count = boxes.GetLength();
 	mask = o3c::Tensor::Zeros({box_count}, o3c::Bool, device);
 

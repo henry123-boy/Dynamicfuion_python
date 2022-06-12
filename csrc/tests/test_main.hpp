@@ -23,6 +23,7 @@
 
 // Necessary to start running the test(s) as a python program
 int main(int argc, char* argv[]) {
+#ifdef NNRT_TEST_USE_PYTHON
 	wchar_t* program = Py_DecodeLocale(argv[0], nullptr);
 	if (program == nullptr) {
 		fprintf(stderr, "Fatal error: cannot decode argv[0]\n");
@@ -30,10 +31,13 @@ int main(int argc, char* argv[]) {
 	}
 	Py_SetProgramName(program);  /* optional but recommended */
 	Py_Initialize();
+#endif
 	int result = Catch::Session().run(argc, argv);
+#ifdef NNRT_TEST_USE_PYTHON
 	if (Py_FinalizeEx() < 0) {
 		exit(120);
 	}
 	PyMem_RawFree(program);
+#endif
 	return (result < 0xff ? result : 0xff);
 }

@@ -29,10 +29,13 @@ class FrameSequencePreset(Enum):
     RED_SHORTS_SOD_MASKS = FrameSequenceDataset(14, DataSplit.VALIDATION, has_masks=True, masks_subfolder="sod",
                                                 mask_lower_threshold=1)
 
+    ALJAZ_FROM_ARTICLE_SOD_MASKS = \
+        FrameSequenceDataset(9, DataSplit.TEST, start_frame_index=0, far_clipping_distance=1.5, has_masks=True,
+                             masks_subfolder="sod", mask_lower_threshold=1)
+
     BERLIN = FrameSequenceDataset(70, DataSplit.TRAIN, has_masks=False, far_clipping_distance=2.4)
     BERLIN_STATIC = StaticFrameSequenceDataset(70, DataSplit.TRAIN, frame_count=6, has_masks=False,
                                                far_clipping_distance=2.4)
-
     BERLIN_SOD_MASKS = FrameSequenceDataset(70, DataSplit.TRAIN, start_frame_index=0, has_masks=True,
                                             masks_subfolder="sod", mask_lower_threshold=1, far_clipping_distance=2.4)
 

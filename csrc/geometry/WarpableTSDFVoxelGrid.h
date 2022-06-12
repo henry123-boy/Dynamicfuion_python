@@ -57,9 +57,9 @@ protected:
 	/// Get minimum extent (min & max corner) coordinates of bounding boxes for projected block coordinates
 	open3d::core::Tensor GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
 	                                                    const open3d::core::Tensor& extrinsics);
-	open3d::core::Tensor GetAxisAlignedBoxesIntersectingSurfaceMask(
-			const open3d::core::Tensor& boxes, const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics,
-			float depth_scale = 1000.0f, float depth_max = 3.0f);
+	open3d::core::Tensor GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes, const open3d::t::geometry::Image& depth,
+	                                                                const open3d::core::Tensor& intrinsics, float depth_scale,
+	                                                                float depth_max, int downsampling_factor = 4);
 };
 
 }// namespace geometry

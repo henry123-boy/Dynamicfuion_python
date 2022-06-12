@@ -60,8 +60,8 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 			},
 			[&] {
 				NNRT_IF_CUDA(
-					GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CUDA>(bounding_boxes, block_addresses, warp_field,
-					                                                                      voxel_size, block_resolution, extrinsics);
+						GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CUDA>(bounding_boxes, block_addresses, warp_field,
+						                                                                       voxel_size, block_resolution, extrinsics);
 				);
 			}
 	);
@@ -72,14 +72,16 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
                                                 float truncation_distance) {
 	core::ExecuteOnDevice(
 			boxes.GetDevice(),
-			[&]{
-				GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CPU>(mask, boxes, intrinsics, depth,
-				                                                                                  depth_scale, depth_max, 0, 0);
+			[&] {
+				GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CPU>(
+						mask, boxes, intrinsics, depth, depth_scale, depth_max, stride, truncation_distance
+				);
 			},
-			[&]{
+			[&] {
 				NNRT_IF_CUDA(
-						GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CUDA>(mask, boxes, intrinsics, depth,
-						                                                                                   depth_scale, depth_max, 0, 0);
+						GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CUDA>(
+								mask, boxes, intrinsics, depth, depth_scale, depth_max, stride, truncation_distance
+						);
 				);
 			}
 
