@@ -31,6 +31,7 @@
 #include "geometry/kernel/WarpUtilities.h"
 
 #include "geometry/kernel/Segment.h"
+#include "core/PlatformIndependentAtomics.h"
 
 #ifndef __CUDACC__
 
@@ -69,6 +70,8 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 	int64_t node_count = warp_field.nodes.GetLength();
 
 	int64_t n_voxels = n_blocks * block_resolution3;
+
+
 	// cosine value for each pixel
 	cos_voxel_ray_to_normal = o3c::Tensor::Zeros(depth_tensor.GetShape(), o3c::Dtype::Float32, block_keys.GetDevice());
 
@@ -239,7 +242,6 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 	NDArrayIndexer node_rotation_indexer(warp_field.rotations, 1);
 	NDArrayIndexer node_translation_indexer(warp_field.translations, 1);
 
-	//__DEBUG
 	open3d::core::ParallelFor(
 			device, block_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
@@ -301,7 +303,7 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 					else if (box_max.z() < warped_corner.z()) box_max.z() = warped_corner.z();
 				}
 			}
-		);
+	);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -318,29 +320,60 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
 	NDArrayIndexer box_indexer(boxes, 1);
 	NDArrayIndexer depth_indexer(depth, 2);
 
-	auto rows_strided = static_cast<int32_t>(depth_indexer.GetShape(0) / stride);
-	auto cols_strided = static_cast<int32_t>(depth_indexer.GetShape(1) / stride);
-	int32_t sampled_pixel_count = rows_strided * cols_strided;
+	auto rows_strided = depth_indexer.GetShape(0) / stride;
+	auto cols_strided = depth_indexer.GetShape(1) / stride;
+	int64_t sampled_pixel_count = rows_strided * cols_strided;
 
-	DISPATCH_DTYPE_TO_TEMPLATE(depth.GetDtype(), [&]() {
-		o3c::ParallelFor(device, sampled_pixel_count, [=] OPEN3D_DEVICE (int64_t workload_idx) {
-			int v = (workload_idx / cols_strided) * stride;
-			int u = (workload_idx % cols_strided) * stride;
-			float depth = *depth_indexer.GetDataPtr<scalar_t>(u, v) / depth_scale;
-			if (depth > 0 && depth < depth_max) {
-				Eigen::Vector3f segment_start, segment_end;
-				float segment_start_depth = depth - truncation_distance;
-				float segment_end_depth = depth + truncation_distance;
-				transform_indexer.Unproject(u, v, segment_start_depth, segment_start.data(), segment_start.data() + 1, segment_start.data() + 2);
-				transform_indexer.Unproject(u, v, segment_end_depth, segment_end.data(), segment_end.data() + 1, segment_end.data() + 2);
-				Segment segment(segment_start, segment_end);
-				auto box_data = box_indexer.template GetDataPtr<float>(workload_idx);
+	o3c::Blob segments(static_cast<int64_t>(sizeof(Segment)) * sampled_pixel_count, device);
+	auto* segment_data = reinterpret_cast<Segment*>(segments.GetDataPtr());
+	int64_t segment_count;
+	//@formatter:off
+	DISPATCH_DTYPE_TO_TEMPLATE(
+			depth.GetDtype(),
+			[&]() {
+				NNRT_DECLARE_ATOMIC(uint32_t , segment_count_atomic);
+				NNRT_INITIALIZE_ATOMIC(uint32_t, segment_count_atomic, 0);
+
+				o3c::ParallelFor( device, sampled_pixel_count,
+								  NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				int v = (workload_idx / cols_strided) * stride;
+				int u = (workload_idx % cols_strided) * stride;
+				float depth = *depth_indexer.GetDataPtr<scalar_t>(u, v) / depth_scale;
+				if (depth > 0 && depth < depth_max) {
+					Eigen::Vector3f segment_start, segment_end;
+					float segment_start_depth = depth - truncation_distance;
+					float segment_end_depth = depth + truncation_distance;
+					transform_indexer.Unproject(u, v, segment_start_depth, segment_start.data(), segment_start.data() + 1,
+					                            segment_start.data() + 2);
+					transform_indexer.Unproject(u, v, segment_end_depth, segment_end.data(), segment_end.data() + 1,
+					                            segment_end.data() + 2);
+					uint32_t segment_index = NNRT_ATOMIC_ADD(segment_count_atomic, (uint32_t)1);
+					segment_data[segment_index] = Segment(segment_start, segment_end);
+				}
+
+			});
+			segment_count = NNRT_GET_ATOMIC_VALUE_CPU(segment_count_atomic);
+			NNRT_CLEAN_UP_ATOMIC(segment_count_atomic);
+	});
+	//@formatter:on
+
+	int64_t intersection_check_count = segment_count * box_count;
+
+	o3c::ParallelFor(
+			device, intersection_check_count,
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				int64_t i_segment = workload_idx % segment_count;
+				int64_t i_box = workload_idx / segment_count;
+				auto box_data = box_indexer.template GetDataPtr<float>(i_box);
 				Eigen::Map<Eigen::Vector3f> box_min(box_data);
 				Eigen::Map<Eigen::Vector3f> box_max(box_data + 3);
-				*mask_indexer.GetDataPtr<bool>(workload_idx) = segment.IntersectsAxisAlignedBox(box_min, box_max);
+
+				if (segment_data[i_segment].IntersectsAxisAlignedBox(box_min, box_max)) {
+					*mask_indexer.GetDataPtr<bool>(i_box) = true;
+				}
 			}
-		});
-	});
+
+	);
 }
 
 } // namespace nnrt::geometry::kernel::tsdf

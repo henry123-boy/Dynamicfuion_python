@@ -83,6 +83,7 @@ void TestWarpableTSDFVoxelGrid_GetBoundingBoxesOfWarpedBlocks(const o3c::Device&
 
 
 	geometry::GraphWarpField field(nodes, edges, edge_weights, clusters, 1.0, false, 4);
+	// move one unit in the +x direction
 	std::vector<float> translation_data{1.0, 0.0, 0.0};
 	field.translations.SetItem(o3c::TensorKey::Index(0), o3c::Tensor(translation_data, {3}, o3c::Float32));
 	field.translations.SetItem(o3c::TensorKey::Index(1), o3c::Tensor(translation_data, {3}, o3c::Float32));
@@ -92,20 +93,17 @@ void TestWarpableTSDFVoxelGrid_GetBoundingBoxesOfWarpedBlocks(const o3c::Device&
 
 	o3c::Tensor bounding_boxes;
 	geometry::kernel::tsdf::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, field, voxel_size, block_resolution,
-	                                                       o3c::Tensor::Eye(4,o3c::Float64, o3c::Device("CPU:0")));
+	                                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")));
 
+	std::vector<float> bounding_boxes_gt_data{
+			1, 0, 0, 2, 1, 1,
+			1, 1, 0, 2, 2, 1,
+			1, 0, 1, 2, 1, 2,
+			1, 1, 1, 2, 2, 2
+	};
+	o3c::Tensor bounding_boxes_gt(bounding_boxes_gt_data, {4, 6}, o3c::Dtype::Float32, device);
 
-	auto out = bounding_boxes.ToFlatVector<float>();
-	int i = 0;
-	for(auto& f : out){
-		if(i % 6 == 0){
-			std::cout << std::endl;
-		}
-		std::cout << f << ", ";
-		i++;
-	}
-	std::cout << std::endl;
-	std::cout << out[18] << std::endl;
+	REQUIRE(bounding_boxes.AllClose(bounding_boxes_gt));
 
 }
 
@@ -117,6 +115,54 @@ TEST_CASE("Test Warpable TSDF Voxel Grid GetBoundingBoxesOfWarpedBlocks CPU") {
 TEST_CASE("Test Warpable TSDF Voxel Grid GetBoundingBoxesOfWarpedBlocks CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestWarpableTSDFVoxelGrid_GetBoundingBoxesOfWarpedBlocks(device);
+}
+
+
+void TestWarpableTSDFVoxelGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(const o3c::Device& device) {
+	std::vector<float> bounding_boxes_data{
+			3, 0, 0, 4, 1, 1,
+			3, 1, 0, 4, 2, 1,
+			1, 0, 1, 2, 1, 2,
+			1, 1, 1, 2, 2, 2
+	};
+	o3c::Tensor bounding_boxes(bounding_boxes_data, {4, 6}, o3c::Dtype::Float32, device);
+
+	std::vector<float> depth_data{
+			1.0, 1.0, 0.0, 0.0,
+			1.0, 1.0, 0.0, 0.0,
+			0.0, 0.0, 1.2, 1.2,
+			0.0, 0.0, 1.2, 1.2
+	};
+	o3c::Tensor depth(depth_data, {4, 4}, o3c::Dtype::Float32, device);
+
+	std::vector<double> intrinsics_data{
+			1.0, 0.0, 2.0,
+			0.0, 1.0, 2.0,
+			0.0, 0.0, 1.0
+	};
+	o3c::Tensor intrinsics(intrinsics_data, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
+
+	int stride = 1;
+	float truncation_distance = 0.5f;
+
+	o3c::Tensor mask;
+	geometry::kernel::tsdf::GetAxisAlignedBoxesInterceptingSurfaceMask(
+			mask, bounding_boxes, intrinsics, depth, 1.0, 100.0, stride, truncation_distance
+	);
+
+	o3c::Tensor mask_gt(std::vector<bool> {false, false, true, true}, {4}, o3c::Bool, device);
+	REQUIRE(mask.AllEqual(mask_gt));
+
+}
+
+TEST_CASE("Test Warpable TSDF Voxel Grid GetAxisAlignedBoxesInterceptingSurfaceMask CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestWarpableTSDFVoxelGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(device);
+}
+
+TEST_CASE("Test Warpable TSDF Voxel Grid GetAxisAlignedBoxesInterceptingSurfaceMask CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestWarpableTSDFVoxelGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(device);
 }
 
 

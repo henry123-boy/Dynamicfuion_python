@@ -136,14 +136,17 @@ WarpableTSDFVoxelGrid::IntegrateWarped(const Image& depth, const Image& color,
 	o3c::Tensor inactive_neighbor_block_coords = this->BufferCoordinatesOfInactiveNeighborBlocks(active_block_addresses);
 	o3c::Tensor inactive_neighbor_bounding_boxes =
 			this->GetBoundingBoxesOfWarpedBlocks(inactive_neighbor_block_coords, warp_field, extrinsics_host_double);
+
 	o3c::Tensor inactive_neighbor_mask =
 			this->GetAxisAlignedBoxesIntersectingSurfaceMask(inactive_neighbor_bounding_boxes, depth, intrinsics_host_double, depth_scale, depth_max, 4);
 
-	// o3c::Tensor neighbor_coords_to_activate = inactive_neighbor_block_coords.GetItem(o3c::TensorKey::IndexTensor(inactive_neighbor_mask));
-	// // __DEBUG
-	// std::cout << "Activating " << neighbor_coords_to_activate.GetLength() << " new blocks" << std::endl;
-	// o3c::Tensor buffer_indices, masks;
-	// block_hashmap->Activate(neighbor_coords_to_activate, buffer_indices, masks);
+	o3c::Tensor neighbor_coords_to_activate = inactive_neighbor_block_coords.GetItem(o3c::TensorKey::IndexTensor(inactive_neighbor_mask));
+
+	o3c::Tensor buffer_indices, masks;
+
+	block_hashmap->Activate(neighbor_coords_to_activate, buffer_indices, masks);
+	block_hashmap->GetActiveIndices(active_block_addresses);
+
 
 
 	o3c::Tensor block_values = block_hashmap->GetValueTensor();

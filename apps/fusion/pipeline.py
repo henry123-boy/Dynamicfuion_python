@@ -246,8 +246,8 @@ class FusionPipeline:
                 # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____
                 #  C++ functions
                 # __DEBUG
-                volume.activate_sleeve_blocks()
-                volume.activate_sleeve_blocks()
+                # volume.activate_sleeve_blocks()
+                # volume.activate_sleeve_blocks()
 
                 saved_pixel_anchors, saved_pixel_weights = \
                     self.initialize_graph_and_anchors(volume, device, sequence, current_frame.frame_index,
