@@ -8,7 +8,7 @@ from alignment.loss import EPE_3D_eval
 from data import DeformDataset
 
 from settings import Parameters, process_arguments
-import io
+import data.io as io
 
 
 def main():

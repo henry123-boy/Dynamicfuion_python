@@ -13,7 +13,7 @@ import open3d.core as o3c
 
 import image_processing
 from data import DeformDataset
-import io
+import data.io as io
 from settings import Parameters, process_arguments
 from settings.model import get_saved_model
 
