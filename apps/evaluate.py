@@ -36,7 +36,8 @@ def main():
 
     labels_json = os.path.join(dataset_base_dir, f"{split}_graphs.json")
 
-    assert os.path.isfile(labels_json), f"{labels_json} does not exist! Make sure you specified the correct 'dataset_base_dir' in options.py."
+    assert os.path.isfile(
+        labels_json), f"{labels_json} does not exist! Make sure you specified the correct 'dataset_base_dir' in options.py."
 
     with open(labels_json, 'r') as f:
         labels = json.loads(f.read())
@@ -45,7 +46,8 @@ def main():
     model_base_dir = os.path.join(experiments_dir, "models", model_name)
     predictions_dir = f"{model_base_dir}/evaluation/{split}"
     if not os.path.isdir(predictions_dir):
-        raise Exception(f"Predictions directory {predictions_dir} does not exist. Please generate predictions with 'run_generate.sh' first.")
+        raise Exception(
+            f"Predictions directory {predictions_dir} does not exist. Please generate predictions with 'run_generate.sh' first.")
 
     #####################################################################################################
     # Go over dataset
@@ -60,9 +62,10 @@ def main():
     total_num_points = 0
 
     for label in tqdm(labels):
-        assert "graph_node_deformations" in label, "It's highly probable that you're running this script with 'split' set to 'test'. " \
-                                                   "but the public dataset does not provide gt for the test set. Plase choose 'val' if " \
-                                                   "you want to compute metrics."
+        assert "graph_node_deformations" in label, \
+            "It's highly probable that you're running this script with 'split' set to 'test'. " \
+            "but the public dataset does not provide gt for the test set. Plase choose 'val' if " \
+            "you want to compute metrics."
 
         ##############################################################################################
         # Load gt
@@ -90,10 +93,12 @@ def main():
         # Graph
         graph_nodes, graph_edges, graph_edges_weights, graph_node_deformations, graph_clusters = \
             DeformDataset.load_graph_data(
-                graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path, graph_clusters_path
+                graph_nodes_path, graph_edges_path, graph_edges_weights_path, graph_node_deformations_path,
+                graph_clusters_path
             )
 
-        pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path, cropper)
+        pixel_anchors, pixel_weights = DeformDataset.load_anchors_and_weights(pixel_anchors_path, pixel_weights_path,
+                                                                              cropper)
 
         optical_flow_gt, optical_flow_mask, scene_flow_gt, scene_flow_mask = DeformDataset.load_flow(
             optical_flow_image_path, scene_flow_image_path, cropper
@@ -126,7 +131,8 @@ def main():
 
         assert os.path.isfile(
             node_translations_pred_file), f"{node_translations_pred_file} does not exist. Make sure you are not missing any prediction."
-        assert os.path.isfile(scene_flow_pred_file), f"{scene_flow_pred_file} does not exist. Make sure you are not missing any prediction."
+        assert os.path.isfile(
+            scene_flow_pred_file), f"{scene_flow_pred_file} does not exist. Make sure you are not missing any prediction."
 
         node_translations_pred = io.load_graph_nodes_or_deformations(
             node_translations_pred_file
