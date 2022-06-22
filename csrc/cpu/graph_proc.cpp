@@ -182,7 +182,7 @@ inline void compute_edges_shortest_path_generic(
 		const py::array_t<float>& vertex_positions_in,
 		const py::array_t<int>& face_indices_in,
 		const py::array_t<int>& node_indices_in,
-		const int max_neighbor_count,
+		const unsigned int max_neighbor_count,
 		const float node_coverage,
 		py::array_t<int>& graph_edges_out,
 		py::array_t<float>& graph_edges_weights_out,
@@ -448,10 +448,10 @@ py::tuple compute_edges_shortest_path(
 }
 
 
-py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, int max_neighbor_count) {
+py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, unsigned int max_neighbor_count) {
 	int node_count = node_positions.shape(0);
 
-	py::array_t<int> graph_edges = py::array_t<int>({node_count, max_neighbor_count});
+	py::array_t<int> graph_edges = py::array_t<int>({node_count, static_cast<int>(max_neighbor_count)});
 
 	// Find nearest Euclidean neighbors for each node.
 	for (int source_node_index = 0; source_node_index < node_count; source_node_index++) {
@@ -492,7 +492,7 @@ py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_position
 		}
 
 		// Store nearest neighbor indices.
-		int neighbor_index = 0;
+		unsigned int neighbor_index = 0;
 		for (auto& nearest_nodes_with_squared_distance : nearest_nodes_with_squared_distances) {
 			int destination_node_index = nearest_nodes_with_squared_distance.first;
 			*graph_edges.mutable_data(source_node_index, neighbor_index) = destination_node_index;
@@ -906,7 +906,7 @@ inline decltype(TruePredicate) GetTruePredicate() {
 template<typename Predicate = decltype(TruePredicate)>
 inline std::list<std::pair<int, float>>
 get_knn_with_squared_distances_brute_force(const Eigen::Vector3f& vertex, const py::array_t<float>& graph_nodes,
-                                           const int neighbor_count, Predicate filter = GetTruePredicate()) {
+                                           const unsigned int neighbor_count, Predicate filter = GetTruePredicate()) {
 // Keep only the k nearest Euclidean neighbors.
 	std::list<std::pair<int, float>> nearest_nodes_with_squared_distances;
 
@@ -1309,7 +1309,7 @@ void djikstra_knn(int* vertex_anchors,
                   const Eigen::Vector3f& vertex,
                   const py::array_t<float>& nodes,
                   const py::array_t<int>& edges,
-                  const int anchor_count,
+                  const unsigned int anchor_count,
                   const float node_coverage) {
 	std::map<int, float> distance_by_shortest_path_anchor;
 	typedef std::pair<int, float> index_and_distance;
@@ -1368,7 +1368,7 @@ void djikstra_knn(int* vertex_anchors,
 	//TODO: DRY violation -- move weight normalization out to a separate function and reuse throughout file
 	float weight_sum = 0;
 	int valid_anchor_count = 0;
-	for (const auto anchor : discovered_anchors) {
+	for (const auto &anchor : discovered_anchors) {
 		vertex_anchors[valid_anchor_count] = anchor.first;
 		float weight = compute_anchor_weight(anchor.second, node_coverage);
 		vertex_weights[valid_anchor_count] = weight;

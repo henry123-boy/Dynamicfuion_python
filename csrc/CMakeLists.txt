@@ -173,6 +173,7 @@ target_include_directories(nnrt_cpp PUBLIC
     ${TORCH_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
     )
+nnrt_show_and_abort_on_warning(nnrt_cpp)
 
 nnrt_link_3rdparty_libraries(nnrt_cpp)
 nnrt_set_global_properties(nnrt_cpp)

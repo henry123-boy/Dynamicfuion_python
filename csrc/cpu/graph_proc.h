@@ -73,7 +73,7 @@ py::tuple compute_edges_shortest_path(
  * Compute the graph edges between nodes, connecting nearest nodes using Euclidean
  * distances.
  */
-py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, int max_neighbor_count);
+py::array_t<int> compute_edges_euclidean(const py::array_t<float>& node_positions, unsigned int max_neighbor_count);
 
 /**
  * Removes invalid nodes (with less than 2 neighbors).

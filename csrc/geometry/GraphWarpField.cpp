@@ -230,7 +230,7 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 		point_mode = POINT_IMAGE;
 	}
 	kernel::graph::ComputeAnchorsAndWeightsEuclidean(anchors, weights, points_array, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
-	if(point_mode == POINT_IMAGE){
+	if (point_mode == POINT_IMAGE) {
 		anchors = anchors.Reshape({points_shape[0], points_shape[1], anchor_count});
 		weights = weights.Reshape({points_shape[0], points_shape[1], anchor_count});
 	}
@@ -273,7 +273,7 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 		point_mode = POINT_IMAGE;
 	}
 	kernel::graph::ComputeAnchorsAndWeightsShortestPath(anchors, weights, points_array, nodes, edges, anchor_count, node_coverage);
-	if(point_mode == POINT_IMAGE){
+	if (point_mode == POINT_IMAGE) {
 		anchors = anchors.Reshape({points_shape[0], points_shape[1], anchor_count});
 		weights = weights.Reshape({points_shape[0], points_shape[1], anchor_count});
 	}
@@ -287,13 +287,20 @@ py::tuple ComputeAnchorsAndWeightsShortestPath(const o3c::Tensor& points, const 
 }
 
 GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor edge_weights,
-                               o3c::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance, int anchor_count,
+                               o3c::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance_by_default, int anchor_count,
                                int minimum_valid_anchor_count) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
 		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
 		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
-		node_coverage(node_coverage), threshold_nodes_by_distance(threshold_nodes_by_distance), anchor_count(anchor_count),
-		minimum_valid_anchor_count(minimum_valid_anchor_count), index(this->nodes) {
+
+		node_coverage(node_coverage),
+		anchor_count(anchor_count),
+		threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
+		minimum_valid_anchor_count(minimum_valid_anchor_count),
+
+		index(this->nodes), node_coverage_squared(node_coverage * node_coverage),
+		kd_tree_nodes(this->index.GetNodes()), kd_tree_node_count(this->index.GetNodeCount()),
+		node_indexer(this->nodes, 1), rotation_indexer(this->rotations, 1), translation_indexer(this->translations, 1) {
 	auto device = this->nodes.GetDevice();
 	o3c::AssertTensorDevice(this->edges, device);
 	o3c::AssertTensorDevice(this->edge_weights, device);
@@ -327,18 +334,22 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 
 //TODO: optimize by making some kind of clone method in KdTree that simply shifts all the KD node pointers instead of reindexing
 GraphWarpField::GraphWarpField(const GraphWarpField& original) :
-	nodes(original.nodes.Clone()),
-	edges(original.edges.Clone()),
-	edge_weights(original.edge_weights.Clone()),
-	clusters(original.clusters.Clone()),
-	translations(original.translations.Clone()),
-	rotations(original.rotations.Clone()),
-	node_coverage(original.node_coverage),
-	anchor_count(original.anchor_count),
-	threshold_nodes_by_distance(original.threshold_nodes_by_distance),
-	minimum_valid_anchor_count(original.minimum_valid_anchor_count),
-	index(this->nodes)
-	{}
+		nodes(original.nodes.Clone()),
+		edges(original.edges.Clone()),
+		edge_weights(original.edge_weights.Clone()),
+		clusters(original.clusters.Clone()),
+		translations(original.translations.Clone()),
+		rotations(original.rotations.Clone()),
+
+		node_coverage(original.node_coverage),
+		anchor_count(original.anchor_count),
+		threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
+		minimum_valid_anchor_count(original.minimum_valid_anchor_count),
+
+		index(this->nodes),
+		node_coverage_squared(original.node_coverage_squared),
+		kd_tree_nodes(this->index.GetNodes()), kd_tree_node_count(this->index.GetNodeCount()),
+		node_indexer(this->nodes, 1), rotation_indexer(this->rotations, 1), translation_indexer(this->translations, 1) {}
 
 o3c::Tensor GraphWarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
@@ -358,7 +369,7 @@ GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bo
 		                        false, 0);
 	} else {
 		return WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
-		                        this->threshold_nodes_by_distance, this->minimum_valid_anchor_count);
+		                        this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count);
 	}
 
 }
@@ -374,11 +385,9 @@ void GraphWarpField::ResetRotations() {
 }
 
 GraphWarpField GraphWarpField::ApplyTransformations() const {
-	return GraphWarpField(this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
-						  this->threshold_nodes_by_distance, this->anchor_count, this->minimum_valid_anchor_count);
+	return {this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
+	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
 }
-
-
 
 
 } // namespace nnrt::geometry

@@ -229,9 +229,11 @@ function(nnrt_set_global_properties target)
     endif()
 endfunction()
 
+# CMake modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/CMake")
 ### includes for dependency processing
-
 include(3rd-party/find_dependencies.cmake)
+include(NNRTShowAndAbortOnWarning)
 
 ### subdirectories
 

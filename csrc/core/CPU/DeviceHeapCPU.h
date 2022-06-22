@@ -25,7 +25,7 @@ template<typename TElement, typename TCompare>
 class DeviceHeap<o3c::Device::DeviceType::CPU, TElement, TCompare> : public TypedDeviceHeap<TElement> {
 public:
 	DeviceHeap(TElement* data, int capacity, TCompare compare) :
-			data(data), capacity(capacity), compare(compare), _size(0) {}
+			data(data), capacity(capacity), _size(0), compare(compare) {}
 
 	bool Insert(TElement element) override {
 		if (_size >= capacity) return false;

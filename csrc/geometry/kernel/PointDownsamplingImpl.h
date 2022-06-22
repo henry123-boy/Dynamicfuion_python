@@ -349,7 +349,6 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 	const auto bin_size = grid_cell_size;
 
 	auto grid_spatial_extents = grid_bin_max_bound - grid_bin_min_bound;
-	auto grid_center = grid_bin_min_bound + (grid_spatial_extents / 2.f);
 
 	auto grid_bin_extents = Eigen::Vector3i(std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.x() / bin_size)), 1),
 	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.y() / bin_size)), 1),

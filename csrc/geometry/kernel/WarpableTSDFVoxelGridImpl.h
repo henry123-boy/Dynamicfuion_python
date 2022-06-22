@@ -54,23 +54,16 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
                      const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
                      const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
                      float depth_scale, float depth_max) {
-	int64_t block_resolution3 =
+	int64_t block_resolution_cubed =
 			block_resolution * block_resolution * block_resolution;
-
-	float node_coverage_squared = warp_field.node_coverage * warp_field.node_coverage;
 
 	// Shape / transform indexers, no data involved
 	NDArrayIndexer voxel_indexer(
 			{block_resolution, block_resolution, block_resolution});
 	TransformIndexer transform_indexer(intrinsics, extrinsics, 1.0);
 
-	int anchor_count = warp_field.anchor_count;
-	int minimum_valid_anchor_count = warp_field.minimum_valid_anchor_count;
-	int n_blocks = static_cast<int>(block_indices.GetLength());
-	int64_t node_count = warp_field.nodes.GetLength();
-
-	int64_t n_voxels = n_blocks * block_resolution3;
-
+	int block_count = static_cast<int>(block_indices.GetLength());
+	int64_t voxel_count = block_count * block_resolution_cubed;
 
 	// cosine value for each pixel
 	cos_voxel_ray_to_normal = o3c::Tensor::Zeros(depth_tensor.GetShape(), o3c::Dtype::Float32, block_keys.GetDevice());
@@ -78,10 +71,7 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 	// Data structure indexers
 	NDArrayIndexer block_keys_indexer(block_keys, 1);
 	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
-	// Motion graph indexer
-	NDArrayIndexer node_indexer(warp_field.nodes, 1);
-	NDArrayIndexer node_rotation_indexer(warp_field.rotations, 1);
-	NDArrayIndexer node_translation_indexer(warp_field.translations, 1);
+
 	// Image indexers
 	NDArrayIndexer depth_indexer(depth_tensor, 2);
 	NDArrayIndexer cosine_indexer(cos_voxel_ray_to_normal, 2);
@@ -97,28 +87,25 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 	// Plain array that does not require indexers
 	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
 
-	auto* kd_tree_nodes = warp_field.GetIndex().GetNodes();
-	const int kd_tree_node_count = static_cast<int>(warp_field.GetIndex().GetNodeCount());
-
 	//  Go through voxels
 //@formatter:off
 	DISPATCH_BYTESIZE_TO_VOXEL(
 			voxel_block_buffer_indexer.ElementByteSize(),
 			[&]() {
 				open3d::core::ParallelFor(
-						depth_tensor.GetDevice(), n_voxels,
+						depth_tensor.GetDevice(), voxel_count,
 						[=] OPEN3D_DEVICE (int64_t workload_idx) {
 //@formatter:on
 				// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
 				// Natural index (0, N) ->
 				//                    (workload_block_idx, voxel_index_in_block)
-				int64_t block_index = indices_ptr[workload_idx / block_resolution3];
-				int64_t voxel_index_in_block = workload_idx % block_resolution3;
+				int64_t block_index = indices_ptr[workload_idx / block_resolution_cubed];
+				int64_t voxel_index_in_block = workload_idx % block_resolution_cubed;
 
 
 				// block_index -> x_block, y_block, z_block (in voxel hash blocks)
-				int* block_key_ptr =
-						block_keys_indexer.GetDataPtr<int>(block_index);
+				int32_t* block_key_ptr =
+						block_keys_indexer.GetDataPtr<int32_t>(block_index);
 				auto x_block = static_cast<int64_t>(block_key_ptr[0]);
 				auto y_block = static_cast<int64_t>(block_key_ptr[1]);
 				auto z_block = static_cast<int64_t>(block_key_ptr[2]);
@@ -143,17 +130,11 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
-				if (!warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
-						anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
-						voxel_camera, node_coverage_squared
-				)) {
-					return;
-				}
+
+				warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, voxel_camera);
 				// endregion
 				// region ===================== WARP CAMERA-SPACE VOXEL AND PROJECT TO IMAGE ============================
-				Eigen::Vector3f warped_voxel(0.f, 0.f, 0.f);
-				warp::BlendWarp(warped_voxel, anchor_indices, anchor_weights, anchor_count, node_indexer,
-				                node_rotation_indexer, node_translation_indexer, voxel_camera);
+				auto warped_voxel = warp_field.template WarpPoint<TDeviceType>(voxel_camera, anchor_indices, anchor_weights);
 
 				if (warped_voxel.z() < 0) {
 					// voxel is behind camera
@@ -167,9 +148,6 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 				}
 				// endregion
 				// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
-				auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
-						x_voxel_local, y_voxel_local, z_voxel_local, block_index);
-
 				auto u_rounded = static_cast<int64_t>(roundf(u_precise));
 				auto v_rounded = static_cast<int64_t>(roundf(v_precise));
 
@@ -197,14 +175,14 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 					if (psdf > -sdf_truncation_distance && cosine > 0.5f) {
 						float tsdf_normalized =
 								(psdf < sdf_truncation_distance ? psdf : sdf_truncation_distance) / sdf_truncation_distance;
-						auto voxel_ptr = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
+						auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
 								x_voxel_local, y_voxel_local, z_voxel_local, block_index);
 
 						if (integrate_color) {
 							auto color_ptr = color_indexer.GetDataPtr<float>(u_rounded, v_rounded);
-							voxel_ptr->Integrate(tsdf_normalized, color_ptr[0], color_ptr[1], color_ptr[2]);
+							voxel_pointer->Integrate(tsdf_normalized, color_ptr[0], color_ptr[1], color_ptr[2]);
 						} else {
-							voxel_ptr->Integrate(tsdf_normalized);
+							voxel_pointer->Integrate(tsdf_normalized);
 						}
 					}
 				}

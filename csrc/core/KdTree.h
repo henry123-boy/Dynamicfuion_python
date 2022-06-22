@@ -26,8 +26,12 @@ namespace nnrt::core {
 
 class KdTree {
 public:
+	// NNRT_HOST_DEVICE_WHEN_CUDACC
+	// KdTree(): node_count(0), nodes() {};
 
 	explicit KdTree(const open3d::core::Tensor& points);
+	KdTree(const KdTree& other) = default;
+	KdTree(KdTree&& other) = default;
 
 	virtual ~KdTree() = default;
 	std::string GenerateTreeDiagram(int digit_length = 5) const;
@@ -36,10 +40,10 @@ public:
 
 
 	const kernel::kdtree::KdTreeNode* GetNodes() const;
-	int64_t GetNodeCount() const;
+	int32_t GetNodeCount() const;
 
 private:
-	const open3d::core::Tensor& points;
+	const open3d::core::Tensor points;
 
 	const int32_t node_count;
 	const std::shared_ptr<open3d::core::Blob> nodes;

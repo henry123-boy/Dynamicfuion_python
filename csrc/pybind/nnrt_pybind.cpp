@@ -26,14 +26,6 @@ PYBIND11_MODULE(nnrt, m) {
 	      "flow_image_rot_sa2so"_a, "flow_image_so2to"_a, "flow_image_rot_to2ta"_a, "height"_a, "width"_a,
 	      "Compute an optical flow image that reflects the augmentation applied to the source and target images.");
 
-	//TODO: define what the hell this is and what it's supposed to do or remove if it's garbage
-	m.def("count_tp1", &image_proc::count_tp1, "");
-	m.def("count_tp2", &image_proc::count_tp2, "");
-	m.def("count_tp3", &image_proc::count_tp3, "");
-
-	//TODO: define what the hell this is and what it's supposed to do or remove if it's garbage
-	m.def("extend3", &image_proc::extend3, "");
-
 
 	//[image] --> [ordered point cloud (point image)]
 

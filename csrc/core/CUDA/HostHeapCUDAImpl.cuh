@@ -25,11 +25,11 @@ namespace nnrt::core {
 
 __global__
 void InsertIntoHeap(IDeviceHeap* device_heap, const uint8_t* input_keys_data, const uint8_t* input_values_data,
-					const int64_t key_byte_size, const int64_t value_byte_size, const int64_t count){
+                    const int64_t key_byte_size, const int64_t value_byte_size, const int64_t count) {
 
-	for(int64_t i_pair = 0; i_pair < count; i_pair++){
+	for (int64_t i_pair = 0; i_pair < count; i_pair++) {
 		device_heap->InsertInternal(reinterpret_cast<const void*>(input_keys_data + key_byte_size * i_pair),
-		                    reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
+		                            reinterpret_cast<const void*>(input_values_data + value_byte_size * i_pair));
 	}
 }
 
@@ -45,7 +45,7 @@ void MakeMinHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
 			capacity,
 			core::MinHeapKeyCompare<KeyValuePair>
 	);
-	memcpy(device_heap,&local, sizeof(HT));
+	memcpy(device_heap, &local, sizeof(HT));
 }
 
 template<typename TKey, typename TValue>
@@ -60,7 +60,7 @@ void MakeMaxHeap(IDeviceHeap* device_heap, void* storage, const int capacity) {
 			capacity,
 			core::MaxHeapKeyCompare<KeyValuePair>
 	);
-	memcpy(device_heap,&local, sizeof(HT));
+	memcpy(device_heap, &local, sizeof(HT));
 }
 
 __global__
@@ -80,7 +80,7 @@ void GetHeapSize(IDeviceHeap* device_heap, int32_t* size) {
 
 template<typename TKey, typename TValue, typename TCompare>
 core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey, TValue>, TCompare>
-        MakeHeap(void* storage, int capacity, TCompare compare) {
+MakeHeap(void* storage, int capacity, TCompare compare) {
 	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey, TValue>, TCompare> HT;
 	auto ret = HT(
 			reinterpret_cast<KeyValuePair<TKey, TValue>*>(storage),
@@ -92,7 +92,7 @@ core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey
 
 template<typename TKey, typename TValue, typename TCompare>
 inline
-size_t GetHeapSize(TCompare&& compare){
+size_t GetHeapSize(TCompare&& compare) {
 	typedef core::DeviceHeap<open3d::core::Device::DeviceType::CUDA, core::KeyValuePair<TKey, TValue>, TCompare> HT;
 	return sizeof(HT);
 }
@@ -103,11 +103,11 @@ HostHeap<open3d::core::Device::DeviceType::CUDA>::HostHeap(int32_t capacity,
                                                            const open3d::core::Dtype& value_data_type,
                                                            const open3d::core::Device& device,
                                                            HeapType heap_type) :
+		device_heap(nullptr),
 		key_data_type(key_data_type),
 		value_data_type(value_data_type),
 		device(device),
-		storage(nullptr),
-		device_heap(nullptr) {
+		storage(nullptr) {
 	dim3 grid_size(1);
 	dim3 block_size(1);
 	if (key_data_type == open3d::core::Dtype::Float32) {
@@ -115,12 +115,14 @@ HostHeap<open3d::core::Device::DeviceType::CUDA>::HostHeap(int32_t capacity,
 			cudaMalloc(&storage, sizeof(KeyValuePair<int32_t, float>) * capacity);
 			switch (heap_type) {
 				case HeapType::MIN:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
-					MakeMinHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
+					OPEN3D_CUDA_CHECK(
+							cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
+					MakeMinHeap<float, int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				case HeapType::MAX:
-					OPEN3D_CUDA_CHECK(cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
-					MakeMaxHeap<float,int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
+					OPEN3D_CUDA_CHECK(
+							cudaMalloc(&device_heap, GetHeapSize<float, int32_t>(core::MinHeapKeyCompare<DistanceIndexPair<float, int32_t>>)));
+					MakeMaxHeap<float, int32_t><<<grid_size, block_size>>>(device_heap, storage, capacity);
 					break;
 				default:
 					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);

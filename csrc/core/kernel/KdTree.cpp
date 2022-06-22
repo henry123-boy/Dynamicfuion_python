@@ -76,8 +76,6 @@ void FindKNearestKdTreePoints<NeighborTrackingStrategy::PRIORITY_QUEUE>(
 void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_data, const int index_length,
                          const open3d::core::Tensor& kd_tree_points, const int digit_length) {
 
-	auto* nodes = reinterpret_cast<const KdTreeNode*>(index_data.GetDataPtr());
-	auto node_count = kd_tree_points.GetLength();
 	auto index_data_cpu = BlobToDevice(index_data, index_length * static_cast<int64_t>(sizeof(KdTreeNode)), o3c::Device("CPU:0"));
 	auto* nodes_cpu = reinterpret_cast<KdTreeNode*>(index_data_cpu.GetDataPtr());
 
@@ -116,7 +114,6 @@ void GenerateTreeDiagram(std::string& diagram, const open3d::core::Blob& index_d
 	const int min_gap_size = 1;
 
 	const int leaf_node_length = point_string_length + min_gap_size;
-	int last_level_string_length = IntPower(2, tree_height - 1) * leaf_node_length;
 	auto get_initial_offset = [&leaf_node_length, &tree_height](int level) {
 		return (IntPower(2, tree_height - level - 1) - 1) * (leaf_node_length / 2);
 	};

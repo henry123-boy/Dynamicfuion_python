@@ -119,12 +119,13 @@ class FusionPipeline:
             Tuple[Union[None, o3d.t.geometry.TriangleMesh], Union[None, o3d.t.geometry.TriangleMesh]]:
         mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(frame_index)
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
-        if self.extracted_framewise_canonical_mesh_needed:
+        is_keyframe = self.frame_is_keyframe(frame_index)
+        if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
             canonical_mesh = self.volume.extract_surface_mesh(-1, mesh_extraction_weight_threshold)
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
-        if self.framewise_warped_mesh_needed or self.frame_is_keyframe(frame_index):
+        if self.framewise_warped_mesh_needed or is_keyframe:
             warped_mesh = graph.warp_mesh(canonical_mesh)
 
         return canonical_mesh, warped_mesh
@@ -366,6 +367,7 @@ class FusionPipeline:
                 node_rotation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
                 node_translation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
                 graph_for_integration = None
+                # TODO: outsource this to a separate method
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
                     self.active_graph.rotations = node_rotation_predictions
                     self.active_graph.translations = node_translation_predictions
@@ -398,7 +400,9 @@ class FusionPipeline:
                     depth_scale=depth_scale, depth_max=3.0)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
-                #  Check BaldrLector's NeuralTracking fork code.
+                #  Check BaldrLector's NeuralTracking fork code. Guess: perhaps it was a beconing to the original
+                #  DynamicFusion code, where fidelity of points from the older Kinect cameras was significantly worse at
+                #  grazing ray angles.
                 # endregion
                 #####################################################################################################
                 canonical_mesh, warped_mesh = \

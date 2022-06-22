@@ -89,7 +89,7 @@ const kernel::kdtree::KdTreeNode* KdTree::GetNodes() const {
 	return reinterpret_cast<const kernel::kdtree::KdTreeNode*>(this->nodes->GetDataPtr());
 }
 
-int64_t KdTree::GetNodeCount() const {
+int32_t KdTree::GetNodeCount() const {
 	return this->node_count;
 }
 

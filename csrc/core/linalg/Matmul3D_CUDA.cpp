@@ -37,10 +37,6 @@ void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void*
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(dtype, [&]() {
 		scalar_t alpha = 1, beta = 0;
 
-		auto A_data = static_cast<const scalar_t*>(A);
-		auto B_data = static_cast<const scalar_t*>(B);
-		auto C_data = static_cast<scalar_t*>(C);
-
 		const scalar_t* A_array[batch_size];
 		const scalar_t* B_array[batch_size];
 		scalar_t* C_array[batch_size];

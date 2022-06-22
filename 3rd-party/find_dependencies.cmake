@@ -1,4 +1,3 @@
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/3rd-party/CMake)
 
 #
 # NNRT 3rd party library integration

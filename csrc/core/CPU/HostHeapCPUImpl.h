@@ -60,6 +60,7 @@ HostHeap(int32_t capacity,
 							capacity,
 							MaxHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
+					break;
 				default:
 					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
 			}

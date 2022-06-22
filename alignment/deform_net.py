@@ -203,10 +203,12 @@ class DeformNet(nn.Module):
         # We assume we always use 4 nearest anchors.
         assert pixel_anchors.shape[3] == 4
 
+        # TODO: try to reinitialize with existing rotations & translations, not blanks here
         node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3).repeat(batch_count,
                                                                                                         num_nodes_total,
                                                                                                         1, 1)
         node_translations = torch.zeros((batch_count, num_nodes_total, 3), dtype=source.dtype, device=source.device)
+
         deformations_validity = torch.zeros((batch_count, num_nodes_total), dtype=source.dtype, device=source.device)
         valid_solve = torch.zeros(batch_count, dtype=torch.uint8, device=source.device)
         deformed_points_prediction = torch.zeros((batch_count, self.gn_max_warped_points, 3), dtype=source.dtype,
