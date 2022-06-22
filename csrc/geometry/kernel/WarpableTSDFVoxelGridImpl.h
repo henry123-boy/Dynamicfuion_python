@@ -207,16 +207,7 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 	NDArrayIndexer block_key_indexer(block_keys, 1);
 	TransformIndexer transform_indexer(o3c::Tensor::Eye(3, o3c::Float64, o3c::Device("CPU:0")), extrinsics, 1.0);
 
-
 	float block_side_length = static_cast<float>(block_resolution) * voxel_size;
-
-	auto* kd_tree_nodes = warp_field.GetIndex().GetNodes();
-	const int kd_tree_node_count = static_cast<int>(warp_field.GetIndex().GetNodeCount());
-	NDArrayIndexer node_indexer(warp_field.nodes, 1);
-	int anchor_count = warp_field.anchor_count;
-	float node_coverage_squared = warp_field.node_coverage * warp_field.node_coverage;
-	NDArrayIndexer node_rotation_indexer(warp_field.rotations, 1);
-	NDArrayIndexer node_translation_indexer(warp_field.translations, 1);
 
 	open3d::core::ParallelFor(
 			device, block_count,
@@ -264,13 +255,8 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 					Eigen::Vector3f corner_camera;
 					transform_indexer.RigidTransform(corner.x(), corner.y(), corner.z(),
 					                                 corner_camera.data(), corner_camera.data() + 1, corner_camera.data() + 2);
-					warp::FindAnchorsAndWeightsForPointEuclidean_KDTree<TDeviceType>(
-							anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
-							corner_camera, node_coverage_squared
-					);
-					Eigen::Vector3f warped_corner(0.f, 0.f, 0.f);
-					warp::BlendWarp(warped_corner, anchor_indices, anchor_weights, anchor_count, node_indexer,
-					                node_rotation_indexer, node_translation_indexer, corner_camera);
+					warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, corner_camera);
+					Eigen::Vector3f warped_corner = warp_field.template WarpPoint<TDeviceType>(corner_camera, anchor_indices, anchor_weights);
 					if (box_min.x() > warped_corner.x()) box_min.x() = warped_corner.x();
 					else if (box_max.x() < warped_corner.x()) box_max.x() = warped_corner.x();
 					if (box_min.y() > warped_corner.y()) box_min.y() = warped_corner.y();
