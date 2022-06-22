@@ -62,7 +62,7 @@ inline void FindEuclideanKnn_KdTree_Generic(const KdTreeNode* nodes, const int n
 			auto node_point = make_point_vector(kd_tree_point_indexer.template GetDataPtr<float>(node.point_index));
 
 			float node_distance = (node_point - query_point).norm();
-			// update the nearest neighbor heap if the distance is better than the greatest nearest-neighbor distance encountered so far
+			// update the nearest neighbor set if the distance is better than the greatest nearest-neighbor distance encountered so far
 			if (max_neighbor_distance > node_distance) {
 				update_neighbor_set(node_distance, node.point_index);
 				max_neighbor_distance = get_max_distance();

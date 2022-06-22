@@ -333,8 +333,8 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 }
 
 //TODO: optimize by making some kind of clone method in KdTree that simply shifts all the KD node pointers instead of reindexing
-GraphWarpField::GraphWarpField(const GraphWarpField& original) :
-		nodes(original.nodes.Clone()),
+GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTree& index) :
+		nodes(index.GetPoints()),
 		edges(original.edges.Clone()),
 		edge_weights(original.edge_weights.Clone()),
 		clusters(original.clusters.Clone()),
@@ -346,7 +346,7 @@ GraphWarpField::GraphWarpField(const GraphWarpField& original) :
 		threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(original.minimum_valid_anchor_count),
 
-		index(this->nodes),
+		index(index),
 		node_coverage_squared(original.node_coverage_squared),
 		kd_tree_nodes(this->index.GetNodes()), kd_tree_node_count(this->index.GetNodeCount()),
 		node_indexer(this->nodes, 1), rotation_indexer(this->rotations, 1), translation_indexer(this->translations, 1) {}
@@ -387,6 +387,10 @@ void GraphWarpField::ResetRotations() {
 GraphWarpField GraphWarpField::ApplyTransformations() const {
 	return {this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
 	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
+}
+
+GraphWarpField GraphWarpField::Clone() {
+	return {*this, this->index.Clone()};
 }
 
 

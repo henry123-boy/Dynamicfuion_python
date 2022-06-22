@@ -25,10 +25,8 @@
 #include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
 #include "core/PlatformIndependence.h"
-#include "core/kernel/KdTreeNodeTypes.h"
 #include "geometry/kernel/WarpableTSDFVoxelGrid.h"
 #include "geometry/kernel/Defines.h"
-#include "geometry/kernel/WarpUtilities.h"
 
 #include "geometry/kernel/Segment.h"
 #include "core/PlatformIndependentAtomics.h"

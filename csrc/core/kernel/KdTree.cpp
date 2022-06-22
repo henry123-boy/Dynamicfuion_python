@@ -30,8 +30,8 @@ namespace o3c = open3d::core;
 namespace nnrt::core::kernel::kdtree {
 
 void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points) {
-	core::InferDeviceFromEntityAndExecute(
-			points,
+	core::ExecuteOnDevice(
+			points.GetDevice(),
 			[&] { BuildKdTreeIndex<o3c::Device::DeviceType::CPU>(index_data, index_length, points); },
 			[&] { NNRT_IF_CUDA(BuildKdTreeIndex<o3c::Device::DeviceType::CUDA>(index_data, index_length, points);); }
 	);
@@ -42,8 +42,7 @@ template<NeighborTrackingStrategy TTrackingStrategy>
 void FindKNearestKdTreePoints(open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
                               open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
                               const open3d::core::Tensor& reference_points) {
-	core::InferDeviceFromEntityAndExecute(
-			reference_points,
+	core::ExecuteOnDevice(reference_points.GetDevice(),
 			[&] {
 				FindKNearestKdTreePoints<o3c::Device::DeviceType::CPU, TTrackingStrategy>(
 						index_data, index_length, nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, reference_points

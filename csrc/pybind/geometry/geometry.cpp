@@ -203,10 +203,7 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("get_node_extent", &GraphWarpField::GetNodeExtent);
 	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
 	                     "input_mesh"_a, "disable_neighbor_thresholding"_a = true);
-	graph_warp_field.def("clone", [](const GraphWarpField& field){
-		GraphWarpField field_clone(field);
-		return field_clone;
-	});
+	graph_warp_field.def("clone", &GraphWarpField::Clone);
 	graph_warp_field.def_readonly("nodes", &GraphWarpField::nodes);
 	graph_warp_field.def_readonly("edges", &GraphWarpField::edges);
 	graph_warp_field.def_readonly("edge_weights", &GraphWarpField::edge_weights);

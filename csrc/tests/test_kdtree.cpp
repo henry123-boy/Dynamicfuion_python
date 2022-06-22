@@ -378,6 +378,8 @@ void Test3DKnnSearch(const o3c::Device& device, bool use_priority_queue = true) 
 
 }
 
+
+
 TEST_CASE("Test 3D KDTree Search CPU - Plain") {
 	auto device = o3c::Device("CPU:0");
 	Test3DKnnSearch<core::KdTree>(device, false);
@@ -421,6 +423,51 @@ TEST_CASE("Test 3D LinearIndex Search CUDA - Plain") {
 }
 
 
+void TestKdTreeClone(const o3c::Device& device) {
+	std::vector<float> point_data{0., 9.8, 6.8, 5.7, 5., 0.8, 2.1, 1.8, 8.9, 8.3, 1.9,
+	                              2.1, 0.4, 4.3, 3., 8.3, 1.3, 2.9, 1.5, 3.2, 7.6, 3.1,
+	                              2., 7.7, 3.3, 8.4, 0.9, 4.6, 2.7, 5.6, 6.7, 4.9, 1.3,
+	                              5.8, 0.5, 9.3, 0.5, 5.4, 0., 2.8, 7., 6.9, 5.2, 7.7,
+	                              8.6};
+	o3c::Tensor points(point_data, {15, 3}, o3c::Dtype::Float32, device);
+	core::KdTree index(points);
+	core::KdTree index_clone = index.Clone();
+
+	std::vector<float> query_point_data{4.1, 7.2, 6.7, 8., 8.7, 3.3, 4.8, 1.8, 2.6};
+	o3c::Tensor query_points(query_point_data, {3, 3}, o3c::Dtype::Float32, device);
+
+	o3c::Tensor nearest_neighbor_indices;
+	o3c::Tensor nearest_neighbor_distances;
+	const int k = 4;
+	index_clone.FindKNearestToPoints(nearest_neighbor_indices, nearest_neighbor_distances, query_points, k);
+
+	// ground truth data computed manually via numpy / jupyter shell
+	std::vector<int> gt_nn_indices_data{13, 14, 9, 6, 10, 1, 8, 14, 9, 3, 5, 1};
+	std::vector<float> gt_nn_distances_data{1.33041347f, 2.25166605f, 4.6593991f, 4.85489444f, 4.48664685f, 5.02294734f, 5.28583011f, 6.07700584f,
+	                                        3.13847097f, 3.53694784f, 3.548239f, 3.78021163f};
+	std::vector<int32_t> nn_i_sorted;
+	std::vector<float> nn_d_sorted;
+
+	SortFinalKNNHelper_Indices(nn_i_sorted, nn_d_sorted, nearest_neighbor_indices, nearest_neighbor_distances);
+
+	REQUIRE(nn_i_sorted == gt_nn_indices_data);
+	REQUIRE(std::equal(nn_d_sorted.begin(), nn_d_sorted.end(), gt_nn_distances_data.begin(),
+	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
+}
+
+TEST_CASE("Test 3D KDTree Clone CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestKdTreeClone(device);
+}
+
+TEST_CASE("Test 3D KDTree Clone CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestKdTreeClone(device);
+}
+
+
+
+
 // final output sort (for small K, it is faster to use a plain memory block instead of a priority queue for tracking
 // the nearest neighbors, so the K nearest neighbors aren't actually ordered by distance in the output)
 void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<float>& nn_d_sorted,
@@ -450,15 +497,15 @@ void SortFinalKNNHelper_Points(std::vector<float>& nn_p_sorted, std::vector<floa
 }
 
 void GetDistanceStatistics(float& ratio_below_threshold, float& average_point_distance,
-						   Eigen::Map<Eigen::MatrixXf> points, float distance_threshold) {
+                           Eigen::Map<Eigen::MatrixXf> points, float distance_threshold) {
 
 	float cumulative_distance = 0.0f;
 	int64_t count_below_threshold = 0;
 	int64_t distance_count = 0;
-	for (int i_point = 0; i_point < points.rows()-1; i_point++) {
-		for (int j_point = i_point+1; j_point < points.rows(); j_point++, distance_count++) {
+	for (int i_point = 0; i_point < points.rows() - 1; i_point++) {
+		for (int j_point = i_point + 1; j_point < points.rows(); j_point++, distance_count++) {
 			float distance = (points.row(i_point) - points.row(j_point)).norm();
-			if(distance < distance_threshold){
+			if (distance < distance_threshold) {
 				count_below_threshold++;
 			}
 			cumulative_distance += distance;

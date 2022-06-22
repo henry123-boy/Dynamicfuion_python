@@ -19,8 +19,10 @@
 #include "core/kernel/KdTreeUtilities.h"
 #include "core/kernel/KdTree.h"
 #include "core/kernel/KdTreeNodeTypes.h"
+#include "open3d/core/MemoryManager.h"
 
 #include <limits>
+#include <utility>
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -65,8 +67,8 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 
 			o3u::LogError("Not fully implemented: sort the resulting rows when rows are short."
-						  "Consult https://stackoverflow.com/questions/28150098/how-to-use-thrust-to-sort-the-rows-of-a-matrix"
-						  "for reference on how to use thrust in the CUDA kernel for this.");
+			              "Consult https://stackoverflow.com/questions/28150098/how-to-use-thrust-to-sort-the-rows-of-a-matrix"
+			              "for reference on how to use thrust in the CUDA kernel for this.");
 		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
@@ -91,6 +93,25 @@ const kernel::kdtree::KdTreeNode* KdTree::GetNodes() const {
 
 int32_t KdTree::GetNodeCount() const {
 	return this->node_count;
+}
+
+KdTree KdTree::Clone() const {
+	o3c::Tensor points_copy = points.Clone();
+	auto nodes_total_byte_size = node_count * sizeof(kernel::kdtree::KdTreeNode);
+	auto nodes_copy = std::make_shared<open3d::core::Blob>(nodes_total_byte_size, points.GetDevice());
+	auto device = this->points.GetDevice();
+	o3c::MemoryManager::Memcpy(nodes_copy->GetDataPtr(), device,
+	                           this->nodes->GetDataPtr(), device,
+	                           nodes_total_byte_size);
+	return {this->points, this->node_count, nodes_copy};
+}
+
+KdTree::KdTree(open3d::core::Tensor points, int32_t node_count, std::shared_ptr<open3d::core::Blob> nodes) :
+		points(std::move(points)), node_count(node_count),
+		nodes(std::move(nodes)) {}
+
+open3d::core::Tensor KdTree::GetPoints() const {
+	return this->points;
 }
 
 

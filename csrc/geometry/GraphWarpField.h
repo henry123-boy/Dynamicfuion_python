@@ -66,28 +66,9 @@ class GraphWarpField {
 public:
 	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
 	               float node_coverage = 0.05, bool threshold_nodes_by_distance_by_default = false, int anchor_count = 4, int minimum_valid_anchor_count = 0);
-#ifdef __CUDACC__
-	NNRT_HOST_DEVICE_WHEN_CUDACC
-	GraphWarpField(const GraphWarpField& original) : nodes(original.nodes), edges(original.edges), edge_weights(original.edge_weights),
-	clusters(original.clusters),
+	GraphWarpField(const GraphWarpField& original) = default;
+	GraphWarpField(GraphWarpField&& other) = default;
 
-	translations(original.translations),
-	rotations(original.rotations),
-
-
-	node_coverage(original.node_coverage),
-	anchor_count(original.anchor_count),
-	threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
-	minimum_valid_anchor_count(original.minimum_valid_anchor_count),
-
-	index(original.index), node_coverage_squared(original.node_coverage_squared),
-	kd_tree_nodes(original.kd_tree_nodes), kd_tree_node_count(original.kd_tree_node_count),
-	node_indexer(original.node_indexer), rotation_indexer(original.rotation_indexer), translation_indexer(original.translation_indexer)
-
-	{};
-#else
-	GraphWarpField(const GraphWarpField& original);
-#endif
 	virtual ~GraphWarpField() = default;
 
 	open3d::core::Tensor GetWarpedNodes() const;
@@ -121,6 +102,8 @@ public:
 		return warped_point;
 	}
 
+	GraphWarpField Clone();
+
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
 	const open3d::core::Tensor nodes;
 	const open3d::core::Tensor edges;
@@ -135,7 +118,9 @@ public:
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
 
+
 private:
+	GraphWarpField(const GraphWarpField& original, const core::KdTree& index);
 	core::KdTree index;
 	const float node_coverage_squared;
 	const core::kernel::kdtree::KdTreeNode* kd_tree_nodes;
