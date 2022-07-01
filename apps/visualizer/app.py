@@ -125,7 +125,7 @@ class VisualizerApp(App):
         self.interactor.Initialize()
 
         self.interactor.AddObserver("ModifiedEvent", self.update_window)
-        self.interactor.AddObserver("KeyPressEvent", self.keypress)
+        self.interactor.AddObserver("KeyPressEvent", self.key_press)
         self.interactor.AddObserver("KeyReleaseEvent", self.key_release)
         self.interactor.AddObserver("LeftButtonPressEvent", self.button_event)
         self.interactor.AddObserver("LeftButtonReleaseEvent", self.button_event)
@@ -162,8 +162,6 @@ class VisualizerApp(App):
         camera.SetFocalPoint(0, 0, 1.5)
         camera.SetClippingRange(0.01, 10.0)
 
-        self.render_window.Render()
-
         self.update_window(None, None)
         self.set_frame(self.current_frame)
         self.show_mesh_at_index(self.shown_mesh_index)
@@ -182,6 +180,10 @@ class VisualizerApp(App):
         self.render_window.Render()
 
         self._pixel_labels_visible = False
+
+    def launch(self):
+        # Start the event loop.
+        self.interactor.Start()
 
     def load_frame_meshes(self, i_frame):
         canonical_path = self.output_path / f"{i_frame:06d}_canonical_mesh.ply"
@@ -214,10 +216,6 @@ class VisualizerApp(App):
             self.graph.update(self.output_path / f"{i_frame:06d}_nodes.npy",
                               self.output_path / f"{i_frame:06d}_edges.npy",
                               self.output_path / f"{i_frame:06d}_translations.npy")
-
-    def launch(self):
-        # Start the event loop.
-        self.interactor.Start()
 
     def show_mesh_at_index(self, i_mesh_to_show):
         print("Mesh:", self.mesh_names[i_mesh_to_show])
@@ -328,7 +326,6 @@ class VisualizerApp(App):
         elif event == "MouseWheelBackwardEvent":
             self.dolly_step(-1)
 
-    # General high-level logic
     def mouse_move(self, obj, event):
         last_x_y_pos = self.interactor.GetLastEventPosition()
         last_x = last_x_y_pos[0]
@@ -424,7 +421,7 @@ class VisualizerApp(App):
 
     KEYS_TO_SEND = {"q", "Escape", "bracketright", "bracketleft"}
 
-    def keypress(self, obj, event):
+    def key_press(self, obj, event):
         key = obj.GetKeySym()
         # send key to linked process, if any
         if key in VisualizerApp.KEYS_TO_SEND and self.outgoing_queue is not None:

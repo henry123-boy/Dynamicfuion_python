@@ -24,10 +24,13 @@ from data import camera
 PROGRAM_EXIT_SUCCESS = 0
 
 
+# TODO turn this into an actual pytest test case by saving inputs & expected output images as ground truth
+
 def main():
     use_direct_matrix_solution = True
 
-    mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(os.path.join(Parameters.path.output_directory.value, "mesh_000000_red_shorts.ply"))
+    mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(
+        os.path.join(Parameters.path.output_directory.value, "mesh_000000_red_shorts.ply"))
     depth_intrinsics_path = os.path.join(Parameters.path.dataset_base_directory.value, "val/seq014/intrinsics.txt")
 
     torch_device = torch.device("cuda:0")
@@ -56,7 +59,8 @@ def main():
                          specular_color=((0.0, 0.0, 0.0),), device=torch_device, location=[[0.0, 0.0, -3.0]])
 
     # region ===== CAMERA SETUP =====
-    fx_screen, fy_screen, px_screen, py_screen = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(depth_intrinsics_path)
+    fx_screen, fy_screen, px_screen, py_screen = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(
+        depth_intrinsics_path)
 
     image_width = 640
     image_height = 480

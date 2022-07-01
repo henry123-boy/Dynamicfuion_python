@@ -4,9 +4,7 @@ import os
 import numpy as np
 from typing import List
 
-from apps.shared import trajectory_loading
 from apps.visualizer.geometric_conversions import convert_block_to_metric
-from apps.visualizer.utilities import get_output_frame_count, get_frame_output_path
 
 
 class FrameBlockData:
@@ -132,52 +130,3 @@ def compile_pixel_block_data(pixel_block_allocations_image: np.ndarray, pixel_bl
     metric_block_coordinates = convert_block_to_metric(allocated_blocks_by_effective_pixel)
     return FramePixelBlockData(effective_pixel_coordinates, allocated_blocks_by_effective_pixel, metric_block_coordinates)
 
-
-def read_live_block_allocation_data(inverse_camera_matrices: List[np.ndarray],
-                                    output_path: str,
-                                    initial_frame_index: int,
-                                    frame_bound=-1) -> (List[FrameBlockAllocationRayData], List[FramePixelBlockData]):
-    frame_ray_datasets = [FrameBlockAllocationRayData(np.array([]), np.array([]), np.array([]))]
-    frame_pixel_block_datasets = [FramePixelBlockData(np.array([]), np.array([]), np.array([]))]
-    if frame_bound != -1:
-        total_frame_count = frame_bound
-    else:
-        total_frame_count = get_output_frame_count(output_path)
-
-    for i_frame in range(initial_frame_index + 1, initial_frame_index + total_frame_count):
-        print("Reading ray allocation data for frame:", i_frame)
-        frame_folder = get_frame_output_path(output_path, i_frame)
-        data_path = os.path.join(frame_folder, "voxel_block_hash_diagnostic_data.dat")
-        file = gzip.open(data_path, "rb")
-
-        layers = []
-
-        num_bool_layers = int(np.frombuffer(file.read(size=np.dtype(np.int32).itemsize), dtype=np.int32)[0])
-        for i_layer in range(0, num_bool_layers):
-            layer = read_pixel_array_from_2d_image(file)
-            layers.append(layer)
-
-        num_float_layers = int(np.frombuffer(file.read(size=np.dtype(np.int32).itemsize), dtype=np.int32)[0])
-        for i_layer in range(0, num_float_layers):
-            layer = read_pixel_array_from_3d_image(file)
-            layers.append(layer)
-
-        inverse_camera_matrix = inverse_camera_matrices[i_frame - initial_frame_index]
-        frame_ray_dataset = compile_ray_block_data(layers, inverse_camera_matrix)
-        frame_ray_datasets.append(frame_ray_dataset)
-
-        pixel_block_allocations = read_4d_image(file, 3, np.int16)
-        pixel_block_allocation_counts = read_2d_image(file, np.int32)
-
-        frame_pixel_block_dataset = compile_pixel_block_data(pixel_block_allocations, pixel_block_allocation_counts)
-        frame_pixel_block_datasets.append(frame_pixel_block_dataset)
-
-    return frame_ray_datasets, frame_pixel_block_datasets
-
-
-# test
-if __name__ == "__main__":
-    inverse_camera_matrices = trajectory_loading.load_inverse_matrices(
-        "/mnt/Data/Reconstruction/experiment_output/2020-05-19/recording")
-    read_live_block_allocation_data(inverse_camera_matrices,
-                                    "/mnt/Data/Reconstruction/experiment_output/2020-05-19/recording", 16, 18)
