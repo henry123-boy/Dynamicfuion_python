@@ -8,7 +8,9 @@ class DepthSamplingMode(Enum):
 
 
 # TODO: figure out which DeformNet parameters *truly* refer to the GaussNewton solver,
-#  remove the prefix 'gn' and move the parameters to GaussNewtonParameters instead
+#  remove the prefix 'gn' and move the parameters to GaussNewtonParameters instead (see code usage to determine
+#  what goes where -- ParameterEnum subclasses should correspond to actual Python classes with methods that use the
+#  parameters)
 class DeformNetParameters(ParameterEnum):
     depth_sampling_mode = \
         Parameter(default=DepthSamplingMode.BILINEAR, arg_type=DepthSamplingMode,
