@@ -141,4 +141,9 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="DeformNet will use correspondence masking via MaskNet if enabled.")
     use_batch_norm = \
-        Parameter(default=False, arg_type='bool_flag', arg_help="Use batch normalization.")
+        Parameter(default=False, arg_type='bool_flag', arg_help="Use batch normalization in MaskNet.")
+
+    gn_initialize_transformations_from_provided_estimate = \
+        Parameter(default=True, arg_type='bool_flag',
+                  arg_help="Before optimization, initialize the node transformations using the passed-in estimates "
+                           "instead of identity rotation matrices and zero translation vectors.")

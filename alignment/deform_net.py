@@ -90,6 +90,8 @@ class DeformNet(nn.Module):
         self.gn_max_matches_eval = DeformNetParameters.gn_max_matches_eval.value
         self.gn_max_warped_points = DeformNetParameters.gn_max_warped_points.value
         self.gn_debug = DeformNetParameters.gn_debug.value
+        self.gn_initialize_transformations_from_provided_estimate = \
+            DeformNetParameters.gn_initialize_transformations_from_provided_estimate.value
 
         self.gn_remove_clusters_with_few_matches = DeformNetParameters.gn_remove_clusters_with_few_matches.value
         self.gn_min_num_correspondences_per_cluster = DeformNetParameters.gn_min_num_correspondences_per_cluster.value
@@ -126,7 +128,10 @@ class DeformNet(nn.Module):
             graph_clusters: torch.Tensor,
             pixel_anchors: torch.Tensor, pixel_weights: torch.Tensor, num_nodes_vec: torch.Tensor,
             intrinsics: torch.Tensor,
-            evaluate: bool = False, split: str = "train"
+            node_rotations_estimate: Union[torch.Tensor, None] = None,
+            node_translations_estimate: Union[torch.Tensor, None] = None,
+            evaluate: bool = False,
+            split: str = "train"
     ):
         batch_count = source.shape[0]
 
@@ -191,6 +196,7 @@ class DeformNet(nn.Module):
             bidirectional_correspondence_mask = \
                 (projection_error < DeformNetParameters.bidirectional_consistency_threshold.value)
             correspondence_mask = correspondence_mask & bidirectional_correspondence_mask
+            # noinspection PyTypeChecker
             correspondence_weights = torch.where(bidirectional_correspondence_mask, correspondence_weights,
                                                  torch.zeros_like(correspondence_weights))
 
@@ -203,11 +209,14 @@ class DeformNet(nn.Module):
         # We assume we always use 4 nearest anchors.
         assert pixel_anchors.shape[3] == 4
 
-        # TODO: try to reinitialize with existing rotations & translations, not blanks here
-        node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3).repeat(batch_count,
-                                                                                                        num_nodes_total,
-                                                                                                        1, 1)
-        node_translations = torch.zeros((batch_count, num_nodes_total, 3), dtype=source.dtype, device=source.device)
+        if self.gn_initialize_transformations_from_provided_estimate and \
+                node_rotations_estimate is not None and node_translations_estimate is not None:
+            node_rotations = node_rotations_estimate
+            node_translations = node_translations_estimate
+        else:
+            node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3) \
+                .repeat(batch_count, num_nodes_total, 1, 1)
+            node_translations = torch.zeros((batch_count, num_nodes_total, 3), dtype=source.dtype, device=source.device)
 
         deformations_validity = torch.zeros((batch_count, num_nodes_total), dtype=source.dtype, device=source.device)
         valid_solve = torch.zeros(batch_count, dtype=torch.uint8, device=source.device)
@@ -283,9 +292,9 @@ class DeformNet(nn.Module):
             cx = intrinsics[i_batch, 2]
             cy = intrinsics[i_batch, 3]
 
-            ###############################################################################################################
+            ############################################################################################################
             # region Filter invalid matches.
-            ###############################################################################################################
+            ############################################################################################################
             valid_correspondences_idxs = torch.where(correspondence_mask[i_batch])
 
             source_points_filtered = source_points[i_batch].permute(1, 2, 0)
@@ -391,6 +400,7 @@ class DeformNet(nn.Module):
                         print('cluster_id', cluster_id, cluster_match_weights)
 
                     if cluster_match_weights < self.gn_min_num_correspondences_per_cluster:
+                        # noinspection PyTypeChecker
                         index_equals_cluster_id = torch.where(graph_clusters_i == cluster_id)
                         transform_delta = index_equals_cluster_id[0].tolist()
                         node_ids_for_removal += transform_delta
@@ -411,8 +421,9 @@ class DeformNet(nn.Module):
                     optimized_node_count = graph_nodes_i.shape[0]
 
                     # Get mask of correspondences for which any one of their anchors is an invalid node
-                    valid_corresp_mask = torch.ones((match_count), dtype=torch.bool, device=source.device)
+                    valid_corresp_mask = torch.ones(match_count, dtype=torch.bool, device=source.device)
                     for node_id_for_removal in node_ids_for_removal:
+                        # noinspection PyArgumentList
                         valid_corresp_mask = valid_corresp_mask & torch.all(source_anchors != node_id_for_removal,
                                                                             axis=1)
 
@@ -631,6 +642,7 @@ class DeformNet(nn.Module):
 
         # Sample target points at computed pixel locations.
 
+        # noinspection PyUnresolvedReferences
         target_matches = torch.nn.functional.grid_sample(
             target_points, xy_coords_warped, mode=self._depth_sampling_mode, padding_mode='zeros', align_corners=False
         )
@@ -638,6 +650,7 @@ class DeformNet(nn.Module):
         # We filter out any boundary matches where any of the four pixels are invalid.
         # target_validity: mask for all points that are within the desired depth range
         target_point_validity = ((target_points > 0.0) & (target_points <= self.gn_max_depth)).type(torch.float32)
+        # noinspection PyUnresolvedReferences
         target_matches_validity = torch.nn.functional.grid_sample(
             target_point_validity, xy_coords_warped, mode="bilinear", padding_mode='zeros', align_corners=False
         )
@@ -652,12 +665,14 @@ class DeformNet(nn.Module):
         # Compute mask of valid correspondences
         valid_correspondences = valid_source_points & valid_target_matches
         valid_correspondence_counts = torch.sum(valid_correspondences, dim=(1, 2))
-        return valid_source_points, target_matches, valid_target_matches, valid_correspondences, valid_correspondence_counts
+        return valid_source_points, target_matches, valid_target_matches, valid_correspondences, \
+               valid_correspondence_counts
 
     def apply_mask_net(self, evaluate: bool, target_color: torch.Tensor, xy_coords_warped: torch.Tensor,
                        source: torch.Tensor, target_matches: torch.Tensor, features2: torch.Tensor,
                        batch_count: int, image_height: int, image_width: int) -> Tuple[torch.Tensor, torch.Tensor]:
         # Prepare the input of both the MaskNet and AttentionNet, if we actually use either of them
+        # noinspection PyUnresolvedReferences
         target_rgb_warped = torch.nn.functional.grid_sample(target_color, xy_coords_warped, padding_mode='zeros',
                                                             align_corners=False)
 
@@ -675,8 +690,10 @@ class DeformNet(nn.Module):
 
             # Patch-wise threshold
             elif self.patchwise_threshold_mask_predictions:
+                # noinspection PyUnresolvedReferences
                 pooled = torch.nn.functional.max_pool2d(input=mask_net_prediction, kernel_size=self.patch_size,
                                                         stride=self.patch_size)
+                # noinspection PyUnresolvedReferences
                 pooled = torch.nn.functional.interpolate(input=pooled.unsqueeze(1), size=(
                     self.alignment_image_height, self.alignment_image_width),
                                                          mode='nearest').squeeze(1)

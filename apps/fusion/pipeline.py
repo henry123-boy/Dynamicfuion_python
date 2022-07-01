@@ -319,12 +319,9 @@ class FusionPipeline:
                 ########################################################################################################
                 # region prepare pixel anchors, and pixel weights
                 ########################################################################################################
-                if current_frame_is_keyframe:
-                    saved_pixel_anchors, saved_pixel_weights = self.compute_pixel_anchors(source_point_image_np, device)
-
                 if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
                     pixel_anchors, pixel_weights = \
-                        self.compute_pixel_anchors(source_point_image_np, device)
+                        self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=True)
                 else:
                     pixel_anchors = saved_pixel_anchors
                     pixel_weights = saved_pixel_weights
@@ -345,9 +342,16 @@ class FusionPipeline:
                 # region === run the motion prediction & optimization (non-rigid alignment) ====
                 #####################################################################################################
 
-                deform_net_data = run_non_rigid_alignment(self.deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
-                                                          pixel_weights, self.active_graph, cropped_intrinsics_numpy,
-                                                          device)
+                deform_net_data = run_non_rigid_alignment(
+                    self.deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
+                    pixel_weights, self.active_graph, cropped_intrinsics_numpy,
+                    device,
+                    use_graph_rotations_and_translations_as_estimates=
+                    tracking_parameters.tracking_span_mode.value != TrackingSpanMode.PREVIOUS_TO_CURRENT,
+                    use_warped_nodes=
+                    tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT,
+                )
+
                 telemetry_generator.process_gn_point_clouds(deform_net_data["gn_point_clouds"])
                 telemetry_generator.process_correspondences(deform_net_data["correspondence_info"],
                                                             deform_net_data["mask_pred"])
@@ -381,6 +385,7 @@ class FusionPipeline:
                     self.active_graph.rotations = node_rotation_predictions
                     self.active_graph.translations = node_translation_predictions
                     if len(self.keyframe_graphs) == 0:
+                        # we're at the initial keyframe, graph storage is unnecessary
                         graph_for_integration = self.active_graph
                     else:
                         graph_for_integration = self.keyframe_graphs[-1].clone()
@@ -390,6 +395,9 @@ class FusionPipeline:
                     if current_frame_is_keyframe:
                         self.active_graph = graph_for_integration.apply_transformations()
                         self.keyframe_graphs.append(graph_for_integration)
+                        # have to recompute the pixel anchors and weights with the new source point cloud and graph
+                        saved_pixel_anchors, saved_pixel_weights = \
+                            self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=False)
 
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(graph_for_integration)
@@ -432,6 +440,7 @@ class FusionPipeline:
             end_time = timeit.default_timer()
             print(f"Total runtime (in seconds, with graph generation, "
                   f"without model + TSDF grid initialization): {end_time - start_time}")
+
         return PROGRAM_EXIT_SUCCESS
 
     def initialize_graph_and_anchors(self, volume: nnrt.geometry.WarpableTSDFVoxelGrid,
@@ -486,28 +495,34 @@ class FusionPipeline:
             depth_scale = deform_net_parameters.depth_scale.value
             source_point_image = image_processing.backproject_depth(depth_image_np, self.fx, self.fy, self.cx, self.cy,
                                                                     depth_scale=depth_scale)  # (h, w, 3)
-            return self.compute_pixel_anchors(source_point_image, device)
+            return self.compute_pixel_anchors(source_point_image, device, use_warped_nodes=False)
 
         precomputed_pixel_anchors = self.cropper(precomputed_pixel_anchors)
         precomputed_pixel_weights = self.cropper(precomputed_pixel_weights)
-        return o3c.Tensor(precomputed_pixel_anchors, device=device), o3c.Tensor(precomputed_pixel_weights,
-                                                                                device=device)
+        return o3c.Tensor(precomputed_pixel_anchors, device=device), \
+               o3c.Tensor(precomputed_pixel_weights, device=device)
 
-    def compute_pixel_anchors(self, source_point_image: np.ndarray, device: o3c.Device) \
+    def compute_pixel_anchors(self, source_point_image: np.ndarray, device: o3c.Device,
+                              use_warped_nodes=False) \
             -> Tuple[o3c.Tensor, o3c.Tensor]:
         tracking_parameters = Parameters.fusion.tracking
         node_coverage = Parameters.graph.node_coverage.value
         source_point_image_o3d = o3c.Tensor(source_point_image, device=device)
+        if use_warped_nodes:
+            nodes = self.active_graph.get_warped_nodes()
+        else:
+            nodes = self.active_graph.nodes
 
         if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
             pixel_anchors, pixel_weights = \
                 nnrt.geometry.compute_anchors_and_weights_euclidean(
-                    source_point_image_o3d, self.active_graph.nodes, 4, 0, node_coverage
+                    source_point_image_o3d, nodes, 4, 0, node_coverage
                 )
         elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
             pixel_anchors, pixel_weights = \
                 nnrt.geometry.compute_anchors_and_weights_shortest_path(
-                    source_point_image_o3d, self.active_graph.nodes, self.active_graph.edges, 4, node_coverage
+                    source_point_image_o3d, nodes, self.active_graph.edges, 4,
+                    node_coverage
                 )
         else:
             raise NotImplementedError(
