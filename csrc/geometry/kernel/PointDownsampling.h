@@ -18,10 +18,10 @@
 
 namespace nnrt::geometry::kernel::downsampling {
 
-// void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
-//
-// template<open3d::core::Device::DeviceType DeviceType>
-// void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
+void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
+
+template<open3d::core::Device::DeviceType DeviceType>
+void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
 
 void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size);
 

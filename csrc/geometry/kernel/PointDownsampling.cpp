@@ -20,14 +20,14 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry::kernel::downsampling {
 
-// void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
-// 	open3d::utility::LogError("Not fully implemented (see TODO in PointDownsamplingImpl.h)");
-// 	core::InferDeviceFromEntityAndExecute(
-// 			original_points,
-// 			[&] { DownsamplePointsByRadius<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius); },
-// 			[&] { NNRT_IF_CUDA(DownsamplePointsByRadius<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius);); }
-// 	);
-// }
+void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
+	open3d::utility::LogError("Not fully implemented (see TODO in PointDownsamplingImpl.h)");
+	core::InferDeviceFromEntityAndExecute(
+			original_points,
+			[&] { DownsamplePointsByRadius<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius); },
+			[&] { NNRT_IF_CUDA(DownsamplePointsByRadius<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius);); }
+	);
+}
 
 void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
 	core::InferDeviceFromEntityAndExecute(
