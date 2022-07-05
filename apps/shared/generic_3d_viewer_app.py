@@ -2,7 +2,6 @@
 import sys
 
 # third-party
-import pyglet
 import vtkmodules.all as vtk
 
 # local

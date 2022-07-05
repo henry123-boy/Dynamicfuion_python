@@ -1,6 +1,6 @@
 from typing import List, TypeVar, Generic
 
-import vtk
+import vtkmodules.all as vtk
 
 from apps.visualizer.alloction_data_processing import FrameBlockData, FramePixelBlockData
 from apps.visualizer.geometric_conversions import VoxelVolumeParameters

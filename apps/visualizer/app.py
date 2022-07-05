@@ -8,7 +8,6 @@ import sys
 import vtkmodules.all as vtk
 
 # local (visualizer app & apps.shared)
-from apps.shared.screen_management import set_up_render_window_bounds
 from apps.shared.generic_3d_viewer_app import Generic3DViewerApp
 from apps.visualizer import utilities
 from apps.visualizer.mesh import Mesh, MeshColorMode
