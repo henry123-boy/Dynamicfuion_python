@@ -227,116 +227,116 @@ void ComputeBinAverages(o3c::Device& device,
 
 } // anonymous namespace
 
+// template<open3d::core::Device::DeviceType DeviceType>
+// void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
+// 	o3gk::NDArrayIndexer original_point_indexer(original_points, 1);
+// 	auto original_point_count = original_points.GetLength();
+// 	auto device = original_points.GetDevice();
+//
+// 	Eigen::Vector3f grid_bin_min_bound, grid_bin_max_bound;
+// 	FindPointCollectionBounds<DeviceType>(grid_bin_min_bound, grid_bin_max_bound, original_point_indexer, device, original_point_count);
+//
+// 	// region ESTIMATE BIN COUNT IN DENSE 3D BIN BLOCK & FIND CENTER
+//
+// 	const auto bin_size = radius;
+//
+// 	auto grid_spatial_extents = grid_bin_max_bound - grid_bin_min_bound;
+// 	auto grid_center = grid_bin_min_bound + (grid_spatial_extents / 2.f);
+//
+// 	auto grid_bin_extents = Eigen::Vector3i(std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.x() / bin_size)), 1),
+// 	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.y() / bin_size)), 1),
+// 	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.z() / bin_size)), 1));
+//
+// 	// ensure each dimension is divisible by 2, so that later we can process grid directionally with step 2
+// 	grid_bin_extents.x() = grid_bin_extents.x() + grid_bin_extents.x() % 2;
+// 	grid_bin_extents.y() = grid_bin_extents.y() + grid_bin_extents.y() % 2;
+// 	grid_bin_extents.z() = grid_bin_extents.z() + grid_bin_extents.z() % 2;
+//
+// 	const auto bin_count = grid_bin_extents.x() * grid_bin_extents.y() * grid_bin_extents.z();
+// 	// endregion
+//
+//
+// 	o3c::Blob bin_blob(static_cast<int64_t>(sizeof(PointAggregationBin) * bin_count), device);
+// 	auto bins = reinterpret_cast<PointAggregationBin*>(bin_blob.GetDataPtr());
+// 	InitializeBins<DeviceType>(device, bin_count, bins);
+//
+//
+// 	ComputeBinAggregates<DeviceType>(original_point_indexer, device, original_point_count, bins,
+// 	                                 grid_bin_min_bound, grid_bin_extents, bin_size);
+//
+// 	ComputeBinAverages<DeviceType>(device, bin_count, bins);
+//
+// 	//TODO  MERGE BINS AS NECESSARY -- there are some interesting ways to do this on a per-direction basis, but most likely will need to be run twice
+// 	// for some directions
+//
+// 	o3c::ParallelFor(
+// 			device, bin_count / 2,
+// 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+// 				int64_t bin_index = workload_idx * 2;
+// 				if (bin_index >= bin_count)
+// 					return;
+// 				PointAggregationBin& bin = bins[bin_index];
+//
+// 				bool has_point = false;
+// 				Eigen::Vector3f bin_point;
+// 				int bin_point_count;
+//
+// 				if(bin.count != 0){
+// 					has_point = true;
+// 					bin_point.x() = bin.x;
+// 					bin_point.y() = bin.y;
+// 					bin_point.z() = bin.z;
+// 					bin_point_count = bin.count;
+// 				}
+//
+// 				if (!has_point)
+// 					return;
+//
+// 				auto bin_coordinate = UnravelBinLinearIndex<DeviceType>(workload_idx * 2, grid_bin_extents);
+// 				auto next_bin_coordinate = bin_coordinate + Eigen::Vector3i(1, 0, 0);
+// 				auto next_bin_index = RavelBinLinearIndex<DeviceType>(next_bin_coordinate, grid_bin_extents);
+// 				if (next_bin_index >= bin_count)
+// 					return;
+// 				PointAggregationBin& next_bin = bins[next_bin_index];
+// 				Eigen::Vector3f next_bin_point;
+// 				int next_bin_point_count;
+// 				next_bin_point_count = next_bin.count;
+//
+// 				if(next_bin.count != 0){
+// 					has_point = true;
+// 					next_bin_point.x() = next_bin.x;
+// 					next_bin_point.y() = next_bin.y;
+// 					next_bin_point.z() = next_bin.z;
+// 				}
+//
+// 				if (!has_point)
+// 					return;
+//
+// 				// merge points
+// 				if ((next_bin_point - bin_point).norm() < radius) {
+// 					int new_count = bin_point_count + next_bin_point_count;
+// 					auto average_point =
+// 							(bin_point * bin_point_count + next_bin_point * next_bin_point_count) /
+// 							(new_count);
+// 					auto merged_bin_coordinate = DeterminePointsBinCoordinate<DeviceType>(average_point, grid_bin_min_bound, bin_size);
+// 					auto merged_bin_index = RavelBinLinearIndex<DeviceType>(bin_coordinate, grid_bin_extents);
+// 					if (merged_bin_index == bin_index) {
+// 						bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
+// 						next_bin.count = 0;
+// 					} else {
+// 						next_bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
+// 						bin.count = 0;
+// 					}
+// 				}
+//
+// 			}
+// 	);
+//
+//
+// }
+
 template<open3d::core::Device::DeviceType DeviceType>
-void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
-	o3gk::NDArrayIndexer original_point_indexer(original_points, 1);
-	auto original_point_count = original_points.GetLength();
-	auto device = original_points.GetDevice();
-
-	Eigen::Vector3f grid_bin_min_bound, grid_bin_max_bound;
-	FindPointCollectionBounds<DeviceType>(grid_bin_min_bound, grid_bin_max_bound, original_point_indexer, device, original_point_count);
-
-	// region ESTIMATE BIN COUNT IN DENSE 3D BIN BLOCK & FIND CENTER
-
-	const auto bin_size = radius;
-
-	auto grid_spatial_extents = grid_bin_max_bound - grid_bin_min_bound;
-	auto grid_center = grid_bin_min_bound + (grid_spatial_extents / 2.f);
-
-	auto grid_bin_extents = Eigen::Vector3i(std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.x() / bin_size)), 1),
-	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.y() / bin_size)), 1),
-	                                        std::max(static_cast<int32_t>(std::ceil(grid_spatial_extents.z() / bin_size)), 1));
-
-	// ensure each dimension is divisible by 2, so that later we can process grid directionally with step 2
-	grid_bin_extents.x() = grid_bin_extents.x() + grid_bin_extents.x() % 2;
-	grid_bin_extents.y() = grid_bin_extents.y() + grid_bin_extents.y() % 2;
-	grid_bin_extents.z() = grid_bin_extents.z() + grid_bin_extents.z() % 2;
-
-	const auto bin_count = grid_bin_extents.x() * grid_bin_extents.y() * grid_bin_extents.z();
-	// endregion
-
-
-	o3c::Blob bin_blob(static_cast<int64_t>(sizeof(PointAggregationBin) * bin_count), device);
-	auto bins = reinterpret_cast<PointAggregationBin*>(bin_blob.GetDataPtr());
-	InitializeBins<DeviceType>(device, bin_count, bins);
-
-
-	ComputeBinAggregates<DeviceType>(original_point_indexer, device, original_point_count, bins,
-	                                 grid_bin_min_bound, grid_bin_extents, bin_size);
-
-	ComputeBinAverages<DeviceType>(device, bin_count, bins);
-
-	//TODO  MERGE BINS AS NECESSARY -- there are some interesting ways to do this on a per-direction basis, but most likely will need to be run twice
-	// for some directions
-
-	o3c::ParallelFor(
-			device, bin_count / 2,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t bin_index = workload_idx * 2;
-				if (bin_index >= bin_count)
-					return;
-				PointAggregationBin& bin = bins[bin_index];
-
-				bool has_point = false;
-				Eigen::Vector3f bin_point;
-				int bin_point_count;
-
-				if(bin.count != 0){
-					has_point = true;
-					bin_point.x() = bin.x;
-					bin_point.y() = bin.y;
-					bin_point.z() = bin.z;
-					bin_point_count = bin.count;
-				}
-
-				if (!has_point)
-					return;
-
-				auto bin_coordinate = UnravelBinLinearIndex<DeviceType>(workload_idx * 2, grid_bin_extents);
-				auto next_bin_coordinate = bin_coordinate + Eigen::Vector3i(1, 0, 0);
-				auto next_bin_index = RavelBinLinearIndex<DeviceType>(next_bin_coordinate, grid_bin_extents);
-				if (next_bin_index >= bin_count)
-					return;
-				PointAggregationBin& next_bin = bins[next_bin_index];
-				Eigen::Vector3f next_bin_point;
-				int next_bin_point_count;
-				next_bin_point_count = next_bin.count;
-
-				if(next_bin.count != 0){
-					has_point = true;
-					next_bin_point.x() = next_bin.x;
-					next_bin_point.y() = next_bin.y;
-					next_bin_point.z() = next_bin.z;
-				}
-
-				if (!has_point)
-					return;
-
-				// merge points
-				if ((next_bin_point - bin_point).norm() < radius) {
-					int new_count = bin_point_count + next_bin_point_count;
-					auto average_point =
-							(bin_point * bin_point_count + next_bin_point * next_bin_point_count) /
-							(new_count);
-					auto merged_bin_coordinate = DeterminePointsBinCoordinate<DeviceType>(average_point, grid_bin_min_bound, bin_size);
-					auto merged_bin_index = RavelBinLinearIndex<DeviceType>(bin_coordinate, grid_bin_extents);
-					if (merged_bin_index == bin_index) {
-						bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
-						next_bin.count = 0;
-					} else {
-						next_bin.template UpdateWithPointAndCount<DeviceType>(average_point, new_count);
-						bin.count = 0;
-					}
-				}
-
-			}
-	);
-
-
-}
-
-template<open3d::core::Device::DeviceType DeviceType>
-void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
+void GridDownsamplePoints_PlainBinArray(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
 	o3gk::NDArrayIndexer original_point_indexer(original_points, 1);
 	auto original_point_count = original_points.GetLength();
 	auto device = original_points.GetDevice();
@@ -405,6 +405,14 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 
 			}
 	);NNRT_CLEAN_UP_ATOMIC(downsampled_point_count_atomic);
+}
+
+template<open3d::core::Device::DeviceType DeviceType>
+void GridDownsamplePoints_BinHash(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& bin_indices, const open3d::core::Tensor& bin_point_counts,
+                                  const open3d::core::Tensor& binned_point_indices, const open3d::core::Tensor& point_buffer_indices){
+	auto bin_count = binned_point_indices.GetLength();
+	auto device = bin_indices.GetDevice();
+	downsampled_points = o3c::Tensor({bin_count, 3}, o3c::Float32, device);
 }
 
 

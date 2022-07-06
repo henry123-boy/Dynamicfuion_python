@@ -122,6 +122,37 @@ def selection_based_on_index(index: int, width: int, height: int) -> int:
     pass
 
 
+def find_maximum_point_count_per_block(calibration_matrix: np.ndarray,
+                                       min_depth: float, block_size: float) -> int:
+    x_min_camera = y_min_camera = -block_size / 2
+    x_max_camera = y_max_camera = block_size / 2
+    z_camera = min_depth
+    bounds_camera = np.array([[x_min_camera, y_min_camera, z_camera],
+                              [x_max_camera, y_max_camera, z_camera]])
+
+    bounds_image = ((calibration_matrix.dot(bounds_camera.T) / z_camera)[:, :2]).T
+    block_dimensions_image = bounds_image[1] - bounds_image[0]
+    return block_dimensions_image[0] * block_dimensions_image[1]
+
+
+def find_maximum_point_count_per_block2(intrinsics: np.ndarray,
+                                       min_depth: float, block_size: float) -> int:
+    fx, fy, cx, cy = intrinsics
+    x_min_camera = y_min_camera = -block_size / 2
+    x_max_camera = y_max_camera = block_size / 2
+    z_camera = min_depth
+    
+    u_min_image = fx*x_min_camera/z_camera + cx
+    v_min_image = fy*y_min_camera/z_camera + cy
+
+    u_max_image = fx * x_max_camera / z_camera + cx
+    v_max_image = fy * y_max_camera / z_camera + cy
+
+    u_span_image = u_max_image - u_min_image
+    v_span_image = v_max_image - v_min_image
+    return u_span_image * v_span_image
+
+
 if __name__ == "__main__":
     grid_size = 4
     x_ = np.arange(0, grid_size, 1)

@@ -14,11 +14,16 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
 #include <open3d/core/Tensor.h>
+#include <open3d/core/hashmap/HashMap.h>
 
 namespace nnrt::geometry{
 
-open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius);
-open3d::core::Tensor GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size);
+// open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius);
+open3d::core::Tensor GridDownsample3DPoints_PlainBinArray(const open3d::core::Tensor& original_points, float grid_cell_size);
+open3d::core::Tensor GridDownsample3DPoints_BinHash(const open3d::core::Tensor& original_points, float grid_cell_size,
+													const open3d::core::HashBackendType& backend = open3d::core::HashBackendType::Default,
+													int max_points_per_bin = 1024);
 
 } // nnrt::geometry

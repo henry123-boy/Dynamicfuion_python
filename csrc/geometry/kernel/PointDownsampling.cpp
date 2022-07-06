@@ -20,20 +20,39 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry::kernel::downsampling {
 
-void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
-	open3d::utility::LogError("Not fully implemented (see TODO in PointDownsamplingImpl.h)");
-	core::InferDeviceFromEntityAndExecute(
-			original_points,
-			[&] { DownsamplePointsByRadius<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius); },
-			[&] { NNRT_IF_CUDA(DownsamplePointsByRadius<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius);); }
+// void DownsamplePointsByRadius(o3c::Tensor& downsampled_points, const o3c::Tensor& original_points, float radius) {
+// 	open3d::utility::LogError("Not fully implemented (see TODO in PointDownsamplingImpl.h)");
+// 	core::ExecuteOnDevice(
+// 			original_points.GetDevice(),
+// 			[&] { DownsamplePointsByRadius<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius); },
+// 			[&] { NNRT_IF_CUDA(DownsamplePointsByRadius<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius);); }
+// 	);
+// }
+
+void GridDownsamplePoints_PlainBinArray(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
+	core::ExecuteOnDevice(
+			original_points.GetDevice(),
+			[&] { GridDownsamplePoints_PlainBinArray<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, grid_cell_size); },
+			[&] {
+				NNRT_IF_CUDA(
+						GridDownsamplePoints_PlainBinArray<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, grid_cell_size););
+			}
 	);
 }
 
-void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size) {
-	core::InferDeviceFromEntityAndExecute(
-			original_points,
-			[&] { GridDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, grid_cell_size); },
-			[&] { NNRT_IF_CUDA(GridDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, grid_cell_size);); }
+void GridDownsamplePoints_BinHash(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& bin_indices, const open3d::core::Tensor& bin_point_counts,
+                                  const open3d::core::Tensor& binned_point_indices, const open3d::core::Tensor& point_buffer_indices) {
+	core::ExecuteOnDevice(
+			bin_indices.GetDevice(),
+			[&] {
+				GridDownsamplePoints_BinHash<o3c::Device::DeviceType::CPU>(downsampled_points, bin_indices, bin_point_counts,
+				                                                           binned_point_indices, point_buffer_indices);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						GridDownsamplePoints_BinHash<o3c::Device::DeviceType::CUDA>(downsampled_points, bin_indices, bin_point_counts,
+						                                                            binned_point_indices, point_buffer_indices););
+			}
 	);
 }
 

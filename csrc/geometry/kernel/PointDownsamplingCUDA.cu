@@ -25,8 +25,14 @@ namespace nnrt::geometry::kernel::downsampling {
 // );
 
 template
-void GridDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
+void GridDownsamplePoints_PlainBinArray<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size
+);
+
+template
+void GridDownsamplePoints_BinHash<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& bin_indices, const open3d::core::Tensor& bin_point_counts,
+		const open3d::core::Tensor& binned_point_indices, const open3d::core::Tensor& point_buffer_indices
 );
 
 } // namespace nnrt::geometry::kernel::downsampling

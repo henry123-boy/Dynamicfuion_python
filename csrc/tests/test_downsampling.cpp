@@ -26,7 +26,29 @@ using namespace nnrt;
 namespace o3c = open3d::core;
 
 
-void TestGridDownsampling(const o3c::Device& device) {
+void SortPointsVector(std::vector<float>& point_data) {
+	std::vector<Eigen::Vector3f> downsampled_points_eigen;
+	auto point_count = point_data.size() / 3;
+	for (int i_point = 0; i_point < point_count; i_point++) {
+		downsampled_points_eigen.emplace_back(point_data[i_point * 3],
+		                                      point_data[i_point * 3 + 1],
+		                                      point_data[i_point * 3 + 2]);
+	}
+	// sort by X coordinate
+	std::sort(downsampled_points_eigen.begin(), downsampled_points_eigen.end(),
+	          [&](const Eigen::Vector3f& a, const Eigen::Vector3f& b) -> bool {
+		          return a.x() < b.x();
+	          });
+	point_data.clear();
+	for (const Eigen::Vector3f& point: downsampled_points_eigen) {
+		point_data.push_back(point.x());
+		point_data.push_back(point.y());
+		point_data.push_back(point.z());
+	}
+}
+
+template<typename TDownsample>
+void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downsample) {
 	std::vector<float> point_data = {3.09232593e+00, 3.80791020e+00, 0.00000000e+00, -1.05966675e+00,
 	                                 -1.41309094e+00, 0.00000000e+00, -4.37189054e+00, 4.47028160e+00,
 	                                 0.00000000e+00, -4.89017248e+00, 1.23748720e+00, 0.00000000e+00,
@@ -51,25 +73,9 @@ void TestGridDownsampling(const o3c::Device& device) {
 	                                 1.40168875e-01, 2.65022850e+00, 0.00000000e+00, 3.76163363e+00,
 	                                 3.85235727e-01, 0.00000000e+00};
 	o3c::Tensor points(point_data, {30, 3}, o3c::Dtype::Float32, device);
-	auto downsampled_points = geometry::GridDownsample3DPoints(points, 5.0);
+	o3c::Tensor downsampled_points = downsample(points, 5.0);
 	auto downsampled_points_data = downsampled_points.ToFlatVector<float>();
-	std::vector<Eigen::Vector3f> downsampled_points_eigen;
-	for (int i_point = 0; i_point < downsampled_points.GetLength(); i_point++) {
-		downsampled_points_eigen.emplace_back(downsampled_points_data[i_point * 3],
-		                                      downsampled_points_data[i_point * 3 + 1],
-		                                      downsampled_points_data[i_point * 3 + 2]);
-	}
-	// sort by X coordinate
-	std::sort(downsampled_points_eigen.begin(), downsampled_points_eigen.end(),
-	          [&](const Eigen::Vector3f& a, const Eigen::Vector3f& b) -> bool {
-		          return a.x() < b.x();
-	          });
-	downsampled_points_data.clear();
-	for(const Eigen::Vector3f& point : downsampled_points_eigen){
-		downsampled_points_data.push_back(point.x());
-		downsampled_points_data.push_back(point.y());
-		downsampled_points_data.push_back(point.z());
-	}
+	SortPointsVector(downsampled_points_data);
 
 	// ground truth computed via Python/NumPy
 	std::vector<float> downsampled_points_gt_data = {-3.2952073f, -2.7228992f, 0.0f, -2.8721921f, 2.5174978f, 0.0f,
@@ -77,16 +83,34 @@ void TestGridDownsampling(const o3c::Device& device) {
 
 	REQUIRE(std::equal(downsampled_points_data.begin(), downsampled_points_data.end(), downsampled_points_gt_data.begin(),
 	                   [](float a, float b) { return a == Approx(b).margin(1e-6).epsilon(1e-12); }));
-
-
 }
 
-TEST_CASE("Test Grid Downsampling CPU") {
+void TestGridDownsampling_PlainArray(const o3c::Device& device) {
+	TestGridDownsampling_Generic(device, geometry::GridDownsample3DPoints_PlainBinArray);
+}
+
+TEST_CASE("Test Grid Downsampling - Plain Array - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestGridDownsampling(device);
+	TestGridDownsampling_PlainArray(device);
 }
 
-TEST_CASE("Test Grid Downsampling CUDA") {
+TEST_CASE("Test Grid Downsampling - Plain Array - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestGridDownsampling(device);
+	TestGridDownsampling_PlainArray(device);
+}
+
+void TestGridDownsampling_Hash(const o3c::Device& device) {
+	TestGridDownsampling_Generic(device, [](o3c::Tensor& points, float grid_cell_size) {
+		return geometry::GridDownsample3DPoints_BinHash(points, grid_cell_size);
+	});
+}
+
+TEST_CASE("Test Grid Downsampling - Hash - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestGridDownsampling_Hash(device);
+}
+
+TEST_CASE("Test Grid Downsampling - Hash - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestGridDownsampling_Hash(device);
 }
