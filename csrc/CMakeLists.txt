@@ -163,8 +163,17 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
     core/linalg/LinalgUtils.cpp
+
     geometry/kernel/PointAggregationBin.h
-    geometry/kernel/IndexRaveling.h geometry/kernel/PointCollectionExtent.h)
+    geometry/kernel/IndexRaveling.h
+    geometry/kernel/PointCollectionExtent.h
+
+    geometry/MeshOperations.h
+    geometry/MeshOperations.cpp
+    geometry/kernel/MeshOperations.cpp
+    geometry/kernel/MeshOperations.h
+    geometry/kernel/MeshOperationsImpl.h
+    geometry/kernel/MeshOperationsCPU.cpp geometry/kernel/MeshOperationsCUDA.cu)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

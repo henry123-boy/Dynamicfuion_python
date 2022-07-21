@@ -24,7 +24,8 @@ from nnrt.geometry import WarpableTSDFVoxelGrid, compute_point_to_plane_distance
 from alignment.common import LinearSolverLU
 from settings import GraphParameters
 from rendering.pytorch3d_renderer import PyTorch3DRenderer, RenderMaskCode
-from alignment.render_to_input.loss_penalty_functions import apply_data_residual_penalty, apply_regularization_residual_penalty
+from alignment.render_to_input.loss_penalty_functions import apply_data_residual_penalty, \
+    apply_regularization_residual_penalty
 
 
 class RenderingAlignmentOptimizer:
@@ -41,13 +42,23 @@ class RenderingAlignmentOptimizer:
         while not self.termination_condition_reached():
             warped_mesh = graph.warp_mesh(canonical_mesh, GraphParameters.node_coverage.value)
 
-            _, rendered_color = self.renderer.render_mesh(warped_mesh, render_mask=RenderMaskCode.RGB)
+            rendered_depth, rendered_color =\
+                self.renderer.render_mesh(warped_mesh, render_mask=RenderMaskCode.RGB | RenderMaskCode.DEPTH)
+
+            rendered_depth_o3d = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_depth))
+            rendered_depth_o3d_image = o3d.t.geometry.Image(rendered_depth_o3d)
+            rendered_point_cloud = o3d.t.geometry.PointCloud.create_from_depth_image(rendered_depth_o3d,)
+
 
             point_to_plane_distances_o3d = compute_point_to_plane_distances(warped_mesh, target_points)
             point_to_plane_distances_torch = torch_dlpack.from_dlpack(point_to_plane_distances_o3d.to_dlpack())
             data_residuals = apply_data_residual_penalty(point_to_plane_distances_torch)
-            data_jacobian =
 
+            rotations = torch_dlpack.from_dlpack(graph.rotations.to_dlpack())
+
+            data_jacobian = torch.zeros((data_residuals.shape[0], len(graph.nodes) * 6), dtype=rotations.dtype,
+                                        device=rotations.device)  # (target point count, node count * 6)
+            data_jacobian[0]
 
             # TODO: hierarchical graph structures, regularization residuals, etc. (See #22 for full DF task list)
 

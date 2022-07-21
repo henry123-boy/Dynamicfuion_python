@@ -124,7 +124,8 @@ class PointCloudAlignmentOptimizer:
         gn_point_clouds = []
         for i_iteration in range(gauss_newton_iteration_count):
             residual_data, jacobian_data = \
-                self.compute_data_residual_and_jacobian(data_increment_vec_0_3, data_increment_vec_1_3,
+                self.compute_data_residual_and_jacobian(data_increment_vec_0_3,
+                                                        data_increment_vec_1_3,
                                                         data_increment_vec_2_3,
                                                         match_count, optimized_node_count, graph_nodes_i,
                                                         source_anchors, source_weights, source_points_filtered,
@@ -260,7 +261,7 @@ class PointCloudAlignmentOptimizer:
                                            data_increment_vec_1_3: torch.Tensor,
                                            data_increment_vec_2_3: torch.Tensor,
                                            match_count: int,
-                                           opt_num_nodes_i: int,
+                                           optimized_node_count: int,
                                            graph_nodes_i: torch.Tensor,
                                            source_anchors: torch.Tensor,
                                            source_weights: torch.Tensor,
@@ -278,7 +279,7 @@ class PointCloudAlignmentOptimizer:
                                            ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         timer_data_start = timer()
-        jacobian_data = torch.zeros((match_count * 3, opt_num_nodes_i * 6), dtype=rotations_current.dtype,
+        jacobian_data = torch.zeros((match_count * 3, optimized_node_count * 6), dtype=rotations_current.dtype,
                                     device=rotations_current.device)  # (num_matches*3, opt_num_nodes_i*6)
         deformed_points = torch.zeros((match_count, 3, 1), dtype=rotations_current.dtype,
                                       device=rotations_current.device)
@@ -333,17 +334,17 @@ class PointCloudAlignmentOptimizer:
 
             # Compute jacobian wrt. TRANSLATION.
             # FLOW PART
-            jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 0] += \
+            jacobian_data[data_increment_vec_0_3, 3 * optimized_node_count + 3 * node_idxs_k + 0] += \
                 lambda_data_flow * weights_k * fx_div_z  # (num_matches)
-            jacobian_data[data_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+            jacobian_data[data_increment_vec_0_3, 3 * optimized_node_count + 3 * node_idxs_k + 2] += \
                 lambda_data_flow * weights_k * minus_fx_mul_x_div_z_2  # (num_matches)
-            jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 1] += \
+            jacobian_data[data_increment_vec_1_3, 3 * optimized_node_count + 3 * node_idxs_k + 1] += \
                 lambda_data_flow * weights_k * fy_div_z  # (num_matches)
-            jacobian_data[data_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+            jacobian_data[data_increment_vec_1_3, 3 * optimized_node_count + 3 * node_idxs_k + 2] += \
                 lambda_data_flow * weights_k * minus_fy_mul_y_div_z_2  # (num_matches)
 
             # DEPTH PART
-            jacobian_data[data_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_k + 2] += \
+            jacobian_data[data_increment_vec_2_3, 3 * optimized_node_count + 3 * node_idxs_k + 2] += \
                 lambda_data_depth * weights_k  # (num_matches)
 
             # Compute jacobian wrt. ROTATION.

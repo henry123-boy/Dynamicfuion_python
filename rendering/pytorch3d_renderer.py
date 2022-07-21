@@ -151,7 +151,7 @@ class PyTorch3DRenderer:
     def render_mesh(self, mesh: o3d.t.geometry.TriangleMesh,
                     extrinsics: Union[o3c.Tensor, None] = None,
                     depth_scale=1000.0, render_mask: int = RenderMaskCode.DEPTH | RenderMaskCode.RGB) \
-            -> Tuple[Union[None,np.ndarray], Union[None, np.ndarray]]:
+            -> Tuple[Union[None, torch.Tensor], Union[None, torch.Tensor]]:
         """
         Render mesh to depth & color images compatible with typical RGB-D input depth & rgb images
         If the extrinsics matrix is provided, camera extrinsics are also updated for all subsequent renderings.
@@ -200,14 +200,13 @@ class PyTorch3DRenderer:
         rendered_depth = None
         rendered_color = None
 
-        # TODO: output Open3D or PyTorch Tensors instead of numpy arrays
         if render_mask & RenderMaskCode.DEPTH == 1:
             fragments = self.rasterizer.forward(meshes_torch3d)
-            rendered_depth = fragments.zbuf.cpu().numpy().reshape(self.image_size[0], self.image_size[1])
+            rendered_depth = fragments.zbuf.reshape(self.image_size[0], self.image_size[1])
             rendered_depth[rendered_depth == -1.0] = 0.0
             rendered_depth *= depth_scale
 
         if render_mask & RenderMaskCode.RGB == 1:
             images = self.renderer(meshes_torch3d)
-            rendered_color = (images[0, ..., :3].cpu().numpy() * 255).astype(np.uint8)
+            rendered_color = (images[0, ..., :3] * 255).to(torch.uint8)
         return rendered_depth, rendered_color

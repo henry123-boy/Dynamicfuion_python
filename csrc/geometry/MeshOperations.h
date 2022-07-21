@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/4/21.
-//  Copyright (c) 2021 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/21/22.
+//  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,14 +14,13 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#include <open3d/core/Tensor.h>
+
 #include <open3d/t/geometry/TriangleMesh.h>
-#include <open3d/t/geometry/PointCloud.h>
 
 
-namespace nnrt::geometry{
-	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh1, const open3d::t::geometry::TriangleMesh& mesh2);
-	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh, const open3d::t::geometry::PointCloud& point_cloud);
-	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::PointCloud& point_cloud1, const open3d::t::geometry::PointCloud& point_cloud2);
+namespace nnrt::geometry {
+
+void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh);
+
 
 } // namespace nnrt::geometry

@@ -65,4 +65,26 @@ ComputePointToPlaneDistances(const TriangleMesh& mesh, const PointCloud& point_c
 	kernel::comparison::ComputePointToPlaneDistances(distances, vertex_normals, vertex_positions, point_positions);
 	return distances;
 }
+
+open3d::core::Tensor ComputePointToPlaneDistances(const PointCloud& point_cloud1, const PointCloud& point_cloud2) {
+	if (point_cloud1.GetDevice() != point_cloud2.GetDevice()) {
+		utility::LogError("Devices for the mesh and point cloud need to match. Got: {} and {}.",
+		                  point_cloud1.GetDevice().ToString(), point_cloud2.GetDevice().ToString());
+	}
+	if (!point_cloud1.HasPointNormals()) {
+		utility::LogError("Mesh needs to have vertex normals defined.");
+	}
+	const core::Tensor& point_normals1 = point_cloud1.GetPointNormals();
+	const core::Tensor& point_positions1 = point_cloud1.GetPointPositions();
+	const core::Tensor& point_positions2 = point_cloud2.GetPointPositions();
+
+	if (point_positions1.GetLength() != point_positions2.GetLength()) {
+		utility::LogError("Point count in point cloud 1 has to match the point count in the point cloud 2. Got: {} and {}.",
+		                  point_positions1.GetLength(), point_positions2.GetLength());
+	}
+
+	core::Tensor distances;
+	kernel::comparison::ComputePointToPlaneDistances(distances, point_normals1, point_positions1, point_positions2);
+	return distances;
+}
 } //namespace nnrt::geometry
