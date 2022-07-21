@@ -34,7 +34,7 @@ GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_c
 }
 
 open3d::core::Tensor
-Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
+RadiusDownsample3DPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
 

@@ -21,11 +21,12 @@
 namespace nnrt::geometry {
 
 
-
+/// Downsample the current set of points by averaging them within a grid.
 open3d::core::Tensor GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size,
                                             const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
 
-open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius,
-                                                const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
+/// Ensures no two points in the result point cloud are within the specified radius. Note: does not produce the maximal set of such points.
+open3d::core::Tensor RadiusDownsample3DPoints(const open3d::core::Tensor& original_points, float radius,
+                                              const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
 
 } // nnrt::geometry

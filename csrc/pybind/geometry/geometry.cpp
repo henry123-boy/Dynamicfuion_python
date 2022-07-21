@@ -224,7 +224,8 @@ void pybind_geometry_comparison(pybind11::module& m) {
 }
 
 void pybind_geometry_downsampling(pybind11::module& m) {
-	m.def("grid_downsample_3d_points", &GridDownsample3DPoints_PlainBinArray, "points"_a, "grid_cell_size"_a);
+	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
+	m.def("radius_downsample_3d_points", &RadiusDownsample3DPoints, "points"_a, "radius"_a, "hash_backend"_a);
 }
 
 } // namespace nnrt

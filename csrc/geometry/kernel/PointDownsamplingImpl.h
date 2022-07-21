@@ -177,22 +177,15 @@ void TransferFromBinsToTensor_CountCheck(o3gk::NDArrayIndexer& downsampled_point
 	);NNRT_CLEAN_UP_ATOMIC(downsampled_point_count_atomic);
 }
 
+
 template<open3d::core::Device::DeviceType DeviceType>
-void DirectionallyAverageGridCells(const o3c::Tensor& bins_integer, const o3c::HashMap& point_bin_coord_map, int64_t bin_count, PointAggregationBin* bins){
-	o3c::Device device = point_bin_coord_map.GetDevice();
-
-
-	o3c::Tensor search_bin_key_pairs({});
-}
-
-
-template<open3d::core::Device::DeviceType DeviceType, typename AdditionalAveragingFunction, typename TransferToTensorFunction>
 void AveragePointsIntoGridCells(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
-                                const open3d::core::HashBackendType& hash_backend, AdditionalAveragingFunction&& run_additional_averaging,
-								TransferToTensorFunction&& transfer_to_tensor) {
+                                const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
 	auto device = original_points.GetDevice();
 
-	o3c::Tensor point_bins_float = original_points / grid_cell_size;
+	o3c::Tensor grid_offset_tensor(std::vector<float>{grid_offset.x(), grid_offset.y(), grid_offset.z()}, {1, 3}, o3c::Float32, device);
+
+	o3c::Tensor point_bins_float = original_points / grid_cell_size + grid_offset_tensor;
 	o3c::Tensor point_bins_integer = point_bins_float.Floor().To(o3c::Int32);
 
 	o3c::HashMap point_bin_coord_map(point_bins_integer.GetLength(), o3c::Int32, {3}, o3c::UInt8, {sizeof(PointAggregationBin)}, device,
@@ -216,12 +209,10 @@ void AveragePointsIntoGridCells(open3d::core::Tensor& downsampled_points, const 
 	ComputeBinAggregates<DeviceType>(original_point_indexer, device, original_point_count, bins, bin_indices);
 	ComputeBinAverages<DeviceType>(device, bin_count, bins);
 
-	run_additional_averaging(bins_integer, point_bin_coord_map, bin_count, bins);
-
 	downsampled_points = o3c::Tensor({bin_count, 3}, o3c::Float32, device);
 	o3gk::NDArrayIndexer downsampled_point_indexer(downsampled_points, 1);
 
-	transfer_to_tensor(downsampled_point_indexer, device, bin_count, bins);
+	TransferFromBinsToTensor_NoCountCheck<DeviceType>(downsampled_point_indexer, device, bin_count, bins);
 }
 
 
@@ -232,17 +223,16 @@ void AveragePointsIntoGridCells(open3d::core::Tensor& downsampled_points, const 
 template<open3d::core::Device::DeviceType DeviceType>
 void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
                           const open3d::core::HashBackendType& hash_backend) {
-	AveragePointsIntoGridCells<DeviceType>(downsampled_points, original_points, grid_cell_size, hash_backend,
-										   [](const o3c::Tensor&, const o3c::HashMap&, int64_t, PointAggregationBin*){},
-	                                       TransferFromBinsToTensor_NoCountCheck<DeviceType>);
+	AveragePointsIntoGridCells<DeviceType>(downsampled_points, original_points, grid_cell_size, hash_backend);
 }
 
 template<open3d::core::Device::DeviceType DeviceType>
 void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
                             const open3d::core::HashBackendType& hash_backend) {
-	AveragePointsIntoGridCells<DeviceType>(downsampled_points, original_points, radius, hash_backend,
-	                                       DirectionallyAverageGridCells<DeviceType>,
-	                                       TransferFromBinsToTensor_CountCheck<DeviceType>);
+	o3c::Tensor downsampled_points_stage_1;
+	AveragePointsIntoGridCells<DeviceType>(downsampled_points_stage_1, original_points, radius*2, hash_backend);
+	// merge again while offsetting the grid, to mer
+	AveragePointsIntoGridCells<DeviceType>(downsampled_points, downsampled_points_stage_1, radius*2, hash_backend, Eigen::Vector3f(0.5, 0.5, 0.5));
 }
 
 
