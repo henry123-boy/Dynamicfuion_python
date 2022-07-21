@@ -30,6 +30,7 @@ file(MAKE_DIRECTORY ${PIP_PACKAGE_DST_DIR})
 # ==================== set up NNRT C++ library ============================
 
 set(NNRT_SOURCE_FILES
+
     cpu/graph_proc.h
     cpu/image_proc.h
     cpu/graph_proc.cpp
@@ -162,7 +163,8 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
     core/linalg/LinalgUtils.cpp
-    )
+    geometry/kernel/PointAggregationBin.h
+    geometry/kernel/IndexRaveling.h geometry/kernel/PointCollectionExtent.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

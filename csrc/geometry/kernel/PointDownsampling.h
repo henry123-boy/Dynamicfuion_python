@@ -15,26 +15,25 @@
 //  ================================================================
 #pragma once
 #include <open3d/core/Tensor.h>
+#include <open3d/core/hashmap/HashMap.h>
 
 namespace nnrt::geometry::kernel::downsampling {
 
-// void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
-//
-// template<open3d::core::Device::DeviceType DeviceType>
-// void DownsamplePointsByRadius(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius);
 
-void GridDownsamplePoints_PlainBinArray(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size);
+void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+                          const open3d::core::HashBackendType& hash_backend);
 
 template<open3d::core::Device::DeviceType DeviceType>
-void GridDownsamplePoints_PlainBinArray(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size);
+void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+                          const open3d::core::HashBackendType& hash_backend);
 
 
-void GridDownsamplePoints_BinHash(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& bin_indices, const open3d::core::Tensor& bin_point_counts,
-                                  const open3d::core::Tensor& binned_point_indices, const open3d::core::Tensor& point_buffer_indices);
+void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
+                            const open3d::core::HashBackendType& hash_backend);
 
 template<open3d::core::Device::DeviceType DeviceType>
-void GridDownsamplePoints_BinHash(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& bin_indices, const open3d::core::Tensor& bin_point_counts,
-                                  const open3d::core::Tensor& binned_point_indices, const open3d::core::Tensor& point_buffer_indices);
+void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
+                            const open3d::core::HashBackendType& hash_backend);
 
 
 } // nnrt::geometry::kernel::downsampling

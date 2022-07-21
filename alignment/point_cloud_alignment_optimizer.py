@@ -48,6 +48,9 @@ class PointCloudAlignmentOptimizer:
         self.gn_arap = DeformNetParameters.gn_arap.value
         self.gn_lm_factor = DeformNetParameters.gn_lm_factor.value
 
+        self.gn_use_dense_icp = DeformNetParameters.gn_use_dense_icp
+        self.gn_weight_dense_icp = DeformNetParameters.gn_weight_dense_icp
+
         self.lambda_data_flow = math.sqrt(self.gn_data_flow)
         self.lambda_data_depth = math.sqrt(self.gn_data_depth)
         self.lambda_arap = math.sqrt(self.gn_arap)

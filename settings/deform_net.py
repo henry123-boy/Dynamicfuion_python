@@ -149,3 +149,11 @@ class DeformNetParameters(ParameterEnum):
         Parameter(default=True, arg_type='bool_flag',
                   arg_help="Before optimization, initialize the node transformations using the passed-in estimates "
                            "instead of identity rotation matrices and zero translation vectors.")
+
+    gn_use_dense_icp = \
+        Parameter(default=True, arg_type='bool_flag',
+                  arg_help="Use dense non-rigid ICP term during optimization.")
+
+    gn_weight_dense_icp = \
+        Parameter(default=0.1, arg_type=float,
+                  arg_help="Weight of the dense non-rigid ICP term during optimization.")

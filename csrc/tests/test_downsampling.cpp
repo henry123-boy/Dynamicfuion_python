@@ -47,6 +47,22 @@ void SortPointsVector(std::vector<float>& point_data) {
 	}
 }
 
+inline
+Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Tensor2DfToEigenMatrix(const open3d::core::Tensor& tensor) {
+	auto tensor_data = tensor.ToFlatVector<float>();
+	assert(tensor.GetShape().size() == 2);
+	Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> matrix_map(tensor_data.data(), tensor.GetShape(0),
+	                                                                                             tensor.GetShape(1));
+	Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix(matrix_map);
+	return matrix;
+}
+
+inline
+Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+Tensor2DfDataToEigenMatrix(const std::vector<float>& tensor_data, int rows, int cols) {
+	return {tensor_data.data(), rows, cols};
+}
+
 template<typename TDownsample>
 void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downsample) {
 	std::vector<float> point_data = {3.09232593e+00, 3.80791020e+00, 0.00000000e+00, -1.05966675e+00,
@@ -77,31 +93,20 @@ void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downs
 	auto downsampled_points_data = downsampled_points.ToFlatVector<float>();
 	SortPointsVector(downsampled_points_data);
 
-	// ground truth computed via Python/NumPy
-	std::vector<float> downsampled_points_gt_data = {-3.2952073f, -2.7228992f, 0.0f, -2.8721921f, 2.5174978f, 0.0f,
-	                                                 1.6808975f, -3.2433152f, 0.0f, 2.3141422f, 2.7829971f, 0.0f};
+	std::vector<float> downsampled_points_gt_data = {-3.25127237f, -3.02558241f, 0.f,
+	                                                 -2.96312902f, 2.23791466f, 0.f,
+	                                                 1.68089758f, -3.24331508f, 0.f,
+	                                                 2.31414232f, 2.78299729f, 0.f};
+
 
 	REQUIRE(std::equal(downsampled_points_data.begin(), downsampled_points_data.end(), downsampled_points_gt_data.begin(),
 	                   [](float a, float b) { return a == Approx(b).margin(1e-6).epsilon(1e-12); }));
 }
 
-void TestGridDownsampling_PlainArray(const o3c::Device& device) {
-	TestGridDownsampling_Generic(device, geometry::GridDownsample3DPoints_PlainBinArray);
-}
-
-TEST_CASE("Test Grid Downsampling - Plain Array - CPU") {
-	auto device = o3c::Device("CPU:0");
-	TestGridDownsampling_PlainArray(device);
-}
-
-TEST_CASE("Test Grid Downsampling - Plain Array - CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	TestGridDownsampling_PlainArray(device);
-}
 
 void TestGridDownsampling_Hash(const o3c::Device& device) {
 	TestGridDownsampling_Generic(device, [](o3c::Tensor& points, float grid_cell_size) {
-		return geometry::GridDownsample3DPoints_BinHash(points, grid_cell_size);
+		return geometry::GridDownsample3DPoints(points, grid_cell_size);
 	});
 }
 

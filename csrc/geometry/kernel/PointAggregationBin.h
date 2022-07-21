@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 2/25/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/8/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -15,17 +15,33 @@
 //  ================================================================
 #pragma once
 
-#include <open3d/core/Tensor.h>
-#include <open3d/core/hashmap/HashMap.h>
+// 3rd party
+#include <open3d/core/Device.h>
 
-namespace nnrt::geometry {
+// local
+#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentAtomics.h"
+#include <Eigen/Dense>
 
 
-
-open3d::core::Tensor GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size,
-                                            const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
-
-open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius,
-                                                const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
-
-} // nnrt::geometry
+struct PointAggregationBin {
+#ifdef __CUDACC__
+	float x;
+	float y;
+	float z;
+	int count;
+#else
+	std::atomic<float> x;
+	std::atomic<float> y;
+	std::atomic<float> z;
+	std::atomic<int> count;
+#endif
+	template<open3d::core::Device::DeviceType DeviceType, typename TPoint>
+	NNRT_DEVICE_WHEN_CUDACC
+	void UpdateWithPointAndCount(const TPoint& point, int _count){
+		x = point.x();
+		y = point.y();
+		z = point.z();
+		this->count = _count;
+	}
+};

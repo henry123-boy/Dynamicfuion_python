@@ -22,50 +22,25 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry {
 
-// open3d::core::Tensor Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius) {
-// 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
-// 	o3c::AssertTensorShape(original_points, {original_points.GetLength(), 3});
-// 	o3c::Tensor downsampled_points;
-// 	kernel::downsampling::DownsamplePointsByRadius(downsampled_points, original_points, radius);
-// 	return downsampled_points;
-// }
-
-open3d::core::Tensor GridDownsample3DPoints_PlainBinArray(const open3d::core::Tensor& original_points, float grid_cell_size) {
+open3d::core::Tensor
+GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
+
+
 	o3c::Tensor downsampled_points;
-	kernel::downsampling::GridDownsamplePoints_PlainBinArray(downsampled_points, original_points, grid_cell_size);
+	kernel::downsampling::GridDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
 	return downsampled_points;
 }
 
-open3d::core::Tensor GridDownsample3DPoints_BinHash(const open3d::core::Tensor& original_points, float grid_cell_size,
-                                                    const open3d::core::HashBackendType& backend, int max_points_per_bin) {
+open3d::core::Tensor
+Downsample3DPointsByRadius(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
-	o3c::Device device = original_points.GetDevice();
 
-	o3c::Tensor point_bins_float = original_points / grid_cell_size;
-	o3c::Tensor point_bins_integer = point_bins_float.Floor().To(o3c::Int32);
-
-
-	o3c::HashMap point_bin_coord_map(point_bins_integer.GetLength(), o3c::Int32, {3}, o3c::Int32, {1}, device, backend);
-
-	// activate entries in the hash map that correspond to the
-	o3c::Tensor buffer_indices, success_mask;
-	point_bin_coord_map.Activate(point_bins_integer, buffer_indices, success_mask);
-	int64_t bin_count = success_mask.To(o3c::Int64).Sum({0}).ToFlatVector<int64_t>()[0];
-
-	auto bin_indices = o3c::Tensor::Arange(0, bin_count, 1, o3c::Int32, device);
-	point_bin_coord_map.GetValueTensor().Slice(0, 0, bin_count) = bin_indices;
-
-	std::tie(buffer_indices, success_mask) = point_bin_coord_map.Find(point_bins_integer);
-
-	o3c::Tensor bin_point_counts = o3c::Tensor::Zeros({bin_count}, o3c::Int32, device);
-	o3c::Tensor binned_point_indices({bin_count, max_points_per_bin}, o3c::Int32, device);
 
 	o3c::Tensor downsampled_points;
-	kernel::downsampling::GridDownsamplePoints_BinHash(downsampled_points, point_bin_coord_map.GetValueTensor(), bin_point_counts,
-	                                                    binned_point_indices, buffer_indices);
+	kernel::downsampling::RadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
 	return downsampled_points;
 }
 
