@@ -25,7 +25,7 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry {
 
-void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh) {
+void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized /* = true */) {
 	if (!mesh.HasVertexPositions() || !mesh.HasTriangleIndices()) {
 		o3u::LogError("Mesh needs to have both vertex positions and triangle indices to compute triangle normals. Vertex positions: {}."
 		                          " Triangle indices: {}.",
@@ -35,6 +35,14 @@ void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh) {
 	o3c::Tensor triangle_indices = mesh.GetTriangleIndices();
 	o3c::Tensor triangle_normals;
 	kernel::mesh::ComputeTriangleNormals(triangle_normals, vertex_positions, triangle_indices);
+	if(normalized){
+		NormalizeVectors3d(triangle_normals);
+	}
 	mesh.SetTriangleNormals(triangle_normals);
 }
+
+void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
+	kernel::mesh::NormalizeVectors3d(vectors3d);
+}
+
 } // namespace nnrt::geometry

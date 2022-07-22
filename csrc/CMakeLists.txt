@@ -173,7 +173,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/MeshOperations.cpp
     geometry/kernel/MeshOperations.h
     geometry/kernel/MeshOperationsImpl.h
-    geometry/kernel/MeshOperationsCPU.cpp geometry/kernel/MeshOperationsCUDA.cu)
+    geometry/kernel/MeshOperationsCPU.cpp
+    geometry/kernel/MeshOperationsCUDA.cu)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

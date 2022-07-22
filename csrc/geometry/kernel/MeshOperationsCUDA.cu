@@ -20,5 +20,7 @@ namespace nnrt::geometry::kernel::mesh {
 template void
 ComputeTriangleNormals<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions,
                                                                const open3d::core::Tensor& triangle_indices);
+template void
+NormalizeVectors3d<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& vectors3d);
 
 } // nnrt::geometry::kernel::mesh

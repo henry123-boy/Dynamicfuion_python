@@ -27,4 +27,12 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
 	);
 }
 
+void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
+	core::ExecuteOnDevice(
+			vectors3d.GetDevice(),
+			[&] { NormalizeVectors3d<o3c::Device::DeviceType::CPU>(vectors3d); },
+			[&] { NNRT_IF_CUDA(NormalizeVectors3d<o3c::Device::DeviceType::CUDA>(vectors3d);); }
+	);
+}
+
 } // nnrt::geometry::kernel::mesh

@@ -41,8 +41,7 @@ if (BUILD_CPP_TESTS)
         test_utils/image_io/save_dng.h
         test_utils/entropy_encoder_model.h
         test_utils/entropy_range_encoder.h
-        test_utils/entropy_range_encoder.cpp
-    )
+        test_utils/entropy_range_encoder.cpp)
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -58,4 +57,5 @@ if (BUILD_CPP_TESTS)
     NNRT_add_test(test_downsampling test_downsampling.cpp)
     NNRT_add_test(test_warpable_tsdf_voxel_grid test_warpable_tsdf_voxel_grid.cpp)
     NNRT_add_test(test_matmul3d test_matmul3d.cpp)
+    NNRT_add_test(test_compute_mesh_triangle_normals test_compute_mesh_triangle_normals.cpp)
 endif ()

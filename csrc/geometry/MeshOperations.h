@@ -20,7 +20,8 @@
 
 namespace nnrt::geometry {
 
-void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh);
+void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
+void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
 
 
 } // namespace nnrt::geometry
