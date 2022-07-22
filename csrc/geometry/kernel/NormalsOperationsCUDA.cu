@@ -13,15 +13,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+#include "geometry/kernel/NormalsOperationsImpl.h"
 
-#include <open3d/t/geometry/TriangleMesh.h>
+namespace nnrt::geometry::kernel::mesh {
 
+template void
+ComputeTriangleNormals<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions,
+                                                               const open3d::core::Tensor& triangle_indices);
+template void
+NormalizeVectors3d<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& vectors3d);
 
-namespace nnrt::geometry {
-
-void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
-void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
-
-
-} // namespace nnrt::geometry
+} // nnrt::geometry::kernel::mesh

@@ -20,7 +20,7 @@
 #include <open3d/geometry/TriangleMesh.h>
 #include <open3d/t/geometry/TriangleMesh.h>
 
-#include "geometry/MeshOperations.h"
+#include "geometry/NormalsOperations.h"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;

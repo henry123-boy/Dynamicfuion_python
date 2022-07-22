@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "MeshOperations.h"
+#include "NormalsOperations.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
@@ -33,6 +33,12 @@ void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
 			[&] { NormalizeVectors3d<o3c::Device::DeviceType::CPU>(vectors3d); },
 			[&] { NNRT_IF_CUDA(NormalizeVectors3d<o3c::Device::DeviceType::CUDA>(vectors3d);); }
 	);
+}
+
+void
+ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& triangle_indices,
+                     const open3d::core::Tensor& triangle_normals) {
+	open3d::utility::LogError("Not yet implemented.");
 }
 
 } // nnrt::geometry::kernel::mesh

@@ -15,7 +15,7 @@
 //  ================================================================
 #pragma once
 
-#include "geometry/kernel/MeshOperations.h"
+#include "geometry/kernel/NormalsOperations.h"
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/core/ParallelFor.h>
 #include <open3d/core/TensorCheck.h>
@@ -52,14 +52,9 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
 
 				Eigen::Vector3f v0_to_v1 = vertex1 - vertex0;
 				Eigen::Vector3f v0_to_v2 = vertex2 - vertex0;
-				// printf("v0-v1: %f %f %f v0-v2: %f %f %f\n", v0_to_v1.x(), v0_to_v1.y(), v0_to_v1.z(),
-				//        v0_to_v1.x(), v0_to_v1.y(), v0_to_v1.z());
 
 				Eigen::Map<Eigen::Vector3f> triangle_normal(normal_indexer.template GetDataPtr<float>(workload_idx));
 				triangle_normal = v0_to_v1.template cross(v0_to_v2);
-				// printf("%f %f %f vs %f %f %f\n", triangle_normal.x(), triangle_normal.y(), triangle_normal.z(),
-				// 	   *normal_indexer.GetDataPtr<float>(workload_idx), *(normal_indexer.GetDataPtr<float>(workload_idx) + 1),
-				// 	   *(normal_indexer.GetDataPtr<float>(workload_idx) + 2));
 			}
 	);
 }

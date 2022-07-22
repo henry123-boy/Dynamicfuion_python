@@ -168,13 +168,13 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/IndexRaveling.h
     geometry/kernel/PointCollectionExtent.h
 
-    geometry/MeshOperations.h
-    geometry/MeshOperations.cpp
-    geometry/kernel/MeshOperations.cpp
-    geometry/kernel/MeshOperations.h
-    geometry/kernel/MeshOperationsImpl.h
-    geometry/kernel/MeshOperationsCPU.cpp
-    geometry/kernel/MeshOperationsCUDA.cu)
+    geometry/NormalsOperations.h
+    geometry/NormalsOperations.cpp
+    geometry/kernel/NormalsOperations.cpp
+    geometry/kernel/NormalsOperations.h
+    geometry/kernel/NormalsOperationsImpl.h
+    geometry/kernel/NormalsOperationsCPU.cpp
+    geometry/kernel/NormalsOperationsCUDA.cu)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -13,16 +13,24 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-
-#include "geometry/kernel/MeshOperationsImpl.h"
+#pragma once
+#include <open3d/core/Tensor.h>
 
 namespace nnrt::geometry::kernel::mesh {
 
-template void
-ComputeTriangleNormals<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions,
-                                                              const open3d::core::Tensor& triangle_indices);
+void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& triangle_indices);
 
-template void
-NormalizeVectors3d<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vectors3d);
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& triangle_indices);
+
+void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
+
+template<open3d::core::Device::DeviceType TDevice>
+void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
+
+
+void ComputeVertexNormals(open3d::core::Tensor& vertex_normals,const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& triangle_indices,
+                          const open3d::core::Tensor& triangle_normals);
+
 
 } // nnrt::geometry::kernel::mesh
