@@ -71,12 +71,40 @@ void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
 				Eigen::Map<Eigen::Vector3f> vector3d(vector_indexer.GetDataPtr<float>(workload_idx));
 				vector3d.normalize();
 #ifndef __CUDACC__
-				if (std::isnan(vector3d(0))){
+				if (std::isnan(vector3d(0))) {
 #else
-				if (isnan(vector3d(0))){
+					if (isnan(vector3d(0))){
 #endif
 					vector3d = Eigen::Vector3f(0.0, 0.0, 1.0);
 				}
+			}
+	);
+}
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,
+                          const open3d::core::Tensor& triangle_normals) {
+	o3c::Device device = triangle_indices.GetDevice();
+
+	o3c::AssertTensorDtype(triangle_indices, o3c::Int64);
+	o3c::AssertTensorDtype(triangle_normals, o3c::Float32);
+
+	o3gk::NDArrayIndexer vertex_normal_indexer(vertex_normals, 1);
+	o3gk::NDArrayIndexer triangle_indexer(triangle_indices, 1);
+	o3gk::NDArrayIndexer triangle_normal_indexer(triangle_normals, 1);
+
+	o3c::ParallelFor(
+			device, triangle_indices.GetLength(),
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				Eigen::Map<Eigen::Matrix<int64_t, 1, 3>> triangle_vertex_indices(triangle_indexer.template GetDataPtr<int64_t>(workload_idx));
+				Eigen::Map<Eigen::Vector3f> triangle_normal(triangle_normal_indexer.template GetDataPtr<float>(workload_idx));
+
+				Eigen::Map<Eigen::Vector3f> vertex0_normal(vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(0)));
+				vertex0_normal += triangle_normal;
+				Eigen::Map<Eigen::Vector3f> vertex1_normal(vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(1)));
+				vertex1_normal += triangle_normal;
+				Eigen::Map<Eigen::Vector3f> vertex2_normal(vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(2)));
+				vertex2_normal += triangle_normal;
 			}
 	);
 }

@@ -25,7 +25,7 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry {
 
-void CheckMeshVerticesAndTriangles(const open3d::t::geometry::TriangleMesh& mesh){
+void CheckMeshVerticesAndTriangles(const open3d::t::geometry::TriangleMesh& mesh) {
 	if (!mesh.HasVertexPositions() || !mesh.HasTriangleIndices()) {
 		o3u::LogError("Mesh needs to have both vertex positions and triangle indices to compute triangle normals. Vertex positions: {}."
 		              " Triangle indices: {}.",
@@ -39,7 +39,7 @@ void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normal
 	o3c::Tensor triangle_indices = mesh.GetTriangleIndices();
 	o3c::Tensor triangle_normals;
 	kernel::mesh::ComputeTriangleNormals(triangle_normals, vertex_positions, triangle_indices);
-	if(normalized){
+	if (normalized) {
 		NormalizeVectors3d(triangle_normals);
 	}
 	mesh.SetTriangleNormals(triangle_normals);
@@ -51,21 +51,19 @@ void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
 
 void ComputeVertexNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized) {
 	CheckMeshVerticesAndTriangles(mesh);
-	if(!mesh.HasTriangleNormals()){
+	if (!mesh.HasTriangleNormals()) {
 		ComputeTriangleNormals(mesh, false);
 	}
 	o3c::Tensor vertex_positions = mesh.GetVertexPositions();
 	o3c::Tensor triangle_indices = mesh.GetTriangleIndices();
 	o3c::Tensor triangle_normals = mesh.GetTriangleNormals();
-	o3c::Tensor vertex_normals;
+	o3c::Tensor vertex_normals = o3c::Tensor::Zeros({vertex_positions.GetLength(), 3}, o3c::Float32, mesh.GetDevice());
+	kernel::mesh::ComputeVertexNormals(vertex_normals, triangle_indices, triangle_normals);
 
-	kernel::mesh::ComputeVertexNormals(vertex_normals, vertex_positions, triangle_indices, triangle_normals);
-
-	if(normalized){
+	if (normalized) {
 		NormalizeVectors3d(vertex_normals);
 	}
 	mesh.SetVertexNormals(vertex_normals);
-
 }
 
 } // namespace nnrt::geometry

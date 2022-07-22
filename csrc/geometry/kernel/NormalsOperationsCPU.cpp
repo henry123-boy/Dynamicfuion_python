@@ -25,4 +25,8 @@ ComputeTriangleNormals<open3d::core::Device::DeviceType::CPU>(open3d::core::Tens
 template void
 NormalizeVectors3d<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vectors3d);
 
+template void
+ComputeVertexNormals<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,
+                                                            const open3d::core::Tensor& triangle_normals);
+
 } // nnrt::geometry::kernel::mesh

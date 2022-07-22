@@ -18,6 +18,7 @@
 
 namespace o3c = open3d::core;
 namespace nnrt::geometry::kernel::mesh {
+
 void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions,
                             const open3d::core::Tensor& triangle_indices) {
 	core::ExecuteOnDevice(
@@ -35,10 +36,16 @@ void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
 	);
 }
 
-void
-ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& triangle_indices,
-                     const open3d::core::Tensor& triangle_normals) {
-	open3d::utility::LogError("Not yet implemented.");
+void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,
+                          const open3d::core::Tensor& triangle_normals) {
+	core::ExecuteOnDevice(
+			triangle_indices.GetDevice(),
+			[&] { ComputeVertexNormals < o3c::Device::DeviceType::CPU>(vertex_normals, triangle_indices, triangle_normals); },
+			[&] { NNRT_IF_CUDA(
+					ComputeVertexNormals < o3c::Device::DeviceType::CUDA>(vertex_normals, triangle_indices, triangle_normals);); }
+	);
 }
+
+
 
 } // nnrt::geometry::kernel::mesh
