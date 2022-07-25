@@ -56,30 +56,17 @@ TEST_CASE("Test Compute Mesh Triangle Normals CUDA") {
 	TestComputeMeshTriangleNormals(device);
 }
 
-void TestComputeMeshVertexNormals(const o3c::Device& device){
+void TestComputeMeshVertexNormals(const o3c::Device& device) {
 	auto mesh_legacy = o3g::TriangleMesh::CreateSphere();
-	mesh_legacy->ComputeTriangleNormals(true);
+	mesh_legacy->ComputeTriangleNormals(false);
+
 	mesh_legacy->ComputeVertexNormals(false);
 	o3tg::TriangleMesh mesh = o3tg::TriangleMesh::FromLegacy(*mesh_legacy, o3c::Float32, o3c::Int64, device);
-	nnrt::geometry::ComputeTriangleNormals(mesh, true);
+	nnrt::geometry::ComputeTriangleNormals(mesh, false);
 	nnrt::geometry::ComputeVertexNormals(mesh, false);
 
 	auto vertex_normals = mesh.GetVertexNormals();
 	auto vertex_normals_legacy = o3c::eigen_converter::EigenVector3dVectorToTensor(mesh_legacy->vertex_normals_, o3c::Float32, device);
-
-	std::cout << vertex_normals.ToString() << std::endl << "Expected: " << vertex_normals_legacy.ToString() << std::endl;
-
-	o3c::Tensor lhs = vertex_normals.To(o3c::Float64);
-	o3c::Tensor rhs = vertex_normals_legacy.To(o3c::Float64);
-	o3c::Tensor actual_error = (lhs - rhs).Abs();
-	// std::cout << actual_error.GetItem(o3c::TensorKey::Index(700)).ToString() << std::endl;
-
-	o3c::Tensor max_error = 1e-7 + 0.0 * rhs.Abs();
-	auto close_tensor = actual_error <= max_error;
-
-	// std::cout << close_tensor.GetItem(o3c::TensorKey::Index(700)).ToString() << std::endl;
-
-	std::cout << close_tensor.ToString() << std::endl;
 
 	REQUIRE(vertex_normals.AllClose(vertex_normals_legacy,0.0,1e-7));
 }
