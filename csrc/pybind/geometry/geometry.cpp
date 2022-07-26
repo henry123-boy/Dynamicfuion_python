@@ -41,6 +41,7 @@ void pybind_geometry(py::module& m) {
 	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
+	pybind_geometry_normals_operations(m_submodule);
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
@@ -230,8 +231,8 @@ void pybind_geometry_downsampling(pybind11::module& m) {
 }
 
 void pybind_geometry_normals_operations(pybind11::module& m) {
-	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("radius_downsample_3d_points", &RadiusDownsample3DPoints, "points"_a, "radius"_a, "hash_backend"_a);
+	m.def("compute_triangle_normals", &ComputeTriangleNormals, "mesh"_a, "normalized"_a = true);
+	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
 }
 
 } // namespace nnrt

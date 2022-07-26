@@ -110,7 +110,8 @@ class FusionPipeline:
 
         self.intrinsics_open3d_device = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix,
                                                         o3d.core.Dtype.Float32, self.device)
-        self.extrinsics_open3d_device = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, self.device)
+        self.extrinsics = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, self.device)
+        self.extrinsics_record = []
         # TODO: initialize cropper here -- you can already get the first frame
         self.cropper: Union[None, StaticCenterCrop] = None
         # endregion
@@ -243,10 +244,10 @@ class FusionPipeline:
                     StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device,
-                                 self.extrinsics_open3d_device, depth_scale, sequence.far_clipping_distance)
-                # TODO: remove these calls after implementing proper block activation inside the IntegrateWarped____
-                #  C++ functions
-                # __DEBUG
+                                 self.extrinsics, depth_scale, sequence.far_clipping_distance)
+
+                # TODO: remove these commented calls (and sleeve block code) after better testing the new block
+                #  activation procedure triggered within the integrate_warped method of WarpableTSDFVoxelVolume (volume)
                 # volume.activate_sleeve_blocks()
                 # volume.activate_sleeve_blocks()
 
@@ -258,7 +259,7 @@ class FusionPipeline:
                 saved_depth_image_np = depth_image_np
                 saved_mask_image_np = mask_image_np
 
-                # TODO: save initial meshes somehow specially maybe (line below will extract)?
+                # TODO: save initial meshes somehow specially maybe? (Line below will extract.)
                 # canonical_mesh, warped_mesh = self.extract_and_warp_canonical_mesh_if_necessary()
                 # endregion
             else:
@@ -266,7 +267,9 @@ class FusionPipeline:
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image for non-rigid alignment  ====
                 #####################################################################################################
-                #  when we track 0-to-t, we force reusing original frame for the source.
+                # TODO: outsource source_depth and source_color prep to another method
+                # when we track first-to-current, we force reusing original frame for the source.
+                # when we track keyframe-to-current, we force reusing keyframe for the source.
                 if tracking_parameters.source_image_mode.value is SourceImageMode.IMAGE_ONLY:
                     source_depth = saved_depth_image_np
                     source_color = saved_color_image_np
@@ -370,41 +373,21 @@ class FusionPipeline:
                 # cumulative node transformations
                 node_rotation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rotations_pred))
                 node_translation_predictions = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
-                graph_for_integration = None
-                # TODO: outsource this to a separate method
-                if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
-                    self.active_graph.rotations = node_rotation_predictions
-                    self.active_graph.translations = node_translation_predictions
-                    graph_for_integration = self.active_graph
-                elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
-                    self.active_graph.rotations = nnrt.core.matmul3d(self.active_graph.rotations,
-                                                                     node_rotation_predictions)
-                    self.active_graph.translations += o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(translations_pred))
-                    graph_for_integration = self.active_graph
-                elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
-                    self.active_graph.rotations = node_rotation_predictions
-                    self.active_graph.translations = node_translation_predictions
-                    if len(self.keyframe_graphs) == 0:
-                        # we're at the initial keyframe, graph storage is unnecessary
-                        graph_for_integration = self.active_graph
-                    else:
-                        graph_for_integration = self.keyframe_graphs[-1].clone()
-                        graph_for_integration.rotations = \
-                            nnrt.core.matmul3d(graph_for_integration.rotations, self.active_graph.rotations)
-                        graph_for_integration.translations += self.active_graph.translations
-                    if current_frame_is_keyframe:
-                        self.active_graph = graph_for_integration.apply_transformations()
-                        self.keyframe_graphs.append(graph_for_integration)
-                        # have to recompute the pixel anchors and weights with the new source point cloud and graph
-                        saved_pixel_anchors, saved_pixel_weights = \
-                            self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=False)
+
+                graph_for_integration, need_to_recompute_saved_anchors = \
+                    self.prepare_motion_graph_for_integration(node_rotation_predictions,
+                                                              node_translation_predictions,
+                                                              current_frame_is_keyframe, source_point_image_np, device)
+                if need_to_recompute_saved_anchors:
+                    saved_pixel_anchors, saved_pixel_weights = \
+                        self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=False)
 
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(graph_for_integration)
 
                 cos_voxel_ray_to_normal = volume.integrate_warped(
                     depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                    self.intrinsics_open3d_device, self.extrinsics_open3d_device, graph_for_integration,
+                    self.intrinsics_open3d_device, self.extrinsics, graph_for_integration,
                     depth_scale=depth_scale, depth_max=3.0)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
@@ -442,6 +425,44 @@ class FusionPipeline:
                   f"without model + TSDF grid initialization): {end_time - start_time}")
 
         return PROGRAM_EXIT_SUCCESS
+
+    def prepare_motion_graph_for_integration(self,
+                                             node_rotation_predictions: o3c.Tensor,
+                                             node_translation_predictions: o3c.Tensor,
+                                             current_frame_is_keyframe: bool,
+                                             source_point_image_np: np.ndarray,
+                                             device: o3c.Device) -> [nnrt.geometry.GraphWarpField, bool]:
+        tracking_parameters = Parameters.fusion.tracking
+        graph_for_integration = None
+        need_to_recompute_saved_anchors = False
+
+        if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
+            self.active_graph.rotations = node_rotation_predictions
+            self.active_graph.translations = node_translation_predictions
+            graph_for_integration = self.active_graph
+        elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
+            self.active_graph.rotations = nnrt.core.matmul3d(self.active_graph.rotations,
+                                                             node_rotation_predictions)
+            self.active_graph.translations += node_translation_predictions
+            graph_for_integration = self.active_graph
+        elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
+            self.active_graph.rotations = node_rotation_predictions
+            self.active_graph.translations = node_translation_predictions
+            if len(self.keyframe_graphs) == 0:
+                # we're at the initial keyframe, graph storage is unnecessary
+                graph_for_integration = self.active_graph
+            else:
+                graph_for_integration = self.keyframe_graphs[-1].clone()
+                graph_for_integration.rotations = \
+                    nnrt.core.matmul3d(graph_for_integration.rotations, self.active_graph.rotations)
+                graph_for_integration.translations += self.active_graph.translations
+            if current_frame_is_keyframe:
+                self.active_graph = graph_for_integration.apply_transformations()
+                self.keyframe_graphs.append(graph_for_integration)
+                # we have to recompute the pixel anchors and weights with the new source point cloud and graph
+                need_to_recompute_saved_anchors = True
+
+        return graph_for_integration, need_to_recompute_saved_anchors
 
     def initialize_graph_and_anchors(self, volume: nnrt.geometry.WarpableTSDFVoxelGrid,
                                      device: o3c.Device, sequence: FrameSequenceDataset,
