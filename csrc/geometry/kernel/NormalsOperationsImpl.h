@@ -20,6 +20,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/core/ParallelFor.h>
 #include <open3d/core/TensorCheck.h>
+#include <open3d/utility/Optional.h>
 #include <Eigen/Dense>
 
 #include "geometry/kernel/NormalsOperations.h"
@@ -29,6 +30,7 @@
 
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 namespace o3gk = open3d::t::geometry::kernel;
 
 namespace nnrt::geometry::kernel::mesh {
@@ -38,7 +40,10 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
                             const open3d::core::Tensor& triangle_indices) {
 	auto device = vertex_positions.GetDevice();
 	o3c::AssertTensorDtype(vertex_positions, o3c::Float32);
+	o3c::AssertTensorShape(vertex_positions, {o3u::nullopt, 3});
 	o3c::AssertTensorDtype(triangle_indices, o3c::Int64);
+	o3c::AssertTensorShape(triangle_indices, {o3u::nullopt, 3});
+
 
 	triangle_normals = o3c::Tensor({triangle_indices.GetLength(), 3}, o3c::Float32, device);
 
@@ -65,22 +70,23 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void NormalizeVectors3d(open3d::core::Tensor& vectors3d) {
-	o3c::AssertTensorDtype(vectors3d, o3c::Float32);
+void NormalizeVectors3d(open3d::core::Tensor& vectors3f) {
+	o3c::AssertTensorDtype(vectors3f, o3c::Float32);
+	o3c::AssertTensorShape(vectors3f, {o3u::nullopt, 3});
 
-	o3gk::NDArrayIndexer vector_indexer(vectors3d, 1);
+	o3gk::NDArrayIndexer vector_indexer(vectors3f, 1);
 
 	o3c::ParallelFor(
-			vectors3d.GetDevice(), vectors3d.GetLength(),
+			vectors3f.GetDevice(), vectors3f.GetLength(),
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				Eigen::Map<Eigen::Vector3f> vector3d(vector_indexer.GetDataPtr<float>(workload_idx));
-				vector3d.normalize();
+				Eigen::Map<Eigen::Vector3f> vector3f(vector_indexer.GetDataPtr<float>(workload_idx));
+				vector3f.normalize();
 #ifndef __CUDACC__
-				if (std::isnan(vector3d(0))) {
+				if (std::isnan(vector3f(0))) {
 #else
-					if (isnan(vector3d(0))){
+					if (isnan(vector3f(0))){
 #endif
-					vector3d = Eigen::Vector3f(0.0, 0.0, 1.0);
+					vector3f = Eigen::Vector3f(0.0, 0.0, 1.0);
 				}
 			}
 	);
@@ -92,7 +98,9 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 	o3c::Device device = triangle_indices.GetDevice();
 
 	o3c::AssertTensorDtype(triangle_indices, o3c::Int64);
+	o3c::AssertTensorShape(triangle_indices, {o3u::nullopt, 3});
 	o3c::AssertTensorDtype(triangle_normals, o3c::Float32);
+	o3c::AssertTensorShape(triangle_normals, {o3u::nullopt, 3});
 
 
 	o3gk::NDArrayIndexer vertex_normal_indexer(vertex_normals, 1);

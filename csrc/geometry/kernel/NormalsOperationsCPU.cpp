@@ -23,7 +23,7 @@ ComputeTriangleNormals<open3d::core::Device::DeviceType::CPU>(open3d::core::Tens
                                                               const open3d::core::Tensor& triangle_indices);
 
 template void
-NormalizeVectors3d<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vectors3d);
+NormalizeVectors3d<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vectors3f);
 
 template void
 ComputeVertexNormals<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,

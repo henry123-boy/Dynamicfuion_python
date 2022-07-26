@@ -26,10 +26,10 @@ template<open3d::core::Device::DeviceType TDevice>
 void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d::core::Tensor& vertex_positions,
                             const open3d::core::Tensor& triangle_indices);
 
-void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
+void NormalizeVectors3d(open3d::core::Tensor& vectors3f);
 
 template<open3d::core::Device::DeviceType TDevice>
-void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
+void NormalizeVectors3d(open3d::core::Tensor& vectors3f);
 
 void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,
                           const open3d::core::Tensor& triangle_normals);

@@ -22,6 +22,7 @@
 #include "geometry/TransformationMode.h"
 #include "geometry/Comparison.h"
 #include "geometry/DownsamplePoints.h"
+#include "geometry/NormalsOperations.h"
 #include "geometry.h"
 
 
@@ -224,6 +225,11 @@ void pybind_geometry_comparison(pybind11::module& m) {
 }
 
 void pybind_geometry_downsampling(pybind11::module& m) {
+	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
+	m.def("radius_downsample_3d_points", &RadiusDownsample3DPoints, "points"_a, "radius"_a, "hash_backend"_a);
+}
+
+void pybind_geometry_normals_operations(pybind11::module& m) {
 	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
 	m.def("radius_downsample_3d_points", &RadiusDownsample3DPoints, "points"_a, "radius"_a, "hash_backend"_a);
 }

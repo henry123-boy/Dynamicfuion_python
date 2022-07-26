@@ -25,6 +25,7 @@ void pybind_geometry_extended_tsdf_voxel_grid(py::module& m);
 void pybind_geometry_graph_warp_field(py::module& m);
 void pybind_geometry_comparison(py::module& m);
 void pybind_geometry_downsampling(py::module& m);
+void pybind_geometry_normals_operations(py::module& m);
 
 
 } //namespace nnrt::geometry
