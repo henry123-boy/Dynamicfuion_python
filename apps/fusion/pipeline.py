@@ -116,51 +116,15 @@ class FusionPipeline:
         self.cropper: Union[None, StaticCenterCrop] = None
         # endregion
 
-    def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int, graph: nnrt.geometry.GraphWarpField) -> \
-            Tuple[Union[None, o3d.t.geometry.TriangleMesh], Union[None, o3d.t.geometry.TriangleMesh]]:
-        mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(frame_index)
-        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
-        is_keyframe = self.frame_is_keyframe(frame_index)
-        if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
-            canonical_mesh = self.volume.extract_surface_mesh(-1, mesh_extraction_weight_threshold)
-
-        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
-
-        if self.framewise_warped_mesh_needed or is_keyframe:
-            warped_mesh = graph.warp_mesh(canonical_mesh)
-
-        return canonical_mesh, warped_mesh
-
-    def determine_mesh_extraction_threshold(self, frame_index: int) -> int:
-        frame_count = frame_index - self.start_at_frame_index
-        tracking_parameters = Parameters.fusion.tracking
-        if tracking_parameters.mesh_extraction_weight_thresholding_mode.value == \
-                MeshExtractionWeightThresholdingMode.CONSTANT:
-            return tracking_parameters.mesh_extraction_weight_threshold.value
-        else:
-            if frame_count < tracking_parameters.mesh_extraction_weight_threshold.value:
-                return frame_count
-            else:
-                return tracking_parameters.mesh_extraction_weight_threshold.value
-
-    def frame_is_keyframe(self, frame_index: int) -> bool:
-        frame_count = frame_index - self.start_at_frame_index
-        tracking_parameters = Parameters.fusion.tracking
-        return tracking_parameters.tracking_span_mode.value == TrackingSpanMode.KEYFRAME_TO_CURRENT and \
-               frame_count % tracking_parameters.keyframe_interval.value == 0
-
     def run(self) -> int:
+        # start timer for performance profiling
         start_time = timeit.default_timer()
 
+        # these parameters are stored as local variables for easy access
         verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
-        integration_parameters = Parameters.fusion.integration
         deform_net_parameters = Parameters.deform_net
         alignment_parameters = Parameters.alignment
-        graph_parameters = Parameters.graph
-
-        node_coverage = graph_parameters.node_coverage.value
-
         depth_scale = deform_net_parameters.depth_scale.value
         alignment_image_width = alignment_parameters.image_width.value
         alignment_image_height = alignment_parameters.image_height.value
@@ -391,7 +355,7 @@ class FusionPipeline:
                     depth_scale=depth_scale, depth_max=3.0)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
-                #  Check BaldrLector's NeuralTracking fork code. Guess: perhaps it was a beconing to the original
+                #  Check BaldrLector's NeuralTracking fork code. Guess: perhaps it was a beckoning to the original
                 #  DynamicFusion code, where fidelity of points from the older Kinect cameras was significantly worse at
                 #  grazing ray angles.
                 # endregion
@@ -425,6 +389,39 @@ class FusionPipeline:
                   f"without model + TSDF grid initialization): {end_time - start_time}")
 
         return PROGRAM_EXIT_SUCCESS
+
+    def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int, graph: nnrt.geometry.GraphWarpField) -> \
+            Tuple[Union[None, o3d.t.geometry.TriangleMesh], Union[None, o3d.t.geometry.TriangleMesh]]:
+        mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(frame_index)
+        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
+        is_keyframe = self.frame_is_keyframe(frame_index)
+        if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
+            canonical_mesh = self.volume.extract_surface_mesh(-1, mesh_extraction_weight_threshold)
+
+        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
+
+        if self.framewise_warped_mesh_needed or is_keyframe:
+            warped_mesh = graph.warp_mesh(canonical_mesh)
+
+        return canonical_mesh, warped_mesh
+
+    def determine_mesh_extraction_threshold(self, frame_index: int) -> int:
+        frame_count = frame_index - self.start_at_frame_index
+        tracking_parameters = Parameters.fusion.tracking
+        if tracking_parameters.mesh_extraction_weight_thresholding_mode.value == \
+                MeshExtractionWeightThresholdingMode.CONSTANT:
+            return tracking_parameters.mesh_extraction_weight_threshold.value
+        else:
+            if frame_count < tracking_parameters.mesh_extraction_weight_threshold.value:
+                return frame_count
+            else:
+                return tracking_parameters.mesh_extraction_weight_threshold.value
+
+    def frame_is_keyframe(self, frame_index: int) -> bool:
+        frame_count = frame_index - self.start_at_frame_index
+        tracking_parameters = Parameters.fusion.tracking
+        return tracking_parameters.tracking_span_mode.value == TrackingSpanMode.KEYFRAME_TO_CURRENT and \
+               frame_count % tracking_parameters.keyframe_interval.value == 0
 
     def prepare_motion_graph_for_integration(self,
                                              node_rotation_predictions: o3c.Tensor,
