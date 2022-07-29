@@ -25,11 +25,9 @@
 namespace nnrt::geometry {
 
 class NonRigidSurfaceVoxelBlockGrid : public VoxelBlockGrid {
-private:
-	using VoxelBlockGrid::VoxelBlockGrid;
 
 public:
-
+	using VoxelBlockGrid::VoxelBlockGrid;
 
 	friend std::ostream& operator<<(std::ostream& out, const NonRigidSurfaceVoxelBlockGrid& grid);
 

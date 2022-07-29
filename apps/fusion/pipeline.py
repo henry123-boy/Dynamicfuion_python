@@ -84,7 +84,8 @@ class FusionPipeline:
         # === load alignment network, configure device ===
         self.deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA,
                                                                log_parameters.record_gn_point_clouds.value)
-        self.device = o3d.core.Device('cuda:0')
+        self.device = o3c.Device("cuda:0")
+        self.host = o3c.Device("cpu:0")
 
         # === initialize structures ===
         self.active_graph: Union[nnrt.geometry.GraphWarpField, None] = None
@@ -100,17 +101,18 @@ class FusionPipeline:
                                         Parameters.fusion.input_data.start_at_frame.value)
         first_frame = self.sequence.get_frame_at(self.start_at_frame_index)
 
-        intrinsics_open3d_cpu, self.intrinsic_matrix_np = camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
-            self.sequence.get_intrinsics_path(), first_frame.get_depth_image_path())
-        self.fx, self.fy, self.cx, self.cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_cpu)
-        self.intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_cpu)
+        intrinsics_open3d_legacy, self.intrinsic_matrix_np = \
+            camera.load_open3d_intrinsics_from_text_4x4_matrix_and_image(
+                self.sequence.get_intrinsics_path(), first_frame.get_depth_image_path())
+        self.fx, self.fy, self.cx, self.cy = camera.extract_intrinsic_projection_parameters(intrinsics_open3d_legacy)
+        self.intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsics_open3d_legacy)
 
         if verbosity_parameters.print_intrinsics.value:
-            camera.print_intrinsic_projection_parameters(intrinsics_open3d_cpu)
+            camera.print_intrinsic_projection_parameters(intrinsics_open3d_legacy)
 
-        self.intrinsics_open3d_device = o3d.core.Tensor(intrinsics_open3d_cpu.intrinsic_matrix,
-                                                        o3d.core.Dtype.Float32, self.device)
-        self.extrinsics = o3d.core.Tensor.eye(4, o3d.core.Dtype.Float32, self.device)
+        self.intrinsics = o3c.Tensor(intrinsics_open3d_legacy.intrinsic_matrix,
+                                     o3c.Dtype.Float64, self.host)
+        self.extrinsics = o3d.core.Tensor.eye(4, o3c.Dtype.Float64, self.host)
         self.extrinsics_record = []
         # TODO: initialize cropper here -- you can already get the first frame
         self.cropper: Union[None, StaticCenterCrop] = None
@@ -121,7 +123,7 @@ class FusionPipeline:
         start_time = timeit.default_timer()
 
         # these parameters are stored as local variables for easy access
-        truncation_distance_factor = Parameters.tsdf.sdf_truncation_distance / Parameters.tsdf.voxel_size
+        truncation_distance_factor = Parameters.tsdf.sdf_truncation_distance.value / Parameters.tsdf.voxel_size.value
         verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
         deform_net_parameters = Parameters.deform_net
@@ -142,7 +144,7 @@ class FusionPipeline:
         # region === initialize loop data structures ===
         #####################################################################################################
 
-        renderer = PyTorch3DRenderer(self.sequence.resolution, device, self.intrinsics_open3d_device)
+        renderer = PyTorch3DRenderer(self.sequence.resolution, self.device, self.intrinsics)
 
         saved_depth_image_np: Union[None, np.ndarray] = None
         saved_color_image_np: Union[None, np.ndarray] = None
@@ -209,12 +211,12 @@ class FusionPipeline:
                     StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 blocks_to_activate = volume.compute_unique_block_coordinates(depth_image_open3d,
-                                                                             self.intrinsics_open3d_device,
+                                                                             self.intrinsics,
                                                                              self.extrinsics,
                                                                              depth_scale,
                                                                              sequence.far_clipping_distance)
                 volume.integrate(blocks_to_activate, depth_image_open3d, color_image_open3d,
-                                 self.intrinsics_open3d_device, self.intrinsics_open3d_device,
+                                 self.intrinsics, self.intrinsics,
                                  self.extrinsics, depth_scale, sequence.far_clipping_distance,
                                  truncation_distance_factor)
 
@@ -358,7 +360,7 @@ class FusionPipeline:
                 telemetry_generator.process_graph_transformation(graph_for_integration)
                 blocks_to_activate = \
                     volume.find_blocks_intersecting_truncation_region(depth_image_open3d, graph_for_integration,
-                                                                      self.intrinsics_open3d_device, self.extrinsics,
+                                                                      self.intrinsics, self.extrinsics,
                                                                       depth_scale, sequence.far_clipping_distance,
                                                                       truncation_distance_factor)
 
@@ -366,7 +368,7 @@ class FusionPipeline:
                     volume.integrate_non_rigid(
                         blocks_to_activate, graph_for_integration,
                         depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                        self.intrinsics_open3d_device, self.intrinsics_open3d_device, self.extrinsics,
+                        self.intrinsics, self.intrinsics, self.extrinsics,
                         depth_scale, sequence.far_clipping_distance, truncation_distance_factor)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
@@ -411,7 +413,7 @@ class FusionPipeline:
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         is_keyframe = self.frame_is_keyframe(frame_index)
         if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
-            canonical_mesh = self.volume.extract_surface_mesh(-1, mesh_extraction_weight_threshold)
+            canonical_mesh = self.volume.extract_triangle_mesh(-1, mesh_extraction_weight_threshold)
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
@@ -474,7 +476,7 @@ class FusionPipeline:
 
         return graph_for_integration, need_to_recompute_saved_anchors
 
-    def initialize_graph_and_anchors(self, volume: nnrt.geometry.WarpableTSDFVoxelGrid,
+    def initialize_graph_and_anchors(self, volume: nnrt.geometry.NonRigidSurfaceVoxelBlockGrid,
                                      device: o3c.Device, sequence: FrameSequenceDataset,
                                      frame_index: int,
                                      depth_image_np: numpy.ndarray, mask_image_np: numpy.ndarray) \
@@ -487,8 +489,8 @@ class FusionPipeline:
         precomputed_pixel_anchors = None
         precomputed_pixel_weights = None
         if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
-            canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_surface_mesh(-1, 0).to_legacy()
-            canonical_mesh = o3d.t.geometry.TrinagleMesh.from_legacy(canonical_mesh_legacy, device=device)
+            canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_triangle_mesh(-1, 0).to_legacy()
+            canonical_mesh = o3d.t.geometry.TriangleMesh.from_legacy(canonical_mesh_legacy, device=device)
             self.active_graph = build_deformation_graph_from_mesh(
                 canonical_mesh, node_coverage, erosion_iteration_count=10, neighbor_count=8,
                 minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value

@@ -55,7 +55,7 @@ void pybind_geometry_voxel_block_grid(pybind11::module& m) {
 	py::module::import("open3d.cuda.pybind.t.geometry");
 	auto size_vector_obj = core_module.attr("SizeVector");
 
-	py::class_<VoxelBlockGrid>  voxel_block_grid(
+	py::class_<VoxelBlockGrid> voxel_block_grid(
 			m, "VoxelBlockGrid",
 			"A voxel block grid is a sparse grid of voxel blocks. Each voxel "
 			"block is a dense 3D array, preserving local data distribution. If "
@@ -243,10 +243,18 @@ void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
 			"the block_resolution is set to 1, then the VoxelBlockGrid "
 			"degenerates to a sparse voxel grid.");
 
+	non_rigid_surface_voxel_block_grid.def(py::init<const std::vector<std::string>&,
+			                                       const std::vector<o3c::Dtype>&,
+			                                       const std::vector<o3c::SizeVector>&, float, int64_t,
+			                                       int64_t, const o3c::Device&>(),
+	                                       "attr_names"_a, "attr_dtypes"_a, "attr_channels"_a,
+	                                       "voxel_size"_a = 0.0058, "block_resolution"_a = 16,
+	                                       "block_count"_a = 10000, "device"_a = o3c::Device("CPU:0"));
+
 	non_rigid_surface_voxel_block_grid.def("find_blocks_intersecting_truncation_region",
-										   &NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion,
-										   "depth"_a, "warp_field"_a, "intrinsics"_a, "extrinsics"_a, "depth_scale"_a, "depth_max"_a,
-										   "truncation_voxel_multiplier"_a);
+	                                       &NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion,
+	                                       "depth"_a, "warp_field"_a, "intrinsics"_a, "extrinsics"_a, "depth_scale"_a, "depth_max"_a,
+	                                       "truncation_voxel_multiplier"_a);
 
 	non_rigid_surface_voxel_block_grid.def("integrate_non_rigid", py::overload_cast<
 			                                       const o3c::Tensor&, const GraphWarpField&,

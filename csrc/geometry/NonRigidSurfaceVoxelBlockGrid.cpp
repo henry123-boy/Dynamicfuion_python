@@ -82,9 +82,6 @@ NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& blo
 	o3c::Tensor depth_tensor, color_tensor;
 	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->name_attr_map_);
 	static const o3c::Device host("CPU:0");
-	o3c::Tensor depth_intrinsics_host_double = depth_intrinsics.To(host, o3c::Dtype::Float64).Contiguous();
-	o3c::Tensor color_intrinsics_host_double = color_intrinsics.To(host, o3c::Dtype::Float64).Contiguous();
-	o3c::Tensor extrinsics_host_double = extrinsics.To(host, o3c::Dtype::Float64).Contiguous();
 
 	// Activate indicated blocks
 	o3c::Tensor buffer_indices, masks;
@@ -104,7 +101,7 @@ NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& blo
 	                                      cos_voxel_ray_to_normal, this->block_resolution_, this->voxel_size_,
 	                                      this->voxel_size_ * truncation_voxel_multiplier,
 	                                      depth_tensor, color_tensor, depth_normals,
-										  depth_intrinsics_host_double, color_intrinsics_host_double, extrinsics_host_double,
+	                                      depth_intrinsics, color_intrinsics, extrinsics,
 	                                      warp_field, depth_scale, depth_max);
 
 	return cos_voxel_ray_to_normal;
