@@ -494,7 +494,7 @@ if(NOT USE_SYSTEM_FMT)
         INCLUDE_DIRS ${FMT_INCLUDE_DIRS}
         DEPENDS      ext_fmt
         )
-    target_compile_definitions(3rdparty_fmt INTERFACE FMT_HEADER_ONLY=1)
+#    target_compile_definitions(3rdparty_fmt INTERFACE FMT_HEADER_ONLY=1)
 endif()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS NNRT::3rdparty_fmt)
 

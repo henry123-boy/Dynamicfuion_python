@@ -20,7 +20,7 @@ from typing import Tuple
 import torch.utils.dlpack as torch_dlpack
 
 from warp_field.graph_warp_field import GraphWarpField
-from nnrt.geometry import WarpableTSDFVoxelGrid, compute_point_to_plane_distances
+from nnrt.geometry import NonRigidSurfaceVoxelBlockGrid, compute_point_to_plane_distances
 from alignment.common import LinearSolverLU
 from settings import GraphParameters
 from rendering.pytorch3d_renderer import PyTorch3DRenderer, RenderMaskCode
@@ -36,7 +36,7 @@ class RenderingAlignmentOptimizer:
     def termination_condition_reached(self) -> bool:
         raise NotImplementedError("Not implemented")
 
-    def optimize_graph(self, graph: GraphWarpField, tsdf: WarpableTSDFVoxelGrid,
+    def optimize_graph(self, graph: GraphWarpField, tsdf: NonRigidSurfaceVoxelBlockGrid,
                        target_points: o3d.t.geometry.PointCloud, target_rgb: o3d.t.geometry.Image):
         canonical_mesh: o3d.t.geometry.TriangleMesh = tsdf.extract_surface_mesh(-1, 0)
         while not self.termination_condition_reached():
@@ -58,7 +58,7 @@ class RenderingAlignmentOptimizer:
 
             data_jacobian = torch.zeros((data_residuals.shape[0], len(graph.nodes) * 6), dtype=rotations.dtype,
                                         device=rotations.device)  # (target point count, node count * 6)
-            data_jacobian[0]
+            # TODO: compute jacobian
 
             # TODO: hierarchical graph structures, regularization residuals, etc. (See #22 for full DF task list)
 

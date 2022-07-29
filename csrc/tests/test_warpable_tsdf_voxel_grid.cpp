@@ -17,8 +17,8 @@
 
 #include "test_main.hpp"
 
-#include <geometry/WarpableTSDFVoxelGrid.h>
-#include <geometry/kernel/WarpableTSDFVoxelGrid.h>
+#include <geometry/NonRigidSurfaceVoxelBlockGrid.h>
+#include <geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/GraphWarpField.h>
 
 
@@ -28,14 +28,12 @@ namespace o3c = open3d::core;
 
 void TestWarpableTSDFVoxelGridConstructor(const o3c::Device& device) {
 	// simply ensure construction works without bugs
-	nnrt::geometry::WarpableTSDFVoxelGrid grid(
-			{
-					{"tsdf",   o3c::Float32},
-					{"weight", o3c::UInt16},
-					{"color",  o3c::UInt16}
-			},
+	nnrt::geometry::NonRigidSurfaceVoxelBlockGrid grid(
+			std::vector<std::string>({"tsdf", "weight", "color"}),
+			std::vector<o3c::Dtype>(
+					{o3c::Float32, o3c::UInt16, o3c::UInt16}),
+			std::vector<o3c::SizeVector>({{1}, {1}, {3}}),
 			0.005f,
-			0.025f,
 			16,
 			1000,
 			device
@@ -92,8 +90,8 @@ void TestWarpableTSDFVoxelGrid_GetBoundingBoxesOfWarpedBlocks(const o3c::Device&
 
 
 	o3c::Tensor bounding_boxes;
-	geometry::kernel::tsdf::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, field, voxel_size, block_resolution,
-	                                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")));
+	geometry::kernel::voxel_grid::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, field, voxel_size, block_resolution,
+	                                                             o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")));
 
 	std::vector<float> bounding_boxes_gt_data{
 			1, 0, 0, 2, 1, 1,
@@ -146,7 +144,7 @@ void TestWarpableTSDFVoxelGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(const 
 	float truncation_distance = 0.5f;
 
 	o3c::Tensor mask;
-	geometry::kernel::tsdf::GetAxisAlignedBoxesInterceptingSurfaceMask(
+	geometry::kernel::voxel_grid::GetAxisAlignedBoxesInterceptingSurfaceMask(
 			mask, bounding_boxes, intrinsics, depth, 1.0, 100.0, stride, truncation_distance
 	);
 

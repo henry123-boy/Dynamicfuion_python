@@ -1412,10 +1412,9 @@ void compute_vertex_anchors_shortest_path(
 		float node_coverage) {
 // Allocate graph node ids and corresponding skinning weights.
 	int vertex_count = static_cast<int>(vertices.shape(0));
-	int node_count = static_cast<int>(nodes.shape(0));
 
 	assert(edges.shape(1) == GRAPH_K);
-	assert(edges.shape(0) == node_count);
+	assert(edges.shape(0) == static_cast<int>(nodes.shape(0)));
 
 	// Initialize with invalid anchors.
 	anchors.resize({vertex_count, anchor_count}, false);

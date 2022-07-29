@@ -1,14 +1,21 @@
-#include "pybind/nnrt_pybind.h"
+// 3rd party
+#include <open3d/utility/Logging.h>
+
+// local
 #include "cpu/image_proc.h"
 #include "cpu/graph_proc.h"
 
+#include "pybind/nnrt_pybind.h"
 #include "pybind/geometry/geometry.h"
+#include "pybind/pipelines/slam.h"
 #include "pybind/core.h"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
 
 using namespace pybind11::literals;
+
+namespace o3u = open3d::utility;
 
 
 int add(int i, int j) {
@@ -17,8 +24,19 @@ int add(int i, int j) {
 
 // Definitions of all methods in the module.
 PYBIND11_MODULE(nnrt, m) {
+	o3u::Logger::GetInstance().SetPrintFunction([](const std::string& msg) {
+		py::gil_scoped_acquire acquire;
+		py::print(msg);
+	});
+
+	m.doc() = "Python binding of Open3D";
+
+	m.add_object("_GLIBCXX_USE_CXX11_ABI",
+	             _GLIBCXX_USE_CXX11_ABI ? Py_True : Py_False);
+
 	nnrt::core::pybind_core(m);
 	nnrt::geometry::pybind_geometry(m);
+	nnrt::pipelines::slam::pybind_slam(m);
 
 
 	m.def("compute_augmented_flow_from_rotation",

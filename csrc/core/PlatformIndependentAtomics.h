@@ -60,11 +60,25 @@ T atomicAdd_CPU(std::atomic<T>& variable, T addend) {
 }
 
 
+template<typename T>
+inline
+T atomicAdd_CPU(std::atomic<T>* variable, T addend) {
+	auto current = variable->load();
+	while (!variable->compare_exchange_weak(current, current + addend, std::memory_order_relaxed, std::memory_order_relaxed));
+	return current;
+}
+
 
 template<>
 inline
 int atomicAdd_CPU<int>(std::atomic<int>& variable, int addend){
 	return variable.fetch_add(addend, std::memory_order_relaxed);
+}
+
+template<>
+inline
+int atomicAdd_CPU<int>(std::atomic<int>* variable, int addend){
+	return variable->fetch_add(addend, std::memory_order_relaxed);
 }
 
 template<>
@@ -75,8 +89,20 @@ int64_t atomicAdd_CPU<int64_t>(std::atomic<int64_t>& variable, int64_t addend){
 
 template<>
 inline
+int64_t atomicAdd_CPU<int64_t>(std::atomic<int64_t>* variable, int64_t addend){
+	return variable->fetch_add(addend, std::memory_order_relaxed);
+}
+
+template<>
+inline
 unsigned int atomicAdd_CPU<unsigned int>(std::atomic<unsigned int>& variable, unsigned int addend){
 	return variable.fetch_add(addend, std::memory_order_relaxed);
+}
+
+template<>
+inline
+unsigned int atomicAdd_CPU<unsigned int>(std::atomic<unsigned int>* variable, unsigned int addend){
+	return variable->fetch_add(addend, std::memory_order_relaxed);
 }
 
 template<typename T>

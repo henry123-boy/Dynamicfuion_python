@@ -13,10 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <open3d/t/geometry/TSDFVoxelGrid.h>
 #include <open3d/geometry/Image.h>
 
-#include "geometry/WarpableTSDFVoxelGrid.h"
+#include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/GraphWarpField.h"
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
@@ -37,7 +36,8 @@ void pybind_geometry(py::module& m) {
 			"geometry", "Open3D-tensor-based geometry defining module.");
 
 	pybind_geometry_enums(m_submodule);
-	pybind_geometry_extended_tsdf_voxel_grid(m_submodule);
+	pybind_geometry_voxel_block_grid(m_submodule);
+	pybind_geometry_non_rigid_surface_voxel_block_grid(m_submodule);
 	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
@@ -50,118 +50,216 @@ void pybind_geometry_enums(pybind11::module& m) {
 }
 
 
-// #define USE_BASE_CLASS_TEMPLATE_PARAMETER
+void pybind_geometry_voxel_block_grid(pybind11::module& m) {
+	auto core_module = py::module::import("open3d.core");
+	py::module::import("open3d.cuda.pybind.t.geometry");
+	auto size_vector_obj = core_module.attr("SizeVector");
 
-void pybind_geometry_extended_tsdf_voxel_grid(pybind11::module& m) {
-#ifdef USE_BASE_CLASS_TEMPLATE_PARAMETER
-	// import has to be here in order to load the base class into python,
-	// otherwise there will be errors if the module isn't imported on the python end
-	py::module_::import("open3d.cuda.pybind.t.geometry");
-	py::class_<WarpableTSDFVoxelGrid, open3d::t::geometry::TSDFVoxelGrid> warpable_tsdf_voxel_grid(
-			m, "WarpableTSDFVoxelGrid",
-			"A voxel grid for TSDF and/or color integration, extended with custom functions for applying a warp-field during integration.");
-#else
-	py::object tsdf_voxel_grid = (py::object) py::module_::import("open3d.cuda.pybind.t.geometry").attr("TSDFVoxelGrid");
-	py::class_<WarpableTSDFVoxelGrid> warpable_tsdf_voxel_grid(
-			m, "WarpableTSDFVoxelGrid", tsdf_voxel_grid,
-			"A voxel grid for TSDF and/or color integration, extended with custom functions for applying a warp-field during integration.");
-#endif
-	// TODO: we have to re-define all the TSDFVoxelGrid python aliases, because Open3D code doesn't use the
-	//  PYBIND11_EXPORT macro in the class definition. An issue should be raised in Open3D and a pull request proposed to
-	//  introduce PYBIND11_EXPORT to various classes and mitigate this problem.
-	// region  =============================== EXISTING BASE CLASS (TSDFVoxelGrid) CONSTRUCTORS  ==========================
-	warpable_tsdf_voxel_grid.def(
-			py::init<const std::unordered_map<std::string, o3c::Dtype>&, float,
-					float, int64_t, int64_t, const o3c::Device&>(),
-			"map_attrs_to_dtypes"_a =
-					std::unordered_map<std::string, o3c::Dtype>{
-							{"tsdf",   o3c::Dtype::Float32},
-							{"weight", o3c::Dtype::UInt16},
-							{"color",  o3c::Dtype::UInt16},
-					},
-			"voxel_size"_a = 3.0 / 512, "sdf_trunc"_a = 0.04,
-			"block_resolution"_a = 16, "block_count"_a = 100,
-			"device"_a = o3c::Device("CPU:0"));
+	py::class_<VoxelBlockGrid>  voxel_block_grid(
+			m, "VoxelBlockGrid",
+			"A voxel block grid is a sparse grid of voxel blocks. Each voxel "
+			"block is a dense 3D array, preserving local data distribution. If "
+			"the block_resolution is set to 1, then the VoxelBlockGrid "
+			"degenerates to a sparse voxel grid.");
 
-	// endregion
-	// region  =============================== EXISTING BASE CLASS (TSDFVoxelGrid) FUNCTIONS  ==========================
-	//TODO: figure out why do we still need to re-expose these via PyBind11
-	warpable_tsdf_voxel_grid.def("integrate",
-	                             py::overload_cast<const o3tg::Image&, const o3c::Tensor&,
-			                             const o3c::Tensor&, float, float>(
-			                             &o3tg::TSDFVoxelGrid::Integrate),
-	                             "depth"_a, "intrinsics"_a, "extrinsics"_a,
-	                             "depth_scale"_a, "depth_max"_a);
-	warpable_tsdf_voxel_grid.def(
-			"integrate",
-			py::overload_cast<const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&,
-					const o3c::Tensor&, float, float>(
-					&o3tg::TSDFVoxelGrid::Integrate),
-			"depth"_a, "color"_a, "intrinsics"_a, "extrinsics"_a,
-			"depth_scale"_a, "depth_max"_a);
+	voxel_block_grid.def(py::init<>());
 
-	warpable_tsdf_voxel_grid.def(
-			"raycast", &o3tg::TSDFVoxelGrid::RayCast, "intrinsics"_a, "extrinsics"_a,
-			"width"_a, "height"_a, "depth_scale"_a = 1000.0,
-			"depth_min"_a = 0.1f, "depth_max"_a = 3.0f,
-			"weight_threshold"_a = 3.0f,
-			"raycast_result_mask"_a = o3tg::TSDFVoxelGrid::SurfaceMaskCode::DepthMap |
-			                          o3tg::TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
-	warpable_tsdf_voxel_grid.def(
-			"extract_surface_points", &o3tg::TSDFVoxelGrid::ExtractSurfacePoints,
-			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
-			"surface_mask"_a = o3tg::TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
-			                   o3tg::TSDFVoxelGrid::SurfaceMaskCode::ColorMap);
-	warpable_tsdf_voxel_grid.def(
-			"extract_surface_mesh", &o3tg::TSDFVoxelGrid::ExtractSurfaceMesh,
-			"estimate_number"_a = -1, "weight_threshold"_a = 3.0f,
-			"surface_mask"_a = o3tg::TSDFVoxelGrid::SurfaceMaskCode::VertexMap |
-			                   o3tg::TSDFVoxelGrid::SurfaceMaskCode::ColorMap |
-			                   o3tg::TSDFVoxelGrid::SurfaceMaskCode::NormalMap);
+	voxel_block_grid.def(py::init<const std::vector<std::string>&,
+			                     const std::vector<o3c::Dtype>&,
+			                     const std::vector<o3c::SizeVector>&, float, int64_t,
+			                     int64_t, const o3c::Device&>(),
+	                     "attr_names"_a, "attr_dtypes"_a, "attr_channels"_a,
+	                     "voxel_size"_a = 0.0058, "block_resolution"_a = 16,
+	                     "block_count"_a = 10000, "device"_a = o3c::Device("CPU:0"));
 
-	warpable_tsdf_voxel_grid.def("to", &o3tg::TSDFVoxelGrid::To, "device"_a, "copy"_a = false);
-	warpable_tsdf_voxel_grid.def("clone", &o3tg::TSDFVoxelGrid::Clone);
-	warpable_tsdf_voxel_grid.def(
-			"cpu",
-			[](const WarpableTSDFVoxelGrid& tsdf_voxelgrid) {
-				return tsdf_voxelgrid.To(o3c::Device("CPU:0"));
-			},
-			"Transfer the tsdf voxelgrid to CPU. If the tsdf voxelgrid "
-			"is already on CPU, no copy will be performed.");
-	warpable_tsdf_voxel_grid.def(
-			"cuda",
-			[](const WarpableTSDFVoxelGrid& tsdf_voxelgrid, int device_id) {
-				return tsdf_voxelgrid.To(o3c::Device("CUDA", device_id));
-			},
-			"Transfer the tsdf voxelgrid to a CUDA device. If the tsdf "
-			"voxelgrid is already on the specified CUDA device, no copy will "
-			"be performed.",
-			"device_id"_a = 0);
+	voxel_block_grid.def("hashmap", &VoxelBlockGrid::GetHashMap,
+	                     "Get the underlying hash map from 3d block coordinates to block "
+	                     "voxel grids.");
 
-	warpable_tsdf_voxel_grid.def("get_block_hashmap", [](const WarpableTSDFVoxelGrid& voxelgrid) {
-		// Returning shared_ptr can result in double-free.
-		return *voxelgrid.GetBlockHashMap();
-	});
-	warpable_tsdf_voxel_grid.def("get_device", &o3tg::TSDFVoxelGrid::GetDevice);
-	// endregion
-	// region =============================== EXPOSE CUSTOM / NEW FUNCTIONS =======================================================
+	voxel_block_grid.def("attribute", &VoxelBlockGrid::GetAttribute,
+	                     "Get the attribute tensor to be indexed with voxel_indices.",
+	                     "attribute_name"_a);
 
-	warpable_tsdf_voxel_grid.def("extract_voxel_centers", &WarpableTSDFVoxelGrid::ExtractVoxelCenters);
-	warpable_tsdf_voxel_grid.def("extract_tsdf_values_and_weights", &WarpableTSDFVoxelGrid::ExtractTSDFValuesAndWeights);
-	warpable_tsdf_voxel_grid.def("extract_values_in_extent", &WarpableTSDFVoxelGrid::ExtractValuesInExtent,
-	                             "min_x"_a, "min_y"_a, "min_z"_a,
-	                             "max_x"_a, "max_y"_a, "max_z"_a);
+	voxel_block_grid.def("voxel_indices",
+	                     py::overload_cast<const o3c::Tensor&>(
+			                     &VoxelBlockGrid::GetVoxelIndices, py::const_),
+	                     "Get a (4, N), Int64 index tensor for input buffer indices, used "
+	                     "for advanced indexing.   "
+	                     "Returned index tensor can access selected value buffer"
+	                     "in the order of  "
+	                     "(buf_index, index_voxel_x, index_voxel_y, index_voxel_z).       "
+	                     "Example:                                                        "
+	                     "For a voxel block grid with (2, 2, 2) block resolution,         "
+	                     "if the active block coordinates are at buffer index {(2, 4)} "
+	                     "given by active_indices() from the underlying hash map,         "
+	                     "the returned result will be a (4, 2 x 8) tensor:                "
+	                     "{                                                               "
+	                     "(2, 0, 0, 0), (2, 1, 0, 0), (2, 0, 1, 0), (2, 1, 1, 0),         "
+	                     "(2, 0, 0, 1), (2, 1, 0, 1), (2, 0, 1, 1), (2, 1, 1, 1),         "
+	                     "(4, 0, 0, 0), (4, 1, 0, 0), (4, 0, 1, 0), (4, 1, 1, 0),         "
+	                     "(4, 0, 0, 1), (4, 1, 0, 1), (4, 0, 1, 1), (4, 1, 1, 1),         "
+	                     "}"
+	                     "Note: the slicing order is z-y-x.");
 
-	warpable_tsdf_voxel_grid.def("integrate_warped", py::overload_cast<
-			                             const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
-										 const GraphWarpField&,
-										 float, float
-	                             >(&WarpableTSDFVoxelGrid::IntegrateWarped),
-	                             "depth"_a, "color"_a, "depth_normals"_a, "intrinsics"_a, "extrinsics"_a,
-								 "warp_field"_a, "depth_scale"_a, "depth_max"_a);
+	voxel_block_grid.def("voxel_indices",
+	                     py::overload_cast<>(&VoxelBlockGrid::GetVoxelIndices, py::const_),
+	                     "Get a (4, N) Int64 idnex tensor for all the active voxels stored "
+	                     "in the hash map, used for advanced indexing.");
 
-	warpable_tsdf_voxel_grid.def("activate_sleeve_blocks", &WarpableTSDFVoxelGrid::ActivateSleeveBlocks);
-	// endregion
+	voxel_block_grid.def("voxel_coordinates", &VoxelBlockGrid::GetVoxelCoordinates,
+	                     "Get a (3, hashmap.Size() * resolution^3) coordinate tensor of "
+	                     "active"
+	                     "voxels per block, used for geometry transformation jointly with   "
+	                     "indices from voxel_indices.                                       "
+	                     "Example:                                                          "
+	                     "For a voxel block grid with (2, 2, 2) block resolution,           "
+	                     "if the active block coordinates are {(-1, 3, 2), (0, 2, 4)},      "
+	                     "the returned result will be a (3, 2 x 8) tensor given by:         "
+	                     "{                                                                 "
+	                     "key_tensor[voxel_indices[0]] * block_resolution_ + "
+	                     "voxel_indices[1] "
+	                     "key_tensor[voxel_indices[0]] * block_resolution_ + "
+	                     "voxel_indices[2] "
+	                     "key_tensor[voxel_indices[0]] * block_resolution_ + "
+	                     "voxel_indices[3] "
+	                     "}                                                                 "
+	                     "Note: the coordinates are VOXEL COORDINATES in Int64. To access "
+	                     "metric"
+	                     "coordinates, multiply by voxel size.",
+	                     "voxel_indices"_a);
+
+	voxel_block_grid.def("voxel_coordinates_and_flattened_indices",
+	                     py::overload_cast<const o3c::Tensor&>(
+			                     &VoxelBlockGrid::GetVoxelCoordinatesAndFlattenedIndices),
+	                     "Get a (buf_indices.shape[0] * resolution^3, 3), Float32 voxel "
+	                     "coordinate tensor,"
+	                     "and a (buf_indices.shape[0] * resolution^3, 1), Int64 voxel index "
+	                     "tensor.",
+	                     "buf_indices"_a);
+
+	voxel_block_grid.def("voxel_coordinates_and_flattened_indices",
+	                     py::overload_cast<>(
+			                     &VoxelBlockGrid::GetVoxelCoordinatesAndFlattenedIndices),
+	                     "Get a (hashmap.size() * resolution^3, 3), Float32 voxel "
+	                     "coordinate tensor,"
+	                     "and a (hashmap.size() * resolution^3, 1), Int64 voxel index "
+	                     "tensor.");
+
+	voxel_block_grid.def("compute_unique_block_coordinates",
+	                     py::overload_cast<const o3tg::Image&, const o3c::Tensor&,
+			                     const o3c::Tensor&, float, float, float>(
+			                     &VoxelBlockGrid::GetUniqueBlockCoordinates),
+	                     "Get a (3, M) active block coordinates from a depth image, with "
+	                     "potential duplicates removed."
+	                     "Note: these coordinates are not activated in the internal sparse "
+	                     "voxel block. They need to be inserted in the hash map.",
+	                     "depth"_a, "intrinsic"_a, "extrinsic"_a, "depth_scale"_a = 1000.0f,
+	                     "depth_max"_a = 3.0f, "trunc_voxel_multiplier"_a = 8.0);
+
+	voxel_block_grid.def("compute_unique_block_coordinates",
+	                     py::overload_cast<const o3tg::PointCloud&, float>(
+			                     &VoxelBlockGrid::GetUniqueBlockCoordinates),
+	                     "Obtain active block coordinates from a point cloud.", "pcd"_a,
+	                     "trunc_voxel_multiplier"_a = 8.0);
+
+	voxel_block_grid.def("integrate",
+	                     py::overload_cast<const o3c::Tensor&, const o3tg::Image&, const o3tg::Image&,
+			                     const o3c::Tensor&, const o3c::Tensor&,
+			                     const o3c::Tensor&, float, float, float>(
+			                     &VoxelBlockGrid::Integrate),
+	                     "Specific operation for TSDF volumes."
+	                     "Integrate an RGB-D frame in the selected block coordinates using "
+	                     "pinhole camera model.",
+	                     "block_coords"_a, "depth"_a, "color"_a, "depth_intrinsic"_a,
+	                     "color_intrinsic"_a, "extrinsic"_a,
+	                     "depth_scale"_a.noconvert() = 1000.0f,
+	                     "depth_max"_a.noconvert() = 3.0f,
+	                     "trunc_voxel_multiplier"_a.noconvert() = 8.0f);
+
+	voxel_block_grid.def("integrate",
+	                     py::overload_cast<const o3c::Tensor&, const o3tg::Image&, const o3tg::Image&,
+			                     const o3c::Tensor&, const o3c::Tensor&, float,
+			                     float, float>(&VoxelBlockGrid::Integrate),
+	                     "Specific operation for TSDF volumes."
+	                     "Integrate an RGB-D frame in the selected block coordinates using "
+	                     "pinhole camera model.",
+	                     "block_coords"_a, "depth"_a, "color"_a, "intrinsic"_a,
+	                     "extrinsic"_a, "depth_scale"_a.noconvert() = 1000.0f,
+	                     "depth_max"_a.noconvert() = 3.0f,
+	                     "trunc_voxel_multiplier"_a.noconvert() = 8.0f);
+
+	voxel_block_grid.def("integrate",
+	                     py::overload_cast<const o3c::Tensor&, const o3tg::Image&,
+			                     const o3c::Tensor&, const o3c::Tensor&, float,
+			                     float, float>(&VoxelBlockGrid::Integrate),
+	                     "Specific operation for TSDF volumes."
+	                     "Similar to RGB-D integration, but only applied to depth images.",
+	                     "block_coords"_a, "depth"_a, "intrinsic"_a, "extrinsic"_a,
+	                     "depth_scale"_a.noconvert() = 1000.0f,
+	                     "depth_max"_a.noconvert() = 3.0f,
+	                     "trunc_voxel_multiplier"_a.noconvert() = 8.0f);
+
+	voxel_block_grid.def("ray_cast", &VoxelBlockGrid::RayCast,
+	                     "Specific operation for TSDF volumes."
+	                     "Perform volumetric ray casting in the selected block coordinates."
+	                     "The block coordinates in the frustum can be taken from"
+	                     "compute_unique_block_coordinates"
+	                     "All the block coordinates can be taken from "
+	                     "hashmap().key_tensor()",
+	                     "block_coords"_a, "intrinsic"_a, "extrinsic"_a, "width"_a,
+	                     "height"_a,
+	                     "render_attributes"_a = std::vector<std::string>{"depth", "color"},
+	                     "depth_scale"_a = 1000.0f, "depth_min"_a = 0.1f,
+	                     "depth_max"_a = 3.0f, "weight_threshold"_a = 3.0f,
+	                     "trunc_voxel_multiplier"_a = 8.0f, "range_map_down_factor"_a = 8);
+
+	voxel_block_grid.def("extract_point_cloud", &VoxelBlockGrid::ExtractPointCloud,
+	                     "Specific operation for TSDF volumes."
+	                     "Extract point cloud at isosurface points.",
+	                     "weight_threshold"_a = 3.0f, "estimated_point_number"_a = -1);
+
+	voxel_block_grid.def("extract_triangle_mesh", &VoxelBlockGrid::ExtractTriangleMesh,
+	                     "Specific operation for TSDF volumes."
+	                     "Extract triangle mesh at isosurface points.",
+	                     "weight_threshold"_a = 3.0f, "estimated_vertex_number"_a = -1);
+
+	voxel_block_grid.def("save", &VoxelBlockGrid::Save,
+	                     "Save the voxel block grid to a npz file."
+	                     "file_name"_a);
+	voxel_block_grid.def_static("load", &VoxelBlockGrid::Load,
+	                            "Load a voxel block grid from a npz file.", "file_name"_a);
+
+	voxel_block_grid.def("get_device", &VoxelBlockGrid::GetDevice);
+	voxel_block_grid.def("get_block_resolution", &VoxelBlockGrid::GetBlockResolution);
+	voxel_block_grid.def("get_block_count", &VoxelBlockGrid::GetBlockCount);
+}
+
+void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
+
+	py::class_<NonRigidSurfaceVoxelBlockGrid, VoxelBlockGrid> non_rigid_surface_voxel_block_grid(
+			m, "NonRigidSurfaceVoxelBlockGrid",
+			"A voxel block grid is a sparse grid of voxel blocks. Each voxel "
+			"block is a dense 3D array, preserving local data distribution. If "
+			"the block_resolution is set to 1, then the VoxelBlockGrid "
+			"degenerates to a sparse voxel grid.");
+
+	non_rigid_surface_voxel_block_grid.def("find_blocks_intersecting_truncation_region",
+										   &NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion,
+										   "depth"_a, "warp_field"_a, "intrinsics"_a, "extrinsics"_a, "depth_scale"_a, "depth_max"_a,
+										   "truncation_voxel_multiplier"_a);
+
+	non_rigid_surface_voxel_block_grid.def("integrate_non_rigid", py::overload_cast<
+			                                       const o3c::Tensor&, const GraphWarpField&,
+			                                       const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&,
+			                                       const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
+			                                       float, float, float
+	                                       >(&NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid),
+	                                       "block_coords"_a, "warp_field"_a,
+	                                       "depth"_a, "color"_a, "depth_normals"_a,
+	                                       "depth_intrinsics"_a, "color_intrinsics"_a, "extrinsics"_a,
+	                                       "depth_scale"_a, "depth_max"_a, "truncation_voxel_multiplier"_a);
+
+	non_rigid_surface_voxel_block_grid.def("activate_sleeve_blocks", &NonRigidSurfaceVoxelBlockGrid::ActivateSleeveBlocks);
 }
 
 void pybind_geometry_graph_warp_field(pybind11::module& m) {
@@ -235,4 +333,6 @@ void pybind_geometry_normals_operations(pybind11::module& m) {
 	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
 }
 
+
 } // namespace nnrt
+

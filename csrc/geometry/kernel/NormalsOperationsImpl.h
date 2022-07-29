@@ -15,19 +15,19 @@
 //  ================================================================
 #pragma once
 
+// stdlib
 #include <atomic>
 
+// 3rd party
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/core/ParallelFor.h>
 #include <open3d/core/TensorCheck.h>
 #include <open3d/utility/Optional.h>
 #include <Eigen/Dense>
 
+// local
 #include "geometry/kernel/NormalsOperations.h"
 #include "core/PlatformIndependentAtomics.h"
-
-
-
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -109,7 +109,22 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 
 #ifndef __CUDACC__
 	o3c::Blob atomic_vertex_normals_blob(static_cast<int64_t>(sizeof(std::atomic<float>)) * 3 * vertex_normals.GetLength(), device);
-	auto* atomic_vertex_normals = reinterpret_cast<std::atomic<float>*>(atomic_vertex_normals_blob.GetDataPtr());
+	auto* vertex_normals_base_ptr = reinterpret_cast<std::atomic<float>*>(atomic_vertex_normals_blob.GetDataPtr());
+#else
+	auto* vertex_normals_base_ptr = reinterpret_cast<float*>(vertex_normals.GetDataPtr());
+#endif
+
+
+#ifndef __CUDACC__
+	o3c::ParallelFor(
+			device, vertex_normals.GetLength(),
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				auto atomic_vertex_normal_ptr = vertex_normals_base_ptr + workload_idx * 3;
+				atomic_vertex_normal_ptr[0].store(0.f);
+				atomic_vertex_normal_ptr[1].store(0.f);
+				atomic_vertex_normal_ptr[2].store(0.f);
+			}
+	);
 #endif
 
 	o3c::ParallelFor(
@@ -118,39 +133,21 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 				Eigen::Map<Eigen::Matrix<int64_t, 1, 3>> triangle_vertex_indices(triangle_indexer.template GetDataPtr<int64_t>(workload_idx));
 				Eigen::Map<Eigen::Vector3f> triangle_normal(triangle_normal_indexer.template GetDataPtr<float>(workload_idx));
 
-#ifdef __CUDACC__
-				auto vertex0_normal_ptr = vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(0));
-				auto vertex1_normal_ptr = vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(1));
-				auto vertex2_normal_ptr = vertex_normal_indexer.template GetDataPtr<float>(triangle_vertex_indices(2));
-				atomicAdd(vertex0_normal_ptr, triangle_normal.x());
-				atomicAdd(vertex0_normal_ptr+1, triangle_normal.y());
-				atomicAdd(vertex0_normal_ptr+2, triangle_normal.z());
+				auto vertex0_normal_ptr = vertex_normals_base_ptr + triangle_vertex_indices(0) * 3;
+				auto vertex1_normal_ptr = vertex_normals_base_ptr + triangle_vertex_indices(1) * 3;;
+				auto vertex2_normal_ptr = vertex_normals_base_ptr + triangle_vertex_indices(2) * 3;;
 
-				atomicAdd(vertex1_normal_ptr, triangle_normal.x());
-				atomicAdd(vertex1_normal_ptr+1, triangle_normal.y());
-				atomicAdd(vertex1_normal_ptr+2, triangle_normal.z());
+				NNRT_ATOMIC_ADD(vertex0_normal_ptr, triangle_normal.x());
+				NNRT_ATOMIC_ADD(vertex0_normal_ptr+1, triangle_normal.y());
+				NNRT_ATOMIC_ADD(vertex0_normal_ptr+2, triangle_normal.z());
 
-				atomicAdd(vertex2_normal_ptr, triangle_normal.x());
-				atomicAdd(vertex2_normal_ptr+1, triangle_normal.y());
-				atomicAdd(vertex2_normal_ptr+2, triangle_normal.z());
-#else
-				auto vertex0_normal_ptr = atomic_vertex_normals + triangle_vertex_indices(0) * 3;
-				auto vertex1_normal_ptr = atomic_vertex_normals + triangle_vertex_indices(1) * 3;;
-				auto vertex2_normal_ptr = atomic_vertex_normals + triangle_vertex_indices(2) * 3;;
+				NNRT_ATOMIC_ADD(vertex1_normal_ptr, triangle_normal.x());
+				NNRT_ATOMIC_ADD(vertex1_normal_ptr+1, triangle_normal.y());
+				NNRT_ATOMIC_ADD(vertex1_normal_ptr+2, triangle_normal.z());
 
-				NNRT_ATOMIC_ADD(vertex0_normal_ptr[0], triangle_normal.x());
-				NNRT_ATOMIC_ADD(vertex0_normal_ptr[1], triangle_normal.y());
-				NNRT_ATOMIC_ADD(vertex0_normal_ptr[2], triangle_normal.z());
-
-				NNRT_ATOMIC_ADD(vertex1_normal_ptr[0], triangle_normal.x());
-				NNRT_ATOMIC_ADD(vertex1_normal_ptr[1], triangle_normal.y());
-				NNRT_ATOMIC_ADD(vertex1_normal_ptr[2], triangle_normal.z());
-
-				NNRT_ATOMIC_ADD(vertex2_normal_ptr[0], triangle_normal.x());
-				NNRT_ATOMIC_ADD(vertex2_normal_ptr[1], triangle_normal.y());
-				NNRT_ATOMIC_ADD(vertex2_normal_ptr[2], triangle_normal.z());
-#endif
-
+				NNRT_ATOMIC_ADD(vertex2_normal_ptr, triangle_normal.x());
+				NNRT_ATOMIC_ADD(vertex2_normal_ptr+1, triangle_normal.y());
+				NNRT_ATOMIC_ADD(vertex2_normal_ptr+2, triangle_normal.z());
 			}
 	);
 
@@ -158,7 +155,7 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 	o3c::ParallelFor(
 			device, vertex_normals.GetLength(),
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				auto atomic_vertex_normal_ptr = atomic_vertex_normals + workload_idx * 3;
+				auto atomic_vertex_normal_ptr = vertex_normals_base_ptr + workload_idx * 3;
 				auto vertex_normal_ptr = vertex_normal_indexer.template GetDataPtr<float>(workload_idx);
 				vertex_normal_ptr[0] = atomic_vertex_normal_ptr[0].load();
 				vertex_normal_ptr[1] = atomic_vertex_normal_ptr[1].load();

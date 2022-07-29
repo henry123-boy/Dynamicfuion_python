@@ -121,6 +121,7 @@ class FusionPipeline:
         start_time = timeit.default_timer()
 
         # these parameters are stored as local variables for easy access
+        truncation_distance_factor = Parameters.tsdf.sdf_truncation_distance / Parameters.tsdf.voxel_size
         verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
         deform_net_parameters = Parameters.deform_net
@@ -207,8 +208,15 @@ class FusionPipeline:
                 self.cropper = \
                     StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
-                volume.integrate(depth_image_open3d, color_image_open3d, self.intrinsics_open3d_device,
-                                 self.extrinsics, depth_scale, sequence.far_clipping_distance)
+                blocks_to_activate = volume.compute_unique_block_coordinates(depth_image_open3d,
+                                                                             self.intrinsics_open3d_device,
+                                                                             self.extrinsics,
+                                                                             depth_scale,
+                                                                             sequence.far_clipping_distance)
+                volume.integrate(blocks_to_activate, depth_image_open3d, color_image_open3d,
+                                 self.intrinsics_open3d_device, self.intrinsics_open3d_device,
+                                 self.extrinsics, depth_scale, sequence.far_clipping_distance,
+                                 truncation_distance_factor)
 
                 # TODO: remove these commented calls (and sleeve block code) after better testing the new block
                 #  activation procedure triggered within the integrate_warped method of WarpableTSDFVoxelVolume (volume)
@@ -341,18 +349,25 @@ class FusionPipeline:
                 graph_for_integration, need_to_recompute_saved_anchors = \
                     self.prepare_motion_graph_for_integration(node_rotation_predictions,
                                                               node_translation_predictions,
-                                                              current_frame_is_keyframe, source_point_image_np, device)
+                                                              current_frame_is_keyframe)
                 if need_to_recompute_saved_anchors:
                     saved_pixel_anchors, saved_pixel_weights = \
                         self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=False)
 
                 # handle logging/vis of the graph data
                 telemetry_generator.process_graph_transformation(graph_for_integration)
+                blocks_to_activate = \
+                    volume.find_blocks_intersecting_truncation_region(depth_image_open3d, graph_for_integration,
+                                                                      self.intrinsics_open3d_device, self.extrinsics,
+                                                                      depth_scale, sequence.far_clipping_distance,
+                                                                      truncation_distance_factor)
 
-                cos_voxel_ray_to_normal = volume.integrate_warped(
-                    depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                    self.intrinsics_open3d_device, self.extrinsics, graph_for_integration,
-                    depth_scale=depth_scale, depth_max=3.0)
+                cos_voxel_ray_to_normal = \
+                    volume.integrate_non_rigid(
+                        blocks_to_activate, graph_for_integration,
+                        depth_image_open3d, color_image_open3d, target_normal_map_o3d,
+                        self.intrinsics_open3d_device, self.intrinsics_open3d_device, self.extrinsics,
+                        depth_scale, sequence.far_clipping_distance, truncation_distance_factor)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
                 #  Check BaldrLector's NeuralTracking fork code. Guess: perhaps it was a beckoning to the original
@@ -426,9 +441,7 @@ class FusionPipeline:
     def prepare_motion_graph_for_integration(self,
                                              node_rotation_predictions: o3c.Tensor,
                                              node_translation_predictions: o3c.Tensor,
-                                             current_frame_is_keyframe: bool,
-                                             source_point_image_np: np.ndarray,
-                                             device: o3c.Device) -> [nnrt.geometry.GraphWarpField, bool]:
+                                             current_frame_is_keyframe: bool) -> [nnrt.geometry.GraphWarpField, bool]:
         tracking_parameters = Parameters.fusion.tracking
         graph_for_integration = None
         need_to_recompute_saved_anchors = False

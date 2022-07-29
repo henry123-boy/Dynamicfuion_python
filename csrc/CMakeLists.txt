@@ -39,17 +39,14 @@ set(NNRT_SOURCE_FILES
     debugging/debugging.hpp
 
     geometry/kernel/Defines.h
-    geometry/WarpableTSDFVoxelGrid.cpp
-    geometry/WarpableTSDFVoxelGrid.h
+    geometry/NonRigidSurfaceVoxelBlockGrid.cpp
+    geometry/NonRigidSurfaceVoxelBlockGrid.h
 
-    geometry/kernel/WarpableTSDFVoxelGrid.cpp
-    geometry/kernel/WarpableTSDFVoxelGrid.h
-    geometry/kernel/WarpableTSDFVoxelGridCPU.cpp
-    geometry/kernel/WarpableTSDFVoxelGridCUDA.cu
-    geometry/kernel/WarpableTSDFVoxelGridImpl.h
-    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.h
-    geometry/kernel/WarpableTSDFVoxelGrid_Analytics.cpp
-    geometry/kernel/WarpableTSDFVoxelGrid_AnalyticsImpl.h
+    geometry/kernel/NonRigidSurfaceVoxelBlockGrid.cpp
+    geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h
+    geometry/kernel/NonRigidSurfaceVoxelBlockGridCPU.cpp
+    geometry/kernel/NonRigidSurfaceVoxelBlockGridCUDA.cu
+    geometry/kernel/NonRigidSurfaceVoxelBlockGridImpl.h
 
     geometry/GraphWarpField.h
     geometry/GraphWarpField.cpp
@@ -174,11 +171,15 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperations.h
     geometry/kernel/NormalsOperationsImpl.h
     geometry/kernel/NormalsOperationsCPU.cpp
-    geometry/kernel/NormalsOperationsCUDA.cu)
+    geometry/kernel/NormalsOperationsCUDA.cu pybind/pipelines/slam.h pybind/pipelines/spam.cpp geometry/VoxelBlockGrid.h geometry/VoxelBlockGrid.cpp geometry/kernel/VoxelGridDtypeDispatch.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
     )
+
+#__DEBUG
+get_property(arch TARGET nnrt_cpp PROPERTY CUDA_ARCHITECTURES)
+message(STATUS "CUDA_ARCHITECTURES on nnrt_cpp: ${arch}")
 
 target_include_directories(nnrt_cpp PUBLIC
     ${PYTHON_INCLUDE_DIR}
@@ -233,9 +234,15 @@ if (DEFINED Python3_VERSION)
     set(Python3_VERSION_DIRECTIVE "Python3_VERSION=${Python3_VERSION}")
 endif ()
 
+set(BUILD_CUDA_MODULE_DIRECTIVE)
+if (DEFINED BUILD_CUDA_MODULE)
+    set(BUILD_CUDA_MODULE_DIRECTIVE "BUILD_CUDA_MODULE=${BUILD_CUDA_MODULE}")
+endif()
+
+
 # Use `make pip-package` to create the pip package in the build directory
 add_custom_target(pip-package
-    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} ${Python3_VERSION_DIRECTIVE}
+    COMMAND ${CMAKE_COMMAND} -E env ${Open3D_DIRECTIVE} ${Python3_VERSION_DIRECTIVE} ${BUILD_CUDA_MODULE_DIRECTIVE}
     CMAKE_BUILD_PARALLEL_LEVEL=${N_PROCESSORS} CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/setup_pybind_cmake.py bdist_wheel --bdist-dir ${PYTHON_PACKAGE_DIR} --dist-dir ${PIP_PACKAGE_DST_DIR} --keep-temp
     COMMAND echo "pip wheel created at ${PIP_PACKAGE_DST_DIR}"

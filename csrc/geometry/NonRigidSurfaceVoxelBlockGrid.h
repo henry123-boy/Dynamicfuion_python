@@ -16,55 +16,47 @@
 #pragma once
 
 #include <utility>
+#include <open3d/t/geometry/Image.h>
 
-#include <open3d/t/geometry/TSDFVoxelGrid.h>
+#include "geometry/VoxelBlockGrid.h"
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/GraphWarpField.h"
 
 namespace nnrt::geometry {
 
-class WarpableTSDFVoxelGrid : public open3d::t::geometry::TSDFVoxelGrid {
+class NonRigidSurfaceVoxelBlockGrid : public VoxelBlockGrid {
+private:
+	using VoxelBlockGrid::VoxelBlockGrid;
 
 public:
-	using TSDFVoxelGrid::TSDFVoxelGrid;
-
-	friend std::ostream& operator<<(std::ostream& out, const WarpableTSDFVoxelGrid& grid);
 
 
-/// Extract all indexed voxel centers.
-	open3d::core::Tensor ExtractVoxelCenters();
+	friend std::ostream& operator<<(std::ostream& out, const NonRigidSurfaceVoxelBlockGrid& grid);
 
-	/// Extract all TSDF residuals in the same order as the voxel centers in the output
-	/// of the ExtractVoxelCenters function
-	open3d::core::Tensor ExtractTSDFValuesAndWeights();
+	open3d::core::Tensor FindBlocksIntersectingTruncationRegion(
+			const open3d::t::geometry::Image& depth, const GraphWarpField& warp_field, const open3d::core::Tensor& intrinsics,
+			const open3d::core::Tensor& extrinsics, float depth_scale = 1000.f, float depth_max = 3.f, float truncation_voxel_multiplier = 8.f
+	) const;
 
-	/// Extract all SDF residuals in the specified spatial extent
-	/// All undefined SDF residuals will be kept as -2.0
-	open3d::core::Tensor ExtractValuesInExtent(int min_voxel_x, int min_voxel_y, int min_voxel_z, int max_voxel_x, int max_voxel_y, int max_voxel_z);
-
-	open3d::core::Tensor IntegrateWarped(
+	open3d::core::Tensor IntegrateNonRigid(
+			const open3d::core::Tensor& block_coords, const GraphWarpField& warp_field,
 			const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color, const open3d::core::Tensor& depth_normals,
-			const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-			float depth_scale = 1000.0f, float depth_max = 3.0f
+			const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
+			float depth_scale = 1000.f, float depth_max = 3.f, float truncation_voxel_multiplier = 8.f
 	);
 
 	int64_t ActivateSleeveBlocks();
 
 protected:
-	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(
-			const open3d::core::Tensor& active_block_addresses);
+	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(const open3d::core::Tensor& active_block_addresses) const;
 
 	/// Get minimum extent (min & max corner) coordinates of bounding boxes for projected block coordinates
 	open3d::core::Tensor GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
-	                                                    const open3d::core::Tensor& extrinsics);
+	                                                    const open3d::core::Tensor& extrinsics) const;
 	open3d::core::Tensor GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes, const open3d::t::geometry::Image& depth,
 	                                                                const open3d::core::Tensor& intrinsics, float depth_scale,
-	                                                                float depth_max, int downsampling_factor = 4);
+	                                                                float depth_max, int downsampling_factor = 4,
+	                                                                float trunc_voxel_multiplier = 8.0) const;
 };
 
 }// namespace geometry
-
-
-
-
-

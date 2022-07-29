@@ -17,40 +17,41 @@
 #include <open3d/utility/Console.h>
 // #include <open3d/core/hashmap/Hashmap.h>
 
-#include "geometry/kernel/WarpableTSDFVoxelGrid.h"
+#include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
 
-using namespace open3d;
-
-namespace nnrt::geometry::kernel::tsdf {
+namespace nnrt::geometry::kernel::voxel_grid {
 
 
-void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                     const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-                     float depth_scale, float depth_max) {
+void IntegrateNonRigid(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal, index_t block_resolution,
+		float voxel_size, float sdf_truncation_distance, const open3d::core::Tensor& depth_tensor,
+		const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
+		const GraphWarpField& warp_field, float depth_scale, float depth_max
+) {
 	core::InferDeviceFromEntityAndExecute(
 			block_keys,
 			[&] {
-				IntegrateWarped<open3d::core::Device::DeviceType::CPU>(
-						block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size, sdf_truncation_distance,
-						depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale, depth_max
-				);
+				IntegrateNonRigid<open3d::core::Device::DeviceType::CPU>(
+						block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+						sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+						warp_field,
+						depth_scale, depth_max);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						IntegrateWarped<open3d::core::Device::DeviceType::CUDA>(
-								block_indices, block_keys, block_values, cos_voxel_ray_to_normal, block_resolution, voxel_size,
-								sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, intrinsics, extrinsics, warp_field, depth_scale,
-								depth_max
-						);
+						IntegrateNonRigid<open3d::core::Device::DeviceType::CUDA>(
+								block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+								sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+								warp_field, depth_scale, depth_max);
 				);
 			}
 	);
 }
 
 void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_addresses,
-                                    const GraphWarpField& warp_field, float voxel_size, int64_t block_resolution,
+                                    const GraphWarpField& warp_field, float voxel_size, index_t block_resolution,
                                     const open3d::core::Tensor& extrinsics) {
 	core::ExecuteOnDevice(
 			block_addresses.GetDevice(),

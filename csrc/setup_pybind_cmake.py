@@ -36,6 +36,8 @@ class CMakeBuild(build_ext):
         if "CMAKE_BUILD_TYPE" in os.environ:
             build_configuration = os.environ["CMAKE_BUILD_TYPE"]
 
+
+
         # CMake lets you override the generator - we need to check this.
         # Can be set with Conda-Build, for example.
         cmake_generator = os.environ.get("CMAKE_GENERATOR", "")
@@ -47,6 +49,9 @@ class CMakeBuild(build_ext):
             f"-DPYTHON_EXECUTABLE={sys.executable}",
             f"-DCMAKE_BUILD_TYPE={build_configuration}",  # not used on MSVC, but no harm
         ]
+
+        if "BUILD_CUDA_MODULE" in os.environ:
+            cmake_args.append(f"-DBUILD_CUDA_MODULE={os.environ['BUILD_CUDA_MODULE']}")
 
         if "Python3_VERSION" in os.environ:
             cmake_args.append(f"-DPython3_VERSION={os.environ['Python3_VERSION']}")

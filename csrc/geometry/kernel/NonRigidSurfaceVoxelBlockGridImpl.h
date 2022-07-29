@@ -21,15 +21,14 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/MemoryManager.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
-#include <open3d/t/geometry/kernel/TSDFVoxel.h>
-#include <open3d/t/geometry/kernel/TSDFVoxelGrid.h>
 
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/WarpableTSDFVoxelGrid.h"
-#include "geometry/kernel/Defines.h"
-
-#include "geometry/kernel/Segment.h"
 #include "core/PlatformIndependentAtomics.h"
+#include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
+#include "geometry/kernel/VoxelGridDtypeDispatch.h"
+#include "geometry/kernel/Defines.h"
+#include "geometry/kernel/Segment.h"
+
 
 #ifndef __CUDACC__
 
@@ -41,44 +40,65 @@
 using namespace open3d;
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
-using namespace open3d::t::geometry::kernel::tsdf;
 namespace kdtree = nnrt::core::kernel::kdtree;
 
-namespace nnrt::geometry::kernel::tsdf {
+namespace nnrt::geometry::kernel::voxel_grid {
+
+
+using ArrayIndexer = TArrayIndexer<index_t>;
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                     const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-                     float depth_scale, float depth_max) {
-	int64_t block_resolution_cubed =
+void
+IntegrateNonRigid(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal,
+		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth, const open3d::core::Tensor& color,
+		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
+		const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field, float depth_scale, float depth_max
+) {
+	using tsdf_t = float;
+	index_t block_resolution_cubed =
 			block_resolution * block_resolution * block_resolution;
+	o3c::Dtype block_weight_dtype = o3c::Dtype::Float32;
+	o3c::Dtype block_color_dtype = o3c::Dtype::Float32;
+
+	if (block_value_map.Contains("weight")) {
+		block_weight_dtype = block_value_map.at("weight").GetDtype();
+	}
+	if (block_value_map.Contains("color")) {
+		block_color_dtype = block_value_map.at("color").GetDtype();
+	}
+
+	o3c::Dtype input_depth_dtype = depth.GetDtype();
+	o3c::Dtype input_color_dtype = (input_depth_dtype == o3c::Dtype::Float32)
+	                               ? o3c::Dtype::Float32
+	                               : o3c::Dtype::UInt8;
 
 	// Shape / transform indexers, no data involved
-	NDArrayIndexer voxel_indexer(
+	ArrayIndexer voxel_indexer(
 			{block_resolution, block_resolution, block_resolution});
-	TransformIndexer transform_indexer(intrinsics, extrinsics, 1.0);
+	TransformIndexer depth_transform_indexer(depth_intrinsics, extrinsics, 1.0);
+	TransformIndexer color_transform_indexer(color_intrinsics, o3c::Tensor::Eye(4, o3c::Dtype::Float64, o3c::Device("CPU:0")));
 
 	int block_count = static_cast<int>(block_indices.GetLength());
 	int64_t voxel_count = block_count * block_resolution_cubed;
 
 	// cosine value for each pixel
-	cos_voxel_ray_to_normal = o3c::Tensor::Zeros(depth_tensor.GetShape(), o3c::Dtype::Float32, block_keys.GetDevice());
+	cos_voxel_ray_to_normal = o3c::Tensor::Zeros(depth.GetShape(), o3c::Dtype::Float32, block_keys.GetDevice());
 
 	// Data structure indexers
-	NDArrayIndexer block_keys_indexer(block_keys, 1);
-	NDArrayIndexer voxel_block_buffer_indexer(block_values, 4);
+	ArrayIndexer block_keys_indexer(block_keys, 1);
 
 	// Image indexers
-	NDArrayIndexer depth_indexer(depth_tensor, 2);
-	NDArrayIndexer cosine_indexer(cos_voxel_ray_to_normal, 2);
-	NDArrayIndexer normals_indexer(depth_normals, 2);
+	ArrayIndexer depth_indexer(depth, 2);
+	ArrayIndexer cosine_indexer(cos_voxel_ray_to_normal, 2);
+	ArrayIndexer normals_indexer(depth_normals, 2);
+
 	// Optional color integration
-	NDArrayIndexer color_indexer;
+	ArrayIndexer color_indexer;
 	bool integrate_color = false;
-	if (color_tensor.NumElements() != 0) {
-		color_indexer = NDArrayIndexer(color_tensor, 2);
+	if (color.NumElements() != 0 && block_value_map.Contains("color")) {
 		integrate_color = true;
 	}
 
@@ -87,116 +107,155 @@ void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::co
 
 	//  Go through voxels
 //@formatter:off
-	DISPATCH_BYTESIZE_TO_VOXEL(
-			voxel_block_buffer_indexer.ElementByteSize(),
-			[&]() {
-				open3d::core::ParallelFor(
-						depth_tensor.GetDevice(), voxel_count,
-						[=] OPEN3D_DEVICE (int64_t workload_idx) {
+	DISPATCH_INPUT_DTYPE_TO_TEMPLATE(
+			input_depth_dtype, input_color_dtype, [&] {
+		DISPATCH_VALUE_DTYPE_TO_TEMPLATE(block_weight_dtype, block_color_dtype, [&]() {
 //@formatter:on
-				// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
-				// Natural index (0, N) ->
-				//                    (workload_block_idx, voxel_index_in_block)
-				int64_t block_index = indices_ptr[workload_idx / block_resolution_cubed];
-				int64_t voxel_index_in_block = workload_idx % block_resolution_cubed;
+			color_t* color_base_ptr = nullptr;
+			float color_multiplier = 1.0;
+			if (integrate_color) {
+				color_base_ptr = block_value_map.at("color").GetDataPtr<color_t>();
+				color_indexer = ArrayIndexer(color, 2);
 
-
-				// block_index -> x_block, y_block, z_block (in voxel hash blocks)
-				int32_t* block_key_ptr =
-						block_keys_indexer.GetDataPtr<int32_t>(block_index);
-				auto x_block = static_cast<int64_t>(block_key_ptr[0]);
-				auto y_block = static_cast<int64_t>(block_key_ptr[1]);
-				auto z_block = static_cast<int64_t>(block_key_ptr[2]);
-
-				// voxel_idx -> x_voxel_local, y_voxel_local, z_voxel_local (in voxels)
-				int64_t x_voxel_local, y_voxel_local, z_voxel_local;
-				voxel_indexer.WorkloadToCoord(voxel_index_in_block, &x_voxel_local, &y_voxel_local, &z_voxel_local);
-
-				// at this point, (x_voxel, y_voxel, z_voxel) hold local
-				// in-block coordinates. Compute the global voxel coordinates (in voxels, then meters)
-				Eigen::Vector3f voxel_global(x_block * block_resolution + x_voxel_local,
-				                             y_block * block_resolution + y_voxel_local,
-				                             z_block * block_resolution + z_voxel_local);
-				Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
-
-				// voxel world coordinate (in voxels) -> voxel camera coordinate (in meters)
-				float x_voxel_camera, y_voxel_camera, z_voxel_camera;
-				transform_indexer.RigidTransform(voxel_global_metric.x(), voxel_global_metric.y(), voxel_global_metric.z(),
-				                                 &x_voxel_camera, &y_voxel_camera, &z_voxel_camera);
-				Eigen::Vector3f voxel_camera(x_voxel_camera, y_voxel_camera, z_voxel_camera);
-				// endregion
-				// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
-				int32_t anchor_indices[MAX_ANCHOR_COUNT];
-				float anchor_weights[MAX_ANCHOR_COUNT];
-
-				warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, voxel_camera);
-				// endregion
-				// region ===================== WARP CAMERA-SPACE VOXEL AND PROJECT TO IMAGE ============================
-				auto warped_voxel = warp_field.template WarpPoint<TDeviceType>(voxel_camera, anchor_indices, anchor_weights);
-
-				if (warped_voxel.z() < 0) {
-					// voxel is behind camera
-					return;
+				// Float32: [0, 1] -> [0, 255]
+				if (color.GetDtype() == o3c::Float32) {
+					color_multiplier = 255.0;
 				}
-				// coordinate in image (in pixels)
-				float u_precise, v_precise;
-				transform_indexer.Project(warped_voxel.x(), warped_voxel.y(), warped_voxel.z(), &u_precise, &v_precise);
-				if (!depth_indexer.InBoundary(u_precise, v_precise)) {
-					return;
-				}
-				// endregion
-				// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
-				auto u_rounded = static_cast<int64_t>(roundf(u_precise));
-				auto v_rounded = static_cast<int64_t>(roundf(v_precise));
+			}
+			auto* tsdf_base_ptr = block_value_map.at("tsdf").GetDataPtr<tsdf_t>();
+			auto* weight_base_ptr = block_value_map.at("weight").GetDataPtr<weight_t>();
 
-				float depth = (*depth_indexer.GetDataPtr<float>(u_rounded, v_rounded)) / depth_scale;
+//@formatter:off
+			open3d::core::ParallelFor(
+					depth.GetDevice(), voxel_count,
+					[=] OPEN3D_DEVICE (int64_t workload_idx) {
+//@formatter:on
+			// region ===================== COMPUTE VOXEL COORDINATE & CAMERA COORDINATE ================================
+			// Natural index (0, N) ->
+			//                    (workload_block_idx, voxel_index_in_block)
+			index_t block_index = indices_ptr[workload_idx / block_resolution_cubed];
+			index_t voxel_index_in_block = workload_idx % block_resolution_cubed;
 
-				if (depth > 0.0f && depth < depth_max) {
-					float psdf = depth - warped_voxel.z();
 
-					Eigen::Vector3f view_direction = -warped_voxel;
-					view_direction.normalize();
+			// block_index -> x_block, y_block, z_block (in voxel hash blocks)
+			auto* block_key_ptr =
+					block_keys_indexer.GetDataPtr<index_t>(block_index);
+			index_t x_block = block_key_ptr[0];
+			index_t y_block = block_key_ptr[1];
+			index_t z_block = block_key_ptr[2];
 
-					// === compute normal ===
-					auto normal_pointer = normals_indexer.GetDataPtr<float>(u_rounded, v_rounded);
-					Eigen::Vector3f normal(normal_pointer[0], normal_pointer[1], normal_pointer[2]);
-					float cosine = view_direction.dot(normal);
-					auto cosine_pointer = cosine_indexer.GetDataPtr<float>(u_rounded, v_rounded);
-					*cosine_pointer = cosine;
+			// voxel_idx -> x_voxel_local, y_voxel_local, z_voxel_local (in voxels)
+			index_t x_voxel_local, y_voxel_local, z_voxel_local;
+			voxel_indexer.WorkloadToCoord(voxel_index_in_block, &x_voxel_local, &y_voxel_local, &z_voxel_local);
 
-					/*
-					 * Points behind the surface are disregarded: these will have a projective signed distance
-					 * below the negative truncation distance.
-					 * Also, if the angle between view direction and surface normal is too oblique,
-					 * we assume depth reading is unreliable
-					 * */
-					if (psdf > -sdf_truncation_distance && cosine > 0.5f) {
-						float tsdf_normalized =
-								(psdf < sdf_truncation_distance ? psdf : sdf_truncation_distance) / sdf_truncation_distance;
-						auto voxel_pointer = voxel_block_buffer_indexer.GetDataPtr<voxel_t>(
-								x_voxel_local, y_voxel_local, z_voxel_local, block_index);
+			// at this point, (x_voxel, y_voxel, z_voxel) hold local
+			// in-block coordinates. Compute the global voxel coordinates (in voxels, then meters)
+			Eigen::Vector3f voxel_global(x_block * block_resolution + x_voxel_local,
+			                             y_block * block_resolution + y_voxel_local,
+			                             z_block * block_resolution + z_voxel_local);
+			Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
 
-						if (integrate_color) {
-							auto color_ptr = color_indexer.GetDataPtr<float>(u_rounded, v_rounded);
-							voxel_pointer->Integrate(tsdf_normalized, color_ptr[0], color_ptr[1], color_ptr[2]);
-						} else {
-							voxel_pointer->Integrate(tsdf_normalized);
-						}
+			// voxel world coordinate (in voxels) -> voxel camera coordinate (in meters)
+			float x_voxel_camera, y_voxel_camera, z_voxel_camera;
+			depth_transform_indexer.RigidTransform(voxel_global_metric.x(), voxel_global_metric.y(), voxel_global_metric.z(),
+			                                       &x_voxel_camera, &y_voxel_camera, &z_voxel_camera);
+			Eigen::Vector3f voxel_camera(x_voxel_camera, y_voxel_camera, z_voxel_camera);
+			// endregion
+			// region ===================== COMPUTE ANCHOR POINTS & WEIGHTS ================================
+			int32_t anchor_indices[MAX_ANCHOR_COUNT];
+			float anchor_weights[MAX_ANCHOR_COUNT];
+
+			warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, voxel_camera);
+			// endregion
+			// region ===================== WARP CAMERA-SPACE VOXEL AND PROJECT TO IMAGE ============================
+			auto warped_voxel = warp_field.template WarpPoint<TDeviceType>(voxel_camera, anchor_indices, anchor_weights);
+
+			if (warped_voxel.z() < 0) {
+				// voxel is behind camera
+				return;
+			}
+			// coordinate in image (in pixels)
+			float u_precise, v_precise;
+			depth_transform_indexer.Project(warped_voxel.x(), warped_voxel.y(), warped_voxel.z(), &u_precise, &v_precise);
+			if (!depth_indexer.InBoundary(u_precise, v_precise)) {
+				return;
+			}
+			// endregion
+			// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
+			auto u_rounded = static_cast<index_t>(roundf(u_precise));
+			auto v_rounded = static_cast<index_t>(roundf(v_precise));
+
+			float depth = (*depth_indexer.GetDataPtr<input_depth_t>(u_rounded, v_rounded)) / depth_scale;
+
+			if (depth <= 0.0f || depth > depth_max) {
+				return;
+			}
+
+			float psdf = depth - warped_voxel.z();
+
+			Eigen::Vector3f view_direction = -warped_voxel;
+			view_direction.normalize();
+
+			// === compute normal ===
+			auto normal_pointer = normals_indexer.GetDataPtr<float>(u_rounded, v_rounded);
+			Eigen::Vector3f normal(normal_pointer[0], normal_pointer[1], normal_pointer[2]);
+			float cosine = view_direction.dot(normal);
+			auto cosine_pointer = cosine_indexer.GetDataPtr<float>(u_rounded, v_rounded);
+			*cosine_pointer = cosine;
+
+			/*
+			 * Points behind the surface are disregarded: these will have a projective signed distance
+			 * below the negative truncation distance.
+			 * Also, if the angle between view direction and surface normal is too oblique,
+			 * we assume depth reading is unreliable
+			 * */
+			if (psdf <= -sdf_truncation_distance || cosine > 0.5f) {
+				return;
+			}
+			index_t linear_voxel_index = block_index * block_resolution_cubed + voxel_index_in_block;
+
+			float tsdf_normalized =
+					(psdf < sdf_truncation_distance ? psdf : sdf_truncation_distance) / sdf_truncation_distance;
+			tsdf_t* tsdf_ptr = tsdf_base_ptr + linear_voxel_index;
+			weight_t* weight_ptr = weight_base_ptr + linear_voxel_index;
+
+			float inv_weight_sum = 1.0f / (*weight_ptr + 1);
+			float weight = *weight_ptr;
+			*tsdf_ptr = (weight * (*tsdf_ptr) + tsdf_normalized) * inv_weight_sum;
+
+			if (integrate_color) {
+				color_t* color_ptr = color_base_ptr + 3 * linear_voxel_index;
+
+				// Unproject ui, vi with depth_intrinsics, then project back with color_intrinsics
+				float x, y, z;
+				depth_transform_indexer.Unproject(u_rounded, v_rounded, 1.0, &x, &y, &z);
+				color_transform_indexer.Project(x, y, z, &u_precise, &v_precise);
+
+				if (color_indexer.InBoundary(u_precise, v_precise)) {
+					u_rounded = static_cast<index_t>(roundf(u_precise));
+					v_rounded = static_cast<index_t>(roundf(v_precise));
+
+					auto* input_color_ptr =
+							color_indexer.GetDataPtr<input_color_t>(u_rounded, v_rounded);
+
+					for (index_t i_channel = 0; i_channel < 3; i_channel++) {
+						color_ptr[i_channel] = (weight * color_ptr[i_channel] + input_color_ptr[i_channel] * color_multiplier) * inv_weight_sum;
 					}
 				}
-				// endregion
-			} // end element_kernel
-				); // end LaunchGeneralKernel call
-			} // end lambda
-	); // end DISPATCH_BYTESIZE_TO_VOXEL macro call
+			}
+
+			// endregion
+		} /* end element_kernel */ ); // end ParallelFor call
+		} /* end lambda */ ); // end DISPATCH_VALUE_DTYPE_TO_TEMPLATE macro call
+	} /* end lambda  */ ); // end DISPATCH_INPUT_DTYPE_TO_TEMPLATE macro call
 #if defined(__CUDACC__)
-	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+	o3c::cuda::Synchronize();
 #endif
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys,
-                                    const GraphWarpField& warp_field, float voxel_size, int64_t block_resolution,
+                                    const GraphWarpField& warp_field, float voxel_size, index_t block_resolution,
                                     const open3d::core::Tensor& extrinsics) {
 	//TODO: optionally, filter out voxel blocks (this is an unnecessary optimization unless we need to use a great multitude of voxel blocks)
 	int64_t block_count = block_keys.GetLength();

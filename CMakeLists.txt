@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 
+# CMake modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/CMake")
 
 # region ====================== Define switches ====================================================
 # the user can use these to control the build
@@ -110,70 +112,35 @@ else()
 endif()
 
 
-# Set up CUDA settings
-if(BUILD_CUDA_MODULE)
-    find_package(CUDAToolkit REQUIRED)
+# FIXME: Remove this workaround once a fixed Visual Studio 16.10 version is released.
+if (BUILD_CUDA_MODULE
+    AND CMAKE_CXX_COMPILER MATCHES "MSVC"
+    AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.29"
+    )
+    # Keep C++14 standard for unaffected C++ files, but use C++17 for CUDA files.
+    set(CMAKE_CUDA_STANDARD 17)
+    # Suppress warnings for deprecated C++17 functions.
+    add_compile_definitions($<$<COMPILE_LANGUAGE:CUDA>:_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING>)
+    message(WARNING "Visual Studio 16.10 (MSVC 19.29) introduced a compiler bug when compiling CUDA code with C++14. "
+        "Workaround this bug by setting the CUDA standard to C++17.")
+endif()
 
-    if(BUILD_COMMON_CUDA_ARCHS)
-        # Build with all known (and deprecated) architectures.
-        # See https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#building-for-maximum-compatibility.
-        if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "11.1")
-            set(CMAKE_CUDA_ARCHITECTURES 35-real 37-real 50-real 52-real 53-real
-                60-real 61-real 62-real 70-real 72-real 75-real 80-real 86)
-        elseif(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "11.0")
-            set(CMAKE_CUDA_ARCHITECTURES 35-real 37-real 50-real 52-real 53-real
-                60-real 61-real 62-real 70-real 72-real 75-real 80)
-        elseif(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "10.0")
-            set(CMAKE_CUDA_ARCHITECTURES 30-real 32-real 35-real 37-real 50-real
-                52-real 53-real 60-real 61-real 62-real 70-real 72-real 75)
-        else()
-            message(STATUS "Old CUDA <10.0 detected. Falling back to CMake's default architectures.")
-        endif()
-    else()
-        if(CMAKE_CUDA_ARCHITECTURES)
-            message(STATUS "Building with user-provided architectures")
-        else()
-            file(WRITE
-                "${CMAKE_CURRENT_BINARY_DIR}/cuda_architectures.c"
-                "
-                #include <stdio.h>
-                #include <cuda_runtime_api.h>
-                int main() {
-                    int n;
-                    if (cudaGetDeviceCount(&n) == cudaSuccess) {
-                        for (int i = 0; i < n; ++i) {
-                            int major, minor;
-                            if (cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor,
-                                                    i) == cudaSuccess &&
-                                cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor,
-                                                    i) == cudaSuccess) {
-                                if (i > 0) {
-                                    printf(\";\");
-                                }
-                                printf(\"%d%d-real\", major, minor);
-                            }
-                        }
-                    }
-                    return 0;
-                }
-                ")
-            try_run(
-                DETECTION_RETURN_VALUE DETECTION_COMPILED
-                "${CMAKE_CURRENT_BINARY_DIR}"
-                "${CMAKE_CURRENT_BINARY_DIR}/cuda_architectures.c"
-                LINK_LIBRARIES CUDA::cudart
-                RUN_OUTPUT_VARIABLE DETECTED_ARCHITECTURES)
-            if(DETECTED_ARCHITECTURES)
-                message(STATUS "Building with detected architectures.")
-                set(CMAKE_CUDA_ARCHITECTURES ${DETECTED_ARCHITECTURES})
-            else()
-                message(STATUS "Failed to detect architectures. Falling back to CMake's default architectures.")
-            endif()
-        endif()
+
+
+
+# Build CUDA module by default if CUDA is available
+if(BUILD_CUDA_MODULE)
+    include(NNRTMakeCudaArchitectures)
+    nnrt_make_cuda_architectures(CUDA_ARCHS)
+    set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHS})
+
+    message(STATUS "Using CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+    enable_language(CUDA)
+
+    if (CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA" AND CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "10.1")
+        message(FATAL_ERROR "CUDA 10.0 and older are not supported. Please upgrade to CUDA 10.1 or newer.")
     endif()
 
-    message(STATUS "CMAKE_CUDA_ARCHITECTURES: ${CMAKE_CUDA_ARCHITECTURES}")
-    enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 17)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 endif ()
@@ -229,8 +196,7 @@ function(nnrt_set_global_properties target)
     endif()
 endfunction()
 
-# CMake modules
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/CMake")
+
 ### includes for dependency processing
 include(3rd-party/find_dependencies.cmake)
 include(NNRTShowAndAbortOnWarning)

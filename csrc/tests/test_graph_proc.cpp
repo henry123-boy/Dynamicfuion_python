@@ -13,6 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#define NNRT_TEST_USE_PYTHON
 #include "test_main.hpp"
 
 #include <cpu/graph_proc.h>

@@ -22,27 +22,37 @@
 #include "geometry/GraphWarpField.h"
 
 
-namespace nnrt::geometry::kernel::tsdf {
+namespace nnrt::geometry::kernel::voxel_grid {
 
-void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                     const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-                     float depth_scale, float depth_max);
+using index_t = int;
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void IntegrateWarped(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, open3d::core::Tensor& block_values,
-                     open3d::core::Tensor& cos_voxel_ray_to_normal, int64_t block_resolution, float voxel_size, float sdf_truncation_distance,
-                     const open3d::core::Tensor& depth_tensor, const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
-                     const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field,
-                     float depth_scale, float depth_max);
-
-void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
-                               float voxel_size, int64_t block_resolution, const open3d::core::Tensor& extrinsics);
+void
+IntegrateNonRigid(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal,
+		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth, const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
+		const GraphWarpField& warp_field, float depth_scale, float depth_max
+);
 
 template<open3d::core::Device::DeviceType TDeviceType>
+void
+IntegrateNonRigid(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal,
+		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth, const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
+		const GraphWarpField& warp_field, float depth_scale, float depth_max
+);
+
 void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
-                               float voxel_size, int64_t block_resolution, const open3d::core::Tensor& extrinsics);
+                                    float voxel_size, index_t block_resolution, const open3d::core::Tensor& extrinsics);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+                                    float voxel_size, index_t block_resolution, const open3d::core::Tensor& extrinsics);
 
 void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
                                                 const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
