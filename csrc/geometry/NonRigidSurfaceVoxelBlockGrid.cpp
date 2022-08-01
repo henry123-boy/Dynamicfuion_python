@@ -211,8 +211,7 @@ NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion(const open
 
 	// Query active blocks.
 	o3c::Tensor active_block_addresses;
-	auto block_hashmap = this->block_hashmap_;
-	block_hashmap->GetActiveIndices(active_block_addresses);
+	this->block_hashmap_->GetActiveIndices(active_block_addresses);
 
 	// Assert which neighboring inactive blocks need to be activated and activate them
 	o3c::Tensor inactive_neighbor_block_coords = this->BufferCoordinatesOfInactiveNeighborBlocks(active_block_addresses);
@@ -225,6 +224,26 @@ NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion(const open
 
 	o3c::Tensor neighbor_coords_to_activate = inactive_neighbor_block_coords.GetItem(o3c::TensorKey::IndexTensor(inactive_neighbor_mask));
 	return neighbor_coords_to_activate;
+}
+
+open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelValuesAndCoordinates() {
+	o3c::Tensor active_block_indices;
+	this->block_hashmap_->GetActiveIndices(active_block_indices);
+	o3tg::TensorMap block_value_map =
+			VoxelBlockGrid::ConstructTensorMap(*block_hashmap_, name_attr_map_);
+
+	o3c::Tensor voxel_values;
+	kernel::voxel_grid::ExtractVoxelValuesAndCoordinates(voxel_values,
+	                                                     active_block_indices.To(o3c::Dtype::Int64), this->block_hashmap_->GetKeyTensor(),
+	                                                     block_value_map, this->GetBlockResolution(), this->voxel_size_);
+
+	return voxel_values;
+}
+
+open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelBlockCoordinates() {
+	o3c::Tensor active_block_indices;
+	this->block_hashmap_->GetActiveIndices(active_block_indices);
+	return this->block_hashmap_->GetKeyTensor().GetItem(o3c::TensorKey::IndexTensor(active_block_indices.To(o3c::Int64))).To(o3c::Float32) * this->block_resolution_ * this->voxel_size_;
 }
 
 

@@ -45,6 +45,9 @@ public:
 
 	int64_t ActivateSleeveBlocks();
 
+	open3d::core::Tensor ExtractVoxelValuesAndCoordinates();
+	open3d::core::Tensor ExtractVoxelBlockCoordinates();
+
 protected:
 	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(const open3d::core::Tensor& active_block_addresses) const;
 

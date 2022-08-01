@@ -66,4 +66,29 @@ void ComputeVertexNormals(open3d::t::geometry::TriangleMesh& mesh, bool normaliz
 	mesh.SetVertexNormals(vertex_normals);
 }
 
+void ComputeOrderedPointCloudNormals(o3c::Tensor normals, int64_t point_count, const open3d::core::SizeVector& source_image_size);
+
+open3d::core::Tensor
+ComputeOrderedPointCloudNormals(const open3d::t::geometry::PointCloud& point_cloud, const open3d::core::SizeVector& source_image_size) {
+	if(source_image_size.size() != 2){
+		o3u::LogError("Source image size must have two dimensions. Got {}.", source_image_size.size());
+	}
+	if(!point_cloud.HasPointPositions()){
+		o3u::LogError("Input point cloud doesn't have point positions defined, which are required for normal computation on ordered point clouds.");
+	}
+	const o3c::Tensor& point_positions = point_cloud.GetPointPositions();
+	int64_t point_count = point_positions.GetLength();
+
+	if(point_count != source_image_size[0] * source_image_size[1]){
+		o3u::LogError("Point cloud point count (got {}) must equal the multiple of dimensions (got {} * {} = {}).",
+					  point_count, source_image_size[0], source_image_size[1], source_image_size[0] * source_image_size[1]);
+	}
+
+	o3c::Tensor normals;
+	kernel::point_cloud::ComputeOrderedPointCloudNormals(normals, point_positions, source_image_size);
+	return normals;
+}
+
+
+
 } // namespace nnrt::geometry

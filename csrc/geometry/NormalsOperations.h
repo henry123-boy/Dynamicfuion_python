@@ -16,12 +16,14 @@
 #pragma once
 
 #include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/t/geometry/PointCloud.h>
 
 
 namespace nnrt::geometry {
 
 void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
 void ComputeVertexNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
+open3d::core::Tensor ComputeOrderedPointCloudNormals(const open3d::t::geometry::PointCloud& point_cloud, const open3d::core::SizeVector& source_image_size);
 void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
 
 

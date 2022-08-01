@@ -17,7 +17,7 @@ def generate_xy_plane_color_image(resolution: Tuple[int, int], value: Tuple[int,
 
 
 def construct_intrinsic_matrix1_3x3():
-    intrinsics = np.eye(3, dtype=np.float32)
+    intrinsics = np.eye(3, dtype=np.float64)
     intrinsics[0, 0] = 100.0
     intrinsics[1, 1] = 100.0
     intrinsics[0, 2] = 50.0
@@ -26,7 +26,7 @@ def construct_intrinsic_matrix1_3x3():
 
 
 def construct_intrinsic_matrix1_4x4():
-    intrinsics = np.eye(4, dtype=np.float32)
+    intrinsics = np.eye(4, dtype=np.float64)
     intrinsics[0, 0] = 100.0
     intrinsics[1, 1] = 100.0
     intrinsics[0, 2] = 50.0
@@ -41,14 +41,11 @@ def construct_test_volume1(device=o3d.core.Device('cuda:0')):
     block_resolution = 8  # 8^3 voxel blocks
     initial_block_count = 128  # initially allocated number of voxel blocks
 
-    volume = nnrt.geometry.WarpableTSDFVoxelGrid(
-        {
-            'tsdf': o3d.core.Dtype.Float32,
-            'weight': o3d.core.Dtype.UInt16,
-            'color': o3d.core.Dtype.UInt16
-        },
+    volume = nnrt.geometry.NonRigidSurfaceVoxelBlockGrid(
+        ['tsdf', 'weight', 'color'],
+        [o3d.core.Dtype.Float32, o3d.core.Dtype.UInt16, o3d.core.Dtype.UInt16],
+        [o3d.core.SizeVector(1), o3d.core.SizeVector(1), o3d.core.SizeVector(1)],
         voxel_size=voxel_size,
-        sdf_trunc=sdf_truncation_distance,
         block_resolution=block_resolution,
         block_count=initial_block_count,
         device=device)
@@ -66,9 +63,14 @@ def construct_test_volume1(device=o3d.core.Device('cuda:0')):
 
     # set up matrix parameters
     intrinsics = construct_intrinsic_matrix1_3x3()
-    intrinsics_open3d_gpu = o3c.Tensor(intrinsics, device=device)
-    extrinsics_open3d_gpu = o3c.Tensor(np.eye(4, dtype=np.float32), device=device)
+    host = o3c.Device("CPU:0")
+    intrinsics_open3d = o3c.Tensor(intrinsics, device=host)
+    extrinsics_open3d = o3c.Tensor(np.eye(4, dtype=np.float64), device=host)
 
     # integrate volume
-    volume.integrate(depth_image_gpu, color_image_gpu, intrinsics_open3d_gpu, extrinsics_open3d_gpu, 1000.0, 3.0)
+    blocks_to_activate = \
+        volume.compute_unique_block_coordinates(depth_image_gpu, intrinsics_open3d, extrinsics_open3d, 1000.0, 3.0,
+                                                trunc_voxel_multiplier=2.0)
+    volume.integrate(blocks_to_activate, depth_image_gpu, color_image_gpu, intrinsics_open3d, extrinsics_open3d,
+                     1000.0, 3.0, trunc_voxel_multiplier=2.0)
     return volume

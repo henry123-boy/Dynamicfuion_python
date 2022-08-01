@@ -58,4 +58,11 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType
 		float truncation_distance
 );
 
+template
+void ExtractVoxelValuesAndCoordinates<open3d::core::Device::DeviceType::CPU>(o3c::Tensor& voxel_values_and_coordinates,
+                                                                             const open3d::core::Tensor& block_indices,
+                                                                             const open3d::core::Tensor& block_keys,
+                                                                             const open3d::t::geometry::TensorMap& block_value_map,
+                                                                             int64_t block_resolution, float voxel_size);
+
 } // namespace nnrt::geometry::kernel::tsdf

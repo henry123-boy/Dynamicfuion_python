@@ -38,3 +38,12 @@ template<open3d::core::Device::DeviceType TDevice>
 void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::core::Tensor& triangle_indices,
                           const open3d::core::Tensor& triangle_normals);
 } // nnrt::geometry::kernel::mesh
+
+namespace nnrt::geometry::point_cloud {
+void ComputeOrderedPointCloudNormals(open3d::core::Tensor& normals, const open3d::core::Tensor& point_positions,
+									 const open3d::core::SizeVector& source_image_size);
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeOrderedPointCloudNormals(open3d::core::Tensor& normals, const open3d::core::Tensor& point_positions,
+                                     const open3d::core::SizeVector& source_image_size);
+
+} // nnrt::geometry::kernel::point_cloud

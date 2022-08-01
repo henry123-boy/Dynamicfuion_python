@@ -155,6 +155,11 @@ IntegrateNonRigid(
 			                             z_block * block_resolution + z_voxel_local);
 			Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
 
+			//__DEBUG
+			if (voxel_global == Eigen::Vector3f(0.f, 0.f, 5.f)) {
+				printf("Arrived at voxel.\n");
+			}
+
 			// voxel world coordinate (in voxels) -> voxel camera coordinate (in meters)
 			float x_voxel_camera, y_voxel_camera, z_voxel_camera;
 			depth_transform_indexer.RigidTransform(voxel_global_metric.x(), voxel_global_metric.y(), voxel_global_metric.z(),
@@ -174,12 +179,23 @@ IntegrateNonRigid(
 				// voxel is behind camera
 				return;
 			}
+			//__DEBUG
+			if (voxel_global == Eigen::Vector3f(0.f, 0.f, 5.f)) {
+				printf("Voxel in front of camera.\n");
+			}
 			// coordinate in image (in pixels)
 			float u_precise, v_precise;
 			depth_transform_indexer.Project(warped_voxel.x(), warped_voxel.y(), warped_voxel.z(), &u_precise, &v_precise);
 			if (!depth_indexer.InBoundary(u_precise, v_precise)) {
+				//__DEBUG
+				if (voxel_global == Eigen::Vector3f(0.f, 0.f, 5.f)) {
+					printf("Projected UV outside depth image bound. Anchor indices: %i %i %i %i. Anchor weights: %f %f %f %f\n",
+					       anchor_indices[0],anchor_indices[1],anchor_indices[2],anchor_indices[3],
+						   anchor_weights[0],anchor_weights[1],anchor_weights[2],anchor_weights[3]);
+				}
 				return;
 			}
+
 			// endregion
 			// region ===================== SAMPLE IMAGES AND COMPUTE THE ACTUAL TSDF & COLOR UPDATE =======================
 			auto u_rounded = static_cast<index_t>(roundf(u_precise));
@@ -190,8 +206,17 @@ IntegrateNonRigid(
 			if (depth <= 0.0f || depth > depth_max) {
 				return;
 			}
+			//__DEBUG
+			if (voxel_global == Eigen::Vector3f(0.f, 0.f, 5.f)) {
+				printf("Depth in bound.\n");
+			}
 
 			float psdf = depth - warped_voxel.z();
+
+			//__DEBUG
+			if (voxel_global == Eigen::Vector3f(0.f, 0.f, 5.f)) {
+				printf("PSDF: %f\n", psdf);
+			}
 
 			Eigen::Vector3f view_direction = -warped_voxel;
 			view_direction.normalize();
@@ -219,9 +244,9 @@ IntegrateNonRigid(
 			tsdf_t* tsdf_ptr = tsdf_base_ptr + linear_voxel_index;
 			weight_t* weight_ptr = weight_base_ptr + linear_voxel_index;
 
-			float inv_weight_sum = 1.0f / (*weight_ptr + 1);
 			float weight = *weight_ptr;
-			*tsdf_ptr = (weight * (*tsdf_ptr) + tsdf_normalized) * inv_weight_sum;
+			float inverted_weight_sum = 1.0f / (weight + 1);
+			*tsdf_ptr = (weight * (*tsdf_ptr) + tsdf_normalized) * inverted_weight_sum;
 
 			if (integrate_color) {
 				color_t* color_ptr = color_base_ptr + 3 * linear_voxel_index;
@@ -235,11 +260,10 @@ IntegrateNonRigid(
 					u_rounded = static_cast<index_t>(roundf(u_precise));
 					v_rounded = static_cast<index_t>(roundf(v_precise));
 
-					auto* input_color_ptr =
-							color_indexer.GetDataPtr<input_color_t>(u_rounded, v_rounded);
+					auto* input_color_ptr = color_indexer.GetDataPtr<input_color_t>(u_rounded, v_rounded);
 
 					for (index_t i_channel = 0; i_channel < 3; i_channel++) {
-						color_ptr[i_channel] = (weight * color_ptr[i_channel] + input_color_ptr[i_channel] * color_multiplier) * inv_weight_sum;
+						color_ptr[i_channel] = (weight * color_ptr[i_channel] + input_color_ptr[i_channel] * color_multiplier) * inverted_weight_sum;
 					}
 				}
 			}
@@ -395,6 +419,118 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
 			}
 
 	);
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices,
+                                      const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+                                      int64_t block_resolution, float voxel_size) {
+
+	using tsdf_t = float;
+
+	o3c::Dtype block_weight_dtype = o3c::Dtype::Float32;
+	o3c::Dtype block_color_dtype = o3c::Dtype::Float32;
+
+	bool has_weight = false;
+	int64_t output_channel_count = 4;
+	if (block_value_map.Contains("weight")) {
+		has_weight = true;
+		block_weight_dtype = block_value_map.at("weight").GetDtype();
+		output_channel_count += 1;
+	}
+	bool has_color = false;
+	if (block_value_map.Contains("color")) {
+		has_color = true;
+		block_color_dtype = block_value_map.at("color").GetDtype();
+		output_channel_count += 3;
+	}
+
+	int64_t block_resolution_cubed = block_resolution * block_resolution * block_resolution;
+
+	// Shape / transform indexers, no data involved
+	ArrayIndexer voxel_indexer({block_resolution, block_resolution, block_resolution});
+
+	int block_count = static_cast<int>(block_indices.GetLength());
+
+
+	int64_t voxel_count = block_count * block_resolution_cubed;
+	// In a fully-colored TSDF voxel grid, each voxel output will need a 3d coordinate, TSDF value, weight value, and 3 color channels,
+	// all in float form: voxel_count x (3 + 1 + 1 + 3)
+	voxel_values_and_coordinates = o3c::Tensor::Zeros({voxel_count, output_channel_count}, o3c::Dtype::Float32, block_indices.GetDevice());
+
+	// Indexer for block coordinates
+	ArrayIndexer block_keys_indexer(block_keys, 1);
+	// Output data indexer
+	NDArrayIndexer voxel_values_indexer(voxel_values_and_coordinates, 1);
+
+	// Plain arrays that does not require indexers
+	const auto* indices_ptr = block_indices.GetDataPtr<int64_t>();
+
+
+	//  Go through voxels
+	DISPATCH_VALUE_DTYPE_TO_TEMPLATE(block_weight_dtype, block_color_dtype, [&]() {
+		const color_t* color_base_ptr = nullptr;
+		if (has_color) {
+			color_base_ptr = block_value_map.at("color").GetDataPtr<color_t>();
+		}
+		const weight_t* weight_base_ptr = nullptr;
+		if (has_weight) {
+			weight_base_ptr = block_value_map.at("weight").GetDataPtr<weight_t>();
+		}
+		const auto* tsdf_base_ptr = block_value_map.at("tsdf").GetDataPtr<tsdf_t>();
+
+		open3d::core::ParallelFor(
+				block_indices.GetDevice(), voxel_count,
+//@formatter:off
+				[=] OPEN3D_DEVICE(int64_t workload_idx) {
+//@formatter:on
+		// Natural index (0, N) -> (workload_block_idx, voxel_index_in_block)
+		index_t block_index = indices_ptr[workload_idx / block_resolution_cubed];
+		index_t voxel_index_in_block = workload_idx % block_resolution_cubed;
+
+
+		// block_index -> x_block, y_block, z_block (in voxel hash blocks)
+		auto* block_key_ptr = block_keys_indexer.GetDataPtr<index_t>(block_index);
+		index_t x_block = block_key_ptr[0];
+		index_t y_block = block_key_ptr[1];
+		index_t z_block = block_key_ptr[2];
+
+		// voxel_idx -> x_voxel_local, y_voxel_local, z_voxel_local (in voxels)
+		index_t x_voxel_local, y_voxel_local, z_voxel_local;
+		voxel_indexer.WorkloadToCoord(voxel_index_in_block, &x_voxel_local, &y_voxel_local, &z_voxel_local);
+
+		Eigen::Vector3f voxel_global(x_block * block_resolution + x_voxel_local,
+		                             y_block * block_resolution + y_voxel_local,
+		                             z_block * block_resolution + z_voxel_local);
+		Eigen::Vector3f voxel_global_metric = voxel_global * voxel_size;
+
+		index_t linear_voxel_index = block_index * block_resolution_cubed + voxel_index_in_block;
+
+		const auto* tsdf_pointer = tsdf_base_ptr + linear_voxel_index;
+		auto voxel_value_pointer = voxel_values_indexer.GetDataPtr<float>(workload_idx);
+
+		voxel_value_pointer[0] = voxel_global_metric.x();
+		voxel_value_pointer[1] = voxel_global_metric.y();
+		voxel_value_pointer[2] = voxel_global_metric.z();
+		voxel_value_pointer[3] = (float) *tsdf_pointer;
+		int index = 4;
+		if (has_weight) {
+			const auto* weight_pointer = weight_base_ptr + linear_voxel_index;
+			voxel_value_pointer[index] = (float) *weight_pointer;
+			index++;
+		}
+		if (has_color) {
+			const auto* color_pointer = color_base_ptr + 3 * linear_voxel_index;
+			for (int i_channel = 0; i_channel < 3; i_channel++, index++) {
+				voxel_value_pointer[index] = (float) color_pointer[i_channel];
+			}
+		}
+
+	} /* end lambda */ ); // end ParallelFor call
+	} /* end lambda */ ); // end DISPATCH_VALUE_DTYPE_TO_TEMPLATE macro call
+#if defined(__CUDACC__)
+	OPEN3D_CUDA_CHECK(cudaDeviceSynchronize());
+#endif
 }
 
 } // namespace nnrt::geometry::kernel::tsdf

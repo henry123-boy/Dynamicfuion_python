@@ -63,6 +63,14 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
                                                 const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
                                                 float truncation_distance);
 
+void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices,
+                                      const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+                                      int64_t block_resolution, float voxel_size);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices,
+                                      const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+                                      int64_t block_resolution, float voxel_size);
 
 } // namespace nnrt::geometry::kernel::tsdf
 

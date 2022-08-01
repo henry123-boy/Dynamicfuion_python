@@ -267,6 +267,8 @@ void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
 	                                       "depth_intrinsics"_a, "color_intrinsics"_a, "extrinsics"_a,
 	                                       "depth_scale"_a, "depth_max"_a, "truncation_voxel_multiplier"_a);
 
+	non_rigid_surface_voxel_block_grid.def("extract_voxel_values_and_coordinates", &NonRigidSurfaceVoxelBlockGrid::ExtractVoxelValuesAndCoordinates);
+	non_rigid_surface_voxel_block_grid.def("extract_voxel_block_coordinates", &NonRigidSurfaceVoxelBlockGrid::ExtractVoxelBlockCoordinates);
 	non_rigid_surface_voxel_block_grid.def("activate_sleeve_blocks", &NonRigidSurfaceVoxelBlockGrid::ActivateSleeveBlocks);
 }
 
