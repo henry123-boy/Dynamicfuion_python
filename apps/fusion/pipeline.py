@@ -413,7 +413,7 @@ class FusionPipeline:
         canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
         is_keyframe = self.frame_is_keyframe(frame_index)
         if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
-            canonical_mesh = self.volume.extract_triangle_mesh(-1, mesh_extraction_weight_threshold)
+            canonical_mesh = self.volume.extract_triangle_mesh(mesh_extraction_weight_threshold, -1)
 
         warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
 
@@ -489,7 +489,7 @@ class FusionPipeline:
         precomputed_pixel_anchors = None
         precomputed_pixel_weights = None
         if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
-            canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_triangle_mesh(-1, 0).to_legacy()
+            canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_triangle_mesh(0, -1).to_legacy()
             canonical_mesh = o3d.t.geometry.TriangleMesh.from_legacy(canonical_mesh_legacy, device=device)
             self.active_graph = build_deformation_graph_from_mesh(
                 canonical_mesh, node_coverage, erosion_iteration_count=10, neighbor_count=8,
