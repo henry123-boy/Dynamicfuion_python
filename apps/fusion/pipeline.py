@@ -287,6 +287,7 @@ class FusionPipeline:
                     alignment_image_height, alignment_image_width, cropper=cropper
                 )
                 self.telemetry_generator.process_source_and_target_point_clouds(source_rgbxyz, target_rgbxyz)
+
                 if device.get_type() == o3c.Device.CUDA:
                     target_normal_map = cuda_compute_normal(target_point_image)
                 else:

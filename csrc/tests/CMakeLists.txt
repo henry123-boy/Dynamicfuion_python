@@ -43,7 +43,7 @@ if (BUILD_CPP_TESTS)
         test_utils/entropy_range_encoder.h
         test_utils/entropy_range_encoder.cpp)
 
-    target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp)
+    target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
 
 

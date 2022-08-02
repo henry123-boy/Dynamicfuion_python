@@ -192,7 +192,7 @@ o3c::Tensor ConstructSimpleIntrinsics(double f = 100, double c_x = 50, double c_
 	);
 }
 
-o3c::Tensor PinchPixelsAtCenter(o3c::Tensor& pixels, int64_t pinch_radius_pixels, float pinch_height_mm) {
+void PinchPixelsAtCenter(o3c::Tensor& pixels, int64_t pinch_radius_pixels, float pinch_height_mm, const o3c::Device& device) {
 	int64_t image_height = pixels.GetShape(0);
 	int64_t image_width = pixels.GetShape(1);
 	int64_t pinch_diameter = pinch_radius_pixels * 2;
@@ -272,7 +272,7 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	o3c::Tensor deformed_depth_image_pixels(image_size, o3c::UInt16, device);
 	deformed_depth_image_pixels.Fill(depth_of_plane);
 
-	PinchPixelsAtCenter(deformed_depth_image_pixels, 20, 10.0f);
+	PinchPixelsAtCenter(deformed_depth_image_pixels, 20, 10.0f, device);
 
 
 

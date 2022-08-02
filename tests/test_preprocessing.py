@@ -1,5 +1,6 @@
 import numpy as np
 import open3d as o3d
+import open3d.core as o3c
 import pytest
 
 import nnrt
@@ -35,6 +36,10 @@ def test_compute_normals(device):
 
     expected_normals[mask] = 0
 
-    normals = compute_normals(device, point_image)[1:479, 1:639]
+    full_normals = compute_normals(device, point_image)
+    full_normals_o3d = o3c.Tensor(full_normals)
+    full_normals_o3d.save("/home/algomorph/Workbench/NeuralTracking/tests/test_data/red_shorts_200_normals.npy")
+
+    normals = full_normals[1:479, 1:639]
 
     assert np.allclose(expected_normals, normals, atol=1e-7)

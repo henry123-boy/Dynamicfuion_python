@@ -13,6 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include <fstream>
+#include <fmt/format.h>
+
 #include <tests/test_utils/image_io/save_dng.h>
 #include "test_utils.tpp"
 #include "tests/test_utils/image_io/load_dng.h"
@@ -56,5 +59,25 @@ std::vector<long> unravel_index(long linear_index, const std::vector<long>& dime
 
 template array_comparison_result<float>
 compare(const pybind11::array_t<float>& array1, const pybind11::array_t<float>& array2, float absolute_tolerance);
+
+std::vector<double> read_intrinsics(const std::string& path){
+	std::ifstream file;
+	file.open(path.c_str());
+	if(!file){
+		throw std::runtime_error(fmt::format("No file found at {}", path));
+	}
+	const int m = 4;
+	const int n = 4;
+
+	std::vector<double> intrinsics_data;
+	for(int i = 0; i < m; i++){
+		for(int j =0; j < n; j++){
+			double coefficient;
+			file >> coefficient;
+			intrinsics_data.push_back(coefficient);
+		}
+	}
+	return intrinsics_data;
+}
 
 } // namepspace test

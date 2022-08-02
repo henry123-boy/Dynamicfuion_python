@@ -18,9 +18,12 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/EigenConverter.h>
 #include <open3d/geometry/TriangleMesh.h>
+#include <open3d/camera/PinholeCameraIntrinsic.h>
 #include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/io/ImageIO.h>
 
 #include "geometry/NormalsOperations.h"
+#include "tests/test_utils/test_utils.hpp"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;
@@ -101,6 +104,42 @@ TEST_CASE("Test Compute Mesh Vertex Normals CPU") {
 }
 
 TEST_CASE("Test Compute Mesh Vertex Normals CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestComputeMeshVertexNormals(device);
+}
+
+void TestComputeOrderedPointCloudNormals(const o3c::Device& device) {
+	open3d::geometry::Image image;
+	open3d::io::ReadImage(test::image_test_data_directory.ToString() + "/red_shorts_200_depth.png", image);
+	o3tg::Image input_depth = o3tg::Image::FromLegacy(image);
+
+	auto intrinsics_data = test::read_intrinsics(test::intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt");
+	// o3c::Device host("CPU:0");
+	// o3c::Tensor intrinsics(intrinsics_data, {4, 4}, o3c::Float64, host);
+	double fx = intrinsics_data[0];
+	double fy = intrinsics_data[5];
+	double cx = intrinsics_data[2];
+	double cy = intrinsics_data[6];
+
+	open3d::camera::PinholeCameraIntrinsic intrinsics_legacy(input_depth.GetCols(),input_depth.GetRows(), fx, fy, cx, cy);
+
+	auto point_cloud_legacy = open3d::geometry::PointCloud::CreateFromDepthImage(image, intrinsics_legacy);
+	auto point_cloud = o3tg::PointCloud::FromLegacy(*point_cloud_legacy, o3c::Float32, device);
+
+	o3c::Tensor normals = nnrt::geometry::ComputeOrderedPointCloudNormals(point_cloud, {input_depth.GetRows(), input_depth.GetCols()});
+
+	o3c::Tensor ground_truth_normals = o3c::Tensor::Load( test::array_test_data_directory.ToString() + "/red_shorts_200_normals.npy");
+
+	REQUIRE(normals.AllClose(ground_truth_normals));
+
+}
+
+TEST_CASE("Test Ordered Point Cloud Normals CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestComputeMeshVertexNormals(device);
+}
+
+TEST_CASE("Test Ordered Point Cloud Normals  CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestComputeMeshVertexNormals(device);
 }

@@ -166,3 +166,50 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 }
 
 } // nnrt::geometry::kernel::mesh
+
+namespace nnrt::geometry::kernel::point_cloud {
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeOrderedPointCloudNormals(open3d::core::Tensor& normals, const open3d::core::Tensor& point_positions,
+                                     const open3d::core::SizeVector& source_image_size){
+	o3c::AssertTensorDtype(point_positions, o3c::Float32);
+
+	o3c::Device device = point_positions.GetDevice();
+	int64_t point_count = point_positions.GetLength();
+	int64_t image_height = source_image_size[0];
+	int64_t image_width = source_image_size[1];
+
+	normals = o3c::Tensor({point_count, 3}, o3c::Float32, device);
+	o3gk::NDArrayIndexer normal_indexer(normals, 1);
+	o3gk::NDArrayIndexer point_indexer(point_positions, 1);
+
+
+	o3c::ParallelFor(
+			device, point_count,
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				int64_t y = workload_idx / image_width;
+				int64_t x = workload_idx % image_width;
+				Eigen::Map<Eigen::Vector3f> normal(normal_indexer.template GetDataPtr<float_t>(workload_idx));
+				if(x == 0 || x == image_width - 1 || y == 0 || y == image_height - 1){
+						normal.x() = 0.f;
+						normal.y() = 0.f;
+						normal.z() = 0.f;
+						return;
+				}
+				Eigen::Map<Eigen::Vector3f> left_point(point_indexer.template GetDataPtr<float_t>(workload_idx - 1));
+				Eigen::Map<Eigen::Vector3f> right_point(point_indexer.template GetDataPtr<float_t>(workload_idx + 1));
+				Eigen::Map<Eigen::Vector3f> top_point(point_indexer.template GetDataPtr<float_t>(workload_idx - image_width));
+				Eigen::Map<Eigen::Vector3f> bottom_point(point_indexer.template GetDataPtr<float_t>(workload_idx + image_width));
+
+				Eigen::Vector3f d_horizontal = right_point - left_point;
+				Eigen::Vector3f d_vertical = top_point - bottom_point;
+
+				normal = d_horizontal.cross(d_vertical).normalized();
+
+				if(normal.z() > 0){
+					normal = -normal;
+				}
+			}
+	);
+
+}
+} // nnrt::geometry::kernel::point_cloud

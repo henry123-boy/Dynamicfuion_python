@@ -171,7 +171,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperations.h
     geometry/kernel/NormalsOperationsImpl.h
     geometry/kernel/NormalsOperationsCPU.cpp
-    geometry/kernel/NormalsOperationsCUDA.cu pybind/pipelines/slam.h pybind/pipelines/spam.cpp geometry/VoxelBlockGrid.h geometry/VoxelBlockGrid.cpp geometry/kernel/VoxelGridDtypeDispatch.h)
+    geometry/kernel/NormalsOperationsCUDA.cu pybind/pipelines/slam.h pybind/pipelines/spam.cpp geometry/VoxelBlockGrid.h geometry/VoxelBlockGrid.cpp geometry/kernel/VoxelGridDtypeDispatch.h geometry/ProjectionOperations.cpp geometry/ProjectionOperations.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

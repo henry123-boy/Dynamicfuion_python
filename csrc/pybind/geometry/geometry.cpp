@@ -341,6 +341,7 @@ void pybind_geometry_downsampling(pybind11::module& m) {
 void pybind_geometry_normals_operations(pybind11::module& m) {
 	m.def("compute_triangle_normals", &ComputeTriangleNormals, "mesh"_a, "normalized"_a = true);
 	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
+	m.def("compute_ordered_point_cloud_normals", &ComputeOrderedPointCloudNormals, "point_cloud"_a, "source_image_size"_a);
 }
 
 

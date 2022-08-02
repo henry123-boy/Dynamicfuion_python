@@ -15,16 +15,18 @@
 //  ================================================================
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+#include <pybind11/numpy.h>
+
 #include "compile_time_string_concatenation.hpp"
 #include <test_data_paths.hpp>
 
-#include <memory>
-#include <pybind11/numpy.h>
-
-
-
 namespace test {
 	static constexpr auto image_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "images");
+	static constexpr auto array_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "arrays");
+	static constexpr auto intrinsics_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "intrinsics");
 
 	// image persistence
 	template<typename TElement>
@@ -56,10 +58,9 @@ namespace test {
 		std::shared_ptr<array_element_mismatch_information<TElement>> element_mismatch_information;
 	};
 
-
-
 	template<typename TElement>
 	array_comparison_result<TElement> compare(const pybind11::array_t<TElement>& array1, const pybind11::array_t<TElement>& array2, TElement absolute_tolerance);
 
+	std::vector<double> read_intrinsics(const std::string& path);
 
 } // namespace test

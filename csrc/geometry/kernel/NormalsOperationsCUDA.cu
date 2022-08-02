@@ -28,3 +28,13 @@ ComputeVertexNormals<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tenso
                                                              const open3d::core::Tensor& triangle_normals);
 
 } // nnrt::geometry::kernel::mesh
+
+namespace nnrt::geometry::kernel::point_cloud {
+
+template
+void ComputeOrderedPointCloudNormals<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& normals, const open3d::core::Tensor& point_positions,
+		const open3d::core::SizeVector& source_image_size
+);
+
+} // nnrt::geometry::point_cloud
