@@ -20,6 +20,7 @@
 
 #include "test_main.hpp"
 
+#include <geometry/NormalsOperations.h>
 #include <geometry/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/GraphWarpField.h>
@@ -214,8 +215,8 @@ void PinchPixelsAtCenter(o3c::Tensor& pixels, int64_t pinch_radius_pixels, float
 	int64_t half_image_width = image_width / 2;
 	int64_t half_image_height = image_height / 2;
 	pixels
-		.Slice(0, half_image_height - pinch_radius_pixels, half_image_height + pinch_radius_pixels)
-		.Slice(1, half_image_width - pinch_radius_pixels, half_image_width + pinch_radius_pixels) += delta.Round().To(o3c::UInt16);
+			.Slice(0, half_image_height - pinch_radius_pixels, half_image_height + pinch_radius_pixels)
+			.Slice(1, half_image_width - pinch_radius_pixels, half_image_width + pinch_radius_pixels) += delta.Round().To(o3c::UInt16);
 }
 
 void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& device) {
@@ -247,14 +248,18 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	o3c::Device host("CPU:0");
 	o3c::Tensor extrinsics = o3c::Tensor::Eye(4, o3c::Float64, host);
 
+	// === compute initial volume state after integrating the plane image
+
 	float truncation_voxel_multiplier = 2.0f;
 	float depth_scale = 1000;
 	float depth_max = 3.0;
-	auto blocks_to_activate = volume.GetUniqueBlockCoordinates(initial_depth_image, intrinsics, extrinsics, depth_scale, depth_max,
-	                                                           truncation_voxel_multiplier);
-	volume.Integrate(blocks_to_activate, initial_depth_image, initial_color_image, intrinsics, intrinsics, extrinsics, depth_scale, depth_max,
+	auto blocks_to_activate_for_plane = volume.GetUniqueBlockCoordinates(initial_depth_image, intrinsics, extrinsics, depth_scale, depth_max,
+	                                                                     truncation_voxel_multiplier);
+	volume.Integrate(blocks_to_activate_for_plane, initial_depth_image, initial_color_image, intrinsics, intrinsics, extrinsics, depth_scale,
+	                 depth_max,
 	                 truncation_voxel_multiplier);
 
+	// === set up the motion field graph and the motion field updates that correspond to the next frame
 	int64_t node_count = 5;
 	o3c::Tensor nodes(std::vector<std::float_t>({0.0, 0.0, 0.05,
 	                                             0.02, 0.0, 0.05,
@@ -268,12 +273,37 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 
 	o3c::Tensor node_translations = o3c::Tensor::Zeros({node_count, 3}, o3c::Float32, device);
 	node_translations.SetItem(o3c::TensorKey::Index(2), o3c::Tensor(std::vector<float_t>({0.01}), {1}, o3c::Dtype::Float32, device));
+	o3c::Tensor edges(std::vector<std::int32_t>({1, 2, 3, 4,
+	                                             -1, -1, -1, -1,
+	                                             -1, -1, -1, -1,
+	                                             -1, -1, -1, -1,
+	                                             -1, -1, -1, -1}), {5, 4}, o3c::Int32, device);
+	o3c::Tensor edge_weights = o3c::Tensor::Ones(edges.GetShape(), o3c::Float32, device);
+	o3c::Tensor clusters = o3c::Tensor::Zeros({5}, o3c::Int32, device);
+	float node_coverage = 0.05f;
+	nnrt::geometry::GraphWarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, 3);
+	graph_warp_field.rotations = node_rotations;
+	graph_warp_field.translations = node_translations;
+
+	// === compute deformed image and resulting point cloud + normals
 
 	o3c::Tensor deformed_depth_image_pixels(image_size, o3c::UInt16, device);
 	deformed_depth_image_pixels.Fill(depth_of_plane);
 
 	PinchPixelsAtCenter(deformed_depth_image_pixels, 20, 10.0f, device);
+	o3tg::Image deformed_depth_image(deformed_depth_image_pixels);
 
+	o3tg::PointCloud point_cloud = o3tg::PointCloud::CreateFromDepthImage(deformed_depth_image, intrinsics, extrinsics, depth_scale, depth_max);
+	auto normals = nnrt::geometry::ComputeOrderedPointCloudNormals(point_cloud, image_size);
+	point_cloud.SetPointNormals(normals);
+
+	// === conduct the volumetric integration
+	// TODO: integrate_non_rigid should work even if blocks_to_activate is emtpy -- and needs to have an overload
+	//   where blocks_to_activate is not provided
+	o3c::Tensor blocks_to_activate_for_deformed_plane(std::vector<int32_t>({0, 0, 1}), {1, 3}, o3c::Dtype::Int32, device);
+	volume.IntegrateNonRigid(blocks_to_activate_for_deformed_plane,
+	                         graph_warp_field, deformed_depth_image, initial_color_image, normals, intrinsics, intrinsics, extrinsics, depth_scale,
+	                         depth_max, truncation_voxel_multiplier);
 
 
 }

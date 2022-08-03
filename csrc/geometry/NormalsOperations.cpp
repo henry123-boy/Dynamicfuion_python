@@ -68,6 +68,8 @@ void ComputeVertexNormals(open3d::t::geometry::TriangleMesh& mesh, bool normaliz
 
 void ComputeOrderedPointCloudNormals(o3c::Tensor normals, int64_t point_count, const open3d::core::SizeVector& source_image_size);
 
+
+//TODO: compare outputs with open3d::t::geometry::Image::CreateNormalMap and replace this with that if possible/necessary
 open3d::core::Tensor
 ComputeOrderedPointCloudNormals(const open3d::t::geometry::PointCloud& point_cloud, const open3d::core::SizeVector& source_image_size) {
 	if(source_image_size.size() != 2){
