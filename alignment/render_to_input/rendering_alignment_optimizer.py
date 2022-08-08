@@ -54,7 +54,7 @@ class RenderingAlignmentOptimizer:
             point_to_plane_distances_torch = torch_dlpack.from_dlpack(point_to_plane_distances_o3d.to_dlpack())
             data_residuals = apply_data_residual_penalty(point_to_plane_distances_torch)
 
-            rotations = torch_dlpack.from_dlpack(graph.rotations.to_dlpack())
+            rotations = torch_dlpack.from_dlpack(graph.get_node_rotations().to_dlpack())
 
             data_jacobian = torch.zeros((data_residuals.shape[0], len(graph.nodes) * 6), dtype=rotations.dtype,
                                         device=rotations.device)  # (target point count, node count * 6)

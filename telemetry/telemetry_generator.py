@@ -257,5 +257,5 @@ class TelemetryGenerator:
         if self.record_graph_transformations:
             self.save_frame_numpy_array(graph.nodes.cpu().numpy(), "nodes")
             self.save_frame_numpy_array(graph.edges.cpu().numpy(), "edges")
-            self.save_frame_numpy_array(graph.rotations.cpu().numpy(), "rotations")
-            self.save_frame_numpy_array(graph.translations.cpu().numpy(), "translations")
+            self.save_frame_numpy_array(graph.get_node_rotations().cpu().numpy(), "rotations")
+            self.save_frame_numpy_array(graph.get_node_translations().cpu().numpy(), "translations")

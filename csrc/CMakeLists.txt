@@ -81,6 +81,10 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/PointDownsamplingCPU.cpp
     geometry/kernel/PointDownsamplingCUDA.cu
 
+    geometry/VoxelBlockGrid.h
+    geometry/VoxelBlockGrid.cpp
+    geometry/kernel/VoxelGridDtypeDispatch.h
+
     geometry/AnchorComputationMethod.h
     geometry/TransformationMode.h
     geometry/Comparison.h
@@ -171,7 +175,17 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperations.h
     geometry/kernel/NormalsOperationsImpl.h
     geometry/kernel/NormalsOperationsCPU.cpp
-    geometry/kernel/NormalsOperationsCUDA.cu pybind/pipelines/slam.h pybind/pipelines/spam.cpp geometry/VoxelBlockGrid.h geometry/VoxelBlockGrid.cpp geometry/kernel/VoxelGridDtypeDispatch.h)
+    geometry/kernel/NormalsOperationsCUDA.cu
+
+    pybind/pipelines/slam.h
+    pybind/pipelines/slam.cpp
+
+    io/CompressibleIStream.h
+    io/CompressibleIStream.cpp
+    io/CompressibleOStream.h
+    io/CompressibleOStream.cpp
+
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -237,7 +251,7 @@ endif ()
 set(BUILD_CUDA_MODULE_DIRECTIVE)
 if (DEFINED BUILD_CUDA_MODULE)
     set(BUILD_CUDA_MODULE_DIRECTIVE "BUILD_CUDA_MODULE=${BUILD_CUDA_MODULE}")
-endif()
+endif ()
 
 
 # Use `make pip-package` to create the pip package in the build directory

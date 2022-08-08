@@ -465,8 +465,8 @@ class FusionPipeline:
                 graph_for_integration = self.active_graph
             else:
                 graph_for_integration = self.keyframe_graphs[-1].clone()
-                graph_for_integration.rotate_nodes(self.active_graph.rotations)
-                graph_for_integration.translate_nodes(self.active_graph.translations)
+                graph_for_integration.rotate_nodes(self.active_graph.get_node_rotations())
+                graph_for_integration.translate_nodes(self.active_graph.get_node_translations())
             if current_frame_is_keyframe:
                 self.active_graph = graph_for_integration.apply_transformations()
                 self.keyframe_graphs.append(graph_for_integration)

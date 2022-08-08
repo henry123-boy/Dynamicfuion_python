@@ -620,6 +620,10 @@ if(NOT USE_SYSTEM_PNG)
 endif()
 list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_libpng)
 
+#zstr
+include(${NNRT_3RDPARTY_DIR}/zstr/zstr.cmake)
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS ext_zstr)
+
 if(SET_UP_U_2_NET)
     include(${NNRT_3RDPARTY_DIR}/U-2-Net/u-2-net.cmake)
 endif()

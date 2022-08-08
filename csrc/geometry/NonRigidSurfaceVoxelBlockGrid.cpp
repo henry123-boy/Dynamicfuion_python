@@ -116,24 +116,6 @@ int64_t NonRigidSurfaceVoxelBlockGrid::ActivateSleeveBlocks() {
 	return inactive_neighbor_of_active_blocks_coordinates.GetShape()[0];
 }
 
-std::ostream& operator<<(std::ostream& out, const NonRigidSurfaceVoxelBlockGrid& grid) {
-	// write header
-	float voxel_size = grid.GetVoxelSize();
-	int64_t block_resolution = grid.GetBlockResolution();
-	int64_t block_count = grid.GetBlockCount();
-	out.write(reinterpret_cast<const char*>(&voxel_size), sizeof(float));
-	out.write(reinterpret_cast<const char*>(&block_resolution), sizeof(int64_t));
-	out.write(reinterpret_cast<const char*>(&block_count), sizeof(int64_t));
-	// write device type members (since no serialization is provided for that)
-	int device_id = grid.GetDevice().GetID();
-	out.write(reinterpret_cast<const char*>(&device_id), sizeof(int));
-	o3c::Device::DeviceType device_type = grid.GetDevice().GetType();
-	out.write(reinterpret_cast<const char*>(&device_type), sizeof(o3c::Device::DeviceType));
-	//TODO
-	throw std::runtime_error("Not implemented.");
-
-	return out;
-}
 
 open3d::core::Tensor
 NonRigidSurfaceVoxelBlockGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,

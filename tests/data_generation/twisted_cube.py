@@ -10,7 +10,7 @@ from scipy.spatial.transform.rotation import Rotation
 
 import io as dio
 from settings import PathParameters, process_arguments
-from warp_field.graph_warp_field import GraphWarpFieldOpen3DPythonic
+from warp_field.graph_warp_field import GraphWarpField
 from rendering.pytorch3d_renderer import PyTorch3DRenderer
 
 NODE_COVERAGE = 0.05  # in meters
@@ -36,7 +36,7 @@ def save_sensor_data(seq_name: str, i_frame: int, depth: np.ndarray, color: np.n
     cv2.imwrite(depth_path, depth.astype(np.uint16))
 
 
-def save_graph_data(seq_name: str, i_frame: int, graph: GraphWarpFieldOpen3DPythonic):
+def save_graph_data(seq_name: str, i_frame: int, graph: GraphWarpField):
     root_output_directory = os.path.join(PathParameters.output_directory.value, seq_name)
 
     dst_graph_nodes_dir = os.path.join(root_output_directory, "graph_nodes")
@@ -68,8 +68,8 @@ def save_graph_data(seq_name: str, i_frame: int, graph: GraphWarpFieldOpen3DPyth
     dio.save_graph_nodes(output_graph_nodes_path, graph.nodes.cpu().numpy())
     dio.save_graph_edges(output_graph_edges_path, graph.edges.cpu().numpy())
     dio.save_graph_edges_weights(output_graph_edges_weights_path, graph.edge_weights.cpu().numpy())
-    dio.save_graph_node_translations(output_node_translations_path, graph.translations.cpu().numpy())
-    dio.save_graph_node_rotations(output_node_rotations_path, graph.rotations.cpu().numpy())
+    dio.save_graph_node_translations(output_node_translations_path, graph.get_node_translations().cpu().numpy())
+    dio.save_graph_node_rotations(output_node_rotations_path, graph.get_node_rotations().cpu().numpy())
     dio.save_graph_clusters(output_graph_clusters_path, graph.clusters.cpu().numpy())
 
 
@@ -137,7 +137,7 @@ def main():
 
     # setup deformation graph and subroutine
     # FIXME : replace with GraphWarpField directly from nnrt package
-    graph_open3d = GraphWarpFieldOpen3DPythonic(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
+    graph_open3d = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d)
 
     def rotate_cube(current_mesh: o3d.geometry.TriangleMesh, angle: float) -> o3d.geometry.TriangleMesh:
         global_rotation_matrix_top = np.array(Rotation.from_euler('y', angle).as_matrix(), dtype=np.float32)

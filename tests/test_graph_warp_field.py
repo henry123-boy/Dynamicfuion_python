@@ -188,11 +188,15 @@ def test_warp_field_clone(device: o3c.Device) -> None:
     clusters_o3d = o3c.Tensor(np.array([0] * len(nodes)), device=device)
     node_coverage = 0.5
     graph = GraphWarpField(nodes_o3d, edges_o3d, edge_weights_o3d, clusters_o3d, node_coverage=node_coverage)
-    graph.translations[0] += o3c.Tensor([0.2, 0.3, 0.4], dtype=o3c.Dtype.Float32, device=device)
-    gt_translation0 = graph.translations.cpu().numpy()[0]
+    translations: o3c.Tensor = graph.get_node_translations()
+    translations[0] += o3c.Tensor([0.2, 0.3, 0.4], dtype=o3c.Dtype.Float32, device=device)
+    graph.set_node_translations(translations)
+    gt_translation0 = graph.get_node_translations().cpu().numpy()[0]
     clone_graph = graph.clone()
-    clone_graph.translations[0] += o3c.Tensor([0.4, 0.6, 0.2], dtype=o3c.Dtype.Float32, device=device)
-    translation0 = graph.translations.cpu().numpy()[0]
+    translations = clone_graph.get_node_translations()
+    translations[0] += o3c.Tensor([0.4, 0.6, 0.2], dtype=o3c.Dtype.Float32, device=device)
+    clone_graph.set_node_translations(translations)
+    translation0 = graph.get_node_translations().cpu().numpy()[0]
     assert np.allclose(gt_translation0, translation0)
 
 

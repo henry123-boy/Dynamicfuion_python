@@ -35,8 +35,10 @@ def run_non_rigid_alignment(deform_net: DeformNet,
     graph_clusters_cuda = torch.utils.dlpack.from_dlpack(graph.clusters.to_dlpack()).reshape(-1, 1).unsqueeze(0)
 
     if use_graph_rotations_and_translations_as_estimates:
-        node_rotations_estimate_cuda = torch.utils.dlpack.from_dlpack(graph.rotations.to_dlpack()).unsqueeze(0)
-        node_translations_estimate_cuda = torch.utils.dlpack.from_dlpack(graph.translations.to_dlpack()).unsqueeze(0)
+        node_rotations_estimate_cuda = \
+            torch.utils.dlpack.from_dlpack(graph.get_node_rotations().to_dlpack()).unsqueeze(0)
+        node_translations_estimate_cuda = \
+            torch.utils.dlpack.from_dlpack(graph.get_node_translations().to_dlpack()).unsqueeze(0)
     else:
         node_rotations_estimate_cuda = None
         node_translations_estimate_cuda = None
