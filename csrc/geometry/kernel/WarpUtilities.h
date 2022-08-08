@@ -123,9 +123,9 @@ template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC
 inline void
 FindAnchorsAndWeightsForPointEuclidean_KDTree(int32_t* anchor_indices, float* anchor_weights, const int anchor_count,
-                                                        const kdtree::KdTreeNode* kd_tree_nodes,
-                                                        const int kd_tree_node_count, const NDArrayIndexer& node_indexer,
-                                                        const Eigen::Vector3f& point, const float node_coverage_squared) {
+                                              const kdtree::KdTreeNode* kd_tree_nodes,
+                                              const int kd_tree_node_count, const NDArrayIndexer& node_indexer,
+                                              const Eigen::Vector3f& point, const float node_coverage_squared) {
 	auto anchor_distances = anchor_weights; // repurpose the anchor weights array to hold anchor distances
 	// note that in this function, some nomenclature gets flipped around. Whereas we're still calling the motion graph control nodes as "nodes" here,
 	// in the KdTree context, KD Tree nodes become more relevant, whereas the old "graph" nodes are called "reference points".
@@ -194,22 +194,17 @@ FindAnchorsAndWeightsForPointShortestPath_Threshold(int32_t* anchor_indices, flo
 	return true;
 }
 
-template<typename TPoint>
+template<typename TPoint, typename TGetRotationForNode, typename TGetTranslationForNode>
 inline NNRT_DEVICE_WHEN_CUDACC
-void BlendWarp(
-		TPoint& warped_point,
-		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
-		const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
-		const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& source_point
-) {
+void BlendWarp(TPoint& warped_point, const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+               const NDArrayIndexer& node_indexer, const Eigen::Vector3f& source_point,
+               TGetRotationForNode&& get_rotation_for_node, TGetTranslationForNode&& get_translation_for_node) {
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		int anchor_node_index = anchor_indices[i_anchor];
 		if (anchor_node_index != -1) {
 			float anchor_weight = anchor_weights[i_anchor];
-			auto node_rotation_data = node_rotation_indexer.GetDataPtr<float>(anchor_node_index);
-			auto node_translation_data = node_translation_indexer.GetDataPtr<float>(anchor_node_index);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> node_rotation(node_rotation_data);
-			Eigen::Vector3f node_translation(node_translation_data);
+			auto node_rotation = get_rotation_for_node(anchor_node_index);
+			auto node_translation = get_translation_for_node(anchor_node_index);
 			auto node_pointer = node_indexer.GetDataPtr<float>(anchor_node_index);
 			Eigen::Vector3f node(node_pointer[0], node_pointer[1], node_pointer[2]);
 			warped_point += anchor_weight * (node + node_rotation * (source_point - node) + node_translation);
@@ -219,20 +214,48 @@ void BlendWarp(
 
 template<typename TPoint>
 inline NNRT_DEVICE_WHEN_CUDACC
-void BlendWarp_ValidAnchorCountThreshold(
-		TPoint& warped_point,
-		const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
-		const int minimum_valid_anchor_count,
-		const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
-		const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& source_point
-) {
+void BlendWarp(TPoint& warped_point, const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+               const NDArrayIndexer& node_indexer, const Eigen::Vector3f& source_point,
+               const NDArrayIndexer& node_rotation_indexer, const NDArrayIndexer& node_translation_indexer) {
+	BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, source_point,
+	          NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+		          return Eigen::Map<const Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(node_rotation_indexer.GetDataPtr<float>(i_node));
+	          },
+	          NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+		          return Eigen::Map<const Eigen::Vector3f>(node_translation_indexer.GetDataPtr<float>(i_node));
+	          }
+	);
+}
+
+template<typename TPoint, typename TGetRotationForNode, typename TGetTranslationForNode>
+inline NNRT_DEVICE_WHEN_CUDACC
+void BlendWarp_ValidAnchorCountThreshold(TPoint& warped_point, const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+                                         const int minimum_valid_anchor_count, const NDArrayIndexer& node_indexer,
+                                         const Eigen::Vector3f& source_point,
+                                         TGetRotationForNode&& get_rotation_for_node, TGetTranslationForNode&& get_translation_for_node) {
 	int valid_anchor_count = 0;
 	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
 		valid_anchor_count += static_cast<int>(anchor_indices[i_anchor] != -1);
 	}
 	if (valid_anchor_count >= minimum_valid_anchor_count) {
-		BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer,
-		          node_rotation_indexer, node_translation_indexer, source_point);
+		BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, source_point,
+		          get_rotation_for_node, get_translation_for_node);
+	}
+}
+
+template<typename TPoint, typename TGetRotationForNode, typename TGetTranslationForNode>
+inline NNRT_DEVICE_WHEN_CUDACC
+void BlendWarp_ValidAnchorCountThreshold(TPoint& warped_point, const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
+                                         const int minimum_valid_anchor_count, const NDArrayIndexer& node_indexer,
+                                         const Eigen::Vector3f& source_point,
+                                         const NDArrayIndexer& node_rotation_indexer, const NDArrayIndexer& node_translation_indexer) {
+	int valid_anchor_count = 0;
+	for (int i_anchor = 0; i_anchor < anchor_count; i_anchor++) {
+		valid_anchor_count += static_cast<int>(anchor_indices[i_anchor] != -1);
+	}
+	if (valid_anchor_count >= minimum_valid_anchor_count) {
+		BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, source_point,
+		          node_rotation_indexer, node_translation_indexer);
 	}
 }
 

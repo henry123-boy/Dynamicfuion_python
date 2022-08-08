@@ -314,14 +314,23 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
 	                     "input_mesh"_a, "disable_neighbor_thresholding"_a = true);
 	graph_warp_field.def("clone", &GraphWarpField::Clone);
+
+	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);
+	graph_warp_field.def("apply_transformations", &GraphWarpField::ApplyTransformations);
+
+	graph_warp_field.def("get_node_rotations", &GraphWarpField::GetNodeRotations);
+	graph_warp_field.def("get_node_translations", &GraphWarpField::GetNodeTranslations);
+	graph_warp_field.def("set_node_rotations", &GraphWarpField::SetNodeRotations, "node_rotations"_a);
+	graph_warp_field.def("set_node_translations", &GraphWarpField::SetNodeTranslations, "node_translations"_a);
+	graph_warp_field.def("translate_nodes", &GraphWarpField::TranslateNodes, "node_translation_deltas"_a);
+	graph_warp_field.def("rotate_nodes", &GraphWarpField::RotateNodes, "node_rotation_deltas"_a);
+
 	graph_warp_field.def_readonly("nodes", &GraphWarpField::nodes);
 	graph_warp_field.def_readonly("edges", &GraphWarpField::edges);
 	graph_warp_field.def_readonly("edge_weights", &GraphWarpField::edge_weights);
 	graph_warp_field.def_readonly("clusters", &GraphWarpField::clusters);
-	graph_warp_field.def_readwrite("translations", &GraphWarpField::translations);
-	graph_warp_field.def_readwrite("rotations", &GraphWarpField::rotations);
-	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);
-	graph_warp_field.def("apply_transformations", &GraphWarpField::ApplyTransformations);
+
+
 }
 
 void pybind_geometry_comparison(pybind11::module& m) {

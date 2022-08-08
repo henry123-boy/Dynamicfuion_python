@@ -37,6 +37,7 @@ namespace nnrt::geometry::kernel::voxel_grid{
         }                                                                   \
     }()
 
+
 #define DISPATCH_INPUT_DTYPE_TO_TEMPLATE(DEPTH_DTYPE, COLOR_DTYPE, ...)        \
     [&] {                                                                      \
         if (DEPTH_DTYPE == open3d::core::Float32 &&                            \

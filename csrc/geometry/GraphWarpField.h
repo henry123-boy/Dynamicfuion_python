@@ -65,7 +65,8 @@ class GraphWarpField {
 
 public:
 	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
-	               float node_coverage = 0.05, bool threshold_nodes_by_distance_by_default = false, int anchor_count = 4, int minimum_valid_anchor_count = 0);
+	               float node_coverage = 0.05, bool threshold_nodes_by_distance_by_default = false, int anchor_count = 4,
+	               int minimum_valid_anchor_count = 0);
 	GraphWarpField(const GraphWarpField& original) = default;
 	GraphWarpField(GraphWarpField&& other) = default;
 
@@ -79,9 +80,17 @@ public:
 
 	const core::KdTree& GetIndex() const;
 
+	OPEN3D_HOST_DEVICE Eigen::Map<const Eigen::Matrix<float, 3, 3, Eigen::RowMajor>> GetRotationForNode(int i_node) const {
+		return Eigen::Map<const Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(rotations_data + i_node * 9);
+	}
+
+	OPEN3D_HOST_DEVICE Eigen::Map<const Eigen::Vector3f> GetTranslationForNode(int i_node) const {
+		return Eigen::Map<const Eigen::Vector3f>(translations_data + i_node * 3);
+	}
+
 	template<open3d::core::Device::DeviceType TDeviceType, bool UseNodeDistanceThreshold>
 	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(int32_t* anchor_indices, float* anchor_weights,
-	                                               const Eigen::Vector3f& point) const {
+	                                                    const Eigen::Vector3f& point) const {
 		if (UseNodeDistanceThreshold) {
 			return kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
@@ -95,28 +104,46 @@ public:
 	}
 
 	template<open3d::core::Device::DeviceType TDeviceType>
-	NNRT_DEVICE_WHEN_CUDACC Eigen::Vector3f WarpPoint(const Eigen::Vector3f& point, const int32_t* anchor_indices, const float* anchor_weights) const{
+	NNRT_DEVICE_WHEN_CUDACC Eigen::Vector3f
+	WarpPoint(const Eigen::Vector3f& point, const int32_t* anchor_indices, const float* anchor_weights) const {
 		Eigen::Vector3f warped_point(0.f, 0.f, 0.f);
-		kernel::warp::BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer,
-		                        rotation_indexer, translation_indexer, point);
+		kernel::warp::BlendWarp(
+				warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, point,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+					return GetRotationForNode(i_node);
+				},
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+					return GetTranslationForNode(i_node);
+				}
+		);
 		return warped_point;
 	}
 
 	GraphWarpField Clone();
 
+
+	open3d::core::Tensor GetNodeRotations();
+	open3d::core::Tensor GetNodeTranslations();
+
+	void SetNodeRotations(const o3c::Tensor& node_rotations);
+	void SetNodeTranslations(const o3c::Tensor& node_translations);
+
+	void TranslateNodes(const o3c::Tensor& node_translation_deltas);
+	void RotateNodes(const o3c::Tensor& node_rotation_deltas);
+
 	//TODO: gradually hide these fields and expose only on a need-to-know basis
+	//TODO: store nodes, edges, and edge weights inside a open3d::t::geometry::TensorMap instead of separate fields
 	const open3d::core::Tensor nodes;
 	const open3d::core::Tensor edges;
 	const open3d::core::Tensor edge_weights;
 	const open3d::core::Tensor clusters;
 
-	open3d::core::Tensor translations;
-	open3d::core::Tensor rotations;
 
 	const float node_coverage;
 	const int anchor_count;
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
+
 
 
 private:
@@ -125,9 +152,18 @@ private:
 	const float node_coverage_squared;
 	const core::kernel::kdtree::KdTreeNode* kd_tree_nodes;
 	const int32_t kd_tree_node_count;
+
+
 	const open3d::t::geometry::kernel::NDArrayIndexer node_indexer;
-	const open3d::t::geometry::kernel::NDArrayIndexer rotation_indexer;
-	const open3d::t::geometry::kernel::NDArrayIndexer translation_indexer;
+
+	open3d::core::Tensor rotations;
+	open3d::core::Tensor translations;
+
+	float const* rotations_data;
+	float const* translations_data;
+
+	// const open3d::t::geometry::kernel::NDArrayIndexer rotation_indexer;
+	// const open3d::t::geometry::kernel::NDArrayIndexer translation_indexer;
 
 };
 

@@ -25,8 +25,8 @@ namespace nnrt::geometry::kernel::voxel_grid {
 void IntegrateNonRigid(
 		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
 		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal, index_t block_resolution,
-		float voxel_size, float sdf_truncation_distance, const open3d::core::Tensor& depth_tensor,
-		const open3d::core::Tensor& color_tensor, const open3d::core::Tensor& depth_normals,
+		float voxel_size, float sdf_truncation_distance, const open3d::core::Tensor& depth,
+		const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
 		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
 		const GraphWarpField& warp_field, float depth_scale, float depth_max
 ) {
@@ -35,7 +35,7 @@ void IntegrateNonRigid(
 			[&] {
 				IntegrateNonRigid<open3d::core::Device::DeviceType::CPU>(
 						block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
-						sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+						sdf_truncation_distance, depth, color, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
 						warp_field,
 						depth_scale, depth_max);
 			},
@@ -43,7 +43,7 @@ void IntegrateNonRigid(
 				NNRT_IF_CUDA(
 						IntegrateNonRigid<open3d::core::Device::DeviceType::CUDA>(
 								block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
-								sdf_truncation_distance, depth_tensor, color_tensor, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+								sdf_truncation_distance, depth, color, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
 								warp_field, depth_scale, depth_max);
 				);
 			}
@@ -103,6 +103,27 @@ void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates,
 				NNRT_IF_CUDA(
 						ExtractVoxelValuesAndCoordinates<open3d::core::Device::DeviceType::CUDA>(
 								voxel_values_and_coordinates, block_indices, block_keys, block_value_map, block_resolution, voxel_size
+						);
+				);
+			}
+
+	);
+}
+
+void ExtractVoxelValuesAt(o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& block_indices,
+                          const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map, int64_t block_resolution,
+                          float voxel_size) {
+	core::ExecuteOnDevice(
+			block_indices.GetDevice(),
+			[&] {
+				ExtractVoxelValuesAt<open3d::core::Device::DeviceType::CPU>(
+						voxel_values, query_coordinates, block_indices, block_keys, block_value_map, block_resolution, voxel_size
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ExtractVoxelValuesAt<open3d::core::Device::DeviceType::CUDA>(
+								voxel_values, query_coordinates, block_indices, block_keys, block_value_map, block_resolution, voxel_size
 						);
 				);
 			}

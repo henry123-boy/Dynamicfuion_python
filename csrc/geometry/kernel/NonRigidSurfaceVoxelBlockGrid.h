@@ -72,6 +72,15 @@ void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates,
                                       const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
                                       int64_t block_resolution, float voxel_size);
 
+void ExtractVoxelValuesAt(o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& query_block_indices,
+                          const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+                          int64_t block_resolution, float voxel_size);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ExtractVoxelValuesAt(o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& query_block_indices,
+                          const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+                          int64_t block_resolution, float voxel_size);
+
 } // namespace nnrt::geometry::kernel::tsdf
 
 

@@ -85,8 +85,8 @@ void WarpPoints_OnlineAnchors_Generic(o3c::Tensor& warped_points, const o3c::Ten
 
 				auto warped_point_data = warped_point_indexer.template GetDataPtr<float>(workload_idx);
 				Eigen::Map<Eigen::Vector3f> warped_point(warped_point_data);
-				warp::BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, node_rotation_indexer,
-				                node_translation_indexer, point);
+				warp::BlendWarp(warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, point, node_rotation_indexer,
+				                node_translation_indexer);
 			}
 	);
 }
@@ -163,8 +163,8 @@ void WarpPoints_PrecomputedAnchors_Generic(o3c::Tensor& warped_points, const o3c
 				const auto* node_anchors = anchor_indexer.template GetDataPtr<const int32_t>(workload_idx);
 				const auto* node_anchor_weights = anchor_weight_indexer.template GetDataPtr<const float>(workload_idx);
 				blend_warp(warped_point, node_anchors, node_anchor_weights,
-				           anchor_count, node_indexer, node_rotation_indexer,
-				           node_translation_indexer, source_point);
+				           anchor_count, node_indexer, source_point,
+						   node_rotation_indexer, node_translation_indexer);
 			}
 	);
 
@@ -180,12 +180,11 @@ void WarpPoints(o3c::Tensor& warped_points, const o3c::Tensor& points,
 			warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights,
 			[=]NNRT_DEVICE_WHEN_CUDACC(Eigen::Map<Eigen::Vector3f>& warped_point,
 			                           const int32_t* anchor_indices, const float* anchor_weights, const int anchor_count,
-			                           const NDArrayIndexer& node_indexer, const NDArrayIndexer& node_rotation_indexer,
-			                           const NDArrayIndexer& node_translation_indexer, const Eigen::Vector3f& source_point) {
+			                           const NDArrayIndexer& node_indexer, const Eigen::Vector3f& source_point,
+									   const NDArrayIndexer& node_rotation_indexer, const NDArrayIndexer& node_translation_indexer) {
 				warp::BlendWarp_ValidAnchorCountThreshold(
-						warped_point, anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_indexer, node_rotation_indexer,
-						node_translation_indexer, source_point
-				);
+						warped_point, anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, node_indexer, source_point,
+						node_rotation_indexer, node_translation_indexer);
 			}
 	);
 }
@@ -196,9 +195,8 @@ void WarpPoints(open3d::core::Tensor& warped_points, const open3d::core::Tensor&
                 const open3d::core::Tensor& node_translations,
                 const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights) {
 	WarpPoints_PrecomputedAnchors_Generic(
-			warped_points, points, nodes, node_rotations, node_translations, anchors, anchor_weights,
-			warp::BlendWarp<TDeviceType, Eigen::Map<Eigen::Vector3f>>
-	);
+			warped_points, points, nodes, node_rotations, node_translations,
+			warp::BlendWarp<TDeviceType, Eigen::Map<Eigen::Vector3f>>, anchors, anchor_weights);
 }
 
 

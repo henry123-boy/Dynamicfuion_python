@@ -46,6 +46,7 @@ public:
 	int64_t ActivateSleeveBlocks();
 
 	open3d::core::Tensor ExtractVoxelValuesAndCoordinates();
+	open3d::core::Tensor ExtractVoxelValuesAt(const open3d::core::Tensor& query_voxel_coordinates);
 	open3d::core::Tensor ExtractVoxelBlockCoordinates();
 
 protected:

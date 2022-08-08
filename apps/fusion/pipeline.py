@@ -450,25 +450,23 @@ class FusionPipeline:
         need_to_recompute_saved_anchors = False
 
         if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
-            self.active_graph.rotations = node_rotation_predictions
-            self.active_graph.translations = node_translation_predictions
+            self.active_graph.set_node_rotations(node_rotation_predictions)
+            self.active_graph.set_node_translations(node_translation_predictions)
             graph_for_integration = self.active_graph
         elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
-            self.active_graph.rotations = nnrt.core.matmul3d(self.active_graph.rotations,
-                                                             node_rotation_predictions)
-            self.active_graph.translations += node_translation_predictions
+            self.active_graph.rotate_nodes(node_rotation_predictions)
+            self.active_graph.translate_nodes(node_translation_predictions)
             graph_for_integration = self.active_graph
         elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
-            self.active_graph.rotations = node_rotation_predictions
-            self.active_graph.translations = node_translation_predictions
+            self.active_graph.set_node_rotations(node_rotation_predictions)
+            self.active_graph.set_node_translations(node_translation_predictions)
             if len(self.keyframe_graphs) == 0:
                 # we're at the initial keyframe, graph storage is unnecessary
                 graph_for_integration = self.active_graph
             else:
                 graph_for_integration = self.keyframe_graphs[-1].clone()
-                graph_for_integration.rotations = \
-                    nnrt.core.matmul3d(graph_for_integration.rotations, self.active_graph.rotations)
-                graph_for_integration.translations += self.active_graph.translations
+                graph_for_integration.rotate_nodes(self.active_graph.rotations)
+                graph_for_integration.translate_nodes(self.active_graph.translations)
             if current_frame_is_keyframe:
                 self.active_graph = graph_for_integration.apply_transformations()
                 self.keyframe_graphs.append(graph_for_integration)

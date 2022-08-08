@@ -90,10 +90,12 @@ void TestNonRigidSurfaceVoxelBlockGrid_GetBoundingBoxesOfWarpedBlocks(const o3c:
 	geometry::GraphWarpField field(nodes, edges, edge_weights, clusters, 1.0, false, 4);
 	// move one unit in the +x direction
 	std::vector<float> translation_data{1.0, 0.0, 0.0};
-	field.translations.SetItem(o3c::TensorKey::Index(0), o3c::Tensor(translation_data, {3}, o3c::Float32));
-	field.translations.SetItem(o3c::TensorKey::Index(1), o3c::Tensor(translation_data, {3}, o3c::Float32));
-	field.translations.SetItem(o3c::TensorKey::Index(2), o3c::Tensor(translation_data, {3}, o3c::Float32));
-	field.translations.SetItem(o3c::TensorKey::Index(3), o3c::Tensor(translation_data, {3}, o3c::Float32));
+	o3c::Tensor node_translations({4, 3}, o3c::Float32, device);
+	node_translations.SetItem(o3c::TensorKey::Index(0), o3c::Tensor(translation_data, {3}, o3c::Float32));
+	node_translations.SetItem(o3c::TensorKey::Index(1), o3c::Tensor(translation_data, {3}, o3c::Float32));
+	node_translations.SetItem(o3c::TensorKey::Index(2), o3c::Tensor(translation_data, {3}, o3c::Float32));
+	node_translations.SetItem(o3c::TensorKey::Index(3), o3c::Tensor(translation_data, {3}, o3c::Float32));
+	field.SetNodeTranslations(node_translations);
 
 
 	o3c::Tensor bounding_boxes;
@@ -193,30 +195,38 @@ o3c::Tensor ConstructSimpleIntrinsics(double f = 100, double c_x = 50, double c_
 	);
 }
 
-void PinchPixelsAtCenter(o3c::Tensor& pixels, int64_t pinch_radius_pixels, float pinch_height_mm, const o3c::Device& device) {
+void HemisphereAtDepthImageCenter(o3c::Tensor& pixels, int64_t radius_pixels, float height_mm, const o3c::Device& device) {
 	int64_t image_height = pixels.GetShape(0);
 	int64_t image_width = pixels.GetShape(1);
-	int64_t pinch_diameter = pinch_radius_pixels * 2;
-	// same as np.linspace(-1, 1, pinch_diameter)[None, :] * pinch_height
+	int64_t pinch_diameter = radius_pixels * 2;
+	// same as np.linspace(-1, 1, pinch_diameter)[None, :] * pinch_radius
 	o3c::Tensor pinch_y_coordinates = o3c::Tensor::Arange(-1.0, 1.0, 2.0 / static_cast<double>(pinch_diameter - 1), o3c::Float32, device)
 			                                  .Append(o3c::Tensor(std::vector<float_t>({1.0f}), {1}, o3c::Dtype::Float32, device)).Reshape(
-			{1, pinch_diameter}) * pinch_height_mm;
+			{1, pinch_diameter}) * static_cast<float>(radius_pixels);
 
-	// same as np.linspace(-1, 1, pinch_diameter)[:, None] * pinch_height
+	// same as np.linspace(-1, 1, pinch_diameter)[:, None] * pinch_radius
 	o3c::Tensor pinch_x_coordinates = o3c::Tensor::Arange(-1.0, 1.0, 2.0 / static_cast<double>(pinch_diameter - 1), o3c::Float32, device)
 			                                  .Append(o3c::Tensor(std::vector<float_t>({1.0f}), {1}, o3c::Dtype::Float32, device)).Reshape(
-			{pinch_diameter, 1}) * pinch_height_mm;
+			{pinch_diameter, 1}) * static_cast<float>(radius_pixels);
 
 	o3c::Tensor y_2 = pinch_y_coordinates * pinch_y_coordinates;
 	o3c::Tensor x_2 = pinch_x_coordinates * pinch_x_coordinates;
-	o3c::Tensor norms_squared = y_2 + x_2;
-	o3c::Tensor delta = -pinch_height_mm + norms_squared.Sqrt();
+	o3c::Tensor radius_2 = static_cast<float>(radius_pixels * radius_pixels) * o3c::Tensor::Ones(y_2.GetShape(), o3c::Float32, device);
+	o3c::Tensor z_2 = radius_2 - x_2 - y_2;
+	o3c::Tensor zeros = o3c::Tensor::Zeros(z_2.GetShape(), o3c::Float32, device);
+	o3c::Tensor z_2_below_0 = z_2 < zeros;
+	z_2.SetItem(o3c::TensorKey::IndexTensor(z_2_below_0), zeros);
+	o3c::Tensor z = z_2.Sqrt();
+
+	o3c::Tensor delta = height_mm * (z / z.Max({0, 1}));
 
 	int64_t half_image_width = image_width / 2;
 	int64_t half_image_height = image_height / 2;
+
 	pixels
-			.Slice(0, half_image_height - pinch_radius_pixels, half_image_height + pinch_radius_pixels)
-			.Slice(1, half_image_width - pinch_radius_pixels, half_image_width + pinch_radius_pixels) += delta.Round().To(o3c::UInt16);
+			.Slice(0, half_image_height - radius_pixels, half_image_height + radius_pixels)
+			.Slice(1, half_image_width - radius_pixels, half_image_width + radius_pixels) += delta.Round().To(o3c::UInt16);
+
 }
 
 void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& device) {
@@ -272,7 +282,8 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	}
 
 	o3c::Tensor node_translations = o3c::Tensor::Zeros({node_count, 3}, o3c::Float32, device);
-	node_translations.SetItem(o3c::TensorKey::Index(2), o3c::Tensor(std::vector<float_t>({0.01}), {1}, o3c::Dtype::Float32, device));
+	// move just the first node 1 cm towards the camera
+	node_translations.SetItem(o3c::TensorKey::Index(0), o3c::Tensor(std::vector<float_t>({0.f, 0.f, -0.01}), {3}, o3c::Dtype::Float32, device));
 	o3c::Tensor edges(std::vector<std::int32_t>({1, 2, 3, 4,
 	                                             -1, -1, -1, -1,
 	                                             -1, -1, -1, -1,
@@ -280,17 +291,19 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	                                             -1, -1, -1, -1}), {5, 4}, o3c::Int32, device);
 	o3c::Tensor edge_weights = o3c::Tensor::Ones(edges.GetShape(), o3c::Float32, device);
 	o3c::Tensor clusters = o3c::Tensor::Zeros({5}, o3c::Int32, device);
-	float node_coverage = 0.05f;
-	nnrt::geometry::GraphWarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, 3);
-	graph_warp_field.rotations = node_rotations;
-	graph_warp_field.translations = node_translations;
+	float node_coverage = 0.005f;
+	int minimum_valid_anchor_count = 1;
+	nnrt::geometry::GraphWarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, minimum_valid_anchor_count);
+	graph_warp_field.SetNodeRotations(node_rotations);
+	graph_warp_field.SetNodeTranslations(node_translations);
 
 	// === compute deformed image and resulting point cloud + normals
 
 	o3c::Tensor deformed_depth_image_pixels(image_size, o3c::UInt16, device);
 	deformed_depth_image_pixels.Fill(depth_of_plane);
 
-	PinchPixelsAtCenter(deformed_depth_image_pixels, 20, 10.0f, device);
+	// pinch plane at the center 1 cm towards the camera, with 1 cm (20 pixel) radius
+	HemisphereAtDepthImageCenter(deformed_depth_image_pixels, 20, 10.0f, device);
 	o3tg::Image deformed_depth_image(deformed_depth_image_pixels);
 
 	o3tg::PointCloud point_cloud = o3tg::PointCloud::CreateFromDepthImage(deformed_depth_image, intrinsics, extrinsics, depth_scale, depth_max);
@@ -305,7 +318,35 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	                         graph_warp_field, deformed_depth_image, initial_color_image, normals, intrinsics, intrinsics, extrinsics, depth_scale,
 	                         depth_max, truncation_voxel_multiplier);
 
+	auto voxel_values_and_coordinates = volume.ExtractVoxelValuesAt(
+			o3c::Tensor(std::vector<int>({0, 0, 5, // center of original plane is at 0.0, 0.0, 0.05, location of node 0
+			                              1, 0, 5, // x + 1 (half-way between node 0 and node 1, within node coverage of both)
+			                              0, 1, 5, // y + 1 (half-way between node 0 and node 2, within node coverage of both)
+			                              2, 0, 5, // x + 2 (directly at node 1)
+			                              0, 2, 5, // y + 2 (directly at node 2)
+			                              0, 1, 6, // y + 1, z + 1 (somewhat above and behind node 0, NOT within node coverage)
+			                              0, 0, 6, // z + 1 (behind node 0, within node coverage)
+			                              0, 0, 4 // z - 1 (in front of node 0, within node coverage)
+			                             }),
+			            {8, 3}, o3c::Int32, device)
+	);
 
+	o3c::Tensor ground_truth(
+			std::vector<float>(
+					{
+							0.0, 0.0, 0.05, 0.5, 1.0, 100.0, 100.0, 100.0, // influenced by node 0. Motion equates the pinch, at isosurface
+							0.01, 0.0, 0.05, 0.125, 1.0, 100.0, 100.0, 100.0, // heavily influenced by node 0, somewhat by node 1
+							0.0, 0.01, 0.05, 0.125, 1.0, 100.0, 100.0, 100.0, // heavily influenced by node 0, somewhat by node 2
+							0.02, 0.0, 0.05, 0.0, 1.0, 100.0, 100.0, 100.0, // influenced by node 1 only, no motion, unchanged from isosurface
+							0.0, 0.02, 0.05, 0.0, 1.0, 100.0, 100.0, 100.0, // influenced by node 2 only, no motion, unchanged from isosurface
+							0.0, 0.01, 0.06, -0.5, 1.0, 100.0, 100.0, 100.0,
+							0.0, 0.0, 0.06, 0.0, 1.0, 100.0, 100.0, 100.0,
+							0.0, 0.0, 0.04, 0.5, 1.0, 100.0, 100.0, 100.0
+					}
+			), {8, 8}, o3c::Float32, device
+	);
+
+	REQUIRE(voxel_values_and_coordinates.AllClose(ground_truth, 1e-5, 5e-6));
 }
 
 

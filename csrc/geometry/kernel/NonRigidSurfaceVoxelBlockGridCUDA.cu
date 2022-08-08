@@ -15,9 +15,6 @@
 //  ================================================================
 
 #include <open3d/core/Dispatch.h>
-// #include <open3d/core/hashmap/CUDA/StdGPUHashmap.h>
-// #include <open3d/core/hashmap/DeviceHashmap.h>
-// #include <open3d/core/hashmap/Dispatch.h>
 #include <open3d/core/ParallelFor.h>
 
 #include "core/CUDA/DeviceHeapCUDA.cuh"
@@ -29,35 +26,35 @@ namespace o3c = open3d::core;
 namespace nnrt::geometry::kernel::voxel_grid {
 
 template
-void IntegrateNonRigid<open3d::core::Device::DeviceType::CUDA>(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
-                                                               t::geometry::TensorMap& block_value_map,
-                                                               open3d::core::Tensor& cos_voxel_ray_to_normal, index_t block_resolution,
-                                                               float voxel_size, float sdf_truncation_distance, const open3d::core::Tensor& depth,
-                                                               const open3d::core::Tensor& color,
-                                                               const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics,
-                                                               const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
-                                                               const GraphWarpField& warp_field,
-                                                               float depth_scale, float depth_max);
-
-template
-void GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& bounding_boxes,
-                                                                            const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
-                                                                            float voxel_size, index_t block_resolution,
-                                                                            const open3d::core::Tensor& extrinsics);
-template
-void GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& mask, const open3d::core::Tensor& boxes,
-		const open3d::core::Tensor& intrinsics,
-		const open3d::core::Tensor& depth, float depth_scale,
-		float depth_max, int32_t stride,
-		float truncation_distance
+void IntegrateNonRigid<open3d::core::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys, t::geometry::TensorMap& block_value_map,
+		open3d::core::Tensor& cos_voxel_ray_to_normal, index_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth, const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
+		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
+		const GraphWarpField& warp_field, float depth_scale, float depth_max
 );
 
 template
-void ExtractVoxelValuesAndCoordinates<open3d::core::Device::DeviceType::CUDA>(o3c::Tensor& voxel_values_and_coordinates,
-                                                                              const open3d::core::Tensor& block_indices,
-                                                                              const open3d::core::Tensor& block_keys,
-                                                                              const open3d::t::geometry::TensorMap& block_value_map,
-                                                                              int64_t block_resolution, float voxel_size);
+void GetBoundingBoxesOfWarpedBlocks<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field, float voxel_size,
+		index_t block_resolution, const open3d::core::Tensor& extrinsics
+);
+template
+void GetAxisAlignedBoxesInterceptingSurfaceMask<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& depth,
+		float depth_scale, float depth_max, int32_t stride, float truncation_distance
+);
+
+template
+void ExtractVoxelValuesAndCoordinates<open3d::core::Device::DeviceType::CUDA>(
+		o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		const open3d::t::geometry::TensorMap& block_value_map, int64_t block_resolution, float voxel_size
+);
+
+template
+void ExtractVoxelValuesAt<open3d::core::Device::DeviceType::CUDA>(
+		o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& query_block_indices,
+		const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map, int64_t block_resolution, float voxel_size
+);
 
 } // namespace nnrt::geometry::kernel::tsdf

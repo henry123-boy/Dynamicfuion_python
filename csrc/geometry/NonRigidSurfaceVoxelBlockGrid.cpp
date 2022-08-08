@@ -28,35 +28,6 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::geometry {
 
 
-inline static void PrepareDepthAndColorForIntegration(o3c::Tensor& depth_tensor, o3c::Tensor& color_tensor,
-                                                      const o3tg::Image& depth, const o3tg::Image& color,
-                                                      const std::unordered_map<std::string, int>& name_attr_map_) {
-	//TODO: make this check pass when upgrading to Open3D > 0.15.1
-	// open3d::t::geometry::CheckDepthTensor(depth_tensor);
-
-	depth_tensor = depth.AsTensor().To(o3c::Dtype::Float32).Contiguous();
-
-	if (color.IsEmpty()) {
-		o3u::LogDebug(
-				"[TSDFIntegrateWarped] color image is empty, perform depth "
-				"integration only.");
-	} else if (color.GetRows() == depth.GetRows() &&
-	           color.GetCols() == depth.GetCols() && color.GetChannels() == 3) {
-		if (name_attr_map_.count("color") != 0) {
-			color_tensor = color.AsTensor().To(o3c::Dtype::Float32).Contiguous();
-		} else {
-			o3u::LogWarning(
-					"[TSDFIntegrateWarped] color image is ignored since voxels do "
-					"not contain colors.");
-		}
-	} else {
-		o3u::LogWarning(
-				"[TSDFIntegrateWarped] color image is ignored for the incompatible "
-				"shape.");
-	}
-}
-
-
 // TODO: adapt to adhere to the new allocation / integration function split, as in Open3D v >0.15.1
 open3d::core::Tensor
 NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& block_coords, const GraphWarpField& warp_field,
@@ -78,11 +49,6 @@ NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& blo
 	o3tg::CheckIntrinsicTensor(color_intrinsics);
 	o3tg::CheckExtrinsicTensor(extrinsics);
 
-	// Prepare intrinsics, extrinsics, depth, and color
-	o3c::Tensor depth_tensor, color_tensor;
-	PrepareDepthAndColorForIntegration(depth_tensor, color_tensor, depth, color, this->name_attr_map_);
-	static const o3c::Device host("CPU:0");
-
 	// Activate indicated blocks
 	o3c::Tensor buffer_indices, masks;
 
@@ -100,7 +66,7 @@ NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& blo
 	                                      block_value_map,
 	                                      cos_voxel_ray_to_normal, this->block_resolution_, this->voxel_size_,
 	                                      this->voxel_size_ * truncation_voxel_multiplier,
-	                                      depth_tensor, color_tensor, depth_normals,
+	                                      depth.AsTensor(), color.AsTensor(), depth_normals,
 	                                      depth_intrinsics, color_intrinsics, extrinsics,
 	                                      warp_field, depth_scale, depth_max);
 
@@ -176,14 +142,16 @@ NonRigidSurfaceVoxelBlockGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core
 	o3c::AssertTensorShape(block_keys, { o3u::nullopt, 3 });
 
 	o3c::Tensor bounding_boxes;
-	kernel::voxel_grid::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, warp_field, this->GetVoxelSize(), this->block_resolution_, extrinsics);
+	kernel::voxel_grid::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, warp_field, this->GetVoxelSize(), this->block_resolution_,
+	                                                   extrinsics);
 	return bounding_boxes;
 }
 
 open3d::core::Tensor
 NonRigidSurfaceVoxelBlockGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes, const open3d::t::geometry::Image& depth,
                                                                           const open3d::core::Tensor& intrinsics, float depth_scale,
-                                                                          float depth_max, int downsampling_factor, float trunc_voxel_multiplier) const {
+                                                                          float depth_max, int downsampling_factor,
+                                                                          float trunc_voxel_multiplier) const {
 	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
 	//TODO: figure out why we need NumElements > 0, make this check pass
 	// open3d::t::geometry::CheckDepthTensor(depth.AsTensor());
@@ -191,8 +159,9 @@ NonRigidSurfaceVoxelBlockGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const 
 	o3c::AssertTensorShape(boxes, { o3u::nullopt, 6 });
 
 	o3c::Tensor mask;
-	kernel::voxel_grid::GetAxisAlignedBoxesInterceptingSurfaceMask(mask, boxes, intrinsics, depth.AsTensor(), depth_scale, depth_max, downsampling_factor,
-	                                                         this->voxel_size_ * trunc_voxel_multiplier);
+	kernel::voxel_grid::GetAxisAlignedBoxesInterceptingSurfaceMask(mask, boxes, intrinsics, depth.AsTensor(), depth_scale, depth_max,
+	                                                               downsampling_factor,
+	                                                               this->voxel_size_ * trunc_voxel_multiplier);
 	return mask;
 }
 
@@ -243,7 +212,34 @@ open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelValuesAndCoordin
 open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelBlockCoordinates() {
 	o3c::Tensor active_block_indices;
 	this->block_hashmap_->GetActiveIndices(active_block_indices);
-	return this->block_hashmap_->GetKeyTensor().GetItem(o3c::TensorKey::IndexTensor(active_block_indices.To(o3c::Int64))).To(o3c::Float32) * this->block_resolution_ * this->voxel_size_;
+	return this->block_hashmap_->GetKeyTensor().GetItem(o3c::TensorKey::IndexTensor(active_block_indices.To(o3c::Int64))).To(o3c::Float32) *
+	       this->block_resolution_ * this->voxel_size_;
+}
+
+open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelValuesAt(const open3d::core::Tensor& query_voxel_coordinates) {
+	o3c::AssertTensorDtype(query_voxel_coordinates, o3c::Int32);
+	o3c::AssertTensorShape(query_voxel_coordinates, { o3u::nullopt, 3 });
+
+	o3tg::TensorMap block_value_map =
+			VoxelBlockGrid::ConstructTensorMap(*block_hashmap_, name_attr_map_);
+
+
+
+	o3c::Tensor query_block_coordinates = query_voxel_coordinates / this->block_resolution_;
+	o3c::Tensor query_block_indices, query_block_index_mask;
+	this->block_hashmap_->Find(query_block_coordinates, query_block_indices, query_block_index_mask);
+
+	o3c::Tensor active_query_coordinates = query_voxel_coordinates.GetItem(o3c::TensorKey::IndexTensor(query_block_index_mask));
+	o3c::Tensor active_query_block_indices = query_block_indices.GetItem(o3c::TensorKey::IndexTensor(query_block_index_mask));
+
+
+	o3c::Tensor voxel_values;
+	kernel::voxel_grid::ExtractVoxelValuesAt(voxel_values, active_query_coordinates, active_query_block_indices,
+											 this->block_hashmap_->GetKeyTensor(), block_value_map,
+	                                         this->GetBlockResolution(), this->voxel_size_);
+
+	return voxel_values;
+
 }
 
 

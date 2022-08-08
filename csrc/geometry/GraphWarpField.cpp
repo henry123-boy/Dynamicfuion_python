@@ -19,6 +19,7 @@
 #include <Eigen/Core>
 #include "geometry/kernel/Graph.h"
 #include "geometry/kernel/Warp.h"
+#include "core/linalg/Matmul3D.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -290,17 +291,16 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
                                o3c::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance_by_default, int anchor_count,
                                int minimum_valid_anchor_count) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
-		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
-		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
-
-		node_coverage(node_coverage),
-		anchor_count(anchor_count),
-		threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
+		node_coverage(node_coverage), anchor_count(anchor_count), threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(minimum_valid_anchor_count),
 
 		index(this->nodes), node_coverage_squared(node_coverage * node_coverage),
 		kd_tree_nodes(this->index.GetNodes()), kd_tree_node_count(this->index.GetNodeCount()),
-		node_indexer(this->nodes, 1), rotation_indexer(this->rotations, 1), translation_indexer(this->translations, 1) {
+		node_indexer(this->nodes, 1),
+
+		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
+		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
+		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
 	auto device = this->nodes.GetDevice();
 	o3c::AssertTensorDevice(this->edges, device);
 	o3c::AssertTensorDevice(this->edge_weights, device);
@@ -334,22 +334,19 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 
 //TODO: optimize by making some kind of clone method in KdTree that simply shifts all the KD node pointers instead of reindexing
 GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTree& index) :
-		nodes(index.GetPoints()),
-		edges(original.edges.Clone()),
-		edge_weights(original.edge_weights.Clone()),
-		clusters(original.clusters.Clone()),
-		translations(original.translations.Clone()),
-		rotations(original.rotations.Clone()),
-
-		node_coverage(original.node_coverage),
-		anchor_count(original.anchor_count),
+		nodes(index.GetPoints()), edges(original.edges.Clone()), edge_weights(original.edge_weights.Clone()), clusters(original.clusters.Clone()),
+		node_coverage(original.node_coverage), anchor_count(original.anchor_count),
 		threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(original.minimum_valid_anchor_count),
 
 		index(index),
 		node_coverage_squared(original.node_coverage_squared),
 		kd_tree_nodes(this->index.GetNodes()), kd_tree_node_count(this->index.GetNodeCount()),
-		node_indexer(this->nodes, 1), rotation_indexer(this->rotations, 1), translation_indexer(this->translations, 1) {}
+		node_indexer(this->nodes, 1),
+
+		rotations(original.rotations.Clone()),
+		translations(original.translations.Clone()),
+		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {}
 
 o3c::Tensor GraphWarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
@@ -391,6 +388,39 @@ GraphWarpField GraphWarpField::ApplyTransformations() const {
 
 GraphWarpField GraphWarpField::Clone() {
 	return {*this, this->index.Clone()};
+}
+
+void GraphWarpField::SetNodeRotations(const o3c::Tensor& node_rotations) {
+	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
+	o3c::AssertTensorShape(node_rotations, {this->nodes.GetLength(), 3, 3});
+	this->rotations = node_rotations;
+	rotations_data = this->rotations.GetDataPtr<float>();
+}
+
+void GraphWarpField::SetNodeTranslations(const o3c::Tensor& node_translations) {
+	o3c::AssertTensorDtype(node_translations, o3c::Float32);
+	o3c::AssertTensorShape(node_translations, {this->nodes.GetLength(), 3});
+	this->translations = node_translations;
+	translations_data = this->translations.GetDataPtr<float>();
+}
+
+void GraphWarpField::TranslateNodes(const o3c::Tensor& node_translation_deltas) {
+	this->translations += node_translation_deltas;
+}
+
+void GraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_deltas) {
+	o3c::Tensor new_rotations;
+	core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
+	this->rotations = new_rotations;
+	rotations_data = this->rotations.GetDataPtr<float>();
+}
+
+open3d::core::Tensor GraphWarpField::GetNodeRotations() {
+	return this->rotations;
+}
+
+open3d::core::Tensor GraphWarpField::GetNodeTranslations() {
+	return this->translations;
 }
 
 
