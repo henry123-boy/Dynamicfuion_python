@@ -252,12 +252,13 @@ public:
 	/// Retrieve total block count (incl. unactivated blocks)
 	int64_t GetBlockCount() const;
 
-	static open3d::t::geometry::TensorMap ConstructTensorMap(const open3d::core::HashMap& block_hashmap,
-	                                                         std::unordered_map<std::string, int> name_attr_map);
 	friend std::ostream& nnrt::io::operator<<(std::ostream& ostream, const VoxelBlockGrid& voxel_block_grid);
 	friend std::istream& nnrt::io::operator>>(std::istream& istream, VoxelBlockGrid& voxel_block_grid);
 
 protected:
+	static open3d::t::geometry::TensorMap ConstructTensorMap(const open3d::core::HashMap& block_hashmap,
+	                                                         std::unordered_map<std::string, int> name_attr_map);
+
 	void AssertInitialized() const;
 
 	float voxel_size_ = -1;

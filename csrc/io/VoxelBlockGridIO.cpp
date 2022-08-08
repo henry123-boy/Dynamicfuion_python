@@ -15,29 +15,58 @@
 //  ================================================================
 #include "VoxelBlockGridIO.h"
 #include "geometry/VoxelBlockGrid.h"
+#include "io/TensorIO.h"
+
+namespace o3c = open3d::core;
+namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::io {
 std::ostream& operator<<(std::ostream& ostream, const nnrt::geometry::VoxelBlockGrid& voxel_block_grid) {
 	// write header
-	float voxel_size = grid.GetVoxelSize();
-	int64_t block_resolution = grid.GetBlockResolution();
-	int64_t block_count = grid.GetBlockCount();
 	ostream.write(reinterpret_cast<const char*>(&voxel_block_grid.voxel_size_), sizeof(float));
-	ostream.write(reinterpret_cast<const char*>(&block_resolution), sizeof(int64_t));
-	ostream.write(reinterpret_cast<const char*>(&block_count), sizeof(int64_t));
-	// write device type members (since no serialization is provided for that)
-	int device_id = grid.GetDevice().GetID();
-	ostream.write(reinterpret_cast<const char*>(&device_id), sizeof(int));
-	o3c::Device::DeviceType device_type = grid.GetDevice().GetType();
-	ostream.write(reinterpret_cast<const char*>(&device_type), sizeof(o3c::Device::DeviceType));
-	//TODO
-	throw std::runtime_error("Not implemented.");
+	ostream.write(reinterpret_cast<const char*>(&voxel_block_grid.block_resolution_), sizeof(int64_t));
+	auto attribute_count = static_cast<int32_t>(voxel_block_grid.name_attr_map_.size());
+	ostream.write(reinterpret_cast<const char*>(&attribute_count), sizeof(int32_t));
+	// write name attribute map
+	for (auto& key_value_pair: voxel_block_grid.name_attr_map_) {
+		ostream << key_value_pair.first;
+		ostream.write(reinterpret_cast<const char*>(&key_value_pair.second), sizeof(int));
+	}
+	// write voxel block hash map capacity & contents
+	// TODO device & size
+	o3c::Tensor keys = voxel_block_grid.block_hashmap_->GetKeyTensor();
+	ostream << keys;
+	std::vector<o3c::Tensor> value_tensors = voxel_block_grid.block_hashmap_->GetValueTensors();
+	for (auto& value_tensor: value_tensors) {
+		ostream << value_tensor;
+	}
 
 	return ostream;
 }
 
 std::istream& operator>>(std::istream& istream, geometry::VoxelBlockGrid& voxel_block_grid) {
-	return istream;
+	istream.read(reinterpret_cast<char*>(&voxel_block_grid.voxel_size_), sizeof(float));
+	istream.read(reinterpret_cast<char*>(&voxel_block_grid.block_resolution_), sizeof(int64_t));
+	int32_t attribute_count;
+	istream.read(reinterpret_cast<char*>(&attribute_count), sizeof(int32_t));
+	voxel_block_grid.name_attr_map_.clear();
+	for (int32_t i_attribute = 0; i_attribute < attribute_count; i_attribute++) {
+		std::string attribute_name;
+		istream >> attribute_name;
+		int attribute_index;
+		istream.read(reinterpret_cast<char*>(&attribute_index), sizeof(int));
+		voxel_block_grid.name_attr_map_[attribute_name] = attribute_index;
+	}
+	o3c::Tensor keys;
+	istream >> keys;
+	std::vector<o3c::Tensor> value_tensors;
+	for(int32_t i_attribute = 0; i_attribute < attribute_count; i_attribute++) {
+		o3c::Tensor value_tensor;
+		istream >> value_tensor;
+		value_tensors.push_back(value_tensor);
+	}
+
+
 }
 
 } // nnrt::io

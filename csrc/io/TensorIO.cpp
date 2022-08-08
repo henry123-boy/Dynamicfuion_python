@@ -34,7 +34,7 @@ std::ostream& operator<<(std::ostream& ostream, const open3d::core::Tensor& tens
 	return ostream;
 }
 
-std::istream& operator>>(open3d::core::Tensor& tensor, std::istream& istream) {
+std::istream& operator>>(std::istream& istream, open3d::core::Tensor& tensor) {
 	o3c::SizeVector shape;
 	istream >> shape;
 	o3c::SizeVector strides;

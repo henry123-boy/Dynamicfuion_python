@@ -23,6 +23,6 @@
 namespace nnrt::io {
 
 std::ostream& operator<<(std::ostream& ostream, const open3d::core::Tensor& tensor);
-std::istream& operator>>(open3d::core::Tensor& tensor, std::istream& istream);
+std::istream& operator>>(std::istream& istream, open3d::core::Tensor& tensor);
 
 } // namespace nnrt::io
