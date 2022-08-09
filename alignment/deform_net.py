@@ -484,6 +484,7 @@ class DeformNet(nn.Module):
             batch_edge_count = graph_edge_pairs_filtered.shape[0]
             # endregion
 
+            # TODO: pass in existing node rotation and translation estimates
             ill_posed_system, residuals, rotations_current, translations_current, gn_point_clouds = \
                 self.optimizer.optimize_nodes(
                     match_count, optimized_node_count, batch_edge_count, graph_nodes_i, source_anchors, source_weights,
