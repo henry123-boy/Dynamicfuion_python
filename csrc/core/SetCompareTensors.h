@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/23/20.
-//  Copyright (c) 2020 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 8/15/22.
+//  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,29 +14,3 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-//stdlib
-#include <memory>
-#include <istream>
-
-
-namespace nnrt::io {
-class CompressibleIStream {
-public:
-	CompressibleIStream() : compression_enabled(false), file(nullptr) {};
-
-	explicit CompressibleIStream(const std::string& path, bool use_compression = true);
-
-	bool operator!() {
-		return file == nullptr || !file->good();
-	}
-
-	std::istream& IStream() {
-		return *file;
-	}
-
-	const bool compression_enabled;
-private:
-	std::unique_ptr<std::istream> file;
-
-};
-} // namespace nnrt::io
