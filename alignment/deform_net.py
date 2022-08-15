@@ -203,8 +203,8 @@ class DeformNet(nn.Module):
         ########################################################################
         # region Initialize graph structures.
         ########################################################################
-        num_nodes_total = graph_nodes.shape[1]
-        num_neighbors = graph_edges.shape[2]
+        node_count = graph_nodes.shape[1]
+        node_neighbor_count = graph_edges.shape[2]
 
         # We assume we always use 4 nearest anchors.
         assert pixel_anchors.shape[3] == 4
@@ -215,10 +215,10 @@ class DeformNet(nn.Module):
             node_translations = node_translations_estimate
         else:
             node_rotations = torch.eye(3, dtype=source.dtype, device=source.device).view(1, 1, 3, 3) \
-                .repeat(batch_count, num_nodes_total, 1, 1)
-            node_translations = torch.zeros((batch_count, num_nodes_total, 3), dtype=source.dtype, device=source.device)
+                .repeat(batch_count, node_count, 1, 1)
+            node_translations = torch.zeros((batch_count, node_count, 3), dtype=source.dtype, device=source.device)
 
-        deformations_validity = torch.zeros((batch_count, num_nodes_total), dtype=source.dtype, device=source.device)
+        deformations_validity = torch.zeros((batch_count, node_count), dtype=source.dtype, device=source.device)
         valid_solve = torch.zeros(batch_count, dtype=torch.uint8, device=source.device)
         deformed_points_prediction = torch.zeros((batch_count, self.gn_max_warped_points, 3), dtype=source.dtype,
                                                  device=source.device)
@@ -470,9 +470,9 @@ class DeformNet(nn.Module):
             # region Filter invalid edges.
             ############################################################################################################
             node_ids = torch.arange(optimized_node_count, dtype=torch.int32, device=source.device) \
-                .view(-1, 1).repeat(1, num_neighbors)  # (opt_num_nodes_i, num_neighbors)
-            graph_edge_pairs = torch.cat([node_ids.view(-1, num_neighbors, 1),
-                                          graph_edges_i.view(-1, num_neighbors, 1)],
+                .view(-1, 1).repeat(1, node_neighbor_count)  # (opt_num_nodes_i, num_neighbors)
+            graph_edge_pairs = torch.cat([node_ids.view(-1, node_neighbor_count, 1),
+                                          graph_edges_i.view(-1, node_neighbor_count, 1)],
                                          2)  # (opt_num_nodes_i, num_neighbors, 2)
 
             valid_edges = graph_edges_i >= 0
@@ -487,10 +487,11 @@ class DeformNet(nn.Module):
             # TODO: pass in existing node rotation and translation estimates
             ill_posed_system, residuals, rotations_current, translations_current, gn_point_clouds = \
                 self.optimizer.optimize_nodes(
+                    node_rotations, node_translations,
                     match_count, optimized_node_count, batch_edge_count, graph_nodes_i, source_anchors, source_weights,
                     source_points_filtered, source_colors_filtered, correspondence_weights_filtered,
                     xy_pixels_warped_filtered,
-                    target_matches_filtered, graph_edge_pairs_filtered, graph_edge_weights_pairs, num_neighbors,
+                    target_matches_filtered, graph_edge_pairs_filtered, graph_edge_weights_pairs, node_neighbor_count,
                     fx, fy, cx, cy, convergence_info[i_batch]
                 )
 

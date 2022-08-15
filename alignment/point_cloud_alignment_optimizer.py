@@ -65,7 +65,10 @@ class PointCloudAlignmentOptimizer:
         ], dtype=np.float32)
         self.vec_to_skew_mat = torch.from_numpy(vec_to_skew_mat_np).to('cuda')
 
-    def optimize_nodes(self, match_count: int, optimized_node_count: int, batch_edge_count: int,
+    def optimize_nodes(self,
+                       initial_node_rotations: Union[None, torch.Tensor],
+                       initial_node_translations: Union[None, torch.Tensor],
+                       match_count: int, optimized_node_count: int, batch_edge_count: int,
                        graph_nodes_i: torch.Tensor,
                        source_anchors: torch.Tensor, source_weights: torch.Tensor,
                        source_points_filtered: torch.Tensor, source_colors_filtered: torch.Tensor,
@@ -89,9 +92,16 @@ class PointCloudAlignmentOptimizer:
         # translation for every node. All node rotation parameters are listed first, and
         # then all node translation parameters are listed.
         #                        transform_delta = [rotations_current, translations_current]
-        rotations_current = torch.eye(3, dtype=float_dtype, device=device).view(1, 3, 3).repeat(optimized_node_count, 1,
-                                                                                                1)
-        translations_current = torch.zeros((optimized_node_count, 3, 1), dtype=float_dtype, device=device)
+        if initial_node_rotations is None:
+            rotations_current = torch.eye(3, dtype=float_dtype, device=device).view(1, 3, 3).\
+                repeat(optimized_node_count, 1, 1)
+        else:
+            rotations_current = initial_node_rotations.view((optimized_node_count, 3, 3))
+
+        if initial_node_translations is None:
+            translations_current = torch.zeros((optimized_node_count, 3, 1), dtype=float_dtype, device=device)
+        else:
+            translations_current = initial_node_translations.view((optimized_node_count, 3, 1))
 
         if self.gn_debug:
             print(

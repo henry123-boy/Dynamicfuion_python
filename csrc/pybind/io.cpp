@@ -51,8 +51,6 @@ void pybind_tensor_io(pybind11::module& m) {
 }
 
 void pybind_voxel_block_grid_io(pybind11::module& m) {
-	auto geometry_module = py::module::import("nnrt.geometry");
-	auto voxel_block_grid_class = geometry_module.attr("VoxelBlockGrid");
 	m.def("write_voxel_block_grid", [](const std::string& path, const nnrt::geometry::VoxelBlockGrid& voxel_block_grid, bool compressed) {
 		      pybind11::gil_scoped_release release;
 		      WriteVoxelBlockGrid(path, voxel_block_grid, compressed);
@@ -63,7 +61,6 @@ void pybind_voxel_block_grid_io(pybind11::module& m) {
 		      return ReadVoxelBlockGrid(path, compressed);
 	      }, "Write voxel block hash in binary form.",
 	      "path"_a, "compressed"_a = true);
-	auto non_rigid_surface_voxel_block_grid_class = geometry_module.attr("NonRigidSurfaceVoxelBlockGrid");
 	m.def("write_non_rigid_surface_voxel_block_grid", [](const std::string& path, const nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& non_rigid_surface_voxel_block_grid, bool compressed) {
 		      pybind11::gil_scoped_release release;
 		      WriteNonRigidSurfaceVoxelBlockGrid(path, non_rigid_surface_voxel_block_grid, compressed);

@@ -131,19 +131,6 @@ inline void FindTreeNodeAndSetUpChildRanges(RangeNode* range_nodes, RangeNode* r
 }
 } // namespace
 
-// __DEBUG
-// #define DEBUG_ST
-#ifdef DEBUG_ST
-namespace cpu_launcher_st {
-template<typename func_t>
-void ParallelFor(o3c::Device& device, int64_t n, const func_t& func) {
-	for (int64_t i = 0; i < n; ++i) {
-		func(i);
-	}
-}
-} // namespace cpu_launcher_st
-#endif
-
 template<open3d::core::Device::DeviceType TDeviceType>
 void BuildKdTreeIndex(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points) {
 	const int64_t point_count = points.GetLength();

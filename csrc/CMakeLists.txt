@@ -186,10 +186,6 @@ add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
     )
 
-#__DEBUG
-get_property(arch TARGET nnrt_cpp PROPERTY CUDA_ARCHITECTURES)
-message(STATUS "CUDA_ARCHITECTURES on nnrt_cpp: ${arch}")
-
 target_include_directories(nnrt_cpp PUBLIC
     ${PYTHON_INCLUDE_DIR}
     ${TORCH_INCLUDE_DIRS}

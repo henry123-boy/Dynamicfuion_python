@@ -290,6 +290,7 @@ class VisualizerApp(Generic3DViewerApp):
             if self.__alt_pressed:
                 self.cycle_mesh_color_mode()
                 self.render_window.Render()
+                self.__alt_pressed = False
             else:
                 self.meshes[self.shown_mesh_index].toggle_visibility()
                 self.update_text()
@@ -298,9 +299,12 @@ class VisualizerApp(Generic3DViewerApp):
         elif key == "c":
             if self.correspondence_set is not None:
                 if self.__alt_pressed:
+                    print("CHECK1")
                     self.cycle_correspondence_color_mode()
                     self.render_window.Render()
+                    self.__alt_pressed = False
                 else:
+                    print("CHECK")
                     self.correspondence_set.toggle_visibility()
                     self.update_text()
                     self.render_window.Render()
@@ -319,6 +323,7 @@ class VisualizerApp(Generic3DViewerApp):
             if self.__alt_pressed:
                 self.cycle_point_color_mode()
                 self.render_window.Render()
+                self.__alt_pressed = False
             else:
                 if len(self.point_clouds) > 0:
                     self.point_clouds[self.shown_point_cloud_index].toggle_visibility()
