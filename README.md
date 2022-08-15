@@ -96,7 +96,7 @@ The output for each run will be stored in a new subfolder containing the date an
 To visualize the output for a particular sequence saved at `<path_to_output_subfolder>`, run:
 
 ```shell
-python run_visualizer.py -o <path_to_output_subfolder>/frame_output
+python run_visualizer.py -o <path_to_output_subfolder>
 ```
 
 In the visualizer, you can use the following key combinations to navigate the output:

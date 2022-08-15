@@ -88,11 +88,11 @@ def test_warp_mesh(device, ground_truth_vertices):
     nodes_rotated = nodes_center + np.concatenate(((nodes[:4] - nodes_center).dot(global_rotation_matrix_bottom),
                                                    (nodes[4:] - nodes_center).dot(global_rotation_matrix_top)), axis=0)
 
-    graph_open3d.rotations = o3c.Tensor(
+    graph_open3d.set_node_rotations(o3c.Tensor(
         np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
-        device=device)
+        device=device))
     translations = nodes_rotated - nodes
-    graph_open3d.translations = o3c.Tensor(translations, device=device)
+    graph_open3d.set_node_translations(o3c.Tensor(translations, device=device))
 
     mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
 
@@ -137,8 +137,8 @@ def test_warp_mesh_2(device):
     rotations = np.load(str(test_data_path / "rotations.npy"))
     translations = np.load(str(test_data_path / "translations.npy"))
 
-    graph_open3d.rotations = o3c.Tensor(rotations, device=device)
-    graph_open3d.translations = o3c.Tensor(translations, device=device)
+    graph_open3d.set_node_rotations(o3c.Tensor(rotations, device=device))
+    graph_open3d.set_node_translations(o3c.Tensor(translations, device=device))
 
     mesh = o3d.t.geometry.TriangleMesh.from_legacy(input_mesh_legacy, device=device)
 
