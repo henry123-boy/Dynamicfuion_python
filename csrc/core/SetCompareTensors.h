@@ -14,3 +14,11 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
+namespace core{
+
+bool SetEqual(){
+
+}
+
+} // namespace core

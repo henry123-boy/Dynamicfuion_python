@@ -14,12 +14,17 @@
 //  limitations under the License.
 //  ================================================================
 // local
+#include <open3d/utility/Logging.h>
 #include "TensorIO.h"
 #include "io/SizeVectorIO.h"
 #include "io/DtypeIO.h"
 #include "io/BlobIO.h"
+#include "io/FileStreamSelector.h"
+
+#include <zstr.hpp>
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 
 namespace nnrt::io {
 
@@ -27,10 +32,11 @@ std::ostream& operator<<(std::ostream& ostream, const open3d::core::Tensor& tens
 	ostream << tensor.GetShape();
 	ostream << tensor.GetStrides();
 	ostream << tensor.GetDtype();
+
 	o3c::Device host("CPU:0");
 	o3c::Tensor prepped_tensor = tensor.Contiguous().To(host);
 	int64_t byte_size = prepped_tensor.GetDtype().ByteSize() * prepped_tensor.GetShape().NumElements();
-	ostream << std::make_pair(tensor.GetBlob(), byte_size);
+	ostream << std::make_pair(prepped_tensor.GetBlob(), byte_size);
 	return ostream;
 }
 
@@ -41,12 +47,30 @@ std::istream& operator>>(std::istream& istream, open3d::core::Tensor& tensor) {
 	istream >> strides;
 	o3c::Dtype dtype;
 	istream >> dtype;
+
+	if(istream.bad()){
+		o3u::LogError("Failure reading from istream.");
+	}
+
 	auto blob_and_bytesize = std::make_pair(std::shared_ptr<o3c::Blob>(nullptr), (int64_t)0L);
 	istream >> blob_and_bytesize;
 	// in the contiguous tensor case, the tensor pointer coincides with the blob pointer.
 	tensor = o3c::Tensor(shape, strides, blob_and_bytesize.first->GetDataPtr(), dtype, blob_and_bytesize.first);
 	return istream;
 }
+
+void WriteTensor(const std::string& path, const open3d::core::Tensor& tensor, bool compressed) {
+	WriteObject(path, tensor, compressed);
+}
+
+void ReadTensor(const std::string& path, open3d::core::Tensor& tensor, bool compressed) {
+	ReadObject(path, tensor, compressed);
+}
+
+open3d::core::Tensor ReadTensor(const std::string& path, bool compressed) {
+	return ReadObject<o3c::Tensor>(path, compressed);
+}
+
 
 } // namespace nnrt::io
 

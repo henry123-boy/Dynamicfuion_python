@@ -34,6 +34,7 @@
 #include <open3d/t/geometry/PointCloud.h>
 #include <open3d/t/geometry/TensorMap.h>
 #include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/core/Device.h>
 
 #include "io/VoxelBlockGridIO.h"
 
@@ -251,6 +252,10 @@ public:
 
 	/// Retrieve total block count (incl. unactivated blocks)
 	int64_t GetBlockCount() const;
+
+	VoxelBlockGrid To(const open3d::core::Device& device, bool force_copy = false) const;
+
+	friend bool operator==(const VoxelBlockGrid& rhs, const VoxelBlockGrid& lhs);
 
 	friend std::ostream& nnrt::io::operator<<(std::ostream& ostream, const VoxelBlockGrid& voxel_block_grid);
 	friend std::istream& nnrt::io::operator>>(std::istream& istream, VoxelBlockGrid& voxel_block_grid);

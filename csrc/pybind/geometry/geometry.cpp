@@ -53,7 +53,7 @@ void pybind_geometry_enums(pybind11::module& m) {
 void pybind_geometry_voxel_block_grid(pybind11::module& m) {
 	auto core_module = py::module::import("open3d.core");
 	py::module::import("open3d.cuda.pybind.t.geometry");
-	auto size_vector_obj = core_module.attr("SizeVector");
+	auto size_vector_class = core_module.attr("SizeVector");
 
 	py::class_<VoxelBlockGrid> voxel_block_grid(
 			m, "VoxelBlockGrid",

@@ -9,6 +9,7 @@
 #include "pybind/geometry/geometry.h"
 #include "pybind/pipelines/slam.h"
 #include "pybind/core.h"
+#include "pybind/io.h"
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s
@@ -36,9 +37,14 @@ PYBIND11_MODULE(nnrt, m) {
 
 	nnrt::core::pybind_core(m);
 	nnrt::geometry::pybind_geometry(m);
+	nnrt::io::pybind_io(m);
+
+	//TODO
 	nnrt::pipelines::slam::pybind_slam(m);
 
 
+
+	// legacy NNRT stuff below (deprecated)
 	m.def("compute_augmented_flow_from_rotation",
 	      &image_proc::compute_augmented_flow_from_rotation,
 	      "flow_image_rot_sa2so"_a, "flow_image_so2to"_a, "flow_image_rot_to2ta"_a, "height"_a, "width"_a,

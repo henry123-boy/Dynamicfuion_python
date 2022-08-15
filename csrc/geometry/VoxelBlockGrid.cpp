@@ -38,11 +38,11 @@ namespace o3u = open3d::utility;
 namespace o3tio = open3d::t::io;
 namespace o3tg = open3d::t::geometry;
 
-namespace nnrt::geometry{
+namespace nnrt::geometry {
 
 static std::pair<o3c::Tensor, o3c::Tensor> BufferRadiusNeighbors(
-		std::shared_ptr<o3c::HashMap> &hashmap,
-		const o3c::Tensor &active_buf_indices) {
+		std::shared_ptr<o3c::HashMap>& hashmap,
+		const o3c::Tensor& active_buf_indices) {
 	// Fixed radius search for spatially hashed voxel blocks.
 	// A generalization will be implementing dense/sparse fixed radius
 	// search with coordinates as hashmap keys.
@@ -60,7 +60,7 @@ static std::pair<o3c::Tensor, o3c::Tensor> BufferRadiusNeighbors(
 		int dx = nb % 3;
 		o3c::Tensor dt =
 				o3c::Tensor(std::vector<int>{dx - 1, dy - 1, dz - 1}, {1, 3},
-				             o3c::Int32, hashmap->GetDevice());
+				            o3c::Int32, hashmap->GetDevice());
 		keys_nb[nb] = active_keys + dt;
 	}
 	keys_nb = keys_nb.View({27 * n, 3});
@@ -72,10 +72,10 @@ static std::pair<o3c::Tensor, o3c::Tensor> BufferRadiusNeighbors(
 }
 
 o3tg::TensorMap VoxelBlockGrid::ConstructTensorMap(
-		const o3c::HashMap &block_hashmap,
+		const o3c::HashMap& block_hashmap,
 		std::unordered_map<std::string, int> name_attr_map) {
 	o3tg::TensorMap tensor_map("tsdf");
-	for (auto &v : name_attr_map) {
+	for (auto& v: name_attr_map) {
 		std::string name = v.first;
 		int buf_idx = v.second;
 		tensor_map[name] = block_hashmap.GetValueTensor(buf_idx);
@@ -84,24 +84,24 @@ o3tg::TensorMap VoxelBlockGrid::ConstructTensorMap(
 }
 
 VoxelBlockGrid::VoxelBlockGrid(
-		const std::vector<std::string> &attr_names,
-		const std::vector<o3c::Dtype> &attr_dtypes,
-		const std::vector<o3c::SizeVector> &attr_channels,
+		const std::vector<std::string>& attr_names,
+		const std::vector<o3c::Dtype>& attr_dtypes,
+		const std::vector<o3c::SizeVector>& attr_channels,
 		float voxel_size,
 		int64_t block_resolution,
 		int64_t block_count,
-		const o3c::Device &device,
-		const o3c::HashBackendType &backend)
+		const o3c::Device& device,
+		const o3c::HashBackendType& backend)
 		: voxel_size_(voxel_size), block_resolution_(block_resolution) {
 
 	// Sanity check
 	if (voxel_size <= 0) {
 		o3u::LogError("voxel size must be positive, but got {}",
-		                  voxel_size);
+		              voxel_size);
 	}
 	if (block_resolution <= 0) {
 		o3u::LogError("block resolution must be positive, but got {}",
-		                  block_resolution);
+		              block_resolution);
 	}
 
 
@@ -122,7 +122,7 @@ VoxelBlockGrid::VoxelBlockGrid(
 	// Specify block element shapes and attribute names.
 	std::vector<o3c::SizeVector> attr_element_shapes;
 	o3c::SizeVector block_shape{block_resolution, block_resolution,
-	                             block_resolution};
+	                            block_resolution};
 	for (size_t i = 0; i < n_attrs; ++i) {
 		// Construct element shapes.
 		o3c::SizeVector attr_channel = attr_channels[i];
@@ -141,11 +141,11 @@ VoxelBlockGrid::VoxelBlockGrid(
 			attr_element_shapes, device, backend);
 }
 
-o3c::Tensor VoxelBlockGrid::GetAttribute(const std::string &attr_name) const {
+o3c::Tensor VoxelBlockGrid::GetAttribute(const std::string& attr_name) const {
 	AssertInitialized();
 	if (name_attr_map_.count(attr_name) == 0) {
 		o3u::LogWarning("Attribute {} not found, return empty tensor.",
-		                    attr_name);
+		                attr_name);
 		return o3c::Tensor();
 	}
 	int buffer_idx = name_attr_map_.at(attr_name);
@@ -153,7 +153,7 @@ o3c::Tensor VoxelBlockGrid::GetAttribute(const std::string &attr_name) const {
 }
 
 o3c::Tensor VoxelBlockGrid::GetVoxelCoordinates(
-		const o3c::Tensor &voxel_indices) const {
+		const o3c::Tensor& voxel_indices) const {
 	AssertInitialized();
 	o3c::Tensor key_tensor = block_hashmap_->GetKeyTensor();
 
@@ -168,7 +168,7 @@ o3c::Tensor VoxelBlockGrid::GetVoxelCoordinates(
 }
 
 o3c::Tensor VoxelBlockGrid::GetVoxelIndices(
-		const o3c::Tensor &buf_indices) const {
+		const o3c::Tensor& buf_indices) const {
 	AssertInitialized();
 	o3c::Device device = block_hashmap_->GetDevice();
 
@@ -193,7 +193,7 @@ o3c::Tensor VoxelBlockGrid::GetVoxelIndices(
 	o3c::Tensor voxel_x = remainder - voxel_y * resolution;
 
 	o3c::Tensor voxel_indices = o3c::Tensor({4, n_blocks * resolution3},
-	                                          o3c::Dtype::Int64, device);
+	                                        o3c::Dtype::Int64, device);
 	voxel_indices[0] = buf_indices.IndexGet({block_idx}).To(o3c::Dtype::Int64);
 	voxel_indices[1] = voxel_x;
 	voxel_indices[2] = voxel_y;
@@ -216,7 +216,7 @@ VoxelBlockGrid::GetVoxelCoordinatesAndFlattenedIndices() {
 
 std::pair<o3c::Tensor, o3c::Tensor>
 VoxelBlockGrid::GetVoxelCoordinatesAndFlattenedIndices(
-		const o3c::Tensor &buf_indices) {
+		const o3c::Tensor& buf_indices) {
 	AssertInitialized();
 	// (N x resolution^3, 3) Float32; (N x resolution^3, 1) Int64
 	int64_t n = buf_indices.GetLength();
@@ -235,9 +235,9 @@ VoxelBlockGrid::GetVoxelCoordinatesAndFlattenedIndices(
 }
 
 o3c::Tensor VoxelBlockGrid::GetUniqueBlockCoordinates(
-		const o3tg::Image &depth,
-		const o3c::Tensor &intrinsic,
-		const o3c::Tensor &extrinsic,
+		const o3tg::Image& depth,
+		const o3c::Tensor& intrinsic,
+		const o3c::Tensor& extrinsic,
 		float depth_scale,
 		float depth_max,
 		float trunc_voxel_multiplier) {
@@ -261,16 +261,16 @@ o3c::Tensor VoxelBlockGrid::GetUniqueBlockCoordinates(
 
 	o3c::Tensor block_coords;
 	o3tg::kernel::voxel_grid::DepthTouch(frustum_hashmap_, depth.AsTensor(),
-	                               intrinsic, extrinsic, block_coords,
-	                               block_resolution_, voxel_size_,
-	                               voxel_size_ * trunc_voxel_multiplier,
-	                               depth_scale, depth_max, down_factor);
+	                                     intrinsic, extrinsic, block_coords,
+	                                     block_resolution_, voxel_size_,
+	                                     voxel_size_ * trunc_voxel_multiplier,
+	                                     depth_scale, depth_max, down_factor);
 
 	return block_coords;
 }
 
 o3c::Tensor VoxelBlockGrid::GetUniqueBlockCoordinates(
-		const o3tg::PointCloud &pcd, float trunc_voxel_multiplier) {
+		const o3tg::PointCloud& pcd, float trunc_voxel_multiplier) {
 	AssertInitialized();
 	o3c::Tensor positions = pcd.GetPointPositions();
 
@@ -291,10 +291,10 @@ o3c::Tensor VoxelBlockGrid::GetUniqueBlockCoordinates(
 	return block_coords;
 }
 
-void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
-                               const o3tg::Image &depth,
-                               const o3c::Tensor &intrinsic,
-                               const o3c::Tensor &extrinsic,
+void VoxelBlockGrid::Integrate(const o3c::Tensor& block_coords,
+                               const o3tg::Image& depth,
+                               const o3c::Tensor& intrinsic,
+                               const o3c::Tensor& extrinsic,
                                float depth_scale,
                                float depth_max,
                                float trunc_voxel_multiplier) {
@@ -302,11 +302,11 @@ void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
 	          depth_scale, depth_max, trunc_voxel_multiplier);
 }
 
-void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
-                               const o3tg::Image &depth,
-                               const o3tg::Image &color,
-                               const o3c::Tensor &intrinsic,
-                               const o3c::Tensor &extrinsic,
+void VoxelBlockGrid::Integrate(const o3c::Tensor& block_coords,
+                               const o3tg::Image& depth,
+                               const o3tg::Image& color,
+                               const o3c::Tensor& intrinsic,
+                               const o3c::Tensor& extrinsic,
                                float depth_scale,
                                float depth_max,
                                float trunc_voxel_multiplier) {
@@ -314,12 +314,12 @@ void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
 	          depth_scale, depth_max, trunc_voxel_multiplier);
 }
 
-void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
-                               const o3tg::Image &depth,
-                               const o3tg::Image &color,
-                               const o3c::Tensor &depth_intrinsic,
-                               const o3c::Tensor &color_intrinsic,
-                               const o3c::Tensor &extrinsic,
+void VoxelBlockGrid::Integrate(const o3c::Tensor& block_coords,
+                               const o3tg::Image& depth,
+                               const o3tg::Image& color,
+                               const o3c::Tensor& depth_intrinsic,
+                               const o3c::Tensor& color_intrinsic,
+                               const o3c::Tensor& extrinsic,
                                float depth_scale,
                                float depth_max,
                                float trunc_voxel_multiplier) {
@@ -350,18 +350,18 @@ void VoxelBlockGrid::Integrate(const o3c::Tensor &block_coords,
 			voxel_size_ * trunc_voxel_multiplier, depth_scale, depth_max);
 }
 
-o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor &block_coords,
-                                  const o3c::Tensor &intrinsic,
-                                  const o3c::Tensor &extrinsic,
-                                  int width,
-                                  int height,
-                                  const std::vector<std::string> attrs,
-                                  float depth_scale,
-                                  float depth_min,
-                                  float depth_max,
-                                  float weight_threshold,
-                                  float trunc_voxel_multiplier,
-                                  int range_map_down_factor) {
+o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor& block_coords,
+                                        const o3c::Tensor& intrinsic,
+                                        const o3c::Tensor& extrinsic,
+                                        int width,
+                                        int height,
+                                        const std::vector<std::string> attrs,
+                                        float depth_scale,
+                                        float depth_min,
+                                        float depth_max,
+                                        float weight_threshold,
+                                        float trunc_voxel_multiplier,
+                                        int range_map_down_factor) {
 	AssertInitialized();
 	o3tg::CheckBlockCoorinates(block_coords);
 	o3tg::CheckIntrinsicTensor(intrinsic);
@@ -372,26 +372,26 @@ o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor &block_coords,
 
 	o3c::Tensor range_minmax_map;
 	o3tg::kernel::voxel_grid::EstimateRange(block_coords, range_minmax_map, intrinsic,
-	                                  extrinsic, height, width,
-	                                  range_map_down_factor, block_resolution_,
-	                                  voxel_size_, depth_min, depth_max);
+	                                        extrinsic, height, width,
+	                                        range_map_down_factor, block_resolution_,
+	                                        voxel_size_, depth_min, depth_max);
 
 	static const std::unordered_map<std::string, int> kAttrChannelMap = {
 			// Conventional rendering
-			{"vertex", 3},
-			{"normal", 3},
-			{"depth", 1},
-			{"color", 3},
+			{"vertex",          3},
+			{"normal",          3},
+			{"depth",           1},
+			{"color",           3},
 			// Diff rendering
 			// Each pixel corresponds to info at 8 neighbor grid points
-			{"index", 8},
-			{"mask", 8},
-			{"interp_ratio", 8},
+			{"index",           8},
+			{"mask",            8},
+			{"interp_ratio",    8},
 			{"interp_ratio_dx", 8},
 			{"interp_ratio_dy", 8},
 			{"interp_ratio_dz", 8}};
 
-	auto get_dtype = [&](const std::string &attr_name) -> o3c::Dtype {
+	auto get_dtype = [&](const std::string& attr_name) -> o3c::Dtype {
 		if (attr_name == "mask") {
 			return o3c::Dtype::Bool;
 		} else if (attr_name == "index") {
@@ -403,7 +403,7 @@ o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor &block_coords,
 
 	o3tg::TensorMap renderings_map("range");
 	renderings_map["range"] = range_minmax_map;
-	for (const auto &attr : attrs) {
+	for (const auto& attr: attrs) {
 		if (kAttrChannelMap.count(attr) == 0) {
 			o3u::LogError(
 					"Unsupported attribute {}, please implement customized ray "
@@ -427,7 +427,7 @@ o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor &block_coords,
 }
 
 o3tg::PointCloud VoxelBlockGrid::ExtractPointCloud(float weight_threshold,
-                                             int estimated_point_number) {
+                                                   int estimated_point_number) {
 	AssertInitialized();
 	o3c::Tensor active_buf_indices;
 	block_hashmap_->GetActiveIndices(active_buf_indices);
@@ -459,7 +459,7 @@ o3tg::PointCloud VoxelBlockGrid::ExtractPointCloud(float weight_threshold,
 }
 
 o3tg::TriangleMesh VoxelBlockGrid::ExtractTriangleMesh(float weight_threshold,
-                                                 int estimated_vertex_number) {
+                                                       int estimated_vertex_number) {
 	AssertInitialized();
 	o3c::Tensor active_buf_indices_i32 = block_hashmap_->GetActiveIndices();
 	o3c::Tensor active_nb_buf_indices, active_nb_masks;
@@ -470,7 +470,7 @@ o3tg::TriangleMesh VoxelBlockGrid::ExtractTriangleMesh(float weight_threshold,
 	// Map active indices to [0, num_blocks] to be allocated for surface mesh.
 	int64_t num_blocks = block_hashmap_->Size();
 	o3c::Tensor inverse_index_map({block_hashmap_->GetCapacity()}, o3c::Int32,
-	                               device);
+	                              device);
 	o3c::Tensor iota_map =
 			o3c::Tensor::Arange(0, num_blocks, 1, o3c::Int32, device);
 	inverse_index_map.IndexSet({active_buf_indices_i32.To(o3c::Int64)},
@@ -496,7 +496,7 @@ o3tg::TriangleMesh VoxelBlockGrid::ExtractTriangleMesh(float weight_threshold,
 	return mesh;
 }
 
-void VoxelBlockGrid::Save(const std::string &file_name) const {
+void VoxelBlockGrid::Save(const std::string& file_name) const {
 	AssertInitialized();
 	// TODO(wei): provide 'GetActiveKeyValues' functionality.
 	o3c::Tensor keys = block_hashmap_->GetKeyTensor();
@@ -511,19 +511,19 @@ void VoxelBlockGrid::Save(const std::string &file_name) const {
 
 	// Save name attributes
 	output.emplace("voxel_size", o3c::Tensor(std::vector<float>{voxel_size_},
-	                                          {1}, o3c::Float32, host));
+	                                         {1}, o3c::Float32, host));
 	output.emplace("block_resolution",
 	               o3c::Tensor(std::vector<int64_t>{block_resolution_}, {1},
-	                            o3c::Int64, host));
+	                           o3c::Int64, host));
 	// Placeholder
 	output.emplace(block_hashmap_->GetDevice().ToString(),
 	               o3c::Tensor::Zeros({}, o3c::Dtype::UInt8, host));
 
-	for (auto &it : name_attr_map_) {
+	for (auto& it: name_attr_map_) {
 		// Workaround, as we don't support char tensors now.
 		output.emplace(fmt::format("attr_name_{}", it.first),
 		               o3c::Tensor(std::vector<int>{it.second}, {1},
-		                            o3c::Int32, host));
+		                           o3c::Int32, host));
 	}
 
 	// Save keys
@@ -531,7 +531,7 @@ void VoxelBlockGrid::Save(const std::string &file_name) const {
 	output.emplace("key", active_keys);
 
 	// Save SoA values and name attributes
-	for (auto &it : name_attr_map_) {
+	for (auto& it: name_attr_map_) {
 		int value_id = it.second;
 		o3c::Tensor active_value_i =
 				values[value_id].IndexGet({active_indices}).To(host);
@@ -551,7 +551,7 @@ void VoxelBlockGrid::Save(const std::string &file_name) const {
 	}
 }
 
-VoxelBlockGrid VoxelBlockGrid::Load(const std::string &file_name) {
+VoxelBlockGrid VoxelBlockGrid::Load(const std::string& file_name) {
 	std::unordered_map<std::string, o3c::Tensor> tensor_map =
 			o3tio::ReadNpz(file_name);
 
@@ -562,7 +562,7 @@ VoxelBlockGrid VoxelBlockGrid::Load(const std::string &file_name) {
 	std::string kCUDA = "CUDA";
 
 	std::string device_str = "CPU:0";
-	for (auto &it : tensor_map) {
+	for (auto& it: tensor_map) {
 		if (!it.first.compare(0, prefix.size(), prefix)) {
 			int value_id = it.second[0].Item<int>();
 			inv_attr_map.emplace(value_id, it.first.substr(prefix.size()));
@@ -588,7 +588,7 @@ VoxelBlockGrid VoxelBlockGrid::Load(const std::string &file_name) {
 
 	// Not an ideal way to use an unordered map. Assume all the indices are
 	// stored.
-	for (auto &v : inv_attr_map) {
+	for (auto& v: inv_attr_map) {
 		int value_id = v.first;
 		attr_names[value_id] = v.second;
 
@@ -635,6 +635,65 @@ int64_t VoxelBlockGrid::GetBlockResolution() const {
 
 int64_t VoxelBlockGrid::GetBlockCount() const {
 	return this->block_hashmap_->GetCapacity();
+}
+
+
+VoxelBlockGrid VoxelBlockGrid::To(const open3d::core::Device& device, bool force_copy /*= false*/) const {
+	if (!force_copy && this->GetDevice() == device) {
+		return *this;
+	}
+	VoxelBlockGrid grid_copy;
+	grid_copy.voxel_size_ = this->voxel_size_;
+	grid_copy.block_resolution_ = this->block_resolution_;
+	if (this->block_hashmap_ != nullptr) {
+		grid_copy.block_hashmap_ = std::make_shared<o3c::HashMap>(this->block_hashmap_->To(device));
+	} else {
+		grid_copy.block_hashmap_ = nullptr;
+	}
+	if (this->frustum_hashmap_ != nullptr){
+		grid_copy.frustum_hashmap_ = std::make_shared<o3c::HashMap>(this->frustum_hashmap_->To(device));
+	}else {
+		grid_copy.frustum_hashmap_ = nullptr;
+	}
+	grid_copy.name_attr_map_ = this->name_attr_map_;
+	return grid_copy;
+}
+
+
+bool operator==(const VoxelBlockGrid& lhs, const VoxelBlockGrid& rhs) {
+	if (lhs.GetDevice() != rhs.GetDevice()) return false;
+	// voxel size, block resolution
+	if (lhs.voxel_size_ != rhs.voxel_size_) return false;
+	if (lhs.block_resolution_ != rhs.block_resolution_) return false;
+	// name attribute count and map
+	if (lhs.name_attr_map_.size() != rhs.name_attr_map_.size()) return false;
+	for (auto&& [lhs_attribute_name, lhs_attribute_index]: lhs.name_attr_map_) {
+		if (rhs.name_attr_map_.find(lhs_attribute_name) == rhs.name_attr_map_.end()) return false;
+		if (rhs.name_attr_map_.at(lhs_attribute_name) != lhs_attribute_index) return false;
+	}
+	if (lhs.block_hashmap_->GetCapacity() != rhs.block_hashmap_->GetCapacity()) return false;
+
+	o3c::Tensor lhs_key_tensor = lhs.block_hashmap_->GetKeyTensor();
+	o3c::Tensor lhs_active_indices = lhs.block_hashmap_->GetActiveIndices().To(o3c::Int64);
+	o3c::Tensor lhs_active_keys = lhs_key_tensor.GetItem(o3c::TensorKey::IndexTensor(lhs_active_indices));
+
+	o3c::Tensor rhs_matching_key_indices, rhs_key_matches_found_mask;
+	rhs.block_hashmap_->Find(lhs_active_keys, rhs_matching_key_indices, rhs_key_matches_found_mask);
+	int64_t total_lhs_keys_found_in_rhs = rhs_key_matches_found_mask.To(o3c::Int64).Sum({0}).ToFlatVector<int64_t>()[0];
+
+	if (total_lhs_keys_found_in_rhs != lhs_active_keys.GetLength()) return false;
+
+	for (auto&& [lhs_attribute_name, lhs_attribute_index]: lhs.name_attr_map_) { // NOLINT(readability-use-anyofallof)
+		if (!lhs.block_hashmap_->GetValueTensor(lhs_attribute_index).GetItem(o3c::TensorKey::IndexTensor(lhs_active_indices))
+				.AllEqual(
+						rhs.block_hashmap_->GetValueTensor(rhs.name_attr_map_.at(lhs_attribute_name))
+								.GetItem(o3c::TensorKey::IndexTensor(rhs_matching_key_indices.To(o3c::Int64)))
+				)
+				) {
+			return false;
+		}
+	}
+	return true;
 }
 
 

@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 8/8/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 8/15/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,19 +14,15 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// stdlib
-#include <istream>
-#include <ostream>
-// 3rd party
-#include <open3d/core/Tensor.h>
+
+#include "nnrt_pybind.h"
+
 
 namespace nnrt::io {
 
-std::ostream& operator<<(std::ostream& ostream, const open3d::core::Tensor& tensor);
-std::istream& operator>>(std::istream& istream, open3d::core::Tensor& tensor);
+void pybind_io(pybind11::module& m);
 
-void WriteTensor( const std::string& path, const open3d::core::Tensor& tensor, bool compressed = true);
-void ReadTensor( const std::string& path, open3d::core::Tensor& tensor, bool compressed = true);
-open3d::core::Tensor ReadTensor(const std::string& path, bool compressed = true);
+void pybind_tensor_io(pybind11::module& m);
+void pybind_voxel_block_grid_io(pybind11::module& m);
 
 } // namespace nnrt::io

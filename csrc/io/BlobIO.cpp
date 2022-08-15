@@ -27,26 +27,28 @@ std::ostream& operator<<(std::ostream& ostream, const std::pair<const std::share
 	if(blob->GetDevice() != host){
 		o3u::LogError("Blob ostream output for blobs with device {} not supported (only CPU:0 device is supported).", blob->GetDevice().ToString());
 	}
-	auto byte_size = blob_and_bytesize.second;
-	ostream.write(reinterpret_cast<const char*>(&byte_size), sizeof(int64_t));
 	ostream << blob->GetDevice();
+	if(ostream.bad()){
+		o3u::LogError("Failure writing to ostream.");
+	}
+	int64_t byte_size = blob_and_bytesize.second;
+	ostream.write(reinterpret_cast<const char*>(&byte_size), sizeof(int64_t));
 	ostream.write(reinterpret_cast<const char*>(blob->GetDataPtr()), byte_size);
 	return ostream;
 }
 
 std::istream& operator>>(std::istream& istream, std::pair<std::shared_ptr<open3d::core::Blob>, int64_t>& blob_and_bytesize) {
-
-	istream.read(reinterpret_cast<char*>(&blob_and_bytesize.second), sizeof(int64_t));
-	auto byte_size = blob_and_bytesize.second;
+	int64_t byte_size;
 	o3c::Device device;
 	istream >> device;
+	istream.read(reinterpret_cast<char*>(&byte_size), sizeof(int64_t));
+	blob_and_bytesize.second = byte_size;
 	o3c::Device host("CPU:0");
 	if(device != host){
 		o3u::LogError("Blob istream input for blobs with device {} not supported (only CPU:0 device is supported).", device.ToString());
 	}
 	blob_and_bytesize.first = std::make_shared<o3c::Blob>(byte_size, device);
 	istream.read(reinterpret_cast<char*>(blob_and_bytesize.first->GetDataPtr()), byte_size);
-	istream >> device;
 	return istream;
 }
 } // namespace nnrt::io

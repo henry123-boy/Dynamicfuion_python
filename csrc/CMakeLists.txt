@@ -180,12 +180,7 @@ set(NNRT_SOURCE_FILES
     pybind/pipelines/slam.h
     pybind/pipelines/slam.cpp
 
-    io/CompressibleIStream.h
-    io/CompressibleIStream.cpp
-    io/CompressibleOStream.h
-    io/CompressibleOStream.cpp
-
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h)
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}
@@ -218,6 +213,8 @@ set(PYBIND_SOURCE_FILES
     pybind/enum_export.h
     pybind/core.cpp
     pybind/core.h
+    pybind/io.cpp
+    pybind/io.h
     )
 
 pybind11_add_module(nnrt

@@ -13,8 +13,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include <open3d/utility/Logging.h>
 #include "DtypeIO.h"
 
+namespace o3u = open3d::utility;
 namespace nnrt::io {
 
 std::ostream& operator<<(std::ostream& ostream, const open3d::core::Dtype& dtype) {
@@ -22,7 +24,10 @@ std::ostream& operator<<(std::ostream& ostream, const open3d::core::Dtype& dtype
 	ostream.write(reinterpret_cast<const char*>(&code), sizeof(open3d::core::Dtype::DtypeCode));
 	int64_t byte_size = dtype.ByteSize();
 	ostream.write(reinterpret_cast<const char*>(&byte_size), sizeof(int64_t));
-	ostream << dtype.ToString();
+	std::string dtype_name = dtype.ToString();
+	auto name_size = static_cast<uint8_t>(dtype_name.size());
+	ostream.write(reinterpret_cast<const char*>(&name_size), sizeof(uint8_t));
+	ostream.write(reinterpret_cast<const char*>(dtype_name.c_str()), name_size);
 	return ostream;
 }
 
@@ -31,9 +36,15 @@ std::istream& operator>>(std::istream& istream, open3d::core::Dtype& dtype) {
 	istream.read(reinterpret_cast<char*>(&code), sizeof(open3d::core::Dtype::DtypeCode));
 	int64_t byte_size;
 	istream.read(reinterpret_cast<char*>(&byte_size), sizeof(int64_t));
-	std::string name;
-	istream >> name;
-	dtype = open3d::core::Dtype(code, byte_size, name);
+	uint8_t name_size;
+	istream.read(reinterpret_cast<char*>(&name_size), sizeof(uint8_t));
+	std::string dtype_name;
+	dtype_name.resize(name_size);
+	istream.read(reinterpret_cast<char*>(&dtype_name[0]), name_size);
+	if(istream.bad()){
+		o3u::LogError("Failure reading from istream.");
+	}
+	dtype = open3d::core::Dtype(code, byte_size, dtype_name);
 	return istream;
 }
 } // namespace nnrt::io

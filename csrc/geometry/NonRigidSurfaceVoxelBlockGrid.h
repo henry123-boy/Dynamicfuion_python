@@ -21,6 +21,7 @@
 #include "geometry/VoxelBlockGrid.h"
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/GraphWarpField.h"
+#include "io/VoxelBlockGridIO.h"
 
 namespace nnrt::geometry {
 
@@ -28,8 +29,6 @@ class NonRigidSurfaceVoxelBlockGrid : public VoxelBlockGrid {
 
 public:
 	using VoxelBlockGrid::VoxelBlockGrid;
-
-	friend std::ostream& operator<<(std::ostream& out, const NonRigidSurfaceVoxelBlockGrid& grid);
 
 	open3d::core::Tensor FindBlocksIntersectingTruncationRegion(
 			const open3d::t::geometry::Image& depth, const GraphWarpField& warp_field, const open3d::core::Tensor& intrinsics,
@@ -48,6 +47,9 @@ public:
 	open3d::core::Tensor ExtractVoxelValuesAndCoordinates();
 	open3d::core::Tensor ExtractVoxelValuesAt(const open3d::core::Tensor& query_voxel_coordinates);
 	open3d::core::Tensor ExtractVoxelBlockCoordinates();
+
+	friend std::ostream& nnrt::io::operator<<(std::ostream& ostream, const NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
+	friend std::istream& nnrt::io::operator>>(std::istream& istream, NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
 
 protected:
 	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(const open3d::core::Tensor& active_block_addresses) const;

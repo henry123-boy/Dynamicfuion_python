@@ -19,9 +19,15 @@
 #include <ostream>
 
 namespace nnrt::geometry {
-	class VoxelBlockGrid;
+class VoxelBlockGrid;
+class NonRigidSurfaceVoxelBlockGrid;
 } // nnrt::geometry
 namespace nnrt::io {
-	std::ostream& operator<<(std::ostream& ostream, const nnrt::geometry::VoxelBlockGrid& voxel_block_grid);
-	std::istream& operator>>(std::istream& istream, nnrt::geometry::VoxelBlockGrid& voxel_block_grid);
+std::ostream& operator<<(std::ostream& ostream, const nnrt::geometry::VoxelBlockGrid& voxel_block_grid);
+std::istream& operator>>(std::istream& istream, nnrt::geometry::VoxelBlockGrid& voxel_block_grid);
+void WriteVoxelBlockGrid(const std::string& path, const nnrt::geometry::VoxelBlockGrid& voxel_block_grid, bool compressed = true);
+void ReadVoxelBlockGrid(const std::string& path, nnrt::geometry::VoxelBlockGrid& voxel_block_grid, bool compressed = true);
+nnrt::geometry::VoxelBlockGrid ReadVoxelBlockGrid(const std::string& path, bool compressed = true);
+std::ostream& operator<<(std::ostream& ostream, const nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
+std::istream& operator>>(std::istream& istream, nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
 } // nnrt::io

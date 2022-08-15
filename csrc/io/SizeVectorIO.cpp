@@ -18,14 +18,19 @@
 #include <istream>
 // local
 #include "SizeVectorIO.h"
+#include <open3d/utility/Logging.h>
 
+namespace o3u = open3d::utility;
 namespace nnrt::io {
 
 std::ostream& operator<<(std::ostream& ostream, const open3d::core::SizeVector& size_vector) {
-	auto length = static_cast<uint32_t>(size_vector.GetLength());
-	ostream.write(reinterpret_cast<const char*>(&length), sizeof(uint32_t));
+	auto dimension_count = static_cast<uint32_t>(size_vector.size());
+	ostream.write(reinterpret_cast<const char*>(&dimension_count), sizeof(uint32_t));
 	for (const int64_t& element: size_vector) {
 		ostream.write(reinterpret_cast<const char*>(&element), sizeof(int64_t));
+	}
+	if(ostream.bad()){
+		o3u::LogError("Could not write to output stream.");
 	}
 	return ostream;
 }
@@ -33,6 +38,7 @@ std::ostream& operator<<(std::ostream& ostream, const open3d::core::SizeVector& 
 std::istream& operator>>(std::istream& istream, open3d::core::SizeVector& size_vector) {
 	uint32_t length;
 	istream.read(reinterpret_cast<char*>(&length), sizeof(uint32_t));
+	size_vector.clear();
 	for (uint32_t i_element = 0; i_element < length; i_element++) {
 		int64_t element;
 		istream.read(reinterpret_cast<char*>(&element), sizeof(int64_t));
