@@ -30,4 +30,9 @@ void ReadVoxelBlockGrid(const std::string& path, nnrt::geometry::VoxelBlockGrid&
 nnrt::geometry::VoxelBlockGrid ReadVoxelBlockGrid(const std::string& path, bool compressed = true);
 std::ostream& operator<<(std::ostream& ostream, const nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
 std::istream& operator>>(std::istream& istream, nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid);
+void WriteNonRigidSurfaceVoxelBlockGrid(const std::string& path, const nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid,
+										bool compressed = true);
+void ReadNonRigidSurfaceVoxelBlockGrid(const std::string& path, nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid,
+									   bool compressed = true);
+nnrt::geometry::NonRigidSurfaceVoxelBlockGrid ReadNonRigidSurfaceVoxelBlockGrid(const std::string& path, bool compressed = true);
 } // nnrt::io

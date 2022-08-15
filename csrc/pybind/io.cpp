@@ -18,6 +18,7 @@
 
 //nnrt
 #include "geometry/VoxelBlockGrid.h"
+#include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "io/TensorIO.h"
 #include "io/VoxelBlockGridIO.h"
 // local
@@ -62,6 +63,18 @@ void pybind_voxel_block_grid_io(pybind11::module& m) {
 		      return ReadVoxelBlockGrid(path, compressed);
 	      }, "Write voxel block hash in binary form.",
 	      "path"_a, "compressed"_a = true);
+	auto non_rigid_surface_voxel_block_grid_class = geometry_module.attr("NonRigidSurfaceVoxelBlockGrid");
+	m.def("write_non_rigid_surface_voxel_block_grid", [](const std::string& path, const nnrt::geometry::NonRigidSurfaceVoxelBlockGrid& non_rigid_surface_voxel_block_grid, bool compressed) {
+		      pybind11::gil_scoped_release release;
+		      WriteNonRigidSurfaceVoxelBlockGrid(path, non_rigid_surface_voxel_block_grid, compressed);
+	      }, "Write voxel block hash in binary form.",
+	      "path"_a, "non_rigid_surface_voxel_block_grid"_a, "compressed"_a = true);
+	m.def("read_non_rigid_surface_voxel_block_grid", [](const std::string& path, bool compressed) {
+		      pybind11::gil_scoped_release release;
+		      return ReadNonRigidSurfaceVoxelBlockGrid(path, compressed);
+	      }, "Write voxel block hash in binary form.",
+	      "path"_a, "compressed"_a = true);
+	
 }
 
 

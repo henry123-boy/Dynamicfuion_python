@@ -15,11 +15,15 @@
 //  ================================================================
 #include "test_main.hpp"
 
+// 3rd party
 #include <open3d/core/Device.h>
 #include <open3d/geometry/Image.h>
 #include <open3d/io/ImageIO.h>
 #include <open3d/t/geometry/Image.h>
+
+// nnrt
 #include "geometry/VoxelBlockGrid.h"
+#include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "io/VoxelBlockGridIO.h"
 #include "tests/test_utils/test_utils.hpp"
 
@@ -76,4 +80,14 @@ TEST_CASE("Test VoxelBlockGrid Save Load CPU") {
 TEST_CASE("Test VoxelBlockGrid Save Load CUDA") {
 	o3c::Device device("CUDA:0");
 	TestVoxelBlockGrid_SaveLoad<nnrt::geometry::VoxelBlockGrid>(device);
+}
+
+TEST_CASE("Test NonRigidSurfaceVoxelBlockGrid Save Load CPU") {
+	o3c::Device device("CPU:0");
+	TestVoxelBlockGrid_SaveLoad<nnrt::geometry::NonRigidSurfaceVoxelBlockGrid>(device);
+}
+
+TEST_CASE("Test NonRigidSurfaceVoxelBlockGrid Save Load CUDA") {
+	o3c::Device device("CUDA:0");
+	TestVoxelBlockGrid_SaveLoad<nnrt::geometry::NonRigidSurfaceVoxelBlockGrid>(device);
 }

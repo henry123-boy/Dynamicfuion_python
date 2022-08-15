@@ -15,6 +15,7 @@
 //  ================================================================
 #include "VoxelBlockGridIO.h"
 #include "geometry/VoxelBlockGrid.h"
+#include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "io/TensorIO.h"
 #include "io/DeviceIO.h"
 #include "FileStreamSelector.h"
@@ -124,6 +125,18 @@ std::ostream& operator<<(std::ostream& ostream, const geometry::NonRigidSurfaceV
 
 std::istream& operator>>(std::istream& istream, geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid) {
 	return istream >> reinterpret_cast<nnrt::geometry::VoxelBlockGrid&>(voxel_block_grid);
+}
+
+void WriteNonRigidSurfaceVoxelBlockGrid(const std::string& path, const geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid, bool compressed) {
+	WriteObject(path, voxel_block_grid, compressed);
+}
+
+void ReadNonRigidSurfaceVoxelBlockGrid(const std::string& path, geometry::NonRigidSurfaceVoxelBlockGrid& voxel_block_grid, bool compressed) {
+	ReadObject(path, voxel_block_grid, compressed);
+}
+
+nnrt::geometry::NonRigidSurfaceVoxelBlockGrid ReadNonRigidSurfaceVoxelBlockGrid(const std::string& path, bool compressed) {
+	return ReadObject<geometry::NonRigidSurfaceVoxelBlockGrid>(path, compressed);
 }
 
 
