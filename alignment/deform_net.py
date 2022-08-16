@@ -287,6 +287,7 @@ class DeformNet(nn.Module):
             graph_edges_weights_i = graph_edges_weights[i_batch, :num_nodes_i, :]  # (num_nodes_i, 8)
             graph_clusters_i = graph_clusters[i_batch, :num_nodes_i, :]  # (num_nodes_i, 1)
 
+
             fx = intrinsics[i_batch, 0]
             fy = intrinsics[i_batch, 1]
             cx = intrinsics[i_batch, 2]
@@ -484,10 +485,15 @@ class DeformNet(nn.Module):
             batch_edge_count = graph_edge_pairs_filtered.shape[0]
             # endregion
 
+            # (optimized_node_count, 3, 3)
+            node_rotation_estimates_i = node_rotations[i_batch, map_opt_nodes_to_complete_nodes_i, :, :].clone()
+            # (optimized_node_count, 3, 1)
+            node_translation_estimates_i = node_translations[i_batch, map_opt_nodes_to_complete_nodes_i, :].clone().reshape(optimized_node_count, 3, 1)
+
             # TODO: pass in existing node rotation and translation estimates
             ill_posed_system, residuals, rotations_current, translations_current, gn_point_clouds = \
                 self.optimizer.optimize_nodes(
-                    node_rotations, node_translations,
+                    node_rotation_estimates_i, node_translation_estimates_i,
                     match_count, optimized_node_count, batch_edge_count, graph_nodes_i, source_anchors, source_weights,
                     source_points_filtered, source_colors_filtered, correspondence_weights_filtered,
                     xy_pixels_warped_filtered,

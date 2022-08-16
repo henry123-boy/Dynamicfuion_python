@@ -96,12 +96,14 @@ class PointCloudAlignmentOptimizer:
             rotations_current = torch.eye(3, dtype=float_dtype, device=device).view(1, 3, 3).\
                 repeat(optimized_node_count, 1, 1)
         else:
-            rotations_current = initial_node_rotations.view((optimized_node_count, 3, 3))
+            rotations_current = initial_node_rotations
+
+        print(rotations_current.shape)
 
         if initial_node_translations is None:
             translations_current = torch.zeros((optimized_node_count, 3, 1), dtype=float_dtype, device=device)
         else:
-            translations_current = initial_node_translations.view((optimized_node_count, 3, 1))
+            translations_current = initial_node_translations
 
         if self.gn_debug:
             print(
