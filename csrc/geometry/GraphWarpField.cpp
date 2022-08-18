@@ -18,7 +18,7 @@
 #include <utility>
 #include <Eigen/Core>
 #include "geometry/kernel/Graph.h"
-#include "geometry/kernel/Warp.h"
+#include "geometry/kernel/Warp3DPoints.h"
 #include "core/linalg/Matmul3D.h"
 
 namespace o3c = open3d::core;
@@ -60,10 +60,12 @@ void CheckNodeMatrixTransformationData(o3c::Device& device, const o3c::Tensor& n
 	o3c::AssertTensorDtype(node_translations, o3c::Dtype::Float32);
 }
 
-o3tg::PointCloud
-WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
-               const o3c::Tensor& node_translations, int anchor_count, float node_coverage,
-               int minimum_valid_anchor_count) {
+o3tg::PointCloud WarpPointCloud(
+		const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
+		const o3c::Tensor& node_translations, int anchor_count, float node_coverage,
+		int minimum_valid_anchor_count,
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))*/
+) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -93,7 +95,7 @@ WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nod
 		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
 		o3c::Tensor warped_points;
 		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-		                         minimum_valid_anchor_count);
+								 minimum_valid_anchor_count, extrinsics);
 		warped_point_cloud.SetPointPositions(warped_points);
 	}
 
@@ -101,10 +103,13 @@ WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nod
 }
 
 
-o3tg::PointCloud
-WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
-               const o3c::Tensor& node_translations, const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
-               int minimum_valid_anchor_count) {
+o3tg::PointCloud WarpPointCloud(
+		const o3tg::PointCloud& input_point_cloud,
+		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
+		const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
+		int minimum_valid_anchor_count,
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))*/
+) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -143,7 +148,7 @@ WarpPointCloud(const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nod
 		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
 		o3c::Tensor warped_points;
 		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchors, anchor_weights,
-		                         minimum_valid_anchor_count);
+		                         minimum_valid_anchor_count, extrinsics);
 		warped_point_cloud.SetPointPositions(warped_points);
 	}
 
@@ -164,9 +169,12 @@ void CopyWarpedTriangleMeshData(o3tg::TriangleMesh& warped_mesh, const o3tg::Tri
 }
 
 o3tg::TriangleMesh
-WarpTriangleMesh(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nodes,
-                 const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
-                 int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count) {
+WarpTriangleMesh(
+		const o3tg::TriangleMesh& input_mesh,
+		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
+		int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count,
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0")*/
+) {
 	auto device = input_mesh.GetDevice();
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
@@ -187,9 +195,9 @@ WarpTriangleMesh(const o3tg::TriangleMesh& input_mesh, const o3c::Tensor& nodes,
 		o3c::Tensor warped_vertices;
 		if (threshold_nodes_by_distance) {
 			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-			                         minimum_valid_anchor_count);
+			                         minimum_valid_anchor_count, extrinsics);
 		} else {
-			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage);
+			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage, extrinsics);
 		}
 
 		warped_mesh.SetVertexPositions(warped_vertices);
@@ -392,14 +400,14 @@ GraphWarpField GraphWarpField::Clone() {
 
 void GraphWarpField::SetNodeRotations(const o3c::Tensor& node_rotations) {
 	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
-	o3c::AssertTensorShape(node_rotations, {this->nodes.GetLength(), 3, 3});
+	o3c::AssertTensorShape(node_rotations, { this->nodes.GetLength(), 3, 3 });
 	this->rotations = node_rotations;
 	rotations_data = this->rotations.GetDataPtr<float>();
 }
 
 void GraphWarpField::SetNodeTranslations(const o3c::Tensor& node_translations) {
 	o3c::AssertTensorDtype(node_translations, o3c::Float32);
-	o3c::AssertTensorShape(node_translations, {this->nodes.GetLength(), 3});
+	o3c::AssertTensorShape(node_translations, { this->nodes.GetLength(), 3 });
 	this->translations = node_translations;
 	translations_data = this->translations.GetDataPtr<float>();
 }

@@ -58,11 +58,11 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/GraphImpl.h
 
     geometry/kernel/WarpUtilities.h
-    geometry/kernel/Warp.h
-    geometry/kernel/Warp.cpp
-    geometry/kernel/WarpCPU.cpp
-    geometry/kernel/WarpCUDA.cu
-    geometry/kernel/WarpImpl.h
+    geometry/kernel/Warp3DPoints.h
+    geometry/kernel/Warp3DPoints.cpp
+    geometry/kernel/Warp3DPointsCPU.cpp
+    geometry/kernel/Warp3DPointsCUDA.cu
+    geometry/kernel/Warp3DPointsImpl.h
 
     geometry/kernel/Comparison.h
     geometry/kernel/Comparison.cpp

@@ -7,7 +7,6 @@
 
 #include "pybind/nnrt_pybind.h"
 #include "pybind/geometry/geometry.h"
-#include "pybind/pipelines/odometry.h"
 #include "pybind/core.h"
 #include "pybind/io.h"
 

@@ -30,22 +30,32 @@ namespace py = pybind11;
 
 namespace nnrt::geometry {
 
-open3d::t::geometry::PointCloud
-WarpPointCloud(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
-               const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-               int anchor_count, float node_coverage,
-               int minimum_valid_anchor_count = 0);
+//TODO: combine the below two functions, no major savings by avoiding check of a boolean parameter before calling "kernel" code, just extra bloat
 
-open3d::t::geometry::PointCloud
-WarpPointCloud(const open3d::t::geometry::PointCloud& input_point_cloud, const open3d::core::Tensor& nodes,
-               const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-               const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
-               int minimum_valid_anchor_count = 0);
+// computes anchors on-the-fly, uses node thresholding
+open3d::t::geometry::PointCloud WarpPointCloud(
+		const open3d::t::geometry::PointCloud& input_point_cloud,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		int anchor_count, float node_coverage,
+		int minimum_valid_anchor_count = 0,
+		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))
+);
 
-open3d::t::geometry::TriangleMesh WarpTriangleMesh(const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& nodes,
-                                                   const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                                                   int anchor_count, float node_coverage, bool threshold_nodes_by_distance = true,
-                                                   int minimum_valid_anchor_count = 0);
+// uses precomputed anchors, uses node thresholding
+open3d::t::geometry::PointCloud WarpPointCloud(
+		const open3d::t::geometry::PointCloud& input_point_cloud,
+		const open3d::core::Tensor& nodes,const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
+		int minimum_valid_anchor_count = 0,
+		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))
+);
+
+open3d::t::geometry::TriangleMesh WarpTriangleMesh(
+		const open3d::t::geometry::TriangleMesh& input_mesh,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		int anchor_count, float node_coverage, bool threshold_nodes_by_distance = true, int minimum_valid_anchor_count = 0,
+		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))
+);
 
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
@@ -143,7 +153,6 @@ public:
 	const int anchor_count;
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
-
 
 
 private:
