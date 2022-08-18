@@ -7,7 +7,7 @@
 
 #include "pybind/nnrt_pybind.h"
 #include "pybind/geometry/geometry.h"
-#include "pybind/pipelines/slam.h"
+#include "pybind/pipelines/odometry.h"
 #include "pybind/core.h"
 #include "pybind/io.h"
 
@@ -38,10 +38,6 @@ PYBIND11_MODULE(nnrt, m) {
 	nnrt::core::pybind_core(m);
 	nnrt::geometry::pybind_geometry(m);
 	nnrt::io::pybind_io(m);
-
-	//TODO
-	nnrt::pipelines::slam::pybind_slam(m);
-
 
 
 	// legacy NNRT stuff below (deprecated)

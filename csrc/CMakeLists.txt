@@ -177,9 +177,6 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperationsCPU.cpp
     geometry/kernel/NormalsOperationsCUDA.cu
 
-    pybind/pipelines/slam.h
-    pybind/pipelines/slam.cpp
-
     core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h)
 
 add_library(nnrt_cpp STATIC

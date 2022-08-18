@@ -43,7 +43,7 @@ class RenderingAlignmentOptimizer:
             warped_mesh = graph.warp_mesh(canonical_mesh, GraphParameters.node_coverage.value)
 
             rendered_depth, rendered_color =\
-                self.renderer.render_mesh(warped_mesh, render_mask=RenderMaskCode.RGB | RenderMaskCode.DEPTH)
+                self.renderer.render_mesh(warped_mesh, render_mode_mask=RenderMaskCode.RGB | RenderMaskCode.DEPTH)
 
             rendered_depth_o3d = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_depth))
             rendered_depth_o3d_image = o3d.t.geometry.Image(rendered_depth_o3d)

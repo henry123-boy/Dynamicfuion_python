@@ -182,6 +182,7 @@ class TelemetryGenerator:
 
     def process_rendering_result(self, color_image, depth_image, frame_index):
         if self.record_rendered_mesh:
+            # TODO: fixme
             cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_color.jpg"), color_image)
             cv2.imwrite(os.path.join(self.frame_output_directory, f"{frame_index:06d}_rendered_depth.png"), depth_image)
 

@@ -110,9 +110,9 @@ class FusionPipeline:
         if verbosity_parameters.print_intrinsics.value:
             camera.print_intrinsic_projection_parameters(intrinsics_open3d_legacy)
 
-        self.intrinsics = o3c.Tensor(intrinsics_open3d_legacy.intrinsic_matrix,
-                                     o3c.Dtype.Float64, self.host)
-        self.extrinsics = o3d.core.Tensor.eye(4, o3c.Dtype.Float64, self.host)
+        self.intrinsic = o3c.Tensor(intrinsics_open3d_legacy.intrinsic_matrix,
+                                    o3c.Dtype.Float64, self.host)
+        self.extrinsic = o3d.core.Tensor.eye(4, o3c.Dtype.Float64, self.host)
         self.extrinsics_record = []
         # TODO: initialize cropper here -- you can already get the first frame
         self.cropper: Union[None, StaticCenterCrop] = None
@@ -144,7 +144,7 @@ class FusionPipeline:
         # region === initialize loop data structures ===
         #####################################################################################################
 
-        renderer = PyTorch3DRenderer(self.sequence.resolution, self.device, self.intrinsics)
+        renderer = PyTorch3DRenderer(self.sequence.resolution, self.device, self.intrinsic)
 
         saved_depth_image_np: Union[None, np.ndarray] = None
         saved_color_image_np: Union[None, np.ndarray] = None
@@ -211,13 +211,13 @@ class FusionPipeline:
                     StaticCenterCrop(depth_image_np.shape[:2], (alignment_image_height, alignment_image_width))
                 # region =============== FIRST FRAME PROCESSING / GRAPH INITIALIZATION ================================
                 blocks_to_activate = volume.compute_unique_block_coordinates(depth_image_open3d,
-                                                                             self.intrinsics,
-                                                                             self.extrinsics,
+                                                                             self.intrinsic,
+                                                                             self.extrinsic,
                                                                              depth_scale,
                                                                              sequence.far_clipping_distance)
                 volume.integrate(blocks_to_activate, depth_image_open3d, color_image_open3d,
-                                 self.intrinsics, self.intrinsics,
-                                 self.extrinsics, depth_scale, sequence.far_clipping_distance,
+                                 self.intrinsic, self.intrinsic,
+                                 self.extrinsic, depth_scale, sequence.far_clipping_distance,
                                  truncation_distance_factor)
 
                 # TODO: remove these commented calls (and sleeve block code) after better testing the new block
@@ -241,6 +241,12 @@ class FusionPipeline:
                 #####################################################################################################
                 # region ===== prepare source point cloud & RGB image for non-rigid alignment  ====
                 #####################################################################################################
+                rendered_forward_warded_depth, rendered_forward_warped_color = \
+                    renderer.render_mesh(source_mesh, depth_scale=depth_scale)
+                # TODO: fix this to save in new format instead of numpy
+                telemetry_generator.process_rendering_result(rendered_forward_warded_depth,
+                                                             rendered_forward_warped_color, current_frame.frame_index)
+
                 # TODO: outsource source_depth and source_color prep to another method
                 # when we track first-to-current, we force reusing original frame for the source.
                 # when we track keyframe-to-current, we force reusing keyframe for the source.
@@ -255,9 +261,8 @@ class FusionPipeline:
                                          TrackingSpanMode.KEYFRAME_TO_CURRENT else canonical_mesh
                     )
                     # @formatter:on
-                    source_depth, source_color = renderer.render_mesh_legacy(source_mesh, depth_scale=depth_scale)
-                    source_depth = source_depth.astype(np.uint16)
-                    telemetry_generator.process_rendering_result(source_color, source_depth, current_frame.frame_index)
+                    source_color = rendered_forward_warped_color.cpu().numpy()
+                    source_depth = rendered_forward_warded_depth.cpu().numpy().astype(np.uint16)
 
                     # flip channels, i.e. RGB<-->BGR
                     source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
@@ -317,9 +322,22 @@ class FusionPipeline:
                 # endregion
 
                 #####################################################################################################
-                # region === run the motion prediction & optimization (non-rigid alignment) ====
+                # region === run the motion prediction & optimization (rigid & non-rigid alignment) ====
                 #####################################################################################################
 
+                # find hash blocks we'll likely need to activate using the next depth image and current surface motion &
+                # camera extrinsic prediction
+                blocks_to_activate = \
+                    volume.find_blocks_intersecting_truncation_region(depth_image_open3d, graph_for_integration,
+                                                                      self.intrinsic, self.extrinsic,
+                                                                      depth_scale, sequence.far_clipping_distance,
+                                                                      truncation_distance_factor)
+                # TODO: provide version of integrate_non_rigid that does not activate the hashmap, otherwise
+                #  we have an extra call here to activate the same blocks
+                volume.hashmap().activate(blocks_to_activate)
+                rgbd_image = o3d.t.geometry.RGBDImage(color_image_open3d, depth_image_open3d)
+
+                # non-rigid alignment
                 deform_net_data = run_non_rigid_alignment(
                     self.deform_net, source_rgbxyz, target_rgbxyz, pixel_anchors,
                     pixel_weights, self.active_graph, cropped_intrinsics_numpy,
@@ -357,19 +375,14 @@ class FusionPipeline:
                     saved_pixel_anchors, saved_pixel_weights = \
                         self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=False)
 
-                # handle logging/vis of the graph data
+                # handle logging/vis of the graph data before integration
                 telemetry_generator.process_graph_transformation(graph_for_integration)
-                blocks_to_activate = \
-                    volume.find_blocks_intersecting_truncation_region(depth_image_open3d, graph_for_integration,
-                                                                      self.intrinsics, self.extrinsics,
-                                                                      depth_scale, sequence.far_clipping_distance,
-                                                                      truncation_distance_factor)
 
                 cos_voxel_ray_to_normal = \
                     volume.integrate_non_rigid(
                         blocks_to_activate, graph_for_integration,
                         depth_image_open3d, color_image_open3d, target_normal_map_o3d,
-                        self.intrinsics, self.intrinsics, self.extrinsics,
+                        self.intrinsic, self.intrinsic, self.extrinsic,
                         depth_scale, sequence.far_clipping_distance, truncation_distance_factor)
 
                 # TODO: not sure how the cos_voxel_ray_to_normal can be useful after the integrate_warped operation.
@@ -379,7 +392,7 @@ class FusionPipeline:
                 # endregion
                 #####################################################################################################
                 canonical_mesh, warped_mesh = \
-                    self.extract_and_warp_canonical_mesh_if_necessary(current_frame.frame_index, graph_for_integration)
+                    self.extract_and_warp_canonical_mesh(current_frame.frame_index, graph_for_integration)
                 if current_frame_is_keyframe:
                     keyframe_mesh = warped_mesh
 
@@ -408,18 +421,13 @@ class FusionPipeline:
 
         return PROGRAM_EXIT_SUCCESS
 
-    def extract_and_warp_canonical_mesh_if_necessary(self, frame_index: int, graph: nnrt.geometry.GraphWarpField) -> \
+    def extract_and_warp_canonical_mesh(self, frame_index: int, graph: nnrt.geometry.GraphWarpField) -> \
             Tuple[Union[None, o3d.t.geometry.TriangleMesh], Union[None, o3d.t.geometry.TriangleMesh]]:
+
         mesh_extraction_weight_threshold = self.determine_mesh_extraction_threshold(frame_index)
-        canonical_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
-        is_keyframe = self.frame_is_keyframe(frame_index)
-        if self.extracted_framewise_canonical_mesh_needed or is_keyframe:
-            canonical_mesh = self.volume.extract_triangle_mesh(mesh_extraction_weight_threshold, -1)
-
-        warped_mesh: Union[None, o3d.t.geometry.TriangleMesh] = None
-
-        if self.framewise_warped_mesh_needed or is_keyframe:
-            warped_mesh = graph.warp_mesh(canonical_mesh)
+        canonical_mesh: o3d.t.geometry.TriangleMesh = self.volume.extract_triangle_mesh(
+            mesh_extraction_weight_threshold, -1)
+        warped_mesh: o3d.t.geometry.TriangleMesh = graph.warp_mesh(canonical_mesh)
 
         return canonical_mesh, warped_mesh
 
