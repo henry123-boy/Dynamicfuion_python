@@ -13,6 +13,7 @@ import pytorch3d.renderer.cameras
 import torch
 import os
 
+from pytorch3d.renderer import BlendParams
 from pytorch3d.renderer.cameras import PerspectiveCameras
 from pytorch3d.renderer.mesh import MeshRasterizer, RasterizationSettings, MeshRenderer, SoftPhongShader, TexturesVertex
 from pytorch3d.renderer.lighting import PointLights
@@ -114,7 +115,8 @@ def main():
         shader=SoftPhongShader(
             device=torch_device,
             cameras=cameras,
-            lights=lights
+            lights=lights,
+            blend_params=BlendParams(background_color=(0., 0., 0.))
         )
     )
 

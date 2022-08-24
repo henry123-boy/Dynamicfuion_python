@@ -93,7 +93,7 @@ class PointCloudAlignmentOptimizer:
         # then all node translation parameters are listed.
         #                        transform_delta = [rotations_current, translations_current]
         if initial_node_rotations is None:
-            rotations_current = torch.eye(3, dtype=float_dtype, device=device).view(1, 3, 3).\
+            rotations_current = torch.eye(3, dtype=float_dtype, device=device).view(1, 3, 3). \
                 repeat(optimized_node_count, 1, 1)
         else:
             rotations_current = initial_node_rotations
@@ -337,12 +337,12 @@ class PointCloudAlignmentOptimizer:
             weights_k = source_weights[:, k] * correspondence_weights_filtered  # (num_matches)
 
             # Compute skew-symmetric part.
-            rotated_points_k = torch.matmul(rotations_current[node_idxs_k],
-                                            source_points_filtered - nodes_k)  # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
-            weighted_rotated_points_k = weights_k.view(match_count, 1, 1).repeat(1, 3,
-                                                                                 1) * rotated_points_k  # (num_matches, 3, 1)
-            skew_symetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k).view(match_count, 3,
-                                                                                                         3)  # (num_matches, 3, 3)
+            # (num_matches, 3, 1) = (num_matches, 3, 3) * (num_matches, 3, 1)
+            rotated_points_k = torch.matmul(rotations_current[node_idxs_k], source_points_filtered - nodes_k)
+            # (num_matches, 3, 1)
+            weighted_rotated_points_k = weights_k.view(match_count, 1, 1).repeat(1, 3, 1) * rotated_points_k
+            skew_symmetric_mat_data = -torch.matmul(self.vec_to_skew_mat, weighted_rotated_points_k) \
+                .view(match_count, 3, 3)  # (num_matches, 3, 3)
 
             # Compute jacobian wrt. TRANSLATION.
             # FLOW PART
@@ -362,36 +362,36 @@ class PointCloudAlignmentOptimizer:
             # Compute jacobian wrt. ROTATION.
             # FLOW PART
             jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 0] += \
-                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 0] + \
-                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+                lambda_data_flow * fx_div_z * skew_symmetric_mat_data[:, 0, 0] + \
+                minus_fx_mul_x_div_z_2 * skew_symmetric_mat_data[:, 2, 0]
 
             jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 1] += \
-                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 1] + \
-                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+                lambda_data_flow * fx_div_z * skew_symmetric_mat_data[:, 0, 1] + \
+                minus_fx_mul_x_div_z_2 * skew_symmetric_mat_data[:, 2, 1]
 
             jacobian_data[data_increment_vec_0_3, 3 * node_idxs_k + 2] += \
-                lambda_data_flow * fx_div_z * skew_symetric_mat_data[:, 0, 2] + \
-                minus_fx_mul_x_div_z_2 * skew_symetric_mat_data[:, 2, 2]
+                lambda_data_flow * fx_div_z * skew_symmetric_mat_data[:, 0, 2] + \
+                minus_fx_mul_x_div_z_2 * skew_symmetric_mat_data[:, 2, 2]
 
             jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 0] += \
-                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 0] + \
-                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 0]
+                lambda_data_flow * fy_div_z * skew_symmetric_mat_data[:, 1, 0] + \
+                minus_fy_mul_y_div_z_2 * skew_symmetric_mat_data[:, 2, 0]
 
             jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 1] += \
-                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 1] + \
-                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 1]
+                lambda_data_flow * fy_div_z * skew_symmetric_mat_data[:, 1, 1] + \
+                minus_fy_mul_y_div_z_2 * skew_symmetric_mat_data[:, 2, 1]
 
             jacobian_data[data_increment_vec_1_3, 3 * node_idxs_k + 2] += \
-                lambda_data_flow * fy_div_z * skew_symetric_mat_data[:, 1, 2] + \
-                minus_fy_mul_y_div_z_2 * skew_symetric_mat_data[:, 2, 2]
+                lambda_data_flow * fy_div_z * skew_symmetric_mat_data[:, 1, 2] + \
+                minus_fy_mul_y_div_z_2 * skew_symmetric_mat_data[:, 2, 2]
 
             # DEPTH PART
             jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 0] += \
-                lambda_data_depth * skew_symetric_mat_data[:, 2, 0]
+                lambda_data_depth * skew_symmetric_mat_data[:, 2, 0]
             jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 1] += \
-                lambda_data_depth * skew_symetric_mat_data[:, 2, 1]
+                lambda_data_depth * skew_symmetric_mat_data[:, 2, 1]
             jacobian_data[data_increment_vec_2_3, 3 * node_idxs_k + 2] += \
-                lambda_data_depth * skew_symetric_mat_data[:, 2, 2]
+                lambda_data_depth * skew_symmetric_mat_data[:, 2, 2]
 
             assert torch.isfinite(jacobian_data).all(), jacobian_data
 

@@ -37,8 +37,8 @@ def test_compute_anchors_euclidean_nnrtf_vs_legacy_nnrt_cpp(device):
     distance_matrix = np.linalg.norm(points_tiled - nodes_tiled, axis=2)
     distance_sorted_node_indices = distance_matrix.argsort(axis=1)  # distances of closest nodes to each point
     vertex_anchors_gt = np.sort(distance_sorted_node_indices[:, :anchor_count], axis=1)
-    distances_sorted = np.take_along_axis(distance_matrix, distance_sorted_node_indices, axis=1)
-    distances_gt = distances_sorted[:, :anchor_count]
+    # distances_sorted = np.take_along_axis(distance_matrix, distance_sorted_node_indices, axis=1)
+    # distances_gt = distances_sorted[:, :anchor_count]
 
     old_vertex_anchors, old_vertex_weights = nnrt.compute_vertex_anchors_euclidean(nodes, points, 0.5)
     old_vertex_anchors_sorted = np.sort(old_vertex_anchors, axis=1)

@@ -486,9 +486,16 @@ class DeformNet(nn.Module):
             # endregion
 
             # (optimized_node_count, 3, 3)
-            node_rotation_estimates_i = node_rotations[i_batch, map_opt_nodes_to_complete_nodes_i, :, :].clone()
+            if node_rotations is not None:
+                node_rotation_estimates_i = node_rotations[i_batch, map_opt_nodes_to_complete_nodes_i, :, :].clone()
+            else:
+                node_rotation_estimates_i = None
             # (optimized_node_count, 3, 1)
-            node_translation_estimates_i = node_translations[i_batch, map_opt_nodes_to_complete_nodes_i, :].clone().reshape(optimized_node_count, 3, 1)
+            if node_translations is not None:
+                node_translation_estimates_i = node_translations[i_batch, map_opt_nodes_to_complete_nodes_i, :]\
+                    .clone().reshape(optimized_node_count, 3, 1)
+            else:
+                node_translation_estimates_i = None
 
             # TODO: pass in existing node rotation and translation estimates
             ill_posed_system, residuals, rotations_current, translations_current, gn_point_clouds = \
