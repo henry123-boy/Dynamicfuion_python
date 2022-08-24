@@ -57,4 +57,5 @@ def test_pytorch3d_renderer(device):
         image_rgb_gt = o3d.t.io.read_image(str(image_rgb_gt_path)).to(device)
         assert image_rgb_gt.as_tensor().allclose(image_rgb_o3d.as_tensor())
         image_depth_gt = o3d.t.io.read_image(str(image_depth_gt_path)).to(device)
-        assert image_depth_gt.as_tensor().allclose(image_depth_o3d.as_tensor())
+        assert image_depth_gt.as_tensor().to(o3c.float32).allclose(image_depth_o3d.as_tensor().to(o3c.float32),
+                                                                   rtol=1e-3, atol=1e-3)
