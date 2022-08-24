@@ -8,7 +8,7 @@ import numpy as np
 from nnrt.geometry import GraphWarpField
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ground_truth_vertices() -> np.ndarray:
     vertices = np.array([[-2.29245767e-01, -1.41411602e-08, 2.67084956e-01],
                          [6.91970110e-01, -1.42059857e-08, -7.78945014e-02],

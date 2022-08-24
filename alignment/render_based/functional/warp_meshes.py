@@ -27,22 +27,27 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
     anchor_count = mesh_vertex_anchors.shape[1]
     # (vertex_count, 3)
     mesh_vertices = canonical_meshes.verts_packed()
+    vertex_count = mesh_vertices.shape[0]
     # (vertex_count, anchor_count, 3)
     tiled_vertices = mesh_vertices.view(mesh_vertices.shape[0], 1,
                                         mesh_vertices.shape[1]).tile(1, anchor_count, 1)
+    mesh_vertex_anchors_long = mesh_vertex_anchors.to(torch.long)
     # (vertex_count, anchor_count, 3)
-    sampled_nodes = graph_nodes[mesh_vertex_anchors]
+    sampled_nodes = graph_nodes[mesh_vertex_anchors_long]
     # (vertex_count, anchor_count, 3, 3)
-    sampled_rotations = graph_node_rotations[mesh_vertex_anchors]
+    sampled_rotations = graph_node_rotations[mesh_vertex_anchors_long]
     # (vertex_count, anchor_count, 3)
-    sampled_translations = graph_node_translations[mesh_vertex_anchors]
+    sampled_translations = graph_node_translations[mesh_vertex_anchors_long]
 
     # (vertex_count, 3)
     warped_vertices = (
-            mesh_vertex_anchor_weights * sampled_nodes +
-            torch.matmul(sampled_rotations, (tiled_vertices - sampled_nodes))
+        mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) * (
+            sampled_nodes +
+            torch.matmul(sampled_rotations, (tiled_vertices - sampled_nodes).view(vertex_count, anchor_count, 3, 1))
+            .view(vertex_count, anchor_count, 3)
             + sampled_translations
-    ).sum(2)
+        )
+    ).sum(dim=1)
 
     # (vertex_count, 3)
     mesh_vertex_normals = canonical_meshes.verts_normals_packed()
@@ -51,9 +56,11 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
                                              mesh_vertex_normals.shape[1]).tile(1, anchor_count, 1)
     # (vertex_count, 3)
     warped_normals = tnn_func.normalize((
-                                                mesh_vertex_anchor_weights * sampled_nodes +
-                                                torch.matmul(sampled_rotations, tiled_normals)
-                                        ).sum(2), dim=2)
+                                                mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) *
+                                                (sampled_nodes +
+                                                 torch.matmul(sampled_rotations, tiled_normals.view(vertex_count, anchor_count, 3, 1)))
+                                                .view(vertex_count, anchor_count, 3)
+                                        ).sum(dim=1), dim=1)
     return p3ds.Meshes(warped_vertices.unsqueeze(0),
                        canonical_meshes.faces_padded(),
                        textures=canonical_meshes.textures,

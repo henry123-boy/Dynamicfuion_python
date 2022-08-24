@@ -30,7 +30,7 @@ from nnrt.geometry import GraphWarpField
 from nnrt.geometry import compute_anchors_and_weights_shortest_path
 # local
 import rendering.converters
-from alignment.render_based.functional import warp_meshes_using_node_anchors
+from alignment.render_based.functional.warp_meshes import warp_meshes_using_node_anchors
 
 
 class PureTorchOptimizer:
