@@ -13,9 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+# 3rd party
 import torch
-import torch.nn as nn
-import torch.nn.functional as nn_func
 import torch.utils.dlpack as torch_dlpack
 
 import pytorch3d.structures as p3d_struct
@@ -26,10 +25,12 @@ from pytorch3d.renderer import RasterizationSettings, MeshRasterizer, SoftPhongS
 import open3d as o3d
 import open3d.core as o3c
 
+# C++ extension
 from nnrt.geometry import GraphWarpField
 from nnrt.geometry import compute_anchors_and_weights_shortest_path
-
+# local
 import rendering.converters
+from alignment.render_based.functional import warp_meshes_using_node_anchors
 
 
 class PureTorchOptimizer:
@@ -98,41 +99,6 @@ class PureTorchOptimizer:
             lights=lights
         )
 
-    def warp_mesh(self):
-        # (vertex_count, 3)
-        mesh_vertices = self.canonical_meshes.verts_packed()
-        # (vertex_count, anchor_count, 3)
-        tiled_vertices = mesh_vertices.view(mesh_vertices.shape[0], 1,
-                                            mesh_vertices.shape[1]).tile(1, self.anchor_count, 1)
-        # (vertex_count, anchor_count, 3)
-        sampled_nodes = self.graph_nodes[self.mesh_vertex_anchors]
-        # (vertex_count, anchor_count, 3, 3)
-        sampled_rotations = self.graph_node_rotations[self.mesh_vertex_anchors]
-        # (vertex_count, anchor_count, 3)
-        sampled_translations = self.graph_node_translations[self.mesh_vertex_anchors]
-
-        # (vertex_count, 3)
-        warped_vertices = (
-                self.mesh_vertex_anchor_weights * sampled_nodes +
-                torch.matmul(sampled_rotations, (tiled_vertices - sampled_nodes))
-                + sampled_translations
-        ).sum(2)
-
-        # (vertex_count, 3)
-        mesh_vertex_normals = self.canonical_meshes.verts_normals_packed()
-        # (vertex_count, anchor_count, 3)
-        tiled_normals = mesh_vertex_normals.view(mesh_vertex_normals.shape[0], 1,
-                                                 mesh_vertex_normals.shape[1]).tile(1, self.anchor_count, 1)
-        # (vertex_count, 3)
-        warped_normals = nn_func.normalize((
-                                                   self.mesh_vertex_anchor_weights * sampled_nodes +
-                                                   torch.matmul(sampled_rotations, tiled_normals)
-                                           ).sum(2), dim=2)
-        return p3d_struct.Meshes(warped_vertices.unsqueeze(0),
-                                 self.canonical_meshes.faces_padded(),
-                                 textures=self.canonical_meshes.textures,
-                                 verts_normals=warped_normals.unsqueeze(0))
-
     def point_to_plane_distances(self, rendered_rgb_image: torch.Tensor, rendered_points: torch.Tensor,
                                  rendered_normals: torch.Tensor) -> torch.Tensor:
         return torch.square((rendered_normals * (rendered_points - self.reference_points)).sum(dim=-1))
@@ -141,7 +107,10 @@ class PureTorchOptimizer:
         max_iteration_count = 5
 
         for iteration in range(0, max_iteration_count):
-            warped_mesh = self.warp_mesh()
+            warped_mesh = warp_meshes_using_node_anchors(
+                self.canonical_meshes, self.graph_nodes, self.graph_node_rotations,
+                self.graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights
+            )
             fragments = self.rasterizer(warped_mesh)
 
             faces = warped_mesh.faces_packed()  # (F, 3)
