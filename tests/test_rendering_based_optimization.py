@@ -48,7 +48,8 @@ def generate_test_box(device: o3c.Device, box_side_length: float = 1.0,
                       subdivision_count: int = 2) -> o3d.t.geometry.TriangleMesh:
     mesh_legacy: o3d.geometry.TriangleMesh = \
         o3d.geometry.TriangleMesh.create_box(box_side_length,
-                                             box_side_length, box_side_length).subdivide_midpoint(subdivision_count)
+                                             box_side_length, box_side_length)
+    mesh_legacy = mesh_legacy.subdivide_midpoint(subdivision_count)
     mesh: o3d.t.geometry.TriangleMesh = \
         o3d.t.geometry.TriangleMesh.from_legacy(
             mesh_legacy,
@@ -57,7 +58,14 @@ def generate_test_box(device: o3c.Device, box_side_length: float = 1.0,
     nnrt.geometry.compute_vertex_normals(mesh, True)
     box_center_position = o3c.Tensor(list(box_center_position), dtype=o3c.float32, device=device)
 
-    mesh.vertex["positions"] = mesh.vertex["positions"] + box_center_position
+    half_side_length = box_side_length / 2
+    # Open3D doesn't generate boxes at the center of the coordinate grid -- rather, they are placed with one of the
+    # corners in the origin. Thanks, Open3D. Not.
+    box_center_initial_offset = o3c.Tensor([-half_side_length, -half_side_length, -half_side_length],
+                                           dtype=o3c.float32, device=device)
+
+    mesh.vertex["positions"] = mesh.vertex["positions"] + box_center_position  + box_center_initial_offset
+
     mesh.vertex["colors"] = o3c.Tensor([[0.7, 0.7, 0.7]] * len(mesh.vertex["positions"]), dtype=o3c.float32,
                                        device=device)
     return mesh
@@ -133,6 +141,7 @@ def twist_box_corners_around_y_axis(corners: torch.Tensor, angle_degrees: float,
     rotated_corners = corners_center + torch.cat(
         ((corners[:4, :] - corners_center).mm(global_rotation_matrix_bottom),
          (corners[4:, :] - corners_center).mm(global_rotation_matrix_top)), dim=0)
+
     corner_translations = rotated_corners - corners
     corner_rotations = torch.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4).to(device)
     return corner_rotations, corner_translations
@@ -174,8 +183,8 @@ def ground_truth_vertices_torch() -> torch.Tensor:
 @pytest.mark.parametrize("device", [torch.device('cuda:0'), torch.device('cpu:0')])
 def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_vertices_torch):
     subdivision_count = 1
-    box_center = (0.0, 0.0, 0.0)
-    box_side_length = 2.0
+    box_center = (0.5, 0.5, 0.5)
+    box_side_length = 1.0
     mesh_o3d = generate_test_box(device_pytorch_to_open3d(device), box_side_length=box_side_length,
                                  box_center_position=box_center,
                                  subdivision_count=subdivision_count)
@@ -183,6 +192,7 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
     # place a node in every corner of the box
     nodes = compute_box_corners(box_side_length, box_center, device)
+    nodes += torch.tensor([0.1, 0.2, 0.3], dtype=torch.float32, device=device)  # to make distances unique
     nodes_o3d = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(nodes))
     node_rotations, node_translations = twist_box_corners_around_y_axis(nodes, 22.5, device)
 

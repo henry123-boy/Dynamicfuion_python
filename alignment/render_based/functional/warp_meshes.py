@@ -41,12 +41,14 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
 
     # (vertex_count, 3)
     warped_vertices = (
-        mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) * (
-            sampled_nodes +
-            torch.matmul(sampled_rotations, (tiled_vertices - sampled_nodes).view(vertex_count, anchor_count, 3, 1))
-            .view(vertex_count, anchor_count, 3)
-            + sampled_translations
-        )
+            mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) *
+            (
+                    sampled_nodes +
+                    torch.matmul(sampled_rotations,
+                                 (tiled_vertices - sampled_nodes).view(vertex_count, anchor_count, 3, 1))
+                    .view(vertex_count, anchor_count, 3)
+                    + sampled_translations
+            )
     ).sum(dim=1)
 
     # (vertex_count, 3)
@@ -55,12 +57,16 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
     tiled_normals = mesh_vertex_normals.view(mesh_vertex_normals.shape[0], 1,
                                              mesh_vertex_normals.shape[1]).tile(1, anchor_count, 1)
     # (vertex_count, 3)
-    warped_normals = tnn_func.normalize((
-                                                mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) *
-                                                (sampled_nodes +
-                                                 torch.matmul(sampled_rotations, tiled_normals.view(vertex_count, anchor_count, 3, 1)))
-                                                .view(vertex_count, anchor_count, 3)
-                                        ).sum(dim=1), dim=1)
+    warped_normals = tnn_func.normalize(
+        (
+                mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) *
+                (
+                        sampled_nodes +
+                        torch.matmul(sampled_rotations, tiled_normals.view(vertex_count, anchor_count, 3, 1))
+                        .view(vertex_count, anchor_count, 3)
+                )
+        ).sum(dim=1), dim=1
+    )
     return p3ds.Meshes(warped_vertices.unsqueeze(0),
                        canonical_meshes.faces_padded(),
                        textures=canonical_meshes.textures,

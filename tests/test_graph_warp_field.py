@@ -91,6 +91,7 @@ def test_warp_mesh(device, ground_truth_vertices):
     graph_open3d.set_node_rotations(o3c.Tensor(
         np.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4),
         device=device))
+
     translations = nodes_rotated - nodes
     graph_open3d.set_node_translations(o3c.Tensor(translations, device=device))
 
