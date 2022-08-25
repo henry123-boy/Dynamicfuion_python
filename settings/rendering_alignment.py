@@ -17,26 +17,24 @@ from ext_argparse import ParameterEnum, Parameter
 from enum import Enum
 
 
-class DataTermPenaltyFunction(Enum):
-    NONE = 1,
-    ROBUST_TUKEY = 2,
-
-
-class RegularizationTermPenaltyFunction(Enum):
-    NONE = 1,
-    HUBER = 2
+class PenaltyFunction(Enum):
+    SQUARE = 1,
+    TUKEY = 2,
+    HUBER = 3
 
 
 class RenderingAlignmentParameters(ParameterEnum):
-    data_term_penalty = \
-        Parameter(default=DataTermPenaltyFunction.ROBUST_TUKEY, arg_type=DataTermPenaltyFunction,
+    data_term_penalty_function = \
+        Parameter(default=PenaltyFunction.TUKEY, arg_type=PenaltyFunction,
                   arg_help="What penalty function to use for the energy of the data term (point-to-plane) energy.")
-    tukey_penalty_constant = \
+    data_term_penalty_constant = \
         Parameter(default=0.01, arg_type=float,
-                  arg_help="Controls how quickly the tukey penalty function tapers off away from the origin.")
-    regularization_term_penalty = \
-        Parameter(default=RegularizationTermPenaltyFunction.HUBER, arg_type=RegularizationTermPenaltyFunction,
+                  arg_help="Controls how quickly the data term penalty function tapers off away from the origin if "
+                           "TUKEY or HUBER are used for the penalty function.")
+    regularization_term_penalty_function = \
+        Parameter(default=PenaltyFunction.HUBER, arg_type=PenaltyFunction,
                   arg_help="What penalty function to use for the energy of the data term (point-to-plane) energy.")
-    huber_penalty_constant = \
+    regularization_term_penalty_constant = \
         Parameter(default=0.0001, arg_type=float,
-                  arg_help="Controls how quickly the huber penalty function tapers off away from the origin.")
+                  arg_help="Controls how quickly the data term penalty function tapers off away from the origin if "
+                           "TUKEY or HUBER are used for the penalty function.")

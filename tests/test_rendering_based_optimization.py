@@ -43,13 +43,13 @@ def device_pytorch_to_open3d(device: torch.device) -> o3c.Device:
     return o3c.Device(str(device))
 
 
-def generate_test_box(device: o3c.Device, box_side_length: float = 1.0,
-                      box_center_position: tuple = (-0.5, -0.5, 2.5),
-                      subdivision_count: int = 2) -> o3d.t.geometry.TriangleMesh:
+def generate_test_box(box_side_length: float, box_center_position: tuple, subdivision_count: int,
+                      device: o3c.Device) -> o3d.t.geometry.TriangleMesh:
     mesh_legacy: o3d.geometry.TriangleMesh = \
         o3d.geometry.TriangleMesh.create_box(box_side_length,
                                              box_side_length, box_side_length)
-    mesh_legacy = mesh_legacy.subdivide_midpoint(subdivision_count)
+    if subdivision_count > 0:
+        mesh_legacy = mesh_legacy.subdivide_midpoint(subdivision_count)
     mesh: o3d.t.geometry.TriangleMesh = \
         o3d.t.geometry.TriangleMesh.from_legacy(
             mesh_legacy,
@@ -64,14 +64,38 @@ def generate_test_box(device: o3c.Device, box_side_length: float = 1.0,
     box_center_initial_offset = o3c.Tensor([-half_side_length, -half_side_length, -half_side_length],
                                            dtype=o3c.float32, device=device)
 
-    mesh.vertex["positions"] = mesh.vertex["positions"] + box_center_position  + box_center_initial_offset
+    mesh.vertex["positions"] = mesh.vertex["positions"] + box_center_position + box_center_initial_offset
 
     mesh.vertex["colors"] = o3c.Tensor([[0.7, 0.7, 0.7]] * len(mesh.vertex["positions"]), dtype=o3c.float32,
                                        device=device)
     return mesh
 
 
-@pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
+def generate_test_xy_plane(plane_side_length: float, plane_center_position: tuple,
+                           subdivision_count: int, device: o3c.Device) -> o3d.t.geometry.TriangleMesh:
+    mesh = o3d.t.geometry.TriangleMesh()
+    hsl = plane_side_length / 2
+    mesh.vertex["positions"] = o3d.core.Tensor([[-hsl, -hsl, 0],  # bottom left
+                                                [-hsl, hsl, 0],  # top left
+                                                [hsl, -hsl, 0],  # bottom right
+                                                [hsl, hsl, 1]],  # top right
+                                               o3c.float32, device)
+    mesh.triangle["indices"] = o3d.core.Tensor([[0, 1, 2],
+                                                [2, 1, 3]], o3c.float32, device)
+    nnrt.geometry.compute_vertex_normals(mesh, True)
+    mesh.vertex["colors"] = o3c.Tensor([[0.7, 0.7, 0.7]] * len(mesh.vertex["positions"]), dtype=o3c.float32,
+                                       device=device)
+    plane_center_position = o3c.Tensor(list(plane_center_position), dtype=o3c.float32, device=device)
+
+    mesh.vertex["positions"] += plane_center_position
+
+    if subdivision_count > 0:
+        mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh.to_legacy().subdivide_midpoint(subdivision_count),
+                                                       vertex_dtype=o3c.float32, device=device)
+    return mesh
+
+
+@pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_pytorch3d_renderer(device):
     save_gt_data = False
     test_path = Path(__file__).parent.resolve()
@@ -82,7 +106,8 @@ def test_pytorch3d_renderer(device):
     )
 
     renderer = PyTorch3DRenderer((480, 640), device, intrinsic_matrix=red_shorts_intrinsics.to(device))
-    mesh = generate_test_box(device)
+    mesh = generate_test_box(box_side_length=1.0, box_center_position=(-0.5, -0.5, 2.5), subdivision_count=2,
+                             device=device)
 
     depth_torch, rgb_torch = renderer.render_mesh(mesh, render_mode_mask=RenderMaskCode.DEPTH | RenderMaskCode.RGB)
 
@@ -121,29 +146,32 @@ def compute_box_corners(box_side_length: float, box_center_position: tuple, devi
     ], dtype=torch.float32, device=device)
 
 
+def rotation_around_y_axis(angle_degrees: float) -> np.array:
+    """
+    # equivalent of MATLAB's roty. Damn you, MATLAB, for encouraging horrid coding techniques by severely abbreviating
+# function names.
+    :param angle_degrees: angle, in degrees
+    :return: matrix representation of the @param angle_degrees degree rotation (of a 3x1 vector) around y-axis.
+    """
+    angle_radians = math.radians(angle_degrees)
+    return np.array([[math.cos(angle_radians), 0.0, math.sin(angle_radians)],
+                     [0., 1., 0.],
+                     [-math.sin(angle_radians), 0.0, math.cos(angle_radians)]])
+
+
 def twist_box_corners_around_y_axis(corners: torch.Tensor, angle_degrees: float, device: torch.device) \
         -> Tuple[torch.Tensor, torch.Tensor]:
-    mesh_rotation_angle = math.radians(angle_degrees)
-    global_rotation_matrix_top = torch.tensor(
-        [[math.cos(mesh_rotation_angle), 0.0, math.sin(mesh_rotation_angle)],
-         [0., 1., 0.],
-         [-math.sin(mesh_rotation_angle), 0.0, math.cos(mesh_rotation_angle)]],
-        dtype=torch.float32, device=device
-    )
-    global_rotation_matrix_bottom = torch.tensor(
-        [[math.cos(-mesh_rotation_angle), 0.0, math.sin(-mesh_rotation_angle)],
-         [0., 1., 0.],
-         [-math.sin(-mesh_rotation_angle), 0.0, math.cos(-mesh_rotation_angle)]],
-        dtype=torch.float32, device=device
-    )
+    top_rotation_matrix = torch.tensor(rotation_around_y_axis(angle_degrees), dtype=torch.float32, device=device)
+    bottom_rotation_matrix = torch.tensor(rotation_around_y_axis(-angle_degrees), dtype=torch.float32, device=device)
 
     corners_center = corners.mean(axis=0)
+    # make corner nodes spin in opposite direction of face rotation
     rotated_corners = corners_center + torch.cat(
-        ((corners[:4, :] - corners_center).mm(global_rotation_matrix_bottom),
-         (corners[4:, :] - corners_center).mm(global_rotation_matrix_top)), dim=0)
+        ((corners[:4, :] - corners_center).mm(bottom_rotation_matrix),
+         (corners[4:, :] - corners_center).mm(top_rotation_matrix)), dim=0)
 
     corner_translations = rotated_corners - corners
-    corner_rotations = torch.stack([global_rotation_matrix_top] * 4 + [global_rotation_matrix_bottom] * 4).to(device)
+    corner_rotations = torch.stack([top_rotation_matrix] * 4 + [bottom_rotation_matrix] * 4).to(device)
     return corner_rotations, corner_translations
 
 
@@ -185,9 +213,8 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
     subdivision_count = 1
     box_center = (0.5, 0.5, 0.5)
     box_side_length = 1.0
-    mesh_o3d = generate_test_box(device_pytorch_to_open3d(device), box_side_length=box_side_length,
-                                 box_center_position=box_center,
-                                 subdivision_count=subdivision_count)
+    mesh_o3d = generate_test_box(box_side_length=box_side_length, box_center_position=box_center,
+                                 subdivision_count=subdivision_count, device=device_pytorch_to_open3d(device))
     meshes_torch = open3d_mesh_to_pytorch3d(mesh_o3d)
 
     # place a node in every corner of the box
@@ -211,3 +238,21 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
     gt_device = ground_truth_vertices_torch.to(device)
     assert gt_device.allclose(meshes_warped.verts_packed())
+
+
+@pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
+def test_loss_from_inputs(device: o3c.Device):
+    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 0.0), 0, device)
+    image_size = (480, 640)
+    intrinsics = o3c.Tensor([[500., 0., 320.],
+                             [0., 500., 240.],
+                             [0., 0., 1.0]], dtype=o3c.float32, device=device)
+    renderer = PyTorch3DRenderer(image_size, device, intrinsic_matrix=intrinsics)
+    test_path = Path(__file__).parent.resolve()
+
+    test_data_path = test_path / "test_data"
+    image_test_data_path = test_data_path / "images"
+
+
+    image_rgb_gt_path = image_test_data_path / "plane_xy_rotated_y_color_000.png"
+    image_depth_gt_path = image_test_data_path / "rotated_plane_xy_depth_000.png"

@@ -13,10 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+from typing import Type
+
 from ext_argparse import ParameterEnum, Parameter
+from settings.rendering_alignment import RenderingAlignmentParameters
 
 
 class AlignmentParameters(ParameterEnum):
+    render_based: Type[RenderingAlignmentParameters] = RenderingAlignmentParameters
     image_width = \
         Parameter(default=640, arg_type=int,
                   arg_help="Input image/point cloud height for the non-rigid alignment portion of the algorithm. "

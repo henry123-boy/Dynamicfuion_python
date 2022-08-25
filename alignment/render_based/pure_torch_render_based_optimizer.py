@@ -33,7 +33,7 @@ import rendering.converters
 from alignment.render_based.functional.warp_meshes import warp_meshes_using_node_anchors
 
 
-class PureTorchOptimizer:
+class PureTorchRenderBasedOptimizer:
     def __init__(self, reference_rgb_image: o3d.t.geometry.Image, reference_point_cloud: o3d.t.geometry.PointCloud,
                  intrinsic_matrix: o3c.Tensor, extrinsic_matrix: o3c.Tensor,
                  warp_field: GraphWarpField, canonical_mesh: o3d.t.geometry.TriangleMesh):
@@ -74,9 +74,10 @@ class PureTorchOptimizer:
         self.image_size = (reference_rgb_image.rows, reference_rgb_image.columns)
         pixel_y_coordinates = torch.arange(0, self.image_size[0])
         pixel_x_coordinates = torch.arange(0, self.image_size[1])
-        self.pixel_xy_coordinates = torch.dstack(
+        self.pixel_xy_coordinates: torch.Tensor = torch.dstack(
             torch.meshgrid(pixel_x_coordinates, pixel_y_coordinates, indexing='xy')
         ).reshape(-1, 2)
+
         self.cameras: PerspectiveCameras = \
             rendering.converters.build_pytorch3d_cameras(self.image_size, intrinsic_matrix, extrinsic_matrix,
                                                          self.device)
@@ -99,32 +100,40 @@ class PureTorchOptimizer:
             lights=lights
         )
 
-    def point_to_plane_distances(self, rendered_rgb_image: torch.Tensor, rendered_points: torch.Tensor,
+    def point_to_plane_distances(self, rendered_points: torch.Tensor,
                                  rendered_normals: torch.Tensor) -> torch.Tensor:
         return torch.square((rendered_normals * (rendered_points - self.reference_points)).sum(dim=-1))
 
+    def compute_residuals_from_inputs(self, graph_node_rotations: torch.Tensor,
+                                      graph_node_translations: torch.Tensor) -> torch.Tensor:
+        warped_mesh = warp_meshes_using_node_anchors(
+            self.canonical_meshes, self.graph_nodes, self.graph_node_rotations,
+            self.graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights
+        )
+        fragments = self.rasterizer(warped_mesh)
+
+        faces = warped_mesh.faces_packed()  # (F, 3)
+        vertex_normals = warped_mesh.verts_normals_packed()  # (V, 3)
+        face_normals = vertex_normals[faces]
+        rendered_normals = interpolate_face_attributes(
+            fragments.pix_to_face, fragments.bary_coords, face_normals
+        )
+        # (image_height, image_width, 3)
+        # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
+        rendered_points = self.cameras.unproject_points(
+            torch.cat((self.pixel_xy_coordinates, fragments.zbuf), dim=1)
+        )
+        residuals = torch.square(self.point_to_plane_distances(rendered_points, rendered_normals))
+        return residuals
+
     def optimize(self):
-        max_iteration_count = 5
+        with torch.no_grad:
+            max_iteration_count = 1
+            for iteration in range(0, max_iteration_count):
+                    jacobian = torch.autograd.functional.jacobian(
+                        lambda graph_node_rotations, graph_node_translations:
+                        self.compute_residuals_from_inputs(graph_node_rotations, graph_node_translations),
+                        inputs=(self.graph_node_rotations, self.graph_node_translations)
+                    )
+                    print(jacobian.shape)
 
-        for iteration in range(0, max_iteration_count):
-            warped_mesh = warp_meshes_using_node_anchors(
-                self.canonical_meshes, self.graph_nodes, self.graph_node_rotations,
-                self.graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights
-            )
-            fragments = self.rasterizer(warped_mesh)
-
-            faces = warped_mesh.faces_packed()  # (F, 3)
-            vertex_normals = warped_mesh.verts_normals_packed()  # (V, 3)
-            face_normals = vertex_normals[faces]
-            rendered_normals = interpolate_face_attributes(
-                fragments.pix_to_face, fragments.bary_coords, face_normals
-            )
-            # (image_height, image_width, 3)
-            rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
-            rendered_points = self.cameras.unproject_points(
-                torch.cat((self.pixel_xy_coordinates, fragments.zbuf), dim=1)
-            )
-            reciprocals = self.point_to_plane_distances(rendered_rgb_image, rendered_points, rendered_normals)
-            loss = torch.square(reciprocals)
-            gradients = torch.autograd.grad(outputs=(loss,),
-                                            inputs=(self.graph_node_rotations, self.graph_node_translations))

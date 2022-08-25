@@ -53,7 +53,7 @@ def test_compute_anchors_euclidean_nnrtf_vs_legacy_nnrt_cpp(device):
     assert np.allclose(vertex_weights_sorted, old_vertex_weights_sorted)
 
 
-# see anchor_assignment_and_weighing/AnchorComputationTestManual_Reference.jpg for node diagram
+# see test_data/images/AnchorComputationTestManual_Reference.jpg for node diagram
 def prepare_test_data_anchor_computation_manual(node_coverage: float):
     vertices = np.array([
         [-4.6, -4.2, 0],  # SOURCE_1 in image, s0 here
@@ -146,7 +146,7 @@ def prepare_test_data_anchor_computation_manual(node_coverage: float):
     return vertices, nodes, edges, anchors_gt, weights_s0_gt, weights_s1_gt
 
 
-# see tests/test_data/AnchorComputationTest1.jpg for reference
+# see test_data/images/AnchorComputationTestManual_Reference.jpg for reference
 def test_shortest_path_anchors_legacy():
     anchor_count = 8
     node_coverage = 1.0
@@ -187,14 +187,16 @@ def test_shortest_path_anchors(device: o3d.core.Device):
 def test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(device):
     test_path = Path(__file__).parent.resolve()
     test_data_path = test_path / "test_data"
-    anchor_test_data_dir = test_data_path / "anchor_assignment_and_weighing"
-    depth_image_open3d_legacy = o3d.io.read_image(str(anchor_test_data_dir / "seq070_depth_000000.png"))
+    image_test_data_dir = test_data_path / "images"
+    intrinsics_test_data_dir = test_data_path / "intrinsics"
+
+    depth_image_open3d_legacy = o3d.io.read_image(str(image_test_data_dir / "seq070_depth_000000.png"))
     depth_image_np = np.array(depth_image_open3d_legacy)
-    mask_image_open3d_legacy = o3d.io.read_image(str(anchor_test_data_dir / "seq070_mask_000000_adult0.png"))
+    mask_image_open3d_legacy = o3d.io.read_image(str(image_test_data_dir / "seq070_mask_000000_adult0.png"))
     mask_image_np = np.array(mask_image_open3d_legacy)
     depth_image_np[mask_image_np == 0] = 0
     fx, fy, cx, cy = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(
-        str(anchor_test_data_dir / "seq070_intrinsics.txt"))
+        str(intrinsics_test_data_dir / "seq070_intrinsics.txt"))
 
     point_image = image_processing.backproject_depth(depth_image_np, fx, fy, cx, cy, depth_scale=1000.0)  # (h, w, 3)
     node_coverage = 0.05
@@ -232,7 +234,3 @@ def test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(device):
 
     assert np.allclose(vertex_anchors_sorted, legacy_vertex_anchors_sorted)
     assert np.allclose(vertex_weights_sorted, legacy_vertex_weights_sorted)
-
-
-if __name__ == "__main__":
-    test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(o3c.Device("CPU:0"))
