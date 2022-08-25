@@ -73,7 +73,7 @@ def generate_test_box(box_side_length: float, box_center_position: tuple, subdiv
 
 def generate_test_xy_plane(plane_side_length: float, plane_center_position: tuple,
                            subdivision_count: int, device: o3c.Device) -> o3d.t.geometry.TriangleMesh:
-    mesh = o3d.t.geometry.TriangleMesh()
+    mesh = o3d.t.geometry.TriangleMesh(device=device)
     hsl = plane_side_length / 2
     mesh.vertex["positions"] = o3d.core.Tensor([[-hsl, -hsl, 0],  # bottom left
                                                 [-hsl, hsl, 0],  # top left
@@ -81,8 +81,14 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
                                                 [hsl, hsl, 1]],  # top right
                                                o3c.float32, device)
     mesh.triangle["indices"] = o3d.core.Tensor([[0, 1, 2],
-                                                [2, 1, 3]], o3c.float32, device)
-    nnrt.geometry.compute_vertex_normals(mesh, True)
+                                                [2, 1, 3]], o3c.int64, device)
+    # nnrt.geometry.compute_vertex_normals(mesh, True)
+    mesh.triangle["normals"] = o3d.core.Tensor([[0, 0, -1],
+                                                [0, 0, -1]], o3c.float32, device)
+    mesh.vertex["normals"] = o3d.core.Tensor([[0, 0, -1],
+                                              [0, 0, -1],
+                                              [0, 0, -1],
+                                              [0, 0, -1]], o3c.float32, device)
     mesh.vertex["colors"] = o3c.Tensor([[0.7, 0.7, 0.7]] * len(mesh.vertex["positions"]), dtype=o3c.float32,
                                        device=device)
     plane_center_position = o3c.Tensor(list(plane_center_position), dtype=o3c.float32, device=device)
@@ -97,7 +103,7 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
 
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_pytorch3d_renderer(device):
-    save_gt_data = False
+    save_gt_data = True
     test_path = Path(__file__).parent.resolve()
     test_data_path = test_path / "test_data"
     intrinsics_test_data_path = test_data_path / "intrinsics"
@@ -159,13 +165,34 @@ def rotation_around_y_axis(angle_degrees: float) -> np.array:
                      [-math.sin(angle_radians), 0.0, math.cos(angle_radians)]])
 
 
+def rotate_mesh(mesh: o3d.t.geometry.TriangleMesh, rotation: o3c.Tensor) -> o3d.t.geometry.TriangleMesh:
+    """
+    Rotates mesh around mean of its vertices using the specified rotation matrix. Does not modify input.
+    :param mesh: mesh to rotate
+    :param rotation: rotation matrix
+    :return: rotated mesh
+    """
+    pivot = mesh.vertex["positions"].mean(dim=0)
+    #__DEBUG
+    print()
+    print(pivot)
+    rotated_mesh = mesh.clone()
+    rotated_vertices = (mesh.vertex["positions"] - pivot).matmul(rotation.T()) + pivot
+    rotated_mesh.vertex["positions"] = rotated_vertices
+    if "normals" in mesh.vertex:
+        rotated_normals = mesh.vertex["normals"].matmul(rotation.T())
+        rotated_mesh.vertex["normals"] = rotated_normals
+
+    return rotated_mesh
+
+
 def twist_box_corners_around_y_axis(corners: torch.Tensor, angle_degrees: float, device: torch.device) \
         -> Tuple[torch.Tensor, torch.Tensor]:
     top_rotation_matrix = torch.tensor(rotation_around_y_axis(angle_degrees), dtype=torch.float32, device=device)
-    bottom_rotation_matrix = torch.tensor(rotation_around_y_axis(-angle_degrees), dtype=torch.float32, device=device)
+    bottom_rotation_matrix = top_rotation_matrix.T
 
     corners_center = corners.mean(axis=0)
-    # make corner nodes spin in opposite direction of face rotation
+    # make corner nodes spin same direction as rotation (left-multiply requires us to flip the matrices)
     rotated_corners = corners_center + torch.cat(
         ((corners[:4, :] - corners_center).mm(bottom_rotation_matrix),
          (corners[4:, :] - corners_center).mm(top_rotation_matrix)), dim=0)
@@ -242,10 +269,12 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_loss_from_inputs(device: o3c.Device):
-    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 0.0), 0, device)
+    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.5), 0, device)
+    mesh_o3d = generate_test_box(box_side_length=1.0, box_center_position=(-0.5, -0.5, 2.5), subdivision_count=2,
+                                 device=device)
     image_size = (480, 640)
-    intrinsics = o3c.Tensor([[500., 0., 320.],
-                             [0., 500., 240.],
+    intrinsics = o3c.Tensor([[580., 0., 320.],
+                             [0., 580., 240.],
                              [0., 0., 1.0]], dtype=o3c.float32, device=device)
     renderer = PyTorch3DRenderer(image_size, device, intrinsic_matrix=intrinsics)
     test_path = Path(__file__).parent.resolve()
@@ -253,6 +282,16 @@ def test_loss_from_inputs(device: o3c.Device):
     test_data_path = test_path / "test_data"
     image_test_data_path = test_data_path / "images"
 
+    rotation_angle_y = 0
+    rotation_matrix_y = o3c.Tensor(rotation_around_y_axis(rotation_angle_y), dtype=o3c.float32, device=device)
+    mesh_rotated = rotate_mesh(mesh_o3d, rotation_matrix_y)
+    depth_torch, color_torch = renderer.render_mesh(mesh_rotated)
+    reference_image_depth_o3d = \
+        o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(depth_torch)).to(o3c.uint16))
+    reference_image_color_o3d = \
+        o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(color_torch)))
 
-    image_rgb_gt_path = image_test_data_path / "plane_xy_rotated_y_color_000.png"
-    image_depth_gt_path = image_test_data_path / "rotated_plane_xy_depth_000.png"
+    reference_image_color_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_color_000.png"
+    reference_image_depth_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_000.png"
+    o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
+    o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)

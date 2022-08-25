@@ -69,13 +69,20 @@ def make_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_matrix: np.
 
 
 def build_pytorch3d_cameras_from_ndc(ndc_intrinsic_matrix: torch.Tensor,
-                                     extrinsic_matrix: o3c.Tensor, torch_device: torch.device):
-    extrinsics_torch: torch.Tensor = torch_dlpack.from_dlpack(extrinsic_matrix.to_dlpack())
-    camera_rotation = (extrinsics_torch[:3, :3]).unsqueeze(0)
-    camera_rotation *= torch.Tensor([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
-    camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3)).unsqueeze(0)
+                                     extrinsic_matrix: Union[o3c.Tensor, None], torch_device: torch.device):
+    if extrinsic_matrix is not None:
+        extrinsics_torch: torch.Tensor = torch_dlpack.from_dlpack(extrinsic_matrix.to_dlpack())
+        camera_rotation = (extrinsics_torch[:3, :3])
+        camera_rotation *= torch.tensor([[[-1, 0, 0],
+                                          [0, -1, 0],
+                                          [0, 0, 1]]], dtype=torch.float32, device=torch_device)
+        camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3))
+    else:
+        camera_rotation = torch.tensor([[[-1, 0, 0],
+                                         [0, -1, 0],
+                                         [0, 0, 1]]], dtype=torch.float32, device=torch_device)
+        camera_translation = (torch.zeros((1, 3), dtype=torch.float32, device=torch_device))
 
-    # when given extrinsics, reconstruct the camera
     cameras = PerspectiveCameras(device=torch_device,
                                  R=camera_rotation,
                                  T=camera_translation,

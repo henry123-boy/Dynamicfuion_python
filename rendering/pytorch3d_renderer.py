@@ -39,7 +39,9 @@ class PyTorch3DRenderer:
         self.K = converters.make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
         # FIXME (see comments in tsdf_management/subprocedure_examples/pytorch3d_rendering_test.py)
         # camera_rotation = (torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0)
-        camera_rotation = np.array([[[-1, 0, 0], [0, -1, 0], [0, 0, 1]]], dtype=np.float32)
+        camera_rotation = torch.tensor([[[-1, 0, 0],
+                                     [0, -1, 0],
+                                     [0, 0, 1]]], dtype=torch.float32, device=self.torch_device)
         self.cameras: PerspectiveCameras \
             = PerspectiveCameras(device=self.torch_device,
                                  R=camera_rotation,
