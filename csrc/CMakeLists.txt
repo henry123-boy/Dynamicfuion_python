@@ -72,8 +72,8 @@ set(NNRT_SOURCE_FILES
 
     geometry/kernel/Segment.h
 
-    geometry/DownsamplePoints.h
-    geometry/DownsamplePoints.cpp
+    geometry/Downsample3dPoints.h
+    geometry/Downsample3dPoints.cpp
 
     geometry/kernel/PointDownsampling.cpp
     geometry/kernel/PointDownsampling.h
@@ -177,7 +177,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperationsCPU.cpp
     geometry/kernel/NormalsOperationsCUDA.cu
 
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h)
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/PointCloudCPU.cpp geometry/kernel/PointCloudCUDA.cu)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

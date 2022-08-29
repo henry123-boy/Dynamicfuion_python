@@ -25,7 +25,7 @@
 #include <utility>
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 
 namespace nnrt::core {
@@ -36,13 +36,13 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 	auto dimensions = points.GetShape();
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
-		o3u::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
+		utility::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
 	if (points.GetLength() > std::numeric_limits<int32_t>::max() || points.GetLength() < 1) {
-		o3u::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.",
-		              std::numeric_limits<int32_t>::max(),
-		              points.GetLength());
+		utility::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.",
+		                  std::numeric_limits<int32_t>::max(),
+		                  points.GetLength());
 	}
 	kernel::kdtree::BuildKdTreeIndex(*this->nodes, this->node_count, this->points);
 }
@@ -54,9 +54,9 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 	o3c::AssertTensorDtype(query_points, o3c::Dtype::Float32);
 	if (query_points.GetShape().size() != 2 ||
 	    query_points.GetShape(1) != this->points.GetShape(1)) {
-		o3u::LogError("Query point array of shape {} is incompatible to the set of points being indexed by the KD Tree (reference points), which"
+		utility::LogError("Query point array of shape {} is incompatible to the set of points being indexed by the KD Tree (reference points), which"
 		              "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
-		              query_points.GetShape(), this->points.GetShape());
+		                  query_points.GetShape(), this->points.GetShape());
 	}
 	if (sort_output) {
 		if (k > 20) {
@@ -66,7 +66,7 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 
-			o3u::LogError("Not fully implemented: sort the resulting rows when rows are short."
+			utility::LogError("Not fully implemented: sort the resulting rows when rows are short."
 			              "Consult https://stackoverflow.com/questions/28150098/how-to-use-thrust-to-sort-the-rows-of-a-matrix"
 			              "for reference on how to use thrust in the CUDA kernel for this.");
 		}
@@ -80,8 +80,8 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 std::string KdTree::GenerateTreeDiagram(int digit_length) const {
 	std::string diagram;
 	if (digit_length % 2 == 0 || digit_length < 1) {
-		o3u::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
-		              digit_length);
+		utility::LogError("digit_length parameter to `GenerateTreeDiagram` should be odd and greater than one, got {}.",
+		                  digit_length);
 	}
 	kernel::kdtree::GenerateTreeDiagram(diagram, *this->nodes, this->node_count, this->points, digit_length);
 	return diagram;

@@ -34,7 +34,7 @@
 #include "geometry/VoxelBlockGrid.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tio = open3d::t::io;
 namespace o3tg = open3d::t::geometry;
 
@@ -96,24 +96,24 @@ VoxelBlockGrid::VoxelBlockGrid(
 
 	// Sanity check
 	if (voxel_size <= 0) {
-		o3u::LogError("voxel size must be positive, but got {}",
-		              voxel_size);
+		utility::LogError("voxel size must be positive, but got {}",
+		                  voxel_size);
 	}
 	if (block_resolution <= 0) {
-		o3u::LogError("block resolution must be positive, but got {}",
-		              block_resolution);
+		utility::LogError("block resolution must be positive, but got {}",
+		                  block_resolution);
 	}
 
 
 	// Check property lengths
 	size_t n_attrs = attr_names.size();
 	if (attr_dtypes.size() != n_attrs) {
-		o3u::LogError(
+		utility::LogError(
 				"Number of attribute dtypes ({}) mismatch with names ({}).",
 				attr_dtypes.size(), n_attrs);
 	}
 	if (attr_channels.size() != n_attrs) {
-		o3u::LogError(
+		utility::LogError(
 				"Number of attribute channels ({}) mismatch with names ({}).",
 				attr_channels.size(), n_attrs);
 	}
@@ -144,8 +144,8 @@ VoxelBlockGrid::VoxelBlockGrid(
 o3c::Tensor VoxelBlockGrid::GetAttribute(const std::string& attr_name) const {
 	AssertInitialized();
 	if (name_attr_map_.count(attr_name) == 0) {
-		o3u::LogWarning("Attribute {} not found, return empty tensor.",
-		                attr_name);
+		utility::LogWarning("Attribute {} not found, return empty tensor.",
+		                    attr_name);
 		return o3c::Tensor();
 	}
 	int buffer_idx = name_attr_map_.at(attr_name);
@@ -405,7 +405,7 @@ o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor& block_coords,
 	renderings_map["range"] = range_minmax_map;
 	for (const auto& attr: attrs) {
 		if (kAttrChannelMap.count(attr) == 0) {
-			o3u::LogError(
+			utility::LogError(
 					"Unsupported attribute {}, please implement customized ray "
 					"casting.");
 		}
@@ -539,9 +539,9 @@ void VoxelBlockGrid::Save(const std::string& file_name) const {
 	}
 
 	std::string ext =
-			o3u::filesystem::GetFileExtensionInLowerCase(file_name);
+			utility::filesystem::GetFileExtensionInLowerCase(file_name);
 	if (ext != "npz") {
-		o3u::LogWarning(
+		utility::LogWarning(
 				"File name for a voxel grid should be with the extension "
 				".npz. Saving to {}.npz",
 				file_name);
@@ -573,7 +573,7 @@ VoxelBlockGrid VoxelBlockGrid::Load(const std::string& file_name) {
 		}
 	}
 	if (inv_attr_map.size() == 0) {
-		o3u::LogError(
+		utility::LogError(
 				"Attribute names not found, not a valid file for voxel block "
 				"grids.");
 	}
@@ -617,7 +617,7 @@ VoxelBlockGrid VoxelBlockGrid::Load(const std::string& file_name) {
 
 void VoxelBlockGrid::AssertInitialized() const {
 	if (block_hashmap_ == nullptr) {
-		o3u::LogError("VoxelBlockGrid not initialized.");
+		utility::LogError("VoxelBlockGrid not initialized.");
 	}
 }
 

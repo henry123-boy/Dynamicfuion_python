@@ -34,20 +34,27 @@ from alignment.render_based.functional.warp_meshes import warp_meshes_using_node
 
 
 class PureTorchRenderBasedOptimizer:
-    def __init__(self, reference_rgb_image: o3d.t.geometry.Image, reference_point_cloud: o3d.t.geometry.PointCloud,
-                 intrinsic_matrix: o3c.Tensor, extrinsic_matrix: o3c.Tensor,
-                 warp_field: GraphWarpField, canonical_mesh: o3d.t.geometry.TriangleMesh):
+    def __init__(self,
+                 reference_color_image: o3d.t.geometry.Image, reference_point_cloud: o3d.t.geometry.PointCloud,
+                 reference_point_mask: o3c.Tensor,
+                 canonical_mesh: o3d.t.geometry.TriangleMesh, warp_field: GraphWarpField,
+                 intrinsic_matrix: o3c.Tensor, extrinsic_matrix: o3c.Tensor = o3c.Tensor.eye(4)):
         self.anchor_count = 4
         self.node_coverage = 0.05
-        self.reference_rgb_image = \
-            torch_dlpack.from_dlpack(reference_rgb_image.as_tensor().to_dlpack()).to(torch.float32) / 255.0
+        self.reference_color_image = \
+            torch_dlpack.from_dlpack(reference_color_image.as_tensor().to_dlpack()).to(torch.float32) / 255.0
+        # point_count = width * height
+        # (point_count, 3)
         self.reference_points = torch_dlpack.from_dlpack(reference_point_cloud.point["positions"].to_dlpack())
-        self.device = self.reference_rgb_image.device
+        # (point_count, 1)
+        # Open3D Bool doesn't translate well to PyTorch bool for whatever reason, hence the extra conversions.
+        self.reference_point_mask = torch.from_dlpack(reference_point_mask.to(o3c.uint8).to_dlpack()).to(torch.bool)
+        self.device = self.reference_color_image.device
 
         self.canonical_meshes = rendering.converters.open3d_mesh_to_pytorch3d(canonical_mesh)
 
         self.intrinsic_matrix = torch_dlpack.from_dlpack(intrinsic_matrix.to_dlpack()).to(self.device)
-        self.extrinsic_matrix = torch_dlpack.from_dlpack(extrinsic_matrix.to_dlpack()).to(self.device)
+        self.extrinsic_matrix = torch_dlpack.from_dlpack(extrinsic_matrix.to_dlpack()).to(torch.float32).to(self.device)
 
         self.fx = self.intrinsic_matrix[0, 0]
         self.fy = self.intrinsic_matrix[1, 1]
@@ -65,15 +72,16 @@ class PureTorchRenderBasedOptimizer:
                                                                      anchor_count=self.anchor_count,
                                                                      node_coverage=self.node_coverage)
         # (vertex_count, anchor_count)
-        self.mesh_vertex_anchors = torch_dlpack.from_dlpack(anchors)
+        self.mesh_vertex_anchors = torch_dlpack.from_dlpack(anchors.to_dlpack())
         # (vertex_count, anchor_count)
-        self.mesh_vertex_anchor_weights = torch_dlpack.from_dlpack(weights)
+        self.mesh_vertex_anchor_weights = torch_dlpack.from_dlpack(weights.to_dlpack())
         self.mesh_vertex_anchor_weights[self.mesh_vertex_anchors == -1] = 0.0
         self.mesh_vertex_anchors[self.mesh_vertex_anchors == -1] = 0
 
-        self.image_size = (reference_rgb_image.rows, reference_rgb_image.columns)
-        pixel_y_coordinates = torch.arange(0, self.image_size[0])
-        pixel_x_coordinates = torch.arange(0, self.image_size[1])
+        self.image_size = (reference_color_image.rows, reference_color_image.columns)
+        self.pixel_count = reference_color_image.rows * reference_color_image.columns
+        pixel_y_coordinates = torch.arange(0, self.image_size[0], device=self.device)
+        pixel_x_coordinates = torch.arange(0, self.image_size[1], device=self.device)
         self.pixel_xy_coordinates: torch.Tensor = torch.dstack(
             torch.meshgrid(pixel_x_coordinates, pixel_y_coordinates, indexing='xy')
         ).reshape(-1, 2)
@@ -83,7 +91,7 @@ class PureTorchRenderBasedOptimizer:
                                                          self.device)
         # set up renderer
         lights = PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
-                             specular_color=((0.0, 0.0, 0.0),), device=self.torch_device,
+                             specular_color=((0.0, 0.0, 0.0),), device=self.device,
                              location=[[0.0, 0.0, -3.0]])
 
         rasterization_settings = RasterizationSettings(image_size=self.image_size,
@@ -95,20 +103,24 @@ class PureTorchRenderBasedOptimizer:
         self.rasterizer = MeshRasterizer(self.cameras, raster_settings=rasterization_settings)
 
         self.shader = SoftPhongShader(
-            device=self.torch_device,
+            device=self.device,
             cameras=self.cameras,
             lights=lights
         )
 
     def point_to_plane_distances(self, rendered_points: torch.Tensor,
-                                 rendered_normals: torch.Tensor) -> torch.Tensor:
-        return torch.square((rendered_normals * (rendered_points - self.reference_points)).sum(dim=-1))
+                                 rendered_normals: torch.Tensor,
+                                 rendered_point_mask: torch.Tensor) -> torch.Tensor:
+        distances = rendered_normals * (rendered_points - self.reference_points).sum(dim=-1)
+        # mask out distances for points occluded in reference frame from rendered frame and vice-versa
+        distances[torch.logical_and(self.reference_point_mask, rendered_point_mask)] = 0.0
+        return (rendered_normals * (rendered_points - self.reference_points)).sum(dim=-1)
 
     def compute_residuals_from_inputs(self, graph_node_rotations: torch.Tensor,
                                       graph_node_translations: torch.Tensor) -> torch.Tensor:
         warped_mesh = warp_meshes_using_node_anchors(
-            self.canonical_meshes, self.graph_nodes, self.graph_node_rotations,
-            self.graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights
+            self.canonical_meshes, self.graph_nodes, graph_node_rotations,
+            graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights, self.extrinsic_matrix
         )
         fragments = self.rasterizer(warped_mesh)
 
@@ -120,20 +132,27 @@ class PureTorchRenderBasedOptimizer:
         )
         # (image_height, image_width, 3)
         # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
+        # (point_count, 1)
+        point_depths = fragments.zbuf[0].reshape(-1, 1)
+        # (point_count, 3)
         rendered_points = self.cameras.unproject_points(
-            torch.cat((self.pixel_xy_coordinates, fragments.zbuf), dim=1)
+            torch.cat((self.pixel_xy_coordinates, point_depths), dim=1)
         )
-        residuals = torch.square(self.point_to_plane_distances(rendered_points, rendered_normals))
+        # (point_count, 1)
+        rendered_point_mask = torch.where(point_depths == -1,
+                                          torch.zeros(point_depths.shape, dtype=torch.bool, device=self.device),
+                                          torch.ones(point_depths.shape, dtype=torch.bool, device=self.device))
+
+        residuals = self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_mask)
         return residuals
 
     def optimize(self):
         with torch.no_grad:
             max_iteration_count = 1
             for iteration in range(0, max_iteration_count):
-                    jacobian = torch.autograd.functional.jacobian(
-                        lambda graph_node_rotations, graph_node_translations:
-                        self.compute_residuals_from_inputs(graph_node_rotations, graph_node_translations),
-                        inputs=(self.graph_node_rotations, self.graph_node_translations)
-                    )
-                    print(jacobian.shape)
-
+                jacobian = torch.autograd.functional.jacobian(
+                    lambda graph_node_rotations, graph_node_translations:
+                    self.compute_residuals_from_inputs(graph_node_rotations, graph_node_translations),
+                    inputs=(self.graph_node_rotations, self.graph_node_translations)
+                )
+                print(jacobian.shape)

@@ -30,7 +30,7 @@
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3gk = open3d::t::geometry::kernel;
 
 namespace nnrt::geometry::kernel::mesh {
@@ -40,9 +40,9 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
                             const open3d::core::Tensor& triangle_indices) {
 	auto device = vertex_positions.GetDevice();
 	o3c::AssertTensorDtype(vertex_positions, o3c::Float32);
-	o3c::AssertTensorShape(vertex_positions, {o3u::nullopt, 3});
+	o3c::AssertTensorShape(vertex_positions, {utility::nullopt, 3});
 	o3c::AssertTensorDtype(triangle_indices, o3c::Int64);
-	o3c::AssertTensorShape(triangle_indices, {o3u::nullopt, 3});
+	o3c::AssertTensorShape(triangle_indices, {utility::nullopt, 3});
 
 
 	triangle_normals = o3c::Tensor({triangle_indices.GetLength(), 3}, o3c::Float32, device);
@@ -72,7 +72,7 @@ void ComputeTriangleNormals(open3d::core::Tensor& triangle_normals, const open3d
 template<open3d::core::Device::DeviceType TDevice>
 void NormalizeVectors3d(open3d::core::Tensor& vectors3f) {
 	o3c::AssertTensorDtype(vectors3f, o3c::Float32);
-	o3c::AssertTensorShape(vectors3f, {o3u::nullopt, 3});
+	o3c::AssertTensorShape(vectors3f, {utility::nullopt, 3});
 
 	o3gk::NDArrayIndexer vector_indexer(vectors3f, 1);
 
@@ -98,9 +98,9 @@ void ComputeVertexNormals(open3d::core::Tensor& vertex_normals, const open3d::co
 	o3c::Device device = triangle_indices.GetDevice();
 
 	o3c::AssertTensorDtype(triangle_indices, o3c::Int64);
-	o3c::AssertTensorShape(triangle_indices, {o3u::nullopt, 3});
+	o3c::AssertTensorShape(triangle_indices, {utility::nullopt, 3});
 	o3c::AssertTensorDtype(triangle_normals, o3c::Float32);
-	o3c::AssertTensorShape(triangle_normals, {o3u::nullopt, 3});
+	o3c::AssertTensorShape(triangle_normals, {utility::nullopt, 3});
 
 
 	o3gk::NDArrayIndexer vertex_normal_indexer(vertex_normals, 1);

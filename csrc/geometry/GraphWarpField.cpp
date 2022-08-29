@@ -22,7 +22,7 @@
 #include "core/linalg/Matmul3D.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 
@@ -31,27 +31,27 @@ namespace nnrt::geometry {
 void CheckNodeMatrixTransformationData(o3c::Device& device, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
                                        const o3c::Tensor& node_translations) {
 	if (device != nodes.GetDevice() || device != node_rotations.GetDevice() || device != node_translations.GetDevice()) {
-		o3u::LogError("Device not consistent among arguments.");
+		utility::LogError("Device not consistent among arguments.");
 	}
 	auto nodes_shape = nodes.GetShape();
 	auto rotations_shape = node_rotations.GetShape();
 	auto translations_shape = node_translations.GetShape();
 	if (nodes_shape.size() != 2 || rotations_shape.size() != 3 || translations_shape.size() != 2) {
-		o3u::LogError("Arguments nodes, rotations, and translations need to have 2, 3, and 2 dimensions,"
+		utility::LogError("Arguments nodes, rotations, and translations need to have 2, 3, and 2 dimensions,"
 		              " respectively. Got {}, {}, and {}.", nodes_shape.size(),
-		              rotations_shape.size(), translations_shape.size());
+		                  rotations_shape.size(), translations_shape.size());
 	}
 
 	const int64_t node_count = nodes_shape[0];
 	if (nodes_shape[1] != 3) {
-		o3u::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
+		utility::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
 	}
 	if (rotations_shape[0] != node_count || rotations_shape[1] != 3 || rotations_shape[2] != 3) {
-		o3u::LogError("Argument node_rotations needs to have shape ({}, 3, 3), where first dimension is the node count N"
+		utility::LogError("Argument node_rotations needs to have shape ({}, 3, 3), where first dimension is the node count N"
 		              ", but has shape {}", node_count, rotations_shape);
 	}
 	if (translations_shape[0] != node_count || translations_shape[1] != 3) {
-		o3u::LogError("Argument node_translations needs to have shape ({}, 3), where first dimension is the node count N"
+		utility::LogError("Argument node_translations needs to have shape ({}, 3), where first dimension is the node count N"
 		              ", but has shape {}", node_count, translations_shape);
 	}
 
@@ -70,14 +70,14 @@ o3tg::PointCloud WarpPointCloud(
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	if (anchor_count < 0 || anchor_count > MAX_ANCHOR_COUNT) {
-		o3u::LogError("`anchor_count` is {}, but is required to satisfy 0 < anchor_count <= {}", anchor_count, MAX_ANCHOR_COUNT);
+		utility::LogError("`anchor_count` is {}, but is required to satisfy 0 < anchor_count <= {}", anchor_count, MAX_ANCHOR_COUNT);
 	}
 	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count) {
-		o3u::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {} ",
-		              minimum_valid_anchor_count, anchor_count);
+		utility::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {} ",
+		                  minimum_valid_anchor_count, anchor_count);
 	}
 	// endregion
 
@@ -116,20 +116,20 @@ o3tg::PointCloud WarpPointCloud(
 	auto anchors_shape = anchors.GetShape();
 	auto anchor_weights_shape = anchor_weights.GetShape();
 	if (anchors_shape.size() != 2 || anchor_weights_shape.size() != 2) {
-		o3u::LogError("Tensors `anchors` and `anchor_weights` need to both have two dimensions."
+		utility::LogError("Tensors `anchors` and `anchor_weights` need to both have two dimensions."
 		              "Got {} and {} dimensions, respectively.", anchors_shape.size(),
-		              anchor_weights_shape.size());
+		                  anchor_weights_shape.size());
 	}
 	if (anchors_shape[0] != anchor_weights_shape[0] || anchors_shape[1] != anchor_weights_shape[1]) {
-		o3u::LogError("Tensors `anchors` and `anchor_weights` need to have matching dimensions."
+		utility::LogError("Tensors `anchors` and `anchor_weights` need to have matching dimensions."
 		              "Got {} and {}, respectively.", anchors_shape,
-		              anchor_weights_shape);
+		                  anchor_weights_shape);
 	}
 	const int64_t anchor_count = anchors_shape[1];
 	if (minimum_valid_anchor_count < 0 || minimum_valid_anchor_count > anchor_count) {
-		o3u::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {}, "
+		utility::LogError("`minimum_valid_anchor_count` is {}, but is required to satisfy 0 < minimum_valid_anchor_count <= {}, "
 		              "where the upper bound is the second dimension of the input `anchors` tensor.",
-		              minimum_valid_anchor_count, anchor_count);
+		                  minimum_valid_anchor_count, anchor_count);
 	}
 	o3c::AssertTensorDtype(anchors, o3c::Dtype::Int32);
 	o3c::AssertTensorDtype(anchor_weights, o3c::Dtype::Float32);
@@ -179,7 +179,7 @@ WarpTriangleMesh(
 	// region ================ INPUT CHECKS ======================================
 	CheckNodeMatrixTransformationData(device, nodes, node_rotations, node_translations);
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	// endregion
 
@@ -203,7 +203,6 @@ WarpTriangleMesh(
 		warped_mesh.SetVertexPositions(warped_vertices);
 	}
 
-
 	return warped_mesh;
 }
 
@@ -214,15 +213,15 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 	o3c::AssertTensorDtype(nodes, o3c::Dtype::Float32);
 	o3c::AssertTensorDevice(nodes, device);
 	if (minimum_valid_anchor_count > anchor_count) {
-		o3u::LogError("minimum_valid_anchor_count (now, {}) has to be smaller than or equal to anchor_count, which is {}.",
-		              minimum_valid_anchor_count, anchor_count);
+		utility::LogError("minimum_valid_anchor_count (now, {}) has to be smaller than or equal to anchor_count, which is {}.",
+		                  minimum_valid_anchor_count, anchor_count);
 	}
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	auto points_shape = points.GetShape();
 	if (points_shape.size() < 2 || points_shape.size() > 3) {
-		o3u::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
+		utility::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
 	}
 	o3c::Tensor points_array;
 	enum PointMode {
@@ -230,11 +229,11 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 	};
 	PointMode point_mode;
 	if (points_shape.size() == 2) {
-		o3c::AssertTensorShape(points, { o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, 3 });
 		points_array = points;
 		point_mode = POINT_ARRAY;
 	} else {
-		o3c::AssertTensorShape(points, { o3u::nullopt, o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, utility::nullopt, 3 });
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}
@@ -261,11 +260,11 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	o3c::AssertTensorDtype(nodes, o3c::Dtype::Float32);
 	o3c::AssertTensorDtype(edges, o3c::Dtype::Int32);
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	auto points_shape = points.GetShape();
 	if (points_shape.size() < 2 || points_shape.size() > 3) {
-		o3u::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
+		utility::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
 	}
 	o3c::Tensor points_array;
 	enum PointMode {
@@ -273,11 +272,11 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	};
 	PointMode point_mode;
 	if (points_shape.size() == 2) {
-		o3c::AssertTensorShape(points, { o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, 3 });
 		points_array = points;
 		point_mode = POINT_ARRAY;
 	} else {
-		o3c::AssertTensorShape(points, { o3u::nullopt, o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, utility::nullopt, 3 });
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}
@@ -318,24 +317,24 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 	auto edge_weights_shape = this->edge_weights.GetShape();
 	auto clusters_shape = this->clusters.GetShape();
 	if (nodes_shape.size() != 2 || edges_shape.size() != 2 || edge_weights_shape.size() != 2 || clusters_shape.size() != 1) {
-		o3u::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have two dimensions,"
+		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have two dimensions,"
 		              " while `clusters` needs to have one dimension. Got dimension counts {}, {}, {}, and {}, respectively.",
-		              nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
+		                  nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
 	}
 	const int64_t node_count = nodes_shape[0];
 	if (nodes_shape[1] != 3) {
-		o3u::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
+		utility::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
 	}
 	if (edges_shape[0] != node_count) {
-		o3u::LogError("Argument `edges_shape` needs to have shape ({}, X), where first dimension is the node count N"
+		utility::LogError("Argument `edges_shape` needs to have shape ({}, X), where first dimension is the node count N"
 		              " and the second is the edge degree X, but has shape {}", node_count, edges_shape);
 	}
 	if (edge_weights_shape != edges_shape) {
-		o3u::LogError("arguments `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
-		              edge_weights_shape);
+		utility::LogError("arguments `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
+		                  edge_weights_shape);
 	}
 	if (clusters_shape[0] != node_count) {
-		o3u::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
+		utility::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
 	}
 	this->ResetRotations();
 }

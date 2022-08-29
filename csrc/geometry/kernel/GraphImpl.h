@@ -31,7 +31,7 @@
 
 using namespace open3d;
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 using namespace open3d::t::geometry::kernel;
 
 
@@ -95,7 +95,7 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	NDArrayIndexer node_indexer(nodes, 1);
 	NDArrayIndexer edge_indexer(edges, 1);
 
-	o3c::AssertTensorShape(edges, {node_count, o3u::nullopt});
+	o3c::AssertTensorShape(edges, {node_count, utility::nullopt});
 	int graph_degree = static_cast<int>(edges.GetShape()[1]);
 
 	//output indexers

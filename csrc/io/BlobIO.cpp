@@ -18,18 +18,18 @@
 #include "io/DeviceIO.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace nnrt::io {
 
 std::ostream& operator<<(std::ostream& ostream, const std::pair<const std::shared_ptr<open3d::core::Blob>&, int64_t>& blob_and_bytesize) {
 	auto blob = blob_and_bytesize.first;
 	o3c::Device host("CPU:0");
 	if(blob->GetDevice() != host){
-		o3u::LogError("Blob ostream output for blobs with device {} not supported (only CPU:0 device is supported).", blob->GetDevice().ToString());
+		utility::LogError("Blob ostream output for blobs with device {} not supported (only CPU:0 device is supported).", blob->GetDevice().ToString());
 	}
 	ostream << blob->GetDevice();
 	if(ostream.bad()){
-		o3u::LogError("Failure writing to ostream.");
+		utility::LogError("Failure writing to ostream.");
 	}
 	int64_t byte_size = blob_and_bytesize.second;
 	ostream.write(reinterpret_cast<const char*>(&byte_size), sizeof(int64_t));
@@ -45,7 +45,7 @@ std::istream& operator>>(std::istream& istream, std::pair<std::shared_ptr<open3d
 	blob_and_bytesize.second = byte_size;
 	o3c::Device host("CPU:0");
 	if(device != host){
-		o3u::LogError("Blob istream input for blobs with device {} not supported (only CPU:0 device is supported).", device.ToString());
+		utility::LogError("Blob istream input for blobs with device {} not supported (only CPU:0 device is supported).", device.ToString());
 	}
 	blob_and_bytesize.first = std::make_shared<o3c::Blob>(byte_size, device);
 	istream.read(reinterpret_cast<char*>(blob_and_bytesize.first->GetDataPtr()), byte_size);

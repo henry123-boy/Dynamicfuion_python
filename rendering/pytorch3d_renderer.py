@@ -28,10 +28,7 @@ class PyTorch3DRenderer:
         :param device: the device to use for rendering
         :param intrinsic_matrix: a 3x3 or 4x4 intrinsics tensor
         """
-        if device.get_type() == o3c.Device.DeviceType.CUDA:
-            self.torch_device = torch.device("cuda:0")
-        else:
-            self.torch_device = torch.device("cpu:0")
+        self.torch_device = converters.device_open3d_to_pytorch(device)
         self.lights = PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
                                   specular_color=((0.0, 0.0, 0.0),), device=self.torch_device,
                                   location=[[0.0, 0.0, -3.0]])

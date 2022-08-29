@@ -16,7 +16,7 @@
 #include <open3d/utility/Logging.h>
 #include "DtypeIO.h"
 
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace nnrt::io {
 
 std::ostream& operator<<(std::ostream& ostream, const open3d::core::Dtype& dtype) {
@@ -42,7 +42,7 @@ std::istream& operator>>(std::istream& istream, open3d::core::Dtype& dtype) {
 	dtype_name.resize(name_size);
 	istream.read(reinterpret_cast<char*>(&dtype_name[0]), name_size);
 	if(istream.bad()){
-		o3u::LogError("Failure reading from istream.");
+		utility::LogError("Failure reading from istream.");
 	}
 	dtype = open3d::core::Dtype(code, byte_size, dtype_name);
 	return istream;

@@ -22,7 +22,7 @@
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::geometry {
@@ -121,7 +121,7 @@ open3d::core::Tensor
 NonRigidSurfaceVoxelBlockGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
                                                               const open3d::core::Tensor& extrinsics) const {
 	o3c::AssertTensorDtype(block_keys, o3c::Dtype::Int32);
-	o3c::AssertTensorShape(block_keys, { o3u::nullopt, 3 });
+	o3c::AssertTensorShape(block_keys, { utility::nullopt, 3 });
 
 	o3c::Tensor bounding_boxes;
 	kernel::voxel_grid::GetBoundingBoxesOfWarpedBlocks(bounding_boxes, block_keys, warp_field, this->GetVoxelSize(), this->block_resolution_,
@@ -138,7 +138,7 @@ NonRigidSurfaceVoxelBlockGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const 
 	//TODO: figure out why we need NumElements > 0, make this check pass
 	// open3d::t::geometry::CheckDepthTensor(depth.AsTensor());
 	o3c::AssertTensorDtype(boxes, o3c::Dtype::Float32);
-	o3c::AssertTensorShape(boxes, { o3u::nullopt, 6 });
+	o3c::AssertTensorShape(boxes, { utility::nullopt, 6 });
 
 	o3c::Tensor mask;
 	kernel::voxel_grid::GetAxisAlignedBoxesInterceptingSurfaceMask(mask, boxes, intrinsics, depth.AsTensor(), depth_scale, depth_max,
@@ -200,7 +200,7 @@ open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelBlockCoordinates
 
 open3d::core::Tensor NonRigidSurfaceVoxelBlockGrid::ExtractVoxelValuesAt(const open3d::core::Tensor& query_voxel_coordinates) {
 	o3c::AssertTensorDtype(query_voxel_coordinates, o3c::Int32);
-	o3c::AssertTensorShape(query_voxel_coordinates, { o3u::nullopt, 3 });
+	o3c::AssertTensorShape(query_voxel_coordinates, { utility::nullopt, 3 });
 
 	o3tg::TensorMap block_value_map =
 			VoxelBlockGrid::ConstructTensorMap(*block_hashmap_, name_attr_map_);

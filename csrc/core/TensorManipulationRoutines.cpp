@@ -16,7 +16,7 @@
 #include "core/TensorManipulationRoutines.h"
 #include "core/linalg/Matmul3D.h"
 
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3c = open3d::core;
 
 namespace nnrt::core{
@@ -33,7 +33,7 @@ namespace nnrt::core{
 		tensor2_shape[0] = combined_length;
 		tensor1_shape[0] = combined_length;
 		if (tensor2_shape != tensor1_shape) {
-			o3u::LogError(
+			utility::LogError(
 					"Shape mismatch. Tensor of shape {} is not "
 					"compatible with tensor of shape {} for vertical combination.",
 					tensor2.GetShape(), tensor1.GetShape());

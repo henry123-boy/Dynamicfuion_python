@@ -20,7 +20,8 @@
 #include "geometry/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
 #include "geometry/Comparison.h"
-#include "geometry/DownsamplePoints.h"
+#include "geometry/Downsample3dPoints.h"
+#include "geometry/Unproject3dPoints.h"
 #include "geometry/NormalsOperations.h"
 #include "geometry.h"
 
@@ -283,20 +284,19 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 
 	m.def("warp_triangle_mesh", &WarpTriangleMesh, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a, "threshold_nodes_by_distance"_a = false,
-	      "minimum_valid_anchor_count"_a = 0);
+	      "minimum_valid_anchor_count"_a = 0, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0")));
 
 	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
-			      const o3c::Tensor&, const o3c::Tensor&, int, float, int>(&WarpPointCloud),
+			      const o3c::Tensor&, const o3c::Tensor&, int, float, int, const o3c::Tensor&>(&WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
-	      "minimum_valid_anchor_count"_a);
+	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0")));
 
 	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
-			      const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int>(
-			      &WarpPointCloud),
+			      const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int, const o3c::Tensor&>(&WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
-	      "minimum_valid_anchor_count"_a);
+	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0")));
 
 	py::class_<GraphWarpField> graph_warp_field(
 			m, "GraphWarpField",
@@ -343,8 +343,19 @@ void pybind_geometry_comparison(pybind11::module& m) {
 }
 
 void pybind_geometry_downsampling(pybind11::module& m) {
-	m.def("grid_downsample_3d_points", &GridDownsample3DPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("radius_downsample_3d_points", &RadiusDownsample3DPoints, "points"_a, "radius"_a, "hash_backend"_a);
+	m.def("grid_downsample_3d_points", &GridDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
+	m.def("radius_downsample_3d_points", &RadiusDownsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
+}
+
+void pybind_geometry_pointcloud(pybind11::module& m) {
+	m.def("unproject_3d_points_without_depth_filtering",
+	      [](const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	         float depth_scale, float depth_max, bool preserve_pixel_layout) {
+		      o3c::Tensor points, mask;
+		      Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_pixel_layout);
+		      return py::make_tuple(points, mask);
+	      }, "depth"_a, "intrinsics"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float32, open3d::core::Device("CPU:0")),
+	      "depth_scale"_a = 1000.0f, "depth_max"_a = 3.0f, "preserve_pixel_layout"_a = false);
 }
 
 void pybind_geometry_normals_operations(pybind11::module& m) {
@@ -352,7 +363,6 @@ void pybind_geometry_normals_operations(pybind11::module& m) {
 	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
 	m.def("compute_ordered_point_cloud_normals", &ComputeOrderedPointCloudNormals, "point_cloud"_a, "source_image_size"_a);
 }
-
 
 } // namespace nnrt
 

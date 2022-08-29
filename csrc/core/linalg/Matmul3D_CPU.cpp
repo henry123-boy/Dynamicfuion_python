@@ -21,7 +21,7 @@
 #include "core/linalg/LinalgUtils.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg {
 

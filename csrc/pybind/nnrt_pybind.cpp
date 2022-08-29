@@ -15,7 +15,7 @@
 
 using namespace pybind11::literals;
 
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 
 int add(int i, int j) {
@@ -24,7 +24,7 @@ int add(int i, int j) {
 
 // Definitions of all methods in the module.
 PYBIND11_MODULE(nnrt, m) {
-	o3u::Logger::GetInstance().SetPrintFunction([](const std::string& msg) {
+	utility::Logger::GetInstance().SetPrintFunction([](const std::string& msg) {
 		py::gil_scoped_acquire acquire;
 		py::print(msg);
 	});

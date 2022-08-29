@@ -18,7 +18,7 @@
 #include "test_main.hpp"
 
 #include <open3d/core/Tensor.h>
-#include <geometry/DownsamplePoints.h>
+#include <geometry/Downsample3dPoints.h>
 
 #include <Eigen/Dense>
 
@@ -106,7 +106,7 @@ void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downs
 
 void TestGridDownsampling_Hash(const o3c::Device& device) {
 	TestGridDownsampling_Generic(device, [](o3c::Tensor& points, float grid_cell_size) {
-		return geometry::GridDownsample3DPoints(points, grid_cell_size);
+		return geometry::GridDownsample3dPoints(points, grid_cell_size);
 	});
 }
 

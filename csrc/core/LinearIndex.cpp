@@ -19,7 +19,7 @@
 #include "core/kernel/LinearIndex.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 namespace nnrt::core {
 nnrt::core::LinearIndex::LinearIndex(const open3d::core::Tensor& points) :
@@ -27,12 +27,12 @@ nnrt::core::LinearIndex::LinearIndex(const open3d::core::Tensor& points) :
 	auto dimensions = points.GetShape();
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
-		o3u::LogError("Linear index only supports indexing of two-dimensional tensors. "
+		utility::LogError("Linear index only supports indexing of two-dimensional tensors. "
 		              "Provided tensor has dimensions: {}", dimensions);
 	}
 	if(points.GetLength() > std::numeric_limits<int32_t>::max()){
-		o3u::LogError("Linear index doesn't support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
-		              points.GetLength());
+		utility::LogError("Linear index doesn't support more than {} points. Got: {} points.", std::numeric_limits<int32_t>::max(),
+		                  points.GetLength());
 	}
 }
 
@@ -42,9 +42,9 @@ void LinearIndex::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_in
 	o3c::AssertTensorDtype(query_points, o3c::Dtype::Float32);
 	if(query_points.GetShape().size() != 2 ||
 	   query_points.GetShape(1) != this->points.GetShape(1)){
-		o3u::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the linear index, which"
+		utility::LogError("Reference point array of shape {} is incompatible to the set of points being indexed by the linear index, which"
 		              "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
-		              query_points.GetShape(), this->points.GetShape());
+		                  query_points.GetShape(), this->points.GetShape());
 	}
 	if(sort_output){
 		kernel::linear_index::FindKNearestKdTreePoints<kernel::linear_index::NeighborTrackingStrategy::PRIORITY_QUEUE>(nearest_neighbor_indices, nearest_neighbor_distances, query_points, k, this->points);

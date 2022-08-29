@@ -24,7 +24,7 @@
 #include <zstr.hpp>
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 namespace nnrt::io {
 
@@ -49,7 +49,7 @@ std::istream& operator>>(std::istream& istream, open3d::core::Tensor& tensor) {
 	istream >> dtype;
 
 	if(istream.bad()){
-		o3u::LogError("Failure reading from istream.");
+		utility::LogError("Failure reading from istream.");
 	}
 
 	auto blob_and_bytesize = std::make_pair(std::shared_ptr<o3c::Blob>(nullptr), (int64_t)0L);

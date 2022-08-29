@@ -26,21 +26,13 @@ import torch
 import torch.utils.dlpack as torch_dlpack
 
 import pytorch3d.structures as p3ds
-from nnrt.geometry import compute_anchors_and_weights_shortest_path, compute_anchors_and_weights_euclidean
 
+from alignment.render_based.pure_torch_render_based_optimizer import PureTorchRenderBasedOptimizer
 # code being tested
 from rendering.pytorch3d_renderer import PyTorch3DRenderer, RenderMaskCode
-from rendering.converters import open3d_mesh_to_pytorch3d
+import rendering.converters as converters
 from alignment.render_based.functional.warp_meshes import warp_meshes_using_node_anchors
 from data.camera import load_intrinsic_3x3_matrix_from_text_4x4_matrix
-
-
-def device_open3d_to_pytorch(device: o3c.Device) -> torch.device:
-    return torch.device(str(device).lower())
-
-
-def device_pytorch_to_open3d(device: torch.device) -> o3c.Device:
-    return o3c.Device(str(device))
 
 
 def generate_test_box(box_side_length: float, box_center_position: tuple, subdivision_count: int,
@@ -78,7 +70,7 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
     mesh.vertex["positions"] = o3d.core.Tensor([[-hsl, -hsl, 0],  # bottom left
                                                 [-hsl, hsl, 0],  # top left
                                                 [hsl, -hsl, 0],  # bottom right
-                                                [hsl, hsl, 1]],  # top right
+                                                [hsl, hsl, 0]],  # top right
                                                o3c.float32, device)
     mesh.triangle["indices"] = o3d.core.Tensor([[0, 1, 2],
                                                 [2, 1, 3]], o3c.int64, device)
@@ -103,7 +95,7 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
 
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_pytorch3d_renderer(device):
-    save_gt_data = True
+    save_gt_data = False
     test_path = Path(__file__).parent.resolve()
     test_data_path = test_path / "test_data"
     intrinsics_test_data_path = test_data_path / "intrinsics"
@@ -112,7 +104,7 @@ def test_pytorch3d_renderer(device):
     )
 
     renderer = PyTorch3DRenderer((480, 640), device, intrinsic_matrix=red_shorts_intrinsics.to(device))
-    mesh = generate_test_box(box_side_length=1.0, box_center_position=(-0.5, -0.5, 2.5), subdivision_count=2,
+    mesh = generate_test_box(box_side_length=1.0, box_center_position=(0.0, 0.0, 2.0), subdivision_count=2,
                              device=device)
 
     depth_torch, rgb_torch = renderer.render_mesh(mesh, render_mode_mask=RenderMaskCode.DEPTH | RenderMaskCode.RGB)
@@ -173,9 +165,6 @@ def rotate_mesh(mesh: o3d.t.geometry.TriangleMesh, rotation: o3c.Tensor) -> o3d.
     :return: rotated mesh
     """
     pivot = mesh.vertex["positions"].mean(dim=0)
-    #__DEBUG
-    print()
-    print(pivot)
     rotated_mesh = mesh.clone()
     rotated_vertices = (mesh.vertex["positions"] - pivot).matmul(rotation.T()) + pivot
     rotated_mesh.vertex["positions"] = rotated_vertices
@@ -241,8 +230,9 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
     box_center = (0.5, 0.5, 0.5)
     box_side_length = 1.0
     mesh_o3d = generate_test_box(box_side_length=box_side_length, box_center_position=box_center,
-                                 subdivision_count=subdivision_count, device=device_pytorch_to_open3d(device))
-    meshes_torch = open3d_mesh_to_pytorch3d(mesh_o3d)
+                                 subdivision_count=subdivision_count,
+                                 device=converters.device_pytorch_to_open3d(device))
+    meshes_torch = converters.open3d_mesh_to_pytorch3d(mesh_o3d)
 
     # place a node in every corner of the box
     nodes = compute_box_corners(box_side_length, box_center, device)
@@ -252,9 +242,9 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
     anchor_count = 4
     node_coverage = 0.5
-    anchors, weights = compute_anchors_and_weights_euclidean(mesh_o3d.vertex["positions"],
-                                                             nodes_o3d, anchor_count, 0,
-                                                             node_coverage=node_coverage)
+    anchors, weights = nnrt.geometry.compute_anchors_and_weights_euclidean(mesh_o3d.vertex["positions"],
+                                                                           nodes_o3d, anchor_count, 0,
+                                                                           node_coverage=node_coverage)
 
     vertex_anchors = torch_dlpack.from_dlpack(anchors.to_dlpack())
     vertex_anchor_weights = torch_dlpack.from_dlpack(weights.to_dlpack())
@@ -269,20 +259,36 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_loss_from_inputs(device: o3c.Device):
-    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.5), 0, device)
-    mesh_o3d = generate_test_box(box_side_length=1.0, box_center_position=(-0.5, -0.5, 2.5), subdivision_count=2,
-                                 device=device)
+    save_images = False
+    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device)
+    # place graph nodes at plane corners. They'll correspond to vertices as long as there is no subdivision.
+    graph_nodes = mesh_o3d.vertex["positions"].clone()
+    graph_edges = o3c.Tensor([[1, 2, -1, -1],
+                              [0, 3, -1, -1],
+                              [0, 3, -1, -1],
+                              [1, 2, -1, -1]], dtype=o3c.int32, device=device)
+    graph_edge_weights = o3c.Tensor([[0.5, 0.5, 0, 0],
+                                     [0.5, 0.5, 0, 0],
+                                     [0.5, 0.5, 0, 0],
+                                     [0.5, 0.5, 0, 0]], dtype=o3c.float32, device=device)
+    graph_clusters = o3c.Tensor([0, 0, 0, 0], dtype=o3c.int32, device=device)
+    node_coverage = 0.5
+    warp_field = \
+        nnrt.geometry.GraphWarpField(graph_nodes, graph_edges, graph_edge_weights, graph_clusters,
+                                     node_coverage, False, 4, 0)
+
     image_size = (480, 640)
-    intrinsics = o3c.Tensor([[580., 0., 320.],
-                             [0., 580., 240.],
-                             [0., 0., 1.0]], dtype=o3c.float32, device=device)
-    renderer = PyTorch3DRenderer(image_size, device, intrinsic_matrix=intrinsics)
+    intrinsic_matrix = o3c.Tensor([[580., 0., 320.],
+                                   [0., 580., 240.],
+                                   [0., 0., 1.0]], dtype=o3c.float64, device=o3c.Device('cpu:0'))
+    extrinsic_matrix = o3c.Tensor.eye(4, dtype=o3c.float64, device=o3c.Device('cpu:0'))
+    renderer = PyTorch3DRenderer(image_size, device, intrinsic_matrix=intrinsic_matrix)
     test_path = Path(__file__).parent.resolve()
 
     test_data_path = test_path / "test_data"
     image_test_data_path = test_data_path / "images"
 
-    rotation_angle_y = 0
+    rotation_angle_y = 10
     rotation_matrix_y = o3c.Tensor(rotation_around_y_axis(rotation_angle_y), dtype=o3c.float32, device=device)
     mesh_rotated = rotate_mesh(mesh_o3d, rotation_matrix_y)
     depth_torch, color_torch = renderer.render_mesh(mesh_rotated)
@@ -291,7 +297,18 @@ def test_loss_from_inputs(device: o3c.Device):
     reference_image_color_o3d = \
         o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(color_torch)))
 
-    reference_image_color_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_color_000.png"
-    reference_image_depth_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_000.png"
-    o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
-    o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)
+    if save_images:
+        reference_image_color_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_color_000.png"
+        reference_image_depth_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_000.png"
+        o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
+        o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)
+
+    reference_point_cloud = o3d.t.geometry.PointCloud.create_from_depth_image(reference_image_depth_o3d,
+                                                                              intrinsic_matrix,
+                                                                              depth_scale=1000., depth_max=10.0)
+    reference_point_mask = (reference_image_depth_o3d.as_tensor() <= 0).reshape((-1, 1))
+
+    optimizer = PureTorchRenderBasedOptimizer(reference_image_color_o3d, reference_point_cloud, reference_point_mask,
+                                              mesh_o3d, warp_field, intrinsic_matrix, extrinsic_matrix)
+
+    optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)

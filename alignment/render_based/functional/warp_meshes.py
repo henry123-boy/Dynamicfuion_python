@@ -13,6 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+from typing import Union
+
 import torch
 import torch.nn.functional as tnn_func
 import pytorch3d.structures as p3ds
@@ -23,10 +25,17 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
                                    graph_node_rotations: torch.Tensor,
                                    graph_node_translations: torch.Tensor,
                                    mesh_vertex_anchors: torch.Tensor,
-                                   mesh_vertex_anchor_weights: torch.Tensor) -> p3ds.Meshes:
+                                   mesh_vertex_anchor_weights: torch.Tensor,
+                                   extrinsic_matrix: Union[torch.Tensor, None] = None) -> p3ds.Meshes:
     anchor_count = mesh_vertex_anchors.shape[1]
     # (vertex_count, 3)
-    mesh_vertices = canonical_meshes.verts_packed()
+    mesh_vertices: torch.Tensor = canonical_meshes.verts_packed()
+    if extrinsic_matrix is not None:
+        camera_rotation = extrinsic_matrix[0:3, 0:3]
+        camera_translation = extrinsic_matrix[0:3, 3]
+        mesh_vertices = mesh_vertices.mm(camera_rotation.T)
+        mesh_vertices += camera_translation.T
+
     vertex_count = mesh_vertices.shape[0]
     # (vertex_count, anchor_count, 3)
     tiled_vertices = mesh_vertices.view(mesh_vertices.shape[0], 1,

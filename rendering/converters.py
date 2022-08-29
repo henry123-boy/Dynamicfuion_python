@@ -1,3 +1,6 @@
+import re
+from typing import Tuple, Union
+
 import numpy as np
 import open3d as o3d
 import open3d.core as o3c
@@ -8,7 +11,16 @@ from pytorch3d.renderer.cameras import PerspectiveCameras
 from pytorch3d.renderer.mesh import TexturesVertex
 from pytorch3d.structures.meshes import Meshes
 
-from typing import Tuple, Union
+
+def device_open3d_to_pytorch(device: o3c.Device) -> torch.device:
+    return torch.device(str(device).lower())
+
+
+def device_pytorch_to_open3d(device: torch.device) -> o3c.Device:
+    string_code = str(device)
+    if re.match(r'\w+:\d+', string_code) is None:
+        string_code += ':0'
+    return o3c.Device(string_code)
 
 
 def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.structures.meshes.Meshes:
@@ -73,9 +85,10 @@ def build_pytorch3d_cameras_from_ndc(ndc_intrinsic_matrix: torch.Tensor,
     if extrinsic_matrix is not None:
         extrinsics_torch: torch.Tensor = torch_dlpack.from_dlpack(extrinsic_matrix.to_dlpack())
         camera_rotation = (extrinsics_torch[:3, :3])
-        camera_rotation *= torch.tensor([[[-1, 0, 0],
-                                          [0, -1, 0],
-                                          [0, 0, 1]]], dtype=torch.float32, device=torch_device)
+        camera_rotation *= torch.tensor([[-1, 0, 0],
+                                         [0, -1, 0],
+                                         [0, 0, 1]], dtype=torch.float32, device=torch_device)
+        camera_rotation = camera_rotation.reshape(1, 3, 3)
         camera_translation = (extrinsics_torch[:3, 3]).reshape((1, 3))
     else:
         camera_rotation = torch.tensor([[[-1, 0, 0],
@@ -94,12 +107,11 @@ def build_pytorch3d_cameras(image_size: tuple, intrinsic_matrix: o3c.Tensor,
                             extrinsic_matrix: o3c.Tensor, device: Union[o3c.Device, torch.device]) \
         -> PerspectiveCameras:
     if type(device) == o3c.Device:
-        if device.get_type() == o3c.Device.DeviceType.CUDA:
-            torch_device = torch.device("cuda:0")
-        else:
-            torch_device = torch.device("cpu:0")
+        o3c_device = device
+        torch_device = device_open3d_to_pytorch(o3c_device)
     else:
         torch_device = device
+        o3c_device = device_pytorch_to_open3d(torch_device)
 
     ndc_intrinsic_matrix = make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), torch_device)
-    return build_pytorch3d_cameras_from_ndc(ndc_intrinsic_matrix, extrinsic_matrix, torch_device)
+    return build_pytorch3d_cameras_from_ndc(ndc_intrinsic_matrix, extrinsic_matrix.to(o3c_device), torch_device)

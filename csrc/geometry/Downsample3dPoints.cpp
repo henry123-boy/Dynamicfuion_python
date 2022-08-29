@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/DownsamplePoints.h"
+#include "geometry/Downsample3dPoints.h"
 #include <open3d/core/TensorCheck.h>
 #include "geometry/kernel/PointDownsampling.h"
 #include <open3d/core/hashmap/HashSet.h>
@@ -23,7 +23,7 @@ namespace o3c = open3d::core;
 namespace nnrt::geometry {
 
 open3d::core::Tensor
-GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
+GridDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
 
@@ -34,7 +34,7 @@ GridDownsample3DPoints(const open3d::core::Tensor& original_points, float grid_c
 }
 
 open3d::core::Tensor
-RadiusDownsample3DPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
+RadiusDownsample3dPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
 
