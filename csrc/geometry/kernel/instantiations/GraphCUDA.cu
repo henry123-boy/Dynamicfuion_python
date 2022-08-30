@@ -15,13 +15,10 @@
 //  ================================================================
 #include "geometry/kernel/Graph.h"
 #include "open3d/core/ParallelFor.h"
-#include "core/CUDA/DeviceHeapCUDA.cuh"
+#include "core/heap/CUDA/DeviceHeapCUDA.cuh"
 #include "geometry/kernel/GraphImpl.h"
 
-namespace nnrt {
-namespace geometry {
-namespace kernel {
-namespace graph {
+namespace nnrt::geometry::kernel::graph {
 
 template
 void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CUDA, true>(
@@ -53,7 +50,4 @@ void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CUDA
 		const float node_coverage
 );
 
-} // namespace graph
-} // namespace kernel
-} // namespace geometry
-} // namespace nnrt
+} // namespace nnrt::geometry::kernel::graph

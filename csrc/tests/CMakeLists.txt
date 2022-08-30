@@ -64,4 +64,6 @@ if (BUILD_CPP_TESTS)
     NNRT_add_test(test_normals_operations test_normals_operations.cpp)
     NNRT_add_test(test_tensor_io)
     NNRT_add_test(test_voxel_block_grid_io)
+    NNRT_add_test(test_unproject_3d_points)
+
 endif ()

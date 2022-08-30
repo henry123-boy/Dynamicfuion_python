@@ -44,8 +44,8 @@ set(NNRT_SOURCE_FILES
 
     geometry/kernel/NonRigidSurfaceVoxelBlockGrid.cpp
     geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h
-    geometry/kernel/NonRigidSurfaceVoxelBlockGridCPU.cpp
-    geometry/kernel/NonRigidSurfaceVoxelBlockGridCUDA.cu
+    geometry/kernel/instantiations/NonRigidSurfaceVoxelBlockGridCPU.cpp
+    geometry/kernel/instantiations/NonRigidSurfaceVoxelBlockGridCUDA.cu
     geometry/kernel/NonRigidSurfaceVoxelBlockGridImpl.h
 
     geometry/GraphWarpField.h
@@ -53,21 +53,21 @@ set(NNRT_SOURCE_FILES
 
     geometry/kernel/Graph.h
     geometry/kernel/Graph.cpp
-    geometry/kernel/GraphCPU.cpp
-    geometry/kernel/GraphCUDA.cu
+    geometry/kernel/instantiations/GraphCPU.cpp
+    geometry/kernel/instantiations/GraphCUDA.cu
     geometry/kernel/GraphImpl.h
 
     geometry/kernel/WarpUtilities.h
     geometry/kernel/Warp3DPoints.h
     geometry/kernel/Warp3DPoints.cpp
-    geometry/kernel/Warp3DPointsCPU.cpp
-    geometry/kernel/Warp3DPointsCUDA.cu
+    geometry/kernel/instantiations/Warp3DPointsCPU.cpp
+    geometry/kernel/instantiations/Warp3DPointsCUDA.cu
     geometry/kernel/Warp3DPointsImpl.h
 
     geometry/kernel/Comparison.h
     geometry/kernel/Comparison.cpp
-    geometry/kernel/ComparisonCPU.cpp
-    geometry/kernel/ComparisonCUDA.cu
+    geometry/kernel/instantiations/ComparisonCPU.cpp
+    geometry/kernel/instantiations/ComparisonCUDA.cu
     geometry/kernel/ComparisonImpl.h
 
     geometry/kernel/Segment.h
@@ -78,8 +78,8 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/PointDownsampling.cpp
     geometry/kernel/PointDownsampling.h
     geometry/kernel/PointDownsamplingImpl.h
-    geometry/kernel/PointDownsamplingCPU.cpp
-    geometry/kernel/PointDownsamplingCUDA.cu
+    geometry/kernel/instantiations/PointDownsamplingCPU.cpp
+    geometry/kernel/instantiations/PointDownsamplingCUDA.cu
 
     geometry/VoxelBlockGrid.h
     geometry/VoxelBlockGrid.cpp
@@ -109,20 +109,20 @@ set(NNRT_SOURCE_FILES
     core/kernel/KnnUtilities_PriorityQueue.h
 
     core/KeyValuePair.h
-    core/DeviceHeap.h
-    core/CPU/DeviceHeapCPU.cpp
-    core/CUDA/DeviceHeapCUDA.cu
-    core/CPU/DeviceHeapCPU.h
-    core/CUDA/DeviceHeapCUDA.cuh
-    core/Heap.h
-    core/Heap.cpp
-    core/CPU/HostHeapCPU.h
-    core/CPU/HostHeapCPUImpl.h
-    core/CPU/HostHeapCPU.cpp
-    core/CUDA/HostHeapCUDA.h
-    core/CUDA/HostHeapCUDAImpl.cuh
-    core/CUDA/HostHeapCUDA.cu
-    core/CUDA/HostHeapCUDA.h
+    core/heap/DeviceHeap.h
+    core/heap/CPU/DeviceHeapCPU.cpp
+    core/heap/CUDA/DeviceHeapCUDA.cu
+    core/heap/CPU/DeviceHeapCPU.h
+    core/heap/CUDA/DeviceHeapCUDA.cuh
+    core/heap/Heap.h
+    core/heap/Heap.cpp
+    core/heap/CPU/HostHeapCPU.h
+    core/heap/CPU/HostHeapCPUImpl.h
+    core/heap/CPU/HostHeapCPU.cpp
+    core/heap/CUDA/HostHeapCUDA.h
+    core/heap/CUDA/HostHeapCUDAImpl.cuh
+    core/heap/CUDA/HostHeapCUDA.cu
+    core/heap/CUDA/HostHeapCUDA.h
 
     core/KdTree.h
     core/KdTree.cpp
@@ -130,8 +130,8 @@ set(NNRT_SOURCE_FILES
     core/kernel/KdTree.cpp
     core/kernel/BuildKdTreeImpl.h
     core/kernel/SearchKdTreeImpl.h
-    core/kernel/KdTreeCPU.cpp
-    core/kernel/KdTreeCUDA.cu
+    core/kernel/instantiations/KdTreeCPU.cpp
+    core/kernel/instantiations/KdTreeCUDA.cu
 
 
     core/kernel/KdTreeUtilities.cpp
@@ -144,8 +144,8 @@ set(NNRT_SOURCE_FILES
     core/kernel/LinearIndex.cpp
     core/kernel/LinearIndex.h
     core/kernel/LinearIndexImpl.h
-    core/kernel/LinearIndexCPU.cpp
-    core/kernel/LinearIndexCUDA.cu
+    core/kernel/instantiations/LinearIndexCPU.cpp
+    core/kernel/instantiations/LinearIndexCUDA.cu
 
     core/DeviceSelection.h
 
@@ -174,10 +174,10 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/NormalsOperations.cpp
     geometry/kernel/NormalsOperations.h
     geometry/kernel/NormalsOperationsImpl.h
-    geometry/kernel/NormalsOperationsCPU.cpp
-    geometry/kernel/NormalsOperationsCUDA.cu
+    geometry/kernel/instantiations/NormalsOperationsCPU.cpp
+    geometry/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/PointCloudCPU.cpp geometry/kernel/PointCloudCUDA.cu)
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

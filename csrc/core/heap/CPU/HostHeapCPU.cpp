@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 
-#include "core/CPU/HostHeapCPUImpl.h"
+#include "HostHeapCPUImpl.h"
 
 namespace nnrt{
 namespace core{

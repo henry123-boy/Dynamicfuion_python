@@ -15,8 +15,8 @@
 //  ================================================================
 #pragma once
 
-#include "core/Heap.h"
-#include "core/DeviceHeap.h"
+#include "core/heap/Heap.h"
+#include "core/heap/DeviceHeap.h"
 
 namespace o3c = open3d::core;
 

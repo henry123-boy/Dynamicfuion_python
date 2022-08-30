@@ -13,14 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "core/Heap.h"
-#include "core/CPU/HostHeapCPU.h"
-#include "core/CUDA/HostHeapCUDA.h"
+#include "Heap.h"
+#include "core/heap/CPU/HostHeapCPU.h"
+#include "core/heap/CUDA/HostHeapCUDA.h"
 
 namespace o3c = open3d::core;
 
-namespace nnrt {
-namespace core {
+namespace nnrt::core {
 
 
 Heap::Heap(const int32_t capacity,
@@ -72,5 +71,4 @@ pybind11::tuple Heap::Pop() {
 }
 
 
-} // namespace core
-} // namespace nnrt
+} // namespace nnrt::core

@@ -18,7 +18,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <Eigen/Dense>
 
-#include "core/DeviceHeap.h"
+#include "core/heap/DeviceHeap.h"
 #include "core/kernel/KnnUtilities.h"
 
 

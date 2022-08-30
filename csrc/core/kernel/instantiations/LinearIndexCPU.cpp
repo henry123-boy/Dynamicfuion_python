@@ -15,19 +15,19 @@
 //  ================================================================
 #include <open3d/core/ParallelFor.h>
 
-#include "core/CUDA/DeviceHeapCUDA.cuh"
+#include "core/heap/CPU/DeviceHeapCPU.h"
 #include "core/kernel/LinearIndexImpl.h"
 
 namespace nnrt::core::kernel::linear_index {
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, NeighborTrackingStrategy::PLAIN>(
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PLAIN>(
 		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
 		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
 );
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, NeighborTrackingStrategy::PRIORITY_QUEUE>(
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PRIORITY_QUEUE>(
 		open3d::core::Tensor& closest_indices, open3d::core::Tensor& squared_distances,
 		const open3d::core::Tensor& query_points, int32_t k, const open3d::core::Tensor& kd_tree_points
 );

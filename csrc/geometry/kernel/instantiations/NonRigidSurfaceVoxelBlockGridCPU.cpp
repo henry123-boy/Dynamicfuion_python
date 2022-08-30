@@ -17,7 +17,7 @@
 #include <open3d/core/Dispatch.h>
 #include <open3d/core/Tensor.h>
 #include <open3d/core/ParallelFor.h>
-#include "core/CPU/DeviceHeapCPU.h"
+#include "core/heap/CPU/DeviceHeapCPU.h"
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGridImpl.h"
 
 

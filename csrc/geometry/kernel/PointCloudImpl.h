@@ -125,7 +125,7 @@ void UnprojectWithoutDepthFiltering(
 			*(vertex + 1) = 0.f;
 			*(vertex + 2) = 0.f;
 		}
-	} /*end lambda*/ ); // end o3c::ParallelFor call
+	} /*end lambda*/); // end o3c::ParallelFor call
 	} /*end lambda*/); // end macro call DISPATCH_DTYPE_TO_TEMPLATE
 }
 

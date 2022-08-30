@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "core/CUDA/HostHeapCUDAImpl.cuh"
+#include "HostHeapCUDAImpl.cuh"
 
 namespace nnrt{
 namespace core{

@@ -14,11 +14,8 @@
 //  limitations under the License.
 //  ================================================================
 
-#include <atomic>
 #include <open3d/core/ParallelFor.h>
-#include <unordered_set>
-#include <mutex>
-#include "core/CPU/DeviceHeapCPU.h"
+#include "core/heap/CUDA/DeviceHeapCUDA.cuh"
 #include "core/kernel/BuildKdTreeImpl.h"
 #include "core/kernel/SearchKdTreeImpl.h"
 
@@ -26,17 +23,16 @@ namespace nnrt::core::kernel::kdtree {
 
 template
 void
-BuildKdTreeIndex<open3d::core::Device::DeviceType::CPU>(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points);
-
+BuildKdTreeIndex<open3d::core::Device::DeviceType::CUDA>(open3d::core::Blob& index_data, int64_t index_length, const open3d::core::Tensor& points);
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PLAIN>(
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, NeighborTrackingStrategy::PLAIN>(
 		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
 		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
 		const open3d::core::Tensor& reference_points);
 
 template
-void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CPU, NeighborTrackingStrategy::PRIORITY_QUEUE>(
+void FindKNearestKdTreePoints<open3d::core::Device::DeviceType::CUDA, NeighborTrackingStrategy::PRIORITY_QUEUE>(
 		open3d::core::Blob& index_data, int index_length, open3d::core::Tensor& nearest_neighbor_indices,
 		open3d::core::Tensor& nearest_neighbor_distances, const open3d::core::Tensor& query_points, int32_t k,
 		const open3d::core::Tensor& reference_points);

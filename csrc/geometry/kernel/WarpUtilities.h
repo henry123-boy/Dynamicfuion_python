@@ -22,7 +22,7 @@
 #include "core/kernel/KnnUtilities.h"
 #include "core/kernel/KnnUtilities_PriorityQueue.h"
 #include "core/kernel/KdTreeNodeTypes.h"
-#include "core/DeviceHeap.h"
+#include "core/heap/DeviceHeap.h"
 
 
 namespace o3c = open3d::core;

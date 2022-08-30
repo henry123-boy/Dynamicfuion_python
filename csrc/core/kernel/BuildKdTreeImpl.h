@@ -24,7 +24,7 @@
 #include "core/kernel/KdTreeNodeTypes.h"
 #include "core/kernel/KdTree.h"
 #include "core/KeyValuePair.h"
-#include "core/DeviceHeap.h"
+#include "core/heap/DeviceHeap.h"
 #include "core/PlatformIndependence.h"
 
 

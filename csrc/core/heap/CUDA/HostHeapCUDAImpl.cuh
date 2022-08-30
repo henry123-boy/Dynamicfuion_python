@@ -15,9 +15,9 @@
 //  ================================================================
 #pragma once
 
-#include "core/Heap.h"
-#include "core/CUDA/HostHeapCUDA.h"
-#include "core/CUDA/DeviceHeapCUDA.cuh"
+#include "core/heap/Heap.h"
+#include "HostHeapCUDA.h"
+#include "DeviceHeapCUDA.cuh"
 #include <open3d/core/CUDAUtils.h>
 
 

@@ -17,7 +17,7 @@
 #include <open3d/core/Dispatch.h>
 #include <open3d/core/ParallelFor.h>
 
-#include "core/CUDA/DeviceHeapCUDA.cuh"
+#include "core/heap/CUDA/DeviceHeapCUDA.cuh"
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGridImpl.h"
 
 using namespace open3d;
