@@ -303,14 +303,18 @@ def test_loss_from_inputs(device: o3c.Device):
         o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
         o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)
 
-    reference_points = nnrt.geometry
+    reference_points, reference_in_depth_range_mask = \
+        nnrt.geometry.unproject_3d_points_without_depth_filtering(reference_image_depth_o3d, intrinsic_matrix,
+                                                                  extrinsic_matrix, depth_scale=1000, depth_max=10.0,
+                                                                  preserve_pixel_layout=False)
+    reference_point_cloud = o3d.t.geometry.PointCloud(reference_points)
 
-    reference_point_cloud = o3d.t.geometry.PointCloud.create_from_depth_image(reference_image_depth_o3d,
-                                                                              intrinsic_matrix,
-                                                                              depth_scale=1000., depth_max=10.0)
-    reference_point_mask = (reference_image_depth_o3d.as_tensor() <= 0).reshape((-1, 1))
-
-    optimizer = PureTorchRenderBasedOptimizer(reference_image_color_o3d, reference_point_cloud, reference_point_mask,
+    optimizer = PureTorchRenderBasedOptimizer(reference_image_color_o3d, reference_point_cloud,
+                                              reference_in_depth_range_mask.logical_not(),
                                               mesh_o3d, warp_field, intrinsic_matrix, extrinsic_matrix)
 
-    optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
+    residuals = \
+        optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
+
+    print()
+    print(residuals.max(), residuals.min(), torch.count_nonzero(residuals))

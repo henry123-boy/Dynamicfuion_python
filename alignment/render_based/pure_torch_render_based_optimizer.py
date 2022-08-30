@@ -36,7 +36,7 @@ from alignment.render_based.functional.warp_meshes import warp_meshes_using_node
 class PureTorchRenderBasedOptimizer:
     def __init__(self,
                  reference_color_image: o3d.t.geometry.Image, reference_point_cloud: o3d.t.geometry.PointCloud,
-                 reference_point_mask: o3c.Tensor,
+                 reference_points_outside_depth_range_mask: o3c.Tensor,
                  canonical_mesh: o3d.t.geometry.TriangleMesh, warp_field: GraphWarpField,
                  intrinsic_matrix: o3c.Tensor, extrinsic_matrix: o3c.Tensor = o3c.Tensor.eye(4)):
         self.anchor_count = 4
@@ -46,9 +46,10 @@ class PureTorchRenderBasedOptimizer:
         # point_count = width * height
         # (point_count, 3)
         self.reference_points = torch_dlpack.from_dlpack(reference_point_cloud.point["positions"].to_dlpack())
-        # (point_count, 1)
+        # (point_count)
         # Open3D Bool doesn't translate well to PyTorch bool for whatever reason, hence the extra conversions.
-        self.reference_point_mask = torch.from_dlpack(reference_point_mask.to(o3c.uint8).to_dlpack()).to(torch.bool)
+        self.reference_points_outside_depth_range_mask = \
+            torch.from_dlpack(reference_points_outside_depth_range_mask.to(o3c.uint8).to_dlpack()).to(torch.bool)
         self.device = self.reference_color_image.device
 
         self.canonical_meshes = rendering.converters.open3d_mesh_to_pytorch3d(canonical_mesh)
@@ -111,10 +112,11 @@ class PureTorchRenderBasedOptimizer:
     def point_to_plane_distances(self, rendered_points: torch.Tensor,
                                  rendered_normals: torch.Tensor,
                                  rendered_point_mask: torch.Tensor) -> torch.Tensor:
-        distances = rendered_normals * (rendered_points - self.reference_points).sum(dim=-1)
+        source_to_target_point_vectors = rendered_points - self.reference_points
+        distances = (rendered_normals * source_to_target_point_vectors).sum(dim=1)
         # mask out distances for points occluded in reference frame from rendered frame and vice-versa
-        distances[torch.logical_and(self.reference_point_mask, rendered_point_mask)] = 0.0
-        return (rendered_normals * (rendered_points - self.reference_points)).sum(dim=-1)
+        distances[torch.logical_and(self.reference_points_outside_depth_range_mask, rendered_point_mask)] = 0.0
+        return distances
 
     def compute_residuals_from_inputs(self, graph_node_rotations: torch.Tensor,
                                       graph_node_translations: torch.Tensor) -> torch.Tensor:
@@ -127,23 +129,25 @@ class PureTorchRenderBasedOptimizer:
         faces = warped_mesh.faces_packed()  # (F, 3)
         vertex_normals = warped_mesh.verts_normals_packed()  # (V, 3)
         face_normals = vertex_normals[faces]
-        rendered_normals = interpolate_face_attributes(
-            fragments.pix_to_face, fragments.bary_coords, face_normals
-        )
+        rendered_normals = \
+            interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)\
+            .view(-1, 3)
         # (image_height, image_width, 3)
         # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
         # (point_count, 1)
-        point_depths = fragments.zbuf[0].reshape(-1, 1)
+        point_depths = fragments.zbuf[0].view(-1, 1)
         # (point_count, 3)
         rendered_points = self.cameras.unproject_points(
             torch.cat((self.pixel_xy_coordinates, point_depths), dim=1)
         )
         # (point_count, 1)
-        rendered_point_mask = torch.where(point_depths == -1,
-                                          torch.zeros(point_depths.shape, dtype=torch.bool, device=self.device),
-                                          torch.ones(point_depths.shape, dtype=torch.bool, device=self.device))
+        zeros = torch.zeros(point_depths.shape[0], dtype=torch.bool, device=self.device)
+        ones = torch.ones(point_depths.shape[0], dtype=torch.bool, device=self.device)
+        # (point_count)
+        rendered_point_outside_depth_range_mask = torch.where(point_depths.view(-1) == -1, zeros, ones)
 
-        residuals = self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_mask)
+        residuals = \
+            self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_outside_depth_range_mask)
         return residuals
 
     def optimize(self):
