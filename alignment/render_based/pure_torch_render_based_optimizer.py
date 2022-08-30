@@ -20,7 +20,7 @@ import torch.utils.dlpack as torch_dlpack
 import pytorch3d.structures as p3d_struct
 from pytorch3d.ops import interpolate_face_attributes
 from pytorch3d.renderer import RasterizationSettings, MeshRasterizer, SoftPhongShader, PointLights, \
-    PerspectiveCameras
+    PerspectiveCameras, BlendParams
 
 import open3d as o3d
 import open3d.core as o3c
@@ -106,7 +106,8 @@ class PureTorchRenderBasedOptimizer:
         self.shader = SoftPhongShader(
             device=self.device,
             cameras=self.cameras,
-            lights=lights
+            lights=lights,
+            blend_params=BlendParams(background_color=(0.0, 0.0, 0.0))
         )
 
     def point_to_plane_distances(self, rendered_points: torch.Tensor,
@@ -117,6 +118,21 @@ class PureTorchRenderBasedOptimizer:
         # mask out distances for points occluded in reference frame from rendered frame and vice-versa
         distances[torch.logical_and(self.reference_points_outside_depth_range_mask, rendered_point_mask)] = 0.0
         return distances
+
+    def render_warped_mesh(self):
+        warped_mesh = warp_meshes_using_node_anchors(
+            self.canonical_meshes, self.graph_nodes, self.graph_node_rotations,
+            self.graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights,
+            self.extrinsic_matrix
+        )
+        fragments = self.rasterizer(warped_mesh)
+        rendered_depth = fragments.zbuf.clone().reshape(self.image_size[0], self.image_size[1])
+        rendered_depth[rendered_depth == -1.0] = 0.0
+        rendered_depth *= 1000.0
+
+        rendered_images = self.shader(fragments, warped_mesh)
+        rendered_color = (rendered_images[0, ..., :3] * 255).to(torch.uint8)
+        return rendered_depth, rendered_color
 
     def compute_residuals_from_inputs(self, graph_node_rotations: torch.Tensor,
                                       graph_node_translations: torch.Tensor) -> torch.Tensor:
@@ -130,8 +146,8 @@ class PureTorchRenderBasedOptimizer:
         vertex_normals = warped_mesh.verts_normals_packed()  # (V, 3)
         face_normals = vertex_normals[faces]
         rendered_normals = \
-            interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)\
-            .view(-1, 3)
+            interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals) \
+                .view(-1, 3)
         # (image_height, image_width, 3)
         # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
         # (point_count, 1)

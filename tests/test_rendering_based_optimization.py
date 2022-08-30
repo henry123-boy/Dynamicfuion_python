@@ -257,9 +257,21 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
     assert gt_device.allclose(meshes_warped.verts_packed())
 
 
+def stretch_depth_image(depth_torch: torch.Tensor) -> torch.Tensor:
+    depth_torch_normalized = depth_torch.clone().to(torch.float32)
+    depth_max = depth_torch_normalized.max()
+    depth_torch_normalized[depth_torch == 0] = 10000.0
+    depth_min = depth_torch_normalized.min()
+    depth_torch_normalized[depth_torch == 0] = depth_min
+    depth_torch_normalized *= 256.0
+    depth_torch_normalized /= (depth_max - depth_min)
+
+    return depth_torch_normalized
+
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_loss_from_inputs(device: o3c.Device):
-    save_images = False
+    save_images = True
+    save_debug_images = True
     mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device)
     # place graph nodes at plane corners. They'll correspond to vertices as long as there is no subdivision.
     graph_nodes = mesh_o3d.vertex["positions"].clone()
@@ -298,10 +310,16 @@ def test_loss_from_inputs(device: o3c.Device):
         o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(color_torch)))
 
     if save_images:
-        reference_image_color_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_color_000.png"
-        reference_image_depth_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_000.png"
-        o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
-        o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)
+        reference_depth_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_000.png"
+        reference_color_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_color_000.png"
+        o3d.t.io.write_image(str(reference_depth_path), reference_image_depth_o3d)
+        o3d.t.io.write_image(str(reference_color_path), reference_image_color_o3d)
+        if save_debug_images:
+            reference_depth_normalized_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_normalized_000.png"
+            depth_torch_normalized = stretch_depth_image(depth_torch)
+            reference_image_depth_normalized_o3d = o3d.t.geometry.Image(
+                o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(depth_torch_normalized)).to(o3c.uint8))
+            o3d.t.io.write_image(str(reference_depth_normalized_path), reference_image_depth_normalized_o3d)
 
     reference_points, reference_in_depth_range_mask = \
         nnrt.geometry.unproject_3d_points_without_depth_filtering(reference_image_depth_o3d, intrinsic_matrix,
@@ -316,5 +334,21 @@ def test_loss_from_inputs(device: o3c.Device):
     residuals = \
         optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
 
-    print()
-    print(residuals.max(), residuals.min(), torch.count_nonzero(residuals))
+    if save_images:
+        rendered_depth, rendered_color = optimizer.render_warped_mesh()
+        source_depth_o3d = \
+            o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_depth)).to(o3c.uint16))
+        source_color_o3d = \
+            o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_color)))
+        source_color_path = image_test_data_path / "plane_xy_color_000.png"
+        source_depth_path = image_test_data_path / "plane_xy_depth_000.png"
+        o3d.t.io.write_image(str(source_depth_path), source_depth_o3d)
+        o3d.t.io.write_image(str(source_color_path), source_color_o3d)
+
+        normalized_residuals = (residuals + residuals.min()).reshape(image_size)
+        normalized_residuals /= normalized_residuals.max()
+        reference_image_residuals_o3d = \
+            o3d.t.geometry.Image((o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(normalized_residuals))
+                                  * 65535.0).to(o3c.uint16))
+        residual_output_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_residuals_000.png"
+        o3d.t.io.write_image(str(residual_output_path), reference_image_residuals_o3d)
