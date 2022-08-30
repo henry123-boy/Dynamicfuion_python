@@ -42,6 +42,7 @@ void pybind_geometry(py::module& m) {
 	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
+	pybind_geometry_pointcloud(m_submodule);
 	pybind_geometry_normals_operations(m_submodule);
 }
 

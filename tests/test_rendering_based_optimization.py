@@ -303,6 +303,8 @@ def test_loss_from_inputs(device: o3c.Device):
         o3d.t.io.write_image(str(reference_image_depth_path), reference_image_depth_o3d)
         o3d.t.io.write_image(str(reference_image_color_path), reference_image_color_o3d)
 
+    reference_points = nnrt.geometry
+
     reference_point_cloud = o3d.t.geometry.PointCloud.create_from_depth_image(reference_image_depth_o3d,
                                                                               intrinsic_matrix,
                                                                               depth_scale=1000., depth_max=10.0)
