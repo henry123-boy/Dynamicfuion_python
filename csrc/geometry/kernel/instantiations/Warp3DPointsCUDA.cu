@@ -21,26 +21,36 @@ using namespace open3d;
 
 namespace nnrt::geometry::kernel::warp {
 
-template
-void
-WarpPoints<o3c::Device::DeviceType::CUDA>(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
-                                          const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, int anchor_count,
-                                          float node_coverage,
-                                          const open3d::core::Tensor& extrinsics);
+// computes anchors on-the-fly, does not use node distance thresholding
+template void WarpPoints<o3c::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		int anchor_count, float node_coverage,
+		const open3d::core::Tensor& extrinsics
+);
 
-template
-void
-WarpPoints<o3c::Device::DeviceType::CUDA>(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
-                                          const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations, int anchor_count,
-                                          float node_coverage,
-                                          int minimum_valid_anchor_count, const open3d::core::Tensor& extrinsics);
+// computes anchors on-the-fly, uses node distance thresholding
+template void WarpPoints<o3c::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		int anchor_count, float node_coverage, int minimum_valid_anchor_count,
+		const open3d::core::Tensor& extrinsics
+);
 
-template
-void
-WarpPoints<o3c::Device::DeviceType::CUDA>(open3d::core::Tensor& warped_points, const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
-                                          const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-                                          const open3d::core::Tensor& anchors,
-                                          const open3d::core::Tensor& anchor_weights, int minimum_valid_anchor_count,
-                                          const open3d::core::Tensor& extrinsics);
+// uses provided precomputed anchors, does not use node distance thresholding
+template void WarpPoints<o3c::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
+		const open3d::core::Tensor& extrinsics
+);
+
+// uses provided precomputed anchors, uses node distance thresholding
+template void WarpPoints<o3c::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& warped_points, const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights, int minimum_valid_anchor_count,
+		const open3d::core::Tensor& extrinsics
+);
 
 } // namespace nnrt::geometry::kernel::warp

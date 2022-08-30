@@ -64,7 +64,7 @@ o3tg::PointCloud WarpPointCloud(
 		const o3tg::PointCloud& input_point_cloud, const o3c::Tensor& nodes, const o3c::Tensor& node_rotations,
 		const o3c::Tensor& node_translations, int anchor_count, float node_coverage,
 		int minimum_valid_anchor_count,
-		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))*/
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
 ) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
@@ -108,7 +108,7 @@ o3tg::PointCloud WarpPointCloud(
 		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
 		const o3c::Tensor& anchors, const o3c::Tensor& anchor_weights,
 		int minimum_valid_anchor_count,
-		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0"))*/
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
 ) {
 	auto device = input_point_cloud.GetDevice();
 	// region ================ INPUT CHECKS ======================================
@@ -173,7 +173,7 @@ WarpTriangleMesh(
 		const o3tg::TriangleMesh& input_mesh,
 		const o3c::Tensor& nodes, const o3c::Tensor& node_rotations, const o3c::Tensor& node_translations,
 		int anchor_count, float node_coverage, bool threshold_nodes_by_distance, int minimum_valid_anchor_count,
-		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU0")*/
+		const open3d::core::Tensor& extrinsics /*= open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")*/
 ) {
 	auto device = input_mesh.GetDevice();
 	// region ================ INPUT CHECKS ======================================
