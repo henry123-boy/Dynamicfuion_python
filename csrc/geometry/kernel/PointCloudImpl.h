@@ -101,8 +101,6 @@ static void UnprojectWithoutDepthFiltering_TypeDispatched(
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				int64_t y = workload_idx / cols;
 				int64_t x = workload_idx % cols;
-				//__DEBUG
-				printf("x: %ld y: %ld\n", x, y);
 
 				float depth_metric = *depth_indexer.GetDataPtr<TDepth>(x, y) / depth_scale;
 				auto* vertex = point_data + workload_idx * 3;
