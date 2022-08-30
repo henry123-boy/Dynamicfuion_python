@@ -35,8 +35,8 @@ Unproject3dPointsWithoutDepthFiltering(
 
 	kernel::pointcloud::UnprojectWithoutDepthFiltering(
 			points, utility::nullopt, mask, depth.AsTensor(), utility::nullopt, intrinsics,
-			extrinsics, depth_scale, depth_max);
-
+			extrinsics, depth_scale, depth_max, preserve_pixel_layout
+	);
 
 
 }
