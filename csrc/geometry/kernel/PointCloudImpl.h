@@ -39,12 +39,12 @@ inline void InitializePointAttributeTensor(o3c::Tensor& output_attribute, TDataP
                                            const o3c::Device& device, bool preserve_image_layout) {
 	if (channel_count == 1) {
 		output_attribute = preserve_image_layout ?
-		                   o3c::Tensor({row_count, column_count}, dtype, device) :
-		                   o3c::Tensor({row_count * column_count}, dtype, device);
+		                   o3c::Tensor::Zeros({row_count, column_count}, dtype, device) :
+		                   o3c::Tensor::Zeros({row_count * column_count}, dtype, device);
 	} else {
 		output_attribute = preserve_image_layout ?
-		                   o3c::Tensor({row_count, column_count, channel_count}, dtype, device) :
-		                   o3c::Tensor({row_count * column_count, channel_count}, dtype, device);
+		                   o3c::Tensor::Zeros({row_count, column_count, channel_count}, dtype, device) :
+		                   o3c::Tensor::Zeros({row_count * column_count, channel_count}, dtype, device);
 	}
 	*attribute_to_index = output_attribute.template GetDataPtr<TDataPointer>();
 }
@@ -119,10 +119,6 @@ static void UnprojectWithoutDepthFiltering_TypeDispatched(
 						auto mask_ptr = mask_data + workload_idx;
 						*mask_ptr = true;
 					}
-				} else {
-					*vertex = 0.f;
-					*(vertex + 1) = 0.f;
-					*(vertex + 2) = 0.f;
 				}
 			} /*end lambda*/
 	); // end o3c::ParallelFor call
