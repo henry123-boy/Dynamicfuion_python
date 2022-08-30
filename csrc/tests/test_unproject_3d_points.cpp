@@ -24,10 +24,52 @@ namespace o3g = open3d::geometry;
 namespace o3tg = open3d::t::geometry;
 
 void TestUnproject3dPointsWithoutDepthFiltering(const o3c::Device& device) {
-	o3c::Tensor intrinsics(std::vector<float> {100.f, 0.f, 2.f,
-											   0.f, 100.f, 2.f,
-											   0.f, 0.f, 1.f}, {3,3}, o3c::Float32, o3c::Device("CPU:0") );
+	o3c::Tensor intrinsics(std::vector<double>{100., 0., 2.,
+	                                           0., 100., 2.,
+	                                           0., 0., 1.}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
+	o3c::Tensor extrinsics = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
+	float depth_scale = 1000.f;
+	float depth_max = 3.f;
 
+	o3c::Tensor depth(std::vector<uint16_t>{0, 1000, 2000, 0,
+	                                        0, 500, 1500, 0,
+	                                        500, 550, 600, 650,
+	                                        0, 20, 4000, 0}, {4, 4}, o3c::UInt16, device);
+
+	o3c::Tensor points_ground_truth(std::vector<float>{
+			0.f, 0.f, 0.f,
+			-0.01f, -0.02f, 1.,
+			0.f, -0.04f, 2.,
+			0.f, 0.f, 0.f,
+
+			0.f, 0.f, 0.f,
+			-0.005f, -0.005f, 0.5f,
+			0.f, -0.015f, 1.5f,
+			0.f, 0.f, 0.f,
+
+			-0.01f, 0.f, 0.5f,
+			-0.0055, 0.f, 0.55f,
+			0.f, 0.f, 0.6f,
+			0.0065, 0.f, 0.65f,
+
+			0.f, 0.f, 0.f,
+			-0.0002, 0.0002, 0.02f,
+			0.f, 0.f, 0.f, // depth 4m=4000mm is out of default max_depth range
+			0.f, 0.f, 0.f
+	}, {4, 4, 3}, o3c::Float32, device);
+
+	o3c::Tensor mask_ground_truth(std::vector<bool>{
+			false, true, true, false,
+			false, true, true, false,
+			true, true, true, true,
+			false, true, false, false
+	}, {4, 4}, o3c::Bool, device);
+
+	o3c::Tensor points, mask;
+	nnrt::geometry::Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, true);
+
+	REQUIRE(points.AllClose(points_ground_truth));
+	REQUIRE(mask.AllClose(mask_ground_truth));
 }
 
 TEST_CASE("Test Unproject 3D Points Without Depth Filtering CPU") {

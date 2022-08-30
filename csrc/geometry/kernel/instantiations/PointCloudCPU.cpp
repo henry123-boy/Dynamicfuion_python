@@ -17,9 +17,9 @@
 
 namespace nnrt::geometry::kernel::pointcloud {
 template void UnprojectWithoutDepthFiltering<o3c::Device::DeviceType::CPU>(
-		o3c::Tensor& points, utility::optional<std::reference_wrapper<o3c::Tensor>> colors,
-		utility::optional<std::reference_wrapper<o3c::Tensor>> mask,
-		const o3c::Tensor& depth, utility::optional<std::reference_wrapper<const o3c::Tensor>> image_colors,
-		const o3c::Tensor& intrinsics, const o3c::Tensor& extrinsics, float depth_scale, float depth_max, bool preserve_image_layout
+		open3d::core::Tensor& points, open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> colors,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> mask,
+		const open3d::core::Tensor& depth, open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> image_colors,
+		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, float depth_scale, float depth_max, bool preserve_image_layout
 );
 } // namespace nnrt::geometry::kernel::pointcloud

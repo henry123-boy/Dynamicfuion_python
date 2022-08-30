@@ -17,11 +17,13 @@
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 namespace nnrt::geometry::kernel::pointcloud {
+
 void UnprojectWithoutDepthFiltering(
 		open3d::core::Tensor& points, open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> colors,
 		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> mask,
-		const open3d::core::Tensor& depth, open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> image_colors,
+		const open3d::core::Tensor& depth, const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& image_colors,
 		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, float depth_scale, float depth_max, bool preserve_image_layout
 ) {
 	core::ExecuteOnDevice(
