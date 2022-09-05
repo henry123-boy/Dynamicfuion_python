@@ -15,10 +15,46 @@
 //  ================================================================
 
 #include "rendering/RasterizeMesh.h"
+#include "rendering/kernel/RasterizeMesh.h"
+
+namespace o3c = open3d::core;
+
+namespace nnrt::rendering {
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-nnrt::rendering::RasterizeMesh(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius,
-                               int faces_per_pixel, int bin_size, int max_faces_per_bin, bool perspective_correct_barycentric_coordinates,
-                               bool clip_barycentric_coordinates, bool cull_back_faces) {
-
+RasterizeMesh(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size,
+              float blur_radius, int faces_per_pixel, int bin_size, int max_faces_per_bin, bool perspective_correct_barycentric_coordinates,
+              bool clip_barycentric_coordinates, bool cull_back_faces) {
+	if (bin_size > 0 && max_faces_per_bin > 0) {
+		// Use coarse-to-fine rasterization
+		o3c::Tensor bin_faces = kernel::RasterizeMeshCoarse(
+				mesh,
+				image_size,
+				blur_radius,
+				bin_size,
+				max_faces_per_bin);
+		return kernel::RasterizeMeshFine(
+				mesh,
+				bin_faces,
+				image_size,
+				blur_radius,
+				bin_size,
+				faces_per_pixel,
+				perspective_correct_barycentric_coordinates,
+				clip_barycentric_coordinates,
+				cull_back_faces);
+	} else {
+		// Use the naive per-pixel implementation
+		return kernel::RasterizeMeshNaive(
+				mesh,
+				image_size,
+				blur_radius,
+				faces_per_pixel,
+				perspective_correct_barycentric_coordinates,
+				clip_barycentric_coordinates,
+				cull_back_faces);
+	}
 }
+
+
+} // namespace nnrt::rendering
