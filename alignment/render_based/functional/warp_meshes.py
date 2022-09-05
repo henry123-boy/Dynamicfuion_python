@@ -70,7 +70,6 @@ def warp_meshes_using_node_anchors(canonical_meshes: p3ds.Meshes,
         (
                 mesh_vertex_anchor_weights.view(vertex_count, anchor_count, 1) *
                 (
-                        sampled_nodes +
                         torch.matmul(sampled_rotations, tiled_normals.view(vertex_count, anchor_count, 3, 1))
                         .view(vertex_count, anchor_count, 3)
                 )

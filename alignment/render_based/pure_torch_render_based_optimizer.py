@@ -14,13 +14,18 @@
 #  limitations under the License.
 #  ================================================================
 # 3rd party
+from pathlib import Path
+from typing import Tuple
+
 import torch
 import torch.utils.dlpack as torch_dlpack
+import torch.nn.functional
 
 import pytorch3d.structures as p3d_struct
 from pytorch3d.ops import interpolate_face_attributes
 from pytorch3d.renderer import RasterizationSettings, MeshRasterizer, SoftPhongShader, PointLights, \
     PerspectiveCameras, BlendParams
+from pytorch3d.io import save_ply
 
 import open3d as o3d
 import open3d.core as o3c
@@ -117,6 +122,7 @@ class PureTorchRenderBasedOptimizer:
         distances = (rendered_normals * source_to_target_point_vectors).sum(dim=1)
         # mask out distances for points occluded in reference frame from rendered frame and vice-versa
         distances[torch.logical_and(self.reference_points_outside_depth_range_mask, rendered_point_mask)] = 0.0
+
         return distances
 
     def render_warped_mesh(self):
@@ -136,18 +142,22 @@ class PureTorchRenderBasedOptimizer:
 
     def compute_residuals_from_inputs(self, graph_node_rotations: torch.Tensor,
                                       graph_node_translations: torch.Tensor) -> torch.Tensor:
-        warped_mesh = warp_meshes_using_node_anchors(
+        warped_meshes = warp_meshes_using_node_anchors(
             self.canonical_meshes, self.graph_nodes, graph_node_rotations,
             graph_node_translations, self.mesh_vertex_anchors, self.mesh_vertex_anchor_weights, self.extrinsic_matrix
         )
-        fragments = self.rasterizer(warped_mesh)
 
-        faces = warped_mesh.faces_packed()  # (F, 3)
-        vertex_normals = warped_mesh.verts_normals_packed()  # (V, 3)
+        fragments = self.rasterizer(warped_meshes)
+
+        faces = warped_meshes.faces_packed()  # (F, 3)
+        vertex_normals = warped_meshes.verts_normals_packed()  # (V, 3)
         face_normals = vertex_normals[faces]
+
         rendered_normals = \
             interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals) \
                 .view(-1, 3)
+        rendered_normals = torch.nn.functional.normalize(rendered_normals)
+
         # (image_height, image_width, 3)
         # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
         # (point_count, 1)
@@ -163,7 +173,7 @@ class PureTorchRenderBasedOptimizer:
         rendered_point_outside_depth_range_mask = torch.where(point_depths.view(-1) == -1, zeros, ones)
 
         residuals = \
-            self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_outside_depth_range_mask)
+            torch.square(self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_outside_depth_range_mask))
         return residuals
 
     def optimize(self):

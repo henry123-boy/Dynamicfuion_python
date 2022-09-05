@@ -74,13 +74,13 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
                                                o3c.float32, device)
     mesh.triangle["indices"] = o3d.core.Tensor([[0, 1, 2],
                                                 [2, 1, 3]], o3c.int64, device)
-    # nnrt.geometry.compute_vertex_normals(mesh, True)
     mesh.triangle["normals"] = o3d.core.Tensor([[0, 0, -1],
                                                 [0, 0, -1]], o3c.float32, device)
     mesh.vertex["normals"] = o3d.core.Tensor([[0, 0, -1],
                                               [0, 0, -1],
                                               [0, 0, -1],
                                               [0, 0, -1]], o3c.float32, device)
+
     mesh.vertex["colors"] = o3c.Tensor([[0.7, 0.7, 0.7]] * len(mesh.vertex["positions"]), dtype=o3c.float32,
                                        device=device)
     plane_center_position = o3c.Tensor(list(plane_center_position), dtype=o3c.float32, device=device)
@@ -268,6 +268,7 @@ def stretch_depth_image(depth_torch: torch.Tensor) -> torch.Tensor:
 
     return depth_torch_normalized
 
+
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_loss_from_inputs(device: o3c.Device):
     save_images = True
@@ -333,6 +334,10 @@ def test_loss_from_inputs(device: o3c.Device):
 
     residuals = \
         optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
+
+    # __DEBUG
+    print()
+    print(residuals.max())
 
     if save_images:
         rendered_depth, rendered_color = optimizer.render_warped_mesh()
