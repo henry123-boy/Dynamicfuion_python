@@ -66,7 +66,7 @@ def generate_test_box(box_side_length: float, box_center_position: tuple, subdiv
 def generate_test_xy_plane(plane_side_length: float, plane_center_position: tuple,
                            subdivision_count: int, device: o3c.Device) -> o3d.t.geometry.TriangleMesh:
     mesh = o3d.t.geometry.TriangleMesh(device=device)
-    hsl = plane_side_length / 2
+    hsl = plane_side_length / 2.0
     mesh.vertex["positions"] = o3d.core.Tensor([[-hsl, -hsl, 0],  # bottom left
                                                 [-hsl, hsl, 0],  # top left
                                                 [hsl, -hsl, 0],  # bottom right
@@ -147,7 +147,7 @@ def compute_box_corners(box_side_length: float, box_center_position: tuple, devi
 def rotation_around_y_axis(angle_degrees: float) -> np.array:
     """
     # equivalent of MATLAB's roty. Damn you, MATLAB, for encouraging horrid coding techniques by severely abbreviating
-# function names.
+    # function names.
     :param angle_degrees: angle, in degrees
     :return: matrix representation of the @param angle_degrees degree rotation (of a 3x1 vector) around y-axis.
     """
@@ -273,6 +273,7 @@ def stretch_depth_image(depth_torch: torch.Tensor) -> torch.Tensor:
 def test_loss_from_inputs(device: o3c.Device):
     save_images = True
     save_debug_images = True
+    save_ground_truth = False
     mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device)
     # place graph nodes at plane corners. They'll correspond to vertices as long as there is no subdivision.
     graph_nodes = mesh_o3d.vertex["positions"].clone()
@@ -300,6 +301,7 @@ def test_loss_from_inputs(device: o3c.Device):
 
     test_data_path = test_path / "test_data"
     image_test_data_path = test_data_path / "images"
+    tensor_test_data_path = test_data_path / "tensors"
 
     rotation_angle_y = 10
     rotation_matrix_y = o3c.Tensor(rotation_around_y_axis(rotation_angle_y), dtype=o3c.float32, device=device)
@@ -316,7 +318,8 @@ def test_loss_from_inputs(device: o3c.Device):
         o3d.t.io.write_image(str(reference_depth_path), reference_image_depth_o3d)
         o3d.t.io.write_image(str(reference_color_path), reference_image_color_o3d)
         if save_debug_images:
-            reference_depth_normalized_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_normalized_000.png"
+            reference_depth_normalized_path = \
+                image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_depth_normalized_000.png"
             depth_torch_normalized = stretch_depth_image(depth_torch)
             reference_image_depth_normalized_o3d = o3d.t.geometry.Image(
                 o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(depth_torch_normalized)).to(o3c.uint8))
@@ -335,12 +338,60 @@ def test_loss_from_inputs(device: o3c.Device):
     residuals = \
         optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
 
-    # __DEBUG
-    print()
-    print(residuals.max())
+    # maximum distance has to be within some tolerance of [sin(angle) * hypotenuse], hypotenuse is half the side
+    # length of the plane here.
+    assert math.isclose(float(torch.sqrt(residuals.max()).cpu()), math.sin(math.radians(10.0)) * 0.5, abs_tol=1e-3)
+
+    ground_truth_data_path = tensor_test_data_path / "render_based_icp_data_residual_ground_truth.pt"
+    if save_ground_truth:
+        torch.save(residuals, ground_truth_data_path)
+        bad_indices = None
+    else:
+        ground_truth_residuals = torch.load(ground_truth_data_path).to(converters.device_open3d_to_pytorch(device))
+        close = residuals.isclose(ground_truth_residuals, rtol=1.0, atol=1e-4)
+
+        # we only expect some discrepancy along the diagonal, where PyTorch3D rendering tends to give inconsistent
+        # results between CPU & CUDA
+        bad_indices = torch.where(torch.logical_not(close))[0].cpu().numpy()
+        bad_pixels = np.dstack(np.unravel_index(bad_indices, image_size))[0]
+        bad_pixel_points = bad_pixels.astype(float)
+        diagonal_start_point = np.array([103.0, 456.0])
+        diagonal_end_point = np.array([382.0, 177.0])
+        diagonal_direction = diagonal_end_point - diagonal_start_point
+        diagonal_direction /= np.linalg.norm(diagonal_direction)
+        closest_diagonal_stops = (
+                bad_pixel_points.dot(diagonal_direction) - diagonal_start_point.dot(diagonal_direction))
+        closest_diagonal_points = diagonal_start_point + np.repeat(closest_diagonal_stops.reshape(-1, 1), 2,
+                                                                   axis=1) * diagonal_direction
+        distances = np.linalg.norm(bad_pixel_points - closest_diagonal_points, axis=1)
+        assert np.allclose(distances, np.zeros_like(distances))
+
 
     if save_images:
+        normalized_residuals = residuals + residuals.min()
+        normalized_residuals /= normalized_residuals.max()
+        residuals_o3d_image_shape = \
+            o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(normalized_residuals.reshape(image_size)))
+        residuals_o3d_uint16: o3c.Tensor = (residuals_o3d_image_shape * 65535.0).to(o3c.uint16)
         rendered_depth, rendered_color = optimizer.render_warped_mesh()
+        residuals_image = o3d.t.geometry.Image(residuals_o3d_uint16)
+        residual_image_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_residuals_000.png"
+        o3d.t.io.write_image(str(residual_image_path), residuals_image)
+
+        if save_debug_images and bad_indices is not None:
+            residuals_color = (torch.tile(normalized_residuals.reshape(-1, 1), (1, 3)))
+            bad_indices_torch = torch.tensor(bad_indices, device=converters.device_open3d_to_pytorch(device))
+            residuals_color[bad_indices_torch] = \
+                torch.tensor((1.0, 0, 0), device=converters.device_open3d_to_pytorch(device))
+
+            residuals_color_uint8_image_shape = \
+                (residuals_color * 255.0).to(torch.uint8).reshape(image_size[0], image_size[1], 3)
+            residuals_debug_image = \
+                o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(residuals_color_uint8_image_shape)))
+            residual_debug_image_path = \
+                image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_residuals_debug_000.png"
+            o3d.t.io.write_image(str(residual_debug_image_path), residuals_debug_image)
+
         source_depth_o3d = \
             o3d.t.geometry.Image(o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_depth)).to(o3c.uint16))
         source_color_o3d = \
@@ -349,11 +400,3 @@ def test_loss_from_inputs(device: o3c.Device):
         source_depth_path = image_test_data_path / "plane_xy_depth_000.png"
         o3d.t.io.write_image(str(source_depth_path), source_depth_o3d)
         o3d.t.io.write_image(str(source_color_path), source_color_o3d)
-
-        normalized_residuals = (residuals + residuals.min()).reshape(image_size)
-        normalized_residuals /= normalized_residuals.max()
-        reference_image_residuals_o3d = \
-            o3d.t.geometry.Image((o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(normalized_residuals))
-                                  * 65535.0).to(o3c.uint16))
-        residual_output_path = image_test_data_path / f"plane_xy_rotated_y_{rotation_angle_y}_residuals_000.png"
-        o3d.t.io.write_image(str(residual_output_path), reference_image_residuals_o3d)
