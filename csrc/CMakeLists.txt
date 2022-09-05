@@ -177,7 +177,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/instantiations/NormalsOperationsCPU.cpp
     geometry/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu)
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu rendering/kernel/BarycentricCoordinateUtilities.h rendering/RasterizeMesh.h rendering/RasterizeMesh.cpp)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

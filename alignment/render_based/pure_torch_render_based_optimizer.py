@@ -177,7 +177,7 @@ class PureTorchRenderBasedOptimizer:
         return residuals
 
     def optimize(self):
-        with torch.no_grad:
+        with torch.no_grad():
             max_iteration_count = 1
             for iteration in range(0, max_iteration_count):
                 jacobian = torch.autograd.functional.jacobian(
