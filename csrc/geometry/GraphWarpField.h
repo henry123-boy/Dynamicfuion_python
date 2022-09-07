@@ -118,7 +118,7 @@ public:
 	WarpPoint(const Eigen::Vector3f& point, const int32_t* anchor_indices, const float* anchor_weights) const {
 		Eigen::Vector3f warped_point(0.f, 0.f, 0.f);
 		kernel::warp::BlendWarp(
-				warped_point, anchor_indices, anchor_weights, anchor_count, node_indexer, point,
+				warped_point, anchor_indices, anchor_weights, anchor_count, point, node_indexer,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
 					return GetRotationForNode(i_node);
 				},

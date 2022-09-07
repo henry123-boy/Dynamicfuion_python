@@ -58,11 +58,11 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/GraphImpl.h
 
     geometry/kernel/WarpUtilities.h
-    geometry/kernel/Warp3DPoints.h
-    geometry/kernel/Warp3DPoints.cpp
-    geometry/kernel/instantiations/Warp3DPointsCPU.cpp
-    geometry/kernel/instantiations/Warp3DPointsCUDA.cu
-    geometry/kernel/Warp3DPointsImpl.h
+    geometry/kernel/Warp3dPointsAndNormals.h
+    geometry/kernel/Warp3dPointsAndNormals.cpp
+    geometry/kernel/instantiations/Warp3dPointsAndNormalsCPU.cpp
+    geometry/kernel/instantiations/Warp3dPointsAndNormalsCUDA.cu
+    geometry/kernel/Warp3dPointsAndNormalsImpl.h
 
     geometry/kernel/Comparison.h
     geometry/kernel/Comparison.cpp
@@ -89,9 +89,6 @@ set(NNRT_SOURCE_FILES
     geometry/TransformationMode.h
     geometry/Comparison.h
     geometry/Comparison.cpp
-
-    geometry/TriangleMesh.cpp
-    geometry/TriangleMesh.h
 
     geometry/FindKNearestNeighbors.cpp
     geometry/FindKNearestNeighbors.h
@@ -177,7 +174,7 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/instantiations/NormalsOperationsCPU.cpp
     geometry/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu rendering/kernel/BarycentricCoordinateUtilities.h rendering/RasterizeMesh.h rendering/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.h)
+    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu rendering/kernel/BarycentricCoordinateUtilities.h rendering/RasterizeMesh.h rendering/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.h rendering/kernel/RasterizeMeshImpl.h rendering/kernel/instantiations/RasterizeMeshCPU.cpp rendering/kernel/instantiations/RasterizeMeshCUDA.cu rendering/kernel/RasterizationConstants.h rendering/kernel/CoordinateSystemConversions.h rendering/kernel/RayFaceIntersection.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

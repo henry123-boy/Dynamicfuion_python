@@ -17,36 +17,64 @@
 
 #include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/TriangleMesh.h>
+#include "CoordinateSystemConversions.h"
 
 
 namespace nnrt::rendering::kernel {
 
+
+using t_image_index = int32_t;
+
+void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
+                                                       const open3d::core::Tensor& vertex_positions_camera,
+                                                       const open3d::core::Tensor& triangle_vertex_indices,
+                                                       const open3d::core::Tensor& normalized_camera_space_matrix,
+                                                       nnrt::rendering::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       float near_clipping_distance,
+                                                       float far_clipping_distance);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
+                                                       const open3d::core::Tensor& vertex_positions_camera,
+                                                       const open3d::core::Tensor& triangle_vertex_indices,
+                                                       const open3d::core::Tensor& normalized_camera_space_matrix,
+                                                       AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       float near_clipping_distance,
+                                                       float far_clipping_distance);
+
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshNaive(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius, int faces_per_pixel,
+RasterizeMeshNaive(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
+                   int faces_per_pixel,
                    bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces);
 
 template<open3d::core::Device::DeviceType TDeviceType>
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshNaive(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius, int faces_per_pixel,
+RasterizeMeshNaive(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
+                   int faces_per_pixel,
                    bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces);
 
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshFine(const open3d::t::geometry::TriangleMesh& mesh, const open3d::core::Tensor& bin_faces, std::tuple<int64_t, int64_t> image_size,
+RasterizeMeshFine(const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
+                  std::tuple<t_image_index, t_image_index> image_size,
                   float blur_radius, int bin_size, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
                   bool clip_barycentric_coordinates, bool cull_back_faces);
 
 template<open3d::core::Device::DeviceType TDeviceType>
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshFine(const open3d::t::geometry::TriangleMesh& mesh, const open3d::core::Tensor& bin_faces, std::tuple<int64_t, int64_t> image_size,
+RasterizeMeshFine(const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
+                  std::tuple<t_image_index, t_image_index> image_size,
                   float blur_radius, int bin_size, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
                   bool clip_barycentric_coordinates, bool cull_back_faces);
 
-open3d::core::Tensor RasterizeMeshCoarse(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius,
-                                         int bin_size, int max_faces_per_bin);
+open3d::core::Tensor
+RasterizeMeshCoarse(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
+                    int bin_size, int max_faces_per_bin);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-open3d::core::Tensor RasterizeMeshCoarse(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius,
-                                         int bin_size, int max_faces_per_bin);
+open3d::core::Tensor
+RasterizeMeshCoarse(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
+                    int bin_size, int max_faces_per_bin);
+
 
 } // namespace nnrt::rendering::kernel

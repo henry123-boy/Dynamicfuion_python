@@ -18,6 +18,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/Image.h>
 
+// candidate to be moved to a separate "camera" module
 namespace nnrt::geometry {
 
 void Unproject3dPointsWithoutDepthFiltering(

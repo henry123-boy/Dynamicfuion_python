@@ -15,15 +15,24 @@
 //  ================================================================
 #pragma once
 
+#include <cfloat>
 #include <tuple>
 #include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/TriangleMesh.h>
 
 namespace nnrt::rendering {
 
+open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
+		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
+		const open3d::core::Tensor& intrinsic_matrix,
+		const open3d::core::SizeVector& image_size,
+		float near_clipping_distance = 0.0,
+		float far_clipping_distance = INFINITY
+);
+
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> RasterizeMesh(
-		const open3d::t::geometry::TriangleMesh& mesh,
-		std::tuple<int64_t , int64_t> image_size,
+		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		std::tuple<int64_t, int64_t> image_size,
 		float blur_radius,
 		int faces_per_pixel,
 		int bin_size,

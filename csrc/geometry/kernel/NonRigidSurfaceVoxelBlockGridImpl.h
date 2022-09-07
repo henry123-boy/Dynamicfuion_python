@@ -31,9 +31,7 @@
 
 
 #ifndef __CUDACC__
-
 #include <tbb/concurrent_unordered_set.h>
-
 #endif
 
 
@@ -112,10 +110,8 @@ IntegrateNonRigid_Generic
 				index_t block_index = indices_ptr[workload_idx / block_resolution_cubed];
 				index_t voxel_index_in_block = workload_idx % block_resolution_cubed;
 
-
 				// block_index -> x_block, y_block, z_block (in voxel hash blocks)
-				auto* block_key_ptr =
-						block_keys_indexer.GetDataPtr<index_t>(block_index);
+				auto* block_key_ptr = block_keys_indexer.GetDataPtr<index_t>(block_index);
 				index_t x_block = block_key_ptr[0];
 				index_t y_block = block_key_ptr[1];
 				index_t z_block = block_key_ptr[2];

@@ -44,8 +44,8 @@ def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.str
     return Meshes(vertices_torch, faces_torch, textures=textures_torch, verts_normals=vertex_normals_torch)
 
 
-def make_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_matrix: np.ndarray,
-                              torch_device: torch.device) -> torch.Tensor:
+def make_pytorch3d_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_matrix: np.ndarray,
+                                        torch_device: torch.device) -> torch.Tensor:
     """
     Makes an intrinsic matrix in NDC (normalized device coordinates) coordinate system
     :param image_size: size of the output image, (height, width)
@@ -67,12 +67,9 @@ def make_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_matrix: np.
     fy = fy_screen / half_image_height
     px = -(px_screen - half_image_width) / half_image_height
     py = -(py_screen - half_image_height) / half_image_height
-    # TODO due to what looks like a PyTorch3D bug, we have to use the 1.0 residuals here, not the below commented code
-    #  residuals, and then use the non-identity rotation matrix...
-    # ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
-    #                                       [0.0, fy, py, 0.0],
-    #                                       [0.0, 0.0, 0.0, 1.0],
-    #                                       [0.0, 0.0, 1.0, 0.0]]], dtype=torch.float32, device=torch_device)
+    # Because Pytorch uses arcane coordinate system convention, i.e.  +x => left, +y => up, we
+    # use -1.0 values here in the matrix and then a non-identity rotation matrix to flip everything
+    # the way it should be (+x => right).
     ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
                                           [0.0, fy, py, 0.0],
                                           [0.0, 0.0, 0.0, -1.0],
@@ -113,5 +110,5 @@ def build_pytorch3d_cameras(image_size: tuple, intrinsic_matrix: o3c.Tensor,
         torch_device = device
         o3c_device = device_pytorch_to_open3d(torch_device)
 
-    ndc_intrinsic_matrix = make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), torch_device)
+    ndc_intrinsic_matrix = make_pytorch3d_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), torch_device)
     return build_pytorch3d_cameras_from_ndc(ndc_intrinsic_matrix, extrinsic_matrix.to(o3c_device), torch_device)

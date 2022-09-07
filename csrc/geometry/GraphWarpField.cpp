@@ -18,7 +18,7 @@
 #include <utility>
 #include <Eigen/Core>
 #include "geometry/kernel/Graph.h"
-#include "geometry/kernel/Warp3DPoints.h"
+#include "geometry/kernel/Warp3dPointsAndNormals.h"
 #include "core/linalg/Matmul3D.h"
 
 namespace o3c = open3d::core;
@@ -94,8 +94,8 @@ o3tg::PointCloud WarpPointCloud(
 		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
 		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
 		o3c::Tensor warped_points;
-		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-								 minimum_valid_anchor_count, extrinsics);
+		kernel::warp::Warp3dPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+		                           minimum_valid_anchor_count, extrinsics);
 		warped_point_cloud.SetPointPositions(warped_points);
 	}
 
@@ -147,8 +147,8 @@ o3tg::PointCloud WarpPointCloud(
 		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
 		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
 		o3c::Tensor warped_points;
-		kernel::warp::WarpPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchors, anchor_weights,
-		                         minimum_valid_anchor_count, extrinsics);
+		kernel::warp::Warp3dPoints(warped_points, vertices, nodes, node_rotations, node_translations, anchors, anchor_weights,
+		                           minimum_valid_anchor_count, extrinsics);
 		warped_point_cloud.SetPointPositions(warped_points);
 	}
 
@@ -156,15 +156,15 @@ o3tg::PointCloud WarpPointCloud(
 }
 
 inline
-void CopyWarpedTriangleMeshData(o3tg::TriangleMesh& warped_mesh, const o3tg::TriangleMesh& input_mesh) {
+void CopyTransformIndependentTriangleMeshData(o3tg::TriangleMesh& output_mesh, const o3tg::TriangleMesh& input_mesh) {
 	if (input_mesh.HasTriangleIndices()) {
-		warped_mesh.SetTriangleIndices(input_mesh.GetTriangleIndices());
+		output_mesh.SetTriangleIndices(input_mesh.GetTriangleIndices());
 	}
 	if (input_mesh.HasVertexColors()) {
-		warped_mesh.SetVertexColors(input_mesh.GetVertexColors());
+		output_mesh.SetVertexColors(input_mesh.GetVertexColors());
 	}
 	if (input_mesh.HasTriangleColors()) {
-		warped_mesh.SetTriangleColors(input_mesh.GetTriangleColors());
+		output_mesh.SetTriangleColors(input_mesh.GetTriangleColors());
 	}
 }
 
@@ -185,19 +185,17 @@ WarpTriangleMesh(
 
 	o3tg::TriangleMesh warped_mesh(device);
 
-	CopyWarpedTriangleMeshData(warped_mesh, input_mesh);
+	CopyTransformIndependentTriangleMeshData(warped_mesh, input_mesh);
 
 	if (input_mesh.HasVertexPositions()) {
 		const auto& vertices = input_mesh.GetVertexPositions();
-		// FIXME: not sure if this check is at all necessary. There seem to be some situations in pythonic context when np.array(mesh.vertices)
-		//  materializes in np.float64 datatype, e.g. after generation of a box using standard API functions. This was true for Open3D 0.12.0.
 		o3c::AssertTensorDtype(vertices, o3c::Dtype::Float32);
 		o3c::Tensor warped_vertices;
 		if (threshold_nodes_by_distance) {
-			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
-			                         minimum_valid_anchor_count, extrinsics);
+			kernel::warp::Warp3dPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage,
+			                           minimum_valid_anchor_count, extrinsics);
 		} else {
-			kernel::warp::WarpPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage, extrinsics);
+			kernel::warp::Warp3dPoints(warped_vertices, vertices, nodes, node_rotations, node_translations, anchor_count, node_coverage, extrinsics);
 		}
 
 		warped_mesh.SetVertexPositions(warped_vertices);

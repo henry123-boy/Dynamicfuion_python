@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/31/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 9/6/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#include <open3d/core/Tensor.h>
+namespace nnrt::rendering::kernel {
+// The maximum number of points per pixel that we can return. Since we use
+// thread-local arrays to hold and sort points, the maximum size of the array
+// needs to be known at compile time. There might be some fancy template magic
+// we could use to make this more dynamic, but for now just fix a constant.
+const int32_t max_points_per_pixel = 8;
+float min_near_clipping_distance = 0.0;
 
-namespace nnrt::geometry {
-
-class TriangleMesh {
-public:
-	explicit TriangleMesh(const open3d::core::Tensor& points);
-};
-
-} // nnrt::geometry
+}

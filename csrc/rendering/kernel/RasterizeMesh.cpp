@@ -14,28 +14,101 @@
 //  limitations under the License.
 //  ================================================================
 #include "rendering/kernel/RasterizeMesh.h"
+#include "core/DeviceSelection.h"
+#include "CoordinateSystemConversions.h"
 
 namespace o3c = open3d::core;
 
 namespace nnrt::rendering::kernel {
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshNaive(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius, int faces_per_pixel,
-                   bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
-	o3c::Device device = mesh.GetDevice();
+
+void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
+                                                       const open3d::core::Tensor& vertex_positions_camera,
+                                                       const open3d::core::Tensor& triangle_vertex_indices,
+                                                       const open3d::core::Tensor& normalized_intrinsic_matrix,
+                                                       nnrt::rendering::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
+                                                       float far_clipping_distance) {
+	core::ExecuteOnDevice(
+			vertex_positions_camera.GetDevice(),
+			[&] {
+				ExtractClippedFaceVerticesInNormalizedCameraSpace<o3c::Device::DeviceType::CPU>(
+						vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices, normalized_intrinsic_matrix, normalized_camera_space_xy_range,
+						near_clipping_distance, far_clipping_distance);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ExtractClippedFaceVerticesInNormalizedCameraSpace<o3c::Device::DeviceType::CUDA>(
+								vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices, normalized_intrinsic_matrix,
+								normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance);
+				);
+			}
+	);
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshFine(const open3d::t::geometry::TriangleMesh& mesh, const o3c::Tensor& bin_faces, std::tuple<int64_t, int64_t> image_size,
+RasterizeMeshNaive(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<int64_t, int64_t> image_size, float blur_radius,
+                   int faces_per_pixel,
+                   bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
+	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				RasterizeMeshNaive<o3c::Device::DeviceType::CPU>(normalized_camera_space_face_vertices, image_size, blur_radius, faces_per_pixel,
+				                                                 perspective_correct_barycentric_coordinates, clip_barycentric_coordinates,
+				                                                 cull_back_faces);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						RasterizeMeshNaive<o3c::Device::DeviceType::CUDA>(normalized_camera_space_face_vertices, image_size, blur_radius,
+						                                                  faces_per_pixel,
+						                                                  perspective_correct_barycentric_coordinates, clip_barycentric_coordinates,
+						                                                  cull_back_faces);
+				);
+			}
+	);
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+RasterizeMeshFine(const open3d::core::Tensor& normalized_camera_space_face_vertices, const o3c::Tensor& bin_faces,
+                  std::tuple<int64_t, int64_t> image_size,
                   float blur_radius, int bin_size, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
-				  bool clip_barycentric_coordinates, bool cull_back_faces) {
-	o3c::Device device = mesh.GetDevice();
+                  bool clip_barycentric_coordinates, bool cull_back_faces) {
+	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				RasterizeMeshFine<o3c::Device::DeviceType::CPU>(normalized_camera_space_face_vertices, bin_faces, image_size, blur_radius, bin_size,
+				                                                faces_per_pixel,
+				                                                perspective_correct_barycentric_coordinates, clip_barycentric_coordinates,
+				                                                cull_back_faces);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						RasterizeMeshFine<o3c::Device::DeviceType::CUDA>(normalized_camera_space_face_vertices, bin_faces, image_size, blur_radius,
+						                                                 bin_size, faces_per_pixel,
+						                                                 perspective_correct_barycentric_coordinates, clip_barycentric_coordinates,
+						                                                 cull_back_faces);
+				);
+			}
+	);
 }
 
 open3d::core::Tensor
-RasterizeMeshCoarse(const open3d::t::geometry::TriangleMesh& mesh, std::tuple<int64_t, int64_t> image_size, float blur_radius, int bin_size,
+RasterizeMeshCoarse(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<int64_t, int64_t> image_size, float blur_radius,
+                    int bin_size,
                     int max_faces_per_bin) {
-	o3c::Device device = mesh.GetDevice();
+	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				RasterizeMeshCoarse < o3c::Device::DeviceType::CPU >
+				(normalized_camera_space_face_vertices, image_size, blur_radius, bin_size, max_faces_per_bin);
+			},
+			[&] {
+				NNRT_IF_CUDA(RasterizeMeshCoarse < o3c::Device::DeviceType::CUDA >
+				             (normalized_camera_space_face_vertices, image_size, blur_radius, bin_size, max_faces_per_bin););
+			}
+	);
 }
 
 

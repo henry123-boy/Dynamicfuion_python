@@ -33,7 +33,7 @@ class PyTorch3DRenderer:
                                   specular_color=((0.0, 0.0, 0.0),), device=self.torch_device,
                                   location=[[0.0, 0.0, -3.0]])
 
-        self.K = converters.make_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
+        self.K = converters.make_pytorch3d_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
         # FIXME (see comments in tsdf_management/subprocedure_examples/pytorch3d_rendering_test.py)
         # camera_rotation = (torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0)
         camera_rotation = torch.tensor([[[-1, 0, 0],
