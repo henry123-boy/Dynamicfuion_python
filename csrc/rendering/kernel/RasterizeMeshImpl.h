@@ -19,6 +19,7 @@
 #include <open3d/core/CUDAUtils.h>
 #include <open3d/core/ParallelFor.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <open3d/utility/Logging.h>
 #include <Eigen/Dense>
 
 // local
@@ -30,6 +31,7 @@
 
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 namespace o3tgk = open3d::t::geometry::kernel;
 
 
@@ -150,11 +152,10 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshNaive(const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size,
-                   float blur_radius,
-                   int faces_per_pixel, bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-                   bool cull_back_faces) {
+void
+RasterizeMeshNaive(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+                   std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int faces_per_pixel,
+                   bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
 
 	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
 
@@ -214,27 +215,22 @@ RasterizeMeshNaive(const open3d::core::Tensor& normalized_camera_space_face_vert
 			}
 	);
 
-
+	o3u::LogError("Not fully implemented!");
 	std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMeshFine(
-		const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
-		std::tuple<t_image_index, t_image_index> image_size,
-		float blur_radius, int bin_size, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
-		bool clip_barycentric_coordinates, bool cull_back_faces
-) {
-
+void
+RasterizeMeshFine(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
+                  std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size, int faces_per_pixel,
+                  bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
+	o3u::LogError("Not yet implemented!");
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-open3d::core::Tensor RasterizeMeshCoarse(
-		const open3d::core::Tensor& normalized_camera_space_face_vertices, std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
-		int bin_size, int max_faces_per_bin
-) {
-
+void RasterizeMeshCoarse(open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+                         std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size, int max_faces_per_bin) {
+	o3u::LogError("Not yet implemented!");
 }
 
 } // namespace nnrt::rendering::kernel

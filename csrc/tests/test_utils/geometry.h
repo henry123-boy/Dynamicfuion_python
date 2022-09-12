@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/21/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 9/12/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -16,16 +16,11 @@
 #pragma once
 
 #include <open3d/t/geometry/TriangleMesh.h>
-#include <open3d/t/geometry/PointCloud.h>
 
-//TODO: move to functional namespace
+namespace test {
 
-namespace nnrt::geometry {
-
-void ComputeTriangleNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
-void ComputeVertexNormals(open3d::t::geometry::TriangleMesh& mesh, bool normalized = true);
-open3d::core::Tensor ComputeOrderedPointCloudNormals(const open3d::t::geometry::PointCloud& point_cloud, const open3d::core::SizeVector& source_image_size);
-void NormalizeVectors3d(open3d::core::Tensor& vectors3d);
+open3d::t::geometry::TriangleMesh GenerateXyPlane(float plane_side_length, const std::tuple<float, float, float>& plane_center_position,
+												  int subdivision_count, const open3d::core::Device& device);
 
 
-} // namespace nnrt::geometry
+} // namespace test

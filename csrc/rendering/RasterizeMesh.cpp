@@ -39,36 +39,40 @@ RasterizeMesh(const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		o3u::LogError("Need faces_per_pixel <= {}. Got: {}", kernel::max_points_per_pixel, faces_per_pixel);
 	}
 
-
+	kernel::Fragments fragments;
 	if (bin_size > 0 && max_faces_per_bin > 0) {
 		// Use coarse-to-fine rasterization
-		o3c::Tensor bin_faces = kernel::RasterizeMeshCoarse(
-				normalized_camera_space_face_vertices,
-				image_size,
-				blur_radius,
-				bin_size,
-				max_faces_per_bin);
-		return kernel::RasterizeMeshFine(
-				normalized_camera_space_face_vertices,
-				bin_faces,
-				image_size,
-				blur_radius,
-				bin_size,
-				faces_per_pixel,
-				perspective_correct_barycentric_coordinates,
-				clip_barycentric_coordinates,
-				cull_back_faces);
+		o3c::Tensor bin_faces;
+		kernel::RasterizeMeshCoarse(bin_faces,
+		                            normalized_camera_space_face_vertices,
+		                            image_size,
+		                            blur_radius,
+		                            bin_size,
+									max_faces_per_bin);
+		kernel::RasterizeMeshFine(fragments,
+		                          normalized_camera_space_face_vertices,
+		                          bin_faces,
+		                          image_size,
+		                          blur_radius,
+		                          bin_size,
+		                          faces_per_pixel,
+		                          perspective_correct_barycentric_coordinates,
+		                          clip_barycentric_coordinates,
+		                          cull_back_faces);
 	} else {
+
 		// Use the naive per-pixel implementation
-		return kernel::RasterizeMeshNaive(
-				normalized_camera_space_face_vertices,
-				image_size,
-				blur_radius,
-				faces_per_pixel,
-				perspective_correct_barycentric_coordinates,
-				clip_barycentric_coordinates,
-				cull_back_faces);
+		kernel::RasterizeMeshNaive(fragments,
+		                           normalized_camera_space_face_vertices,
+		                           image_size,
+		                           blur_radius,
+		                           faces_per_pixel,
+		                           perspective_correct_barycentric_coordinates,
+		                           clip_barycentric_coordinates,
+		                           cull_back_faces);
+
 	}
+	return fragments.ToTuple();
 }
 
 open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
@@ -105,7 +109,7 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 	o3c::Tensor vertex_positions_clipped_normalized_camera;
 
 	kernel::ExtractClippedFaceVerticesInNormalizedCameraSpace(vertex_positions_clipped_normalized_camera, vertex_positions_camera,
-	                                                          triangle_vertex_indices, normalized_intrinsic_matrix, image_size,
+	                                                          triangle_vertex_indices, normalized_intrinsic_matrix, normalized_xy_range,
 	                                                          near_clipping_distance, far_clipping_distance);
 
 	return vertex_positions_clipped_normalized_camera;

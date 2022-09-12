@@ -31,7 +31,7 @@ namespace nnrt::rendering::kernel {
  * To get the normalized camera-space range in the x direction,
  * dimension1 = image_width and dimension2 = image_height.
  */
-NNRT_DEVICE_WHEN_CUDACC
+NNRT_HOST_DEVICE_WHEN_CUDACC
 inline float GetNormalizedCameraSpaceRange(int dimension1, int dimension2) {
 	float range = 2.0f;
 	if (dimension1 > dimension2) {

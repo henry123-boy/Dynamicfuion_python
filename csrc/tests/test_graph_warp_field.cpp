@@ -13,10 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// test framework
 #include "test_main.hpp"
 
+// 3rd party
 #include <open3d/core/Tensor.h>
 
+// code being tested
 #include "geometry/GraphWarpField.h"
 
 namespace o3c = open3d::core;

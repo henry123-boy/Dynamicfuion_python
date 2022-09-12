@@ -13,8 +13,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// test framework
 #include "test_main.hpp"
+#include "tests/test_utils/test_utils.hpp"
 
+// 3rd party
 #include <open3d/core/Tensor.h>
 #include <open3d/core/EigenConverter.h>
 #include <open3d/geometry/TriangleMesh.h>
@@ -22,8 +25,8 @@
 #include <open3d/t/geometry/TriangleMesh.h>
 #include <open3d/io/ImageIO.h>
 
+// code being tested
 #include "geometry/NormalsOperations.h"
-#include "tests/test_utils/test_utils.hpp"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;

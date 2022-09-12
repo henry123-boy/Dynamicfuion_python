@@ -41,9 +41,13 @@ def ground_truth_vertices() -> np.ndarray:
 
 @pytest.mark.parametrize("device", [o3d.core.Device('cuda:0'), o3d.core.Device('cpu:0')])
 def test_warp_mesh(device, ground_truth_vertices):
+    # set up mesh
     mesh_legacy = o3d.geometry.TriangleMesh.create_box()
     mesh_legacy = mesh_legacy.subdivide_midpoint(number_of_iterations=1)
     mesh_legacy.compute_vertex_normals()
+    mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
+
+    # set up graph warp-field
     nodes = np.array([
         [0., 0., 0.],  # bottom
         [1., 0., 0.],  # bottom
@@ -95,7 +99,7 @@ def test_warp_mesh(device, ground_truth_vertices):
     translations = nodes_rotated - nodes
     graph_open3d.set_node_translations(o3c.Tensor(translations, device=device))
 
-    mesh = o3d.t.geometry.TriangleMesh.from_legacy(mesh_legacy, device=device)
+
 
     warped_mesh = graph_open3d.warp_mesh(mesh)
     warped_mesh_legacy: o3d.geometry.TriangleMesh = warped_mesh.to_legacy()
