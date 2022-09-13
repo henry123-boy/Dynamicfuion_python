@@ -29,11 +29,17 @@ namespace nnrt::rendering::kernel {
 using t_face_index = int32_t;
 
 struct RayFaceIntersection {
-	float depth;
-	int64_t face_index; // index of face
-	float distance; // distance of intersection to face
+	float depth; // depth of the pixel ray intersection (in normalized camera coordinates)
+	int64_t face_index;
+	// signed distance of pixel ray to face in XY plane (in normalized camera coordinates), i.e. distance to the nearest triangle edge
+	// negative for "inside triangle", positive for "outside triangle"
+	float distance;
 	Eigen::Vector3f barycentric_coordinates;
 };
+
+bool operator<(const RayFaceIntersection& a, const RayFaceIntersection& b) {
+	return a.depth < b.depth || (a.depth == b.depth && a.face_index < b.face_index);
+}
 
 
 // Determine whether the point (px, py) lies outside the face 2D bounding box while accounting for the blur radius.
@@ -85,15 +91,15 @@ inline float PointSegmentSquareDistance(
 template<typename TPoint, typename TTriangleVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline float PointTriangleDistance(
-		const TPoint& p,
-		const TTriangleVertex& v0,
-		const TTriangleVertex& v1,
-		const TTriangleVertex& v2
+		const TPoint& point,
+		const TTriangleVertex& vertex0,
+		const TTriangleVertex& vertex1,
+		const TTriangleVertex& vertex2
 ) {
 	// Compute distance to all three edges and return the minimum.
-	const float e01_dist = PointSegmentSquareDistance(p, v0, v1);
-	const float e02_dist = PointSegmentSquareDistance(p, v0, v2);
-	const float e12_dist = PointSegmentSquareDistance(p, v1, v2);
+	const float e01_dist = PointSegmentSquareDistance(point, vertex0, vertex1);
+	const float e02_dist = PointSegmentSquareDistance(point, vertex0, vertex2);
+	const float e12_dist = PointSegmentSquareDistance(point, vertex1, vertex2);
 	const float edge_dist = FloatMin3(e01_dist, e02_dist, e12_dist);
 	return edge_dist;
 }
@@ -107,11 +113,16 @@ NNRT_DEVICE_WHEN_CUDACC
 inline void UpdateQueueIfPixelInsideFace(
 		const o3tgk::TArrayIndexer <t_face_index>& face_vertex_position_indexer,
 		t_face_index i_face,
-		RayFaceIntersection* queue, int queue_size,
-		float queue_max_depth, int queue_max_depth_at,
-		float blur_radius, const Eigen::Vector2f& pixel,
+		RayFaceIntersection* queue,
+		int& queue_size,
+		float& queue_max_depth,
+		int& queue_max_depth_at,
+		float blur_radius,
+		const Eigen::Vector2f& pixel,
 		const int faces_per_pixel,
-		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+		bool perspective_correct_barycentric_coordinates,
+		bool clip_barycentric_coordinates,
+		bool cull_back_faces
 ) {
 	auto face_vertices_data = face_vertex_position_indexer.GetDataPtr<float>(i_face);
 	Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
@@ -145,10 +156,11 @@ inline void UpdateQueueIfPixelInsideFace(
 	Eigen::Vector3f barycentric_coordinates_clipped =
 			clip_barycentric_coordinates ? ClipBarycentricCoordinates(barycentric_coordinates) : barycentric_coordinates;
 
-	const float point_z = barycentric_coordinates_clipped.x() * face_vertex0.z() +
-	                      barycentric_coordinates_clipped.y() * face_vertex1.z() +
-	                      barycentric_coordinates_clipped.z() * face_vertex2.z();
-	if (point_z < 0) {
+	const float intersection_depth =
+			barycentric_coordinates_clipped.x() * face_vertex0.z() +
+			barycentric_coordinates_clipped.y() * face_vertex1.z() +
+			barycentric_coordinates_clipped.z() * face_vertex2.z();
+	if (intersection_depth < 0.f) {
 		return; // Face is behind image plane.
 	}
 	const float point_face_distance = PointTriangleDistance(pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy);
@@ -158,20 +170,31 @@ inline void UpdateQueueIfPixelInsideFace(
 	const float signed_point_face_distance = inside ? -point_face_distance : point_face_distance;
 
 	// If pixel is both outside and farther away than the blur radius, exit
-	if (!inside && point_face_distance >= blur_radius){
+	if (!inside && point_face_distance >= blur_radius) {
 		return;
 	}
 
-	/* Handle the case where a face "f" partially behind the image plane is clipped to a quadrilateral and then split into two faces (t1, t2).
-	 * In this case, we do the following.
-	 * 1) We find the index of the neighboring face (e.g. for t1 need index of t2).
-	 * 2) We check if the neighboring face (t2) is already in the top K faces.
-	 * 3) If it is, compare the distance of the pixel to t1 with the distance to t2.
-	 * 4) If distance(point,t1) < distance(point,t2), overwrite the values for t2 in the top K faces.
-	 */
-
-
-
+	if (queue_size < faces_per_pixel) {
+		// Add the intersection to the queue
+		queue[queue_size] = {intersection_depth, i_face, signed_point_face_distance, barycentric_coordinates_clipped};
+		// If intersection is beyond the max intersection depth in the queue, update the maximum depth and its index.
+		if (intersection_depth > queue_max_depth) {
+			queue_max_depth = intersection_depth;
+			queue_max_depth_at = queue_size;
+		}
+		queue_size++;
+	} else if (intersection_depth < queue_max_depth) {
+		// overwrite the maximum-depth face intersection info with the current faces' intersection data, find the new maximum depth,
+		// and use that to update the maximum depth and its index.
+		queue[queue_max_depth_at] = {intersection_depth, i_face, signed_point_face_distance, barycentric_coordinates_clipped};
+		queue_max_depth = intersection_depth;
+		for (int i_pixel_face = 0; i_pixel_face < faces_per_pixel; i_pixel_face++) {
+			if (queue[i_pixel_face].depth > queue_max_depth) {
+				queue_max_depth = queue[i_pixel_face].depth;
+				queue_max_depth_at = i_pixel_face;
+			}
+		}
+	}
 }
 
 } // namespace nnrt::rendering::kernel

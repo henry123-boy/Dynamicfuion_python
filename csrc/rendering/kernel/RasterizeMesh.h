@@ -23,10 +23,10 @@
 namespace nnrt::rendering::kernel {
 
 struct Fragments {
-	open3d::core::Tensor pixel_faces, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
+	open3d::core::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> ToTuple() {
-		return std::make_tuple(pixel_faces, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
+		return std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
 	}
 };
 
@@ -36,7 +36,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance);
 
@@ -45,7 +45,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance);
 

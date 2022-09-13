@@ -19,7 +19,7 @@
 
 #include "core/PlatformIndependence.h"
 
-namespace nnrt::geometry::kernel{
+namespace nnrt::rendering::kernel{
 
 struct AxisAligned2dBoundingBox {
 	float min_x;
@@ -33,4 +33,4 @@ struct AxisAligned2dBoundingBox {
 	}
 };
 
-} // namespace nnrt::geometry::kernel
+} // namespace nnrt::rendering::kernel

@@ -27,6 +27,7 @@
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/kernel/RayFaceIntersection.h"
+#include "rendering/kernel/BubbleSort.h"
 #include "core/PlatformIndependentAtomics.h"
 
 
@@ -43,7 +44,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance) {
 	o3c::Device device = vertex_positions_camera.GetDevice();
@@ -176,12 +177,17 @@ void RasterizeMeshNaive(
 	const int64_t pixel_count = image_height * image_width;
 
 	// here we refer to intersection of the actual pixel's ray with a triangular face as "pixel"
-	o3c::Tensor pixel_face_indices = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Int64, device);
-	o3c::Tensor pixel_depths = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Float32, device);
-	o3c::Tensor pixel_barycentric_coordinates = o3c::Tensor::Full({image_height, image_width, faces_per_pixel, 3}, -1, o3c::Float32, device);
+	fragments.pixel_face_indices = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Int64, device);
+	fragments.pixel_depths = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Float32, device);
+	fragments.pixel_barycentric_coordinates = o3c::Tensor::Full({image_height, image_width, faces_per_pixel, 3}, -1, o3c::Float32, device);
 	// float distance in the x/y camera plane in normalized camera-space coordinates, i.e. (-1,-1) to (1, 1), of each pixel-ray intersection
 	// to faces_per_pixel of triangles closest to it along the z axis.
-	o3c::Tensor pixel_face_distances = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Float32, device);
+	fragments.pixel_face_distances = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Float32, device);
+	// indexers
+	auto pixel_face_index_ptr = fragments.pixel_face_indices.template GetDataPtr<int64_t>();
+	auto pixel_depth_ptr = fragments.pixel_depths.template GetDataPtr<float>();
+	auto pixel_barycentric_coordinate_ptr = fragments.pixel_barycentric_coordinates.template GetDataPtr<float>();
+	auto pixel_face_distance_ptr = fragments.pixel_face_distances.template GetDataPtr<float>();
 
 	o3c::ParallelFor(
 			device, pixel_count,
@@ -217,12 +223,20 @@ void RasterizeMeshNaive(
 
 				}
 
-
+#ifdef __CUDACC__
+				std::sort(std::begin(queue), std::begin(queue) + queue_size);
+#else
+				BubbleSort(queue, queue_size);
+#endif
+				int fragment_index = workload_idx * faces_per_pixel;
+				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++){
+					pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
+					//TODO: finish
+				}
 			}
 	);
 
 	o3u::LogError("Not fully implemented!");
-	std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>

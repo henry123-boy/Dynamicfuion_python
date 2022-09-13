@@ -17,7 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/AxisAlignedBoundingBox.h"
+#include "AxisAlignedBoundingBox.h"
 #include <open3d/t/geometry/Utility.h>
 
 namespace nnrt::rendering::kernel {
@@ -92,7 +92,7 @@ IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics
 	                                                                            0.0, fy_normalized, cy_normalized,
 	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64,
 	                                                        open3d::core::Device("CPU:0"));
-	geometry::kernel::AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x / 2.f),
+	kernel::AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x / 2.f),
 	                                                 static_cast<float>(cx_normalized + range_x / 2.f),
 	                                                 static_cast<float>(cy_normalized - range_y / 2.f),
 	                                                 static_cast<float>(cy_normalized + range_y / 2.f)};
