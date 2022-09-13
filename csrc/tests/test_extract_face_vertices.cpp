@@ -15,6 +15,7 @@
 //  ================================================================
 // stdlib
 #include <algorithm>
+#include <random>
 
 // test framework
 #include "test_main.hpp"
@@ -40,39 +41,25 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 
 	auto extracted_face_vertices = nnrt::rendering::ExtractClippedFaceVerticesInNormalizedCameraSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
-	auto extracted_vector = extracted_face_vertices.ToFlatVector<float>();
-
-	std::vector<VertexMat> extracted_face_vertices_eigen;
-	for (int64_t i_face = 0; i_face < extracted_face_vertices.GetLength(); i_face++) {
-		extracted_face_vertices_eigen.emplace_back(extracted_vector.data() + i_face * 9);
-	}
-
-	std::stable_sort(extracted_face_vertices_eigen.begin(), extracted_face_vertices_eigen.end(),
-	                 [](VertexMat m1, VertexMat m2) {
-		                 auto center1 = m1.colwise().mean();
-		                 auto center2 = m2.colwise().mean();
-		                 if (center1.z() == center2.z()) {
-			                 if (center1.y() == center2.y()) {
-				                 return center1.x() < center2.x();
-			                 } else {
-				                 return center1.y() < center2.y();
-			                 }
-		                 } else {
-			                 return center1.z() < center2.z();
-		                 }
-	                 });
-
-	o3c::Tensor extracted_face_vertices_sorted(extracted_face_vertices_eigen.data()->data(), extracted_face_vertices.GetShape(), o3c::Float32, device);
-
-
 	REQUIRE(extracted_face_vertices.GetLength() == 334);
 
 	auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/extracted_face_vertices.npy");
-	//TODO
-	//__DEBUG
-	auto x = extracted_face_vertices_sorted.IsClose(extracted_face_vertices_ground_truth);
-	REQUIRE(extracted_face_vertices_sorted.AllClose(extracted_face_vertices_ground_truth, 1e-5, 1e-6));
+			test::array_test_data_directory.ToString() + "/extracted_face_vertices.npy").To(device);
+
+	const int64_t count_faces_to_check = 10;
+	std::random_device random_device{};
+	std::mt19937 generator(random_device());
+	std::uniform_int_distribution<int64_t> random_distribution(0, extracted_face_vertices.GetLength()-1);
+	for(int64_t i_test = 0; i_test < count_faces_to_check; i_test++){
+		int64_t i_extracted_face = random_distribution(generator);
+		bool found = false;
+		auto face_vertices_normalized_camera = extracted_face_vertices[i_extracted_face];
+		for(int64_t i_ground_truth_face = 0; i_ground_truth_face < extracted_face_vertices_ground_truth.GetLength() && !found; i_ground_truth_face++){
+			auto face_vertices_ground_truth = extracted_face_vertices_ground_truth[i_ground_truth_face];
+			found = face_vertices_normalized_camera.AllClose(face_vertices_ground_truth, 1e-5, 1e-7);
+		}
+		REQUIRE(found);
+	}
 }
 
 TEST_CASE("Test Extract Face Vertices - CPU") {
