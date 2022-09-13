@@ -43,7 +43,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       AxisAligned2dBoundingBox normalized_camera_space_xy_range, // TODO: probably unneeded here since we got the matrix. Remove?
+                                                       AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance) {
 	o3c::Device device = vertex_positions_camera.GetDevice();
@@ -100,9 +100,14 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 
 #ifdef NNRT_USE_SERIAL_VERSION
 				Eigen::Vector2f normalized_face_vertices_xy[3];
+				bool has_inliner_vertex = false;
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
 					perspective_transform.Project(face_vertices[i_vertex].x(), face_vertices[i_vertex].y(), face_vertices[i_vertex].z(),
 					                              &normalized_face_vertices_xy[i_vertex].x(), &normalized_face_vertices_xy[i_vertex].y());
+					has_inliner_vertex |= normalized_camera_space_xy_range.Contains(normalized_face_vertices_xy[i_vertex]);
+				}
+				if(!has_inliner_vertex){
+					return;
 				}
 #else
 				Eigen::Vector2f normalized_face_vertex_xy0, normalized_face_vertex_xy1, normalized_face_vertex_xy2;
@@ -114,9 +119,9 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 				perspective_transform.Project(face_vertex2.x(), face_vertex2.y(), face_vertex2.z(),
 											  &normalized_face_vertex_xy2.x(), &normalized_face_vertex_xy2.y());
 
-				if (!normalized_camera_space_xy_range.Contains(face_vertex0) &&
-					!normalized_camera_space_xy_range.Contains(face_vertex1) &&
-					!normalized_camera_space_xy_range.Contains(face_vertex2)) {
+				if (!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy0) &&
+					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy1) &&
+					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy2)) {
 					// face is outside of the view frustum's top/bottom/left/right boundaries
 					return;
 				}
@@ -124,8 +129,8 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 #endif
 				auto output_face_index = static_cast<int64_t>(NNRT_ATOMIC_ADD(unclipped_face_count, 1));
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertex0(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index));
-				Eigen::Map<Eigen::Vector3f> normalized_face_vertex1(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index + 3));
-				Eigen::Map<Eigen::Vector3f> normalized_face_vertex2(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index + 6));
+				Eigen::Map<Eigen::Vector3f> normalized_face_vertex1(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index) + 3);
+				Eigen::Map<Eigen::Vector3f> normalized_face_vertex2(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index) + 6);
 #ifdef NNRT_USE_SERIAL_VERSION
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertices[] = {normalized_face_vertex0, normalized_face_vertex1, normalized_face_vertex2};
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
@@ -152,10 +157,11 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void
-RasterizeMeshNaive(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                   std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int faces_per_pixel,
-                   bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
+void RasterizeMeshNaive(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::SizeVector& image_size, float blur_radius, int faces_per_pixel,
+		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+) {
 
 	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
 
@@ -165,8 +171,8 @@ RasterizeMeshNaive(Fragments& fragments, const open3d::core::Tensor& normalized_
 
 	o3c::AssertTensorDtype(normalized_camera_space_face_vertices, o3c::Float32);
 
-	const auto image_height = static_cast<t_face_index>(std::get<0>(image_size));
-	const auto image_width = static_cast<t_face_index>(std::get<1>(image_size));
+	const auto image_height = image_size[0];
+	const auto image_width = image_size[1];
 	const int64_t pixel_count = image_height * image_width;
 
 	// here we refer to intersection of the actual pixel's ray with a triangular face as "pixel"
@@ -185,7 +191,7 @@ RasterizeMeshNaive(Fragments& fragments, const open3d::core::Tensor& normalized_
 				const float y_screen = ImageToNormalizedCameraSpace(v_image, image_height, image_width);
 				const float x_screen = ImageToNormalizedCameraSpace(u_image, image_width, image_height);
 				Eigen::Vector2f point_screen(x_screen, y_screen);
-				RayFaceIntersection queue[max_points_per_pixel];
+				RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
 				int queue_size = 0;
 				float queue_max_depth = -1000.f;
 				int queue_max_depth_at = -1;
@@ -220,16 +226,18 @@ RasterizeMeshNaive(Fragments& fragments, const open3d::core::Tensor& normalized_
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void
-RasterizeMeshFine(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
-                  std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size, int faces_per_pixel,
-                  bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces) {
+void RasterizeMeshFine(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int faces_per_pixel,
+		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+) {
 	o3u::LogError("Not yet implemented!");
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshCoarse(open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                         std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size, int max_faces_per_bin) {
+void RasterizeMeshCoarse(
+		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int max_faces_per_bin) {
 	o3u::LogError("Not yet implemented!");
 }
 

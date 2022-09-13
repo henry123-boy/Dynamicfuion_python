@@ -19,7 +19,8 @@ namespace nnrt::rendering::kernel {
 // thread-local arrays to hold and sort points, the maximum size of the array
 // needs to be known at compile time. There might be some fancy template magic
 // we could use to make this more dynamic, but for now just fix a constant.
-const int32_t max_points_per_pixel = 8;
-float min_near_clipping_distance = 0.0;
+#define MAX_POINTS_PER_PIXEL 8
+
+#define MIN_NEAR_CLIPPING_DISTANCE 0.0
 
 }

@@ -46,7 +46,8 @@ if (BUILD_CPP_TESTS)
         test_utils/entropy_encoder_model.h
         test_utils/entropy_range_encoder.h
         test_utils/entropy_range_encoder.cpp
-        test_utils/geometry.cpp test_utils/geometry.h)
+        test_utils/geometry.cpp
+        test_utils/geometry.h)
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -67,6 +68,6 @@ if (BUILD_CPP_TESTS)
     NNRT_add_test(test_tensor_io)
     NNRT_add_test(test_voxel_block_grid_io)
     NNRT_add_test(test_unproject_3d_points)
-
+    NNRT_add_test(test_extract_face_vertices)
 
 endif ()

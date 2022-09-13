@@ -29,7 +29,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace<open3d::core::Device::Dev
 template
 void
 RasterizeMeshNaive<open3d::core::Device::DeviceType::CUDA>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                           std::tuple<t_image_index, t_image_index> image_size, float blur_radius,
+                                                           const open3d::core::SizeVector& image_size, float blur_radius,
                                                            int faces_per_pixel,
                                                            bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
                                                            bool cull_back_faces);
@@ -38,7 +38,7 @@ template
 void
 RasterizeMeshFine<open3d::core::Device::DeviceType::CUDA>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
                                                           const open3d::core::Tensor& bin_faces,
-                                                          std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size,
+                                                          const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
                                                           int faces_per_pixel,
                                                           bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
                                                           bool cull_back_faces);
@@ -46,7 +46,7 @@ RasterizeMeshFine<open3d::core::Device::DeviceType::CUDA>(Fragments& fragments, 
 template
 void RasterizeMeshCoarse<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& bin_faces,
                                                                  const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                                 std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size,
+                                                                 const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
                                                                  int max_faces_per_bin);
 
 } // namespace nnrt::rendering::kernel

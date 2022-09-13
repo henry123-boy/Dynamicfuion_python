@@ -27,25 +27,25 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace<open3d::core::Device::Dev
 		float near_clipping_distance, float far_clipping_distance);
 
 template
-void
-RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                          std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int faces_per_pixel,
-                                                          bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-                                                          bool cull_back_faces);
+void RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::SizeVector& image_size, float blur_radius, int faces_per_pixel,
+		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+);
 
 template
-void
-RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                         const open3d::core::Tensor& bin_faces,
-                                                         std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size,
-                                                         int faces_per_pixel,
-                                                         bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-                                                         bool cull_back_faces);
+void RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int faces_per_pixel,
+		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+);
 
 template
-void RasterizeMeshCoarse<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& bin_faces,
-                                                                const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                                std::tuple<t_image_index, t_image_index> image_size, float blur_radius, int bin_size,
-                                                                int max_faces_per_bin);
+void RasterizeMeshCoarse<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& bin_faces,
+		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
+		int max_faces_per_bin
+);
 
 } // namespace nnrt::rendering::kernel

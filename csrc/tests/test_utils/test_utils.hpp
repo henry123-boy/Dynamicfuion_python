@@ -23,6 +23,8 @@
 #include "compile_time_string_concatenation.hpp"
 #include <test_data_paths.hpp>
 
+
+
 namespace test {
 	static constexpr auto generated_test_data_directory = StringFactory(GENERATED_TEST_DATA_DIRECTORY);
 	static constexpr auto image_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "images");

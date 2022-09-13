@@ -65,6 +65,7 @@ struct AxisAligned2dBoundingBox {
 	float min_y;
 	float max_y;
 
+	NNRT_DEVICE_WHEN_CUDACC
 	bool Contains(const Eigen::Vector2f& point) const {
 		return point.y() >= min_y && point.x() >= min_x && point.y() <= max_y && point.x() <= max_x;
 	}
@@ -98,15 +99,15 @@ IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics
 	double fy_normalized = 2.0 * fy / smaller_dimension;
 	double cx_normalized = -(2.0 * cx - width) / smaller_dimension;
 	double cy_normalized = -(2.0 * cy - height) / smaller_dimension;
-	open3d::core::Tensor ndc_intrinsic_matrix(std::vector<double>{fx_normalized, 0.0, cx_normalized,
-	                                                              0.0, fy_normalized, cy_normalized,
-	                                                              0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64, open3d::core::Device("CPU:0"));
+	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_normalized, 0.0, cx_normalized,
+	                                                                            0.0, fy_normalized, cy_normalized,
+	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64, open3d::core::Device("CPU:0"));
 	AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x/2.f),
 								   static_cast<float>(cx_normalized + range_x/2.f),
 								   static_cast<float>(cy_normalized - range_y/2.f),
-								   static_cast<float>(cy_normalized - range_y/2.f)};
+								   static_cast<float>(cy_normalized + range_y/2.f)};
 
-	return std::make_tuple(ndc_intrinsic_matrix, range);
+	return std::make_tuple(normalized_camera_intrinsic_matrix, range);
 }
 
 } // namespace nnrt::rendering::kernel
