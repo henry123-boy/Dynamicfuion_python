@@ -36,7 +36,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       nnrt::rendering::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance);
 
@@ -45,7 +45,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
                                                        const open3d::core::Tensor& vertex_positions_camera,
                                                        const open3d::core::Tensor& triangle_vertex_indices,
                                                        const open3d::core::Tensor& normalized_camera_space_matrix,
-                                                       AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                                                       geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                                                        float near_clipping_distance,
                                                        float far_clipping_distance);
 

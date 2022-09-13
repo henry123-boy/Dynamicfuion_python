@@ -17,6 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 #include "core/PlatformIndependence.h"
+#include "geometry/kernel/AxisAlignedBoundingBox.h"
 #include <open3d/t/geometry/Utility.h>
 
 namespace nnrt::rendering::kernel {
@@ -59,21 +60,9 @@ inline float ImageToNormalizedCameraSpace(int i_pixel_along_dimension1, int dime
 	return -offset + (range * static_cast<float>(i_pixel_along_dimension1) + offset) / static_cast<float>(dimension1);
 }
 
-struct AxisAligned2dBoundingBox {
-	float min_x;
-	float max_x;
-	float min_y;
-	float max_y;
-
-	NNRT_DEVICE_WHEN_CUDACC
-	bool Contains(const Eigen::Vector2f& point) const {
-		return point.y() >= min_y && point.x() >= min_x && point.y() <= max_y && point.x() <= max_x;
-	}
-};
-
 // Candidate function to be moved into a separate "camera" module
 inline
-std::tuple<open3d::core::Tensor, AxisAligned2dBoundingBox>
+std::tuple<open3d::core::Tensor, geometry::kernel::AxisAligned2dBoundingBox>
 IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics, const open3d::core::SizeVector& image_size) {
 	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
 	auto values = intrinsics.ToFlatVector<double>();
@@ -101,11 +90,12 @@ IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics
 	double cy_normalized = -(2.0 * cy - height) / smaller_dimension;
 	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_normalized, 0.0, cx_normalized,
 	                                                                            0.0, fy_normalized, cy_normalized,
-	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64, open3d::core::Device("CPU:0"));
-	AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x/2.f),
-								   static_cast<float>(cx_normalized + range_x/2.f),
-								   static_cast<float>(cy_normalized - range_y/2.f),
-								   static_cast<float>(cy_normalized + range_y/2.f)};
+	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64,
+	                                                        open3d::core::Device("CPU:0"));
+	geometry::kernel::AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x / 2.f),
+	                                                 static_cast<float>(cx_normalized + range_x / 2.f),
+	                                                 static_cast<float>(cy_normalized - range_y / 2.f),
+	                                                 static_cast<float>(cy_normalized + range_y / 2.f)};
 
 	return std::make_tuple(normalized_camera_intrinsic_matrix, range);
 }

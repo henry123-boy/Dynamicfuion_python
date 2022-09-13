@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 9/6/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 9/13/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,15 +14,23 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-namespace nnrt::rendering::kernel {
-// The maximum number of points per pixel that we can return. Since we use
-// thread-local arrays to hold and sort points, the maximum size of the array
-// needs to be known at compile time. There might be some fancy template magic
-// we could use to make this more dynamic, but for now just fix a constant.
-#define MAX_POINTS_PER_PIXEL 8
 
-#define MIN_NEAR_CLIPPING_DISTANCE 0.0
+#include <Eigen/Dense>
 
-#define K_EPSILON 1e-8f
+#include "core/PlatformIndependence.h"
 
-}
+namespace nnrt::geometry::kernel{
+
+struct AxisAligned2dBoundingBox {
+	float min_x;
+	float max_x;
+	float min_y;
+	float max_y;
+
+	NNRT_DEVICE_WHEN_CUDACC
+	bool Contains(const Eigen::Vector2f& point) const {
+		return point.y() >= min_y && point.x() >= min_x && point.y() <= max_y && point.x() <= max_x;
+	}
+};
+
+} // namespace nnrt::geometry::kernel
