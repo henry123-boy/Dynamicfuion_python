@@ -37,6 +37,7 @@ struct RayFaceIntersection {
 	Eigen::Vector3f barycentric_coordinates;
 };
 
+NNRT_DEVICE_WHEN_CUDACC
 bool operator<(const RayFaceIntersection& a, const RayFaceIntersection& b) {
 	return a.depth < b.depth || (a.depth == b.depth && a.face_index < b.face_index);
 }

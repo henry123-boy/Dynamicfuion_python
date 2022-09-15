@@ -62,7 +62,7 @@ inline float ImageToNormalizedCameraSpace(int i_pixel_along_dimension1, int dime
 
 // Candidate function to be moved into a separate "camera" module
 inline
-std::tuple<open3d::core::Tensor, geometry::kernel::AxisAligned2dBoundingBox>
+std::tuple<open3d::core::Tensor, kernel::AxisAligned2dBoundingBox>
 IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics, const open3d::core::SizeVector& image_size) {
 	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
 	auto values = intrinsics.ToFlatVector<double>();

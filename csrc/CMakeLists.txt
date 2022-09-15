@@ -200,6 +200,8 @@ set(PYBIND_SOURCE_FILES
     pybind/nnrt_pybind.cpp
     pybind/geometry/geometry.cpp
     pybind/geometry/geometry.h
+    pybind/geometry/functional/functional.cpp
+    pybind/geometry/functional/functional.h
     pybind/enum_export.h
     pybind/core.cpp
     pybind/core.h
@@ -268,11 +270,13 @@ add_custom_target(install-python-stubs
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${STUBS_PACKAGE_DST_DIR}/nnrt
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt -o ${STUBS_PACKAGE_DST_DIR}/nnrt WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
 
+    COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry.functional" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.core" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E cat ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi >> ${STUBS_PACKAGE_DST_DIR}/nnrt/__init__.pyi
     COMMAND ${CMAKE_COMMAND} -E rm -f ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi
 
+    COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry.functional -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.core -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
 

@@ -32,7 +32,7 @@ import open3d.core as o3c
 
 # C++ extension
 from nnrt.geometry import GraphWarpField
-from nnrt.geometry import compute_anchors_and_weights_shortest_path
+import nnrt.geometry.functional
 # local
 import rendering.converters
 from alignment.render_based.functional.warp_meshes import warp_meshes_using_node_anchors
@@ -73,10 +73,11 @@ class PureTorchRenderBasedOptimizer:
         self.graph_node_translations = torch.from_dlpack(warp_field.get_node_translations().to_dlpack())
 
         # note: assume weights are already normalized and weight rows add up to 1.0 skipping places where anchors are -1
-        anchors, weights = compute_anchors_and_weights_shortest_path(canonical_mesh.vertex["positions"],
-                                                                     warp_field.nodes, warp_field.edges,
-                                                                     anchor_count=self.anchor_count,
-                                                                     node_coverage=self.node_coverage)
+        anchors, weights = nnrt.geometry.functional \
+            .compute_anchors_and_weights_shortest_path(canonical_mesh.vertex["positions"],
+                                                       warp_field.nodes, warp_field.edges,
+                                                       anchor_count=self.anchor_count,
+                                                       node_coverage=self.node_coverage)
         # (vertex_count, anchor_count)
         self.mesh_vertex_anchors = torch_dlpack.from_dlpack(anchors.to_dlpack())
         # (vertex_count, anchor_count)
@@ -173,7 +174,8 @@ class PureTorchRenderBasedOptimizer:
         rendered_point_outside_depth_range_mask = torch.where(point_depths.view(-1) == -1, zeros, ones)
 
         residuals = \
-            torch.square(self.point_to_plane_distances(rendered_points, rendered_normals, rendered_point_outside_depth_range_mask))
+            torch.square(self.point_to_plane_distances(rendered_points, rendered_normals,
+                                                       rendered_point_outside_depth_range_mask))
         return residuals
 
     def optimize(self):

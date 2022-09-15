@@ -43,7 +43,7 @@ def test_compute_anchors_euclidean_nnrtf_vs_legacy_nnrt_cpp(device):
     old_vertex_anchors, old_vertex_weights = nnrt.compute_vertex_anchors_euclidean(nodes, points, 0.5)
     old_vertex_anchors_sorted = np.sort(old_vertex_anchors, axis=1)
     old_vertex_weights_sorted = np.sort(old_vertex_weights, axis=1)
-    vertex_anchors, vertex_weights = nnrt.geometry.compute_anchors_and_weights_euclidean(points_o3d, nodes_o3d,
+    vertex_anchors, vertex_weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(points_o3d, nodes_o3d,
                                                                                          anchor_count, 0, 0.5)
     vertex_anchors_sorted = np.sort(vertex_anchors.cpu().numpy(), axis=1)
     vertex_weights_sorted = np.sort(vertex_weights.cpu().numpy(), axis=1)
@@ -174,7 +174,7 @@ def test_shortest_path_anchors(device: o3d.core.Device):
     nodes_o3d = o3c.Tensor(nodes, device=device)
     edges_o3d = o3c.Tensor(edges, device=device)
 
-    anchors, weights = nnrt.geometry.compute_anchors_and_weights_shortest_path(
+    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_shortest_path(
         vertices_o3d, nodes_o3d, edges_o3d, anchor_count, node_coverage)
 
     assert np.alltrue(anchors_gt == anchors.cpu().numpy())
@@ -227,7 +227,7 @@ def test_compute_anchors_shortest_path_nnrtf_vs_legacy_nnrt_cpp(device):
     legacy_vertex_anchors_sorted = np.sort(legacy_vertex_anchors, axis=1)
     legacy_vertex_weights_sorted = np.sort(legacy_vertex_weights, axis=1)
     vertex_anchors, vertex_weights = \
-        nnrt.geometry.compute_anchors_and_weights_shortest_path(vertices_o3d, nodes_o3d, edges_o3d,
+        nnrt.geometry.functional.compute_anchors_and_weights_shortest_path(vertices_o3d, nodes_o3d, edges_o3d,
                                                                 anchor_count, node_coverage)
     vertex_anchors_sorted = np.sort(vertex_anchors.cpu().numpy(), axis=1)
     vertex_weights_sorted = np.sort(vertex_weights.cpu().numpy(), axis=1)

@@ -571,12 +571,12 @@ class FusionPipeline:
 
         if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
             pixel_anchors, pixel_weights = \
-                nnrt.geometry.compute_anchors_and_weights_euclidean(
+                nnrt.geometry.functional.compute_anchors_and_weights_euclidean(
                     source_point_image_o3d, nodes, 4, 0, node_coverage
                 )
         elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
             pixel_anchors, pixel_weights = \
-                nnrt.geometry.compute_anchors_and_weights_shortest_path(
+                nnrt.geometry.functional.compute_anchors_and_weights_shortest_path(
                     source_point_image_o3d, nodes, self.active_graph.edges, 4,
                     node_coverage
                 )

@@ -15,6 +15,7 @@
 //  ================================================================
 #include <open3d/geometry/Image.h>
 
+// nnrt_cpp
 #include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/GraphWarpField.h"
 #include "geometry/AnchorComputationMethod.h"
@@ -23,6 +24,9 @@
 #include "geometry/Downsample3dPoints.h"
 #include "geometry/Unproject3dPoints.h"
 #include "geometry/NormalsOperations.h"
+
+// local
+#include "functional/functional.h"
 #include "geometry.h"
 
 
@@ -33,11 +37,12 @@ namespace o3c = open3d::core;
 
 namespace nnrt::geometry {
 void pybind_geometry(py::module& m) {
-	py::module m_submodule = m.def_submodule(
-			"geometry", "Open3D-tensor-based geometry defining module.");
+	py::module m_submodule = m.def_submodule("geometry", "Module with Open3D-tensor-based geometry objects.");
+	functional::pybind_geometry_functional(m_submodule);
 
 	pybind_geometry_enums(m_submodule);
 	pybind_geometry_voxel_block_grid(m_submodule);
+
 	pybind_geometry_non_rigid_surface_voxel_block_grid(m_submodule);
 	pybind_geometry_graph_warp_field(m_submodule);
 	pybind_geometry_comparison(m_submodule);
@@ -275,29 +280,6 @@ void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
 }
 
 void pybind_geometry_graph_warp_field(pybind11::module& m) {
-	m.def("compute_anchors_and_weights_euclidean", py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, int, int,
-			      float>(&ComputeAnchorsAndWeightsEuclidean), "points"_a, "nodes"_a, "anchor_count"_a,
-	      "minimum_valid_anchor_count"_a, "node_coverage"_a);
-
-	m.def("compute_anchors_and_weights_shortest_path", py::overload_cast<const o3c::Tensor&, const o3c::Tensor&,
-			      const o3c::Tensor&, int, float>(&ComputeAnchorsAndWeightsShortestPath), "points"_a, "nodes"_a, "edges"_a,
-	      "anchor_count"_a, "node_coverage"_a);
-
-	m.def("warp_triangle_mesh", &WarpTriangleMesh, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a, "threshold_nodes_by_distance"_a = false,
-	      "minimum_valid_anchor_count"_a = 0, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
-
-	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
-			      const o3c::Tensor&, const o3c::Tensor&, int, float, int, const o3c::Tensor&>(&WarpPointCloud),
-	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
-	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
-
-	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
-			      const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int, const o3c::Tensor&>(&WarpPointCloud),
-	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
-	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
-	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 
 	py::class_<GraphWarpField> graph_warp_field(
 			m, "GraphWarpField",

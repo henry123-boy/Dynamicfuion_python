@@ -224,19 +224,21 @@ void RasterizeMeshNaive(
 				}
 
 #ifdef __CUDACC__
-				std::sort(std::begin(queue), std::begin(queue) + queue_size);
-#else
 				BubbleSort(queue, queue_size);
+#else
+				std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
 				int fragment_index = workload_idx * faces_per_pixel;
 				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++){
 					pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
-					//TODO: finish
+					pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
+					pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
 				}
 			}
 	);
-
-	o3u::LogError("Not fully implemented!");
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
