@@ -21,7 +21,7 @@
 
 // local
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "rendering/kernel/BarycentricCoordinateUtilities.h"
+#include "rendering/kernel/BarycentricCoordinateComputation.h"
 
 
 namespace o3tgk = open3d::t::geometry::kernel;
@@ -43,6 +43,32 @@ bool operator<(const RayFaceIntersection& a, const RayFaceIntersection& b) {
 }
 
 
+template<typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline void ComputeFace2dBoundingBoxAndCheckZMin(
+		float& x_min,
+		float& x_max,
+		float& y_min,
+		float& y_max,
+		bool& z_invalid,
+		const float blur_radius,
+		const TVertex& vertex0,
+		const TVertex& vertex1,
+		const TVertex& vertex2
+) {
+	x_min = FloatMin3(vertex0.x(), vertex1.x(), vertex2.x()) - blur_radius;
+	x_max = FloatMax3(vertex0.x(), vertex1.x(), vertex2.x()) + blur_radius;
+
+	y_min = FloatMin3(vertex0.y(), vertex1.y(), vertex2.y()) - blur_radius;
+	y_max = FloatMax3(vertex0.y(), vertex1.y(), vertex2.y()) + blur_radius;
+
+	const float z_min = FloatMin3(vertex0.z(), vertex1.z(), vertex2.z());
+
+	// Faces with at least one vertex behind the camera won't render correctly
+	// and should be removed or clipped before rasterizing
+	z_invalid = z_min < K_EPSILON;
+}
+
 // Determine whether the point (px, py) lies outside the face 2D bounding box while accounting for the blur radius.
 template<typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
@@ -53,19 +79,35 @@ inline bool PointOutsideFaceBoundingBox(
 		float blur_radius,
 		const TPoint& point
 ) {
-	const float x_min = FloatMin3(vertex0.x(), vertex1.x(), vertex2.x()) - blur_radius;
-	const float x_max = FloatMax3(vertex0.x(), vertex1.x(), vertex2.x()) + blur_radius;
-
-	const float y_min = FloatMin3(vertex0.y(), vertex1.y(), vertex2.y()) - blur_radius;
-	const float y_max = FloatMax3(vertex0.y(), vertex1.y(), vertex2.y()) + blur_radius;
-
-	const float z_min = FloatMin3(vertex0.z(), vertex1.z(), vertex2.z());
-
-	// Faces with at least one vertex behind the camera won't render correctly
-	// and should be removed or clipped before rasterizing
-	const bool z_invalid = z_min < K_EPSILON;
-
+	float x_min, x_max, y_min, y_max;
+	bool z_invalid;
+	ComputeFace2dBoundingBoxAndCheckZMin(x_min, x_max, y_min, y_max, z_invalid, blur_radius, vertex0, vertex1, vertex2);
 	return (point.x() > x_max || point.x() < x_min || point.y() > y_max || point.y() < y_min || z_invalid);
+}
+
+
+// Determine whether the point (px, py) lies outside the face 2D bounding box while accounting for the blur radius, then record the bounding box.
+template<typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline bool CalculateAndStoreFace2dBoundingBox(
+		float* bounding_box_data,
+		bool* skip_mask_data,
+		int64_t i_face,
+		const int64_t face_count,
+		const TVertex& vertex0,
+		const TVertex& vertex1,
+		const TVertex& vertex2,
+		float blur_radius
+) {
+	float x_min, x_max, y_min, y_max;
+	bool z_invalid;
+	ComputeFace2dBoundingBoxAndCheckZMin(x_min, x_max, y_min, y_max, z_invalid, blur_radius, vertex0, vertex1, vertex2);
+
+	bounding_box_data[0 * face_count + i_face] = x_min;
+	bounding_box_data[1 * face_count + i_face] = x_max;
+	bounding_box_data[2 * face_count + i_face] = y_min;
+	bounding_box_data[3 * face_count + i_face] = y_max;
+	skip_mask_data[i_face] = z_invalid;
 }
 
 template<typename TPoint, typename TSegmentEndpoint>

@@ -107,7 +107,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 					                              &normalized_face_vertices_xy[i_vertex].x(), &normalized_face_vertices_xy[i_vertex].y());
 					has_inliner_vertex |= normalized_camera_space_xy_range.Contains(normalized_face_vertices_xy[i_vertex]);
 				}
-				if(!has_inliner_vertex){
+				if (!has_inliner_vertex) {
 					return;
 				}
 #else
@@ -194,8 +194,8 @@ void RasterizeMeshNaive(
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
 				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-				const float y_screen = ImageToNormalizedCameraSpace(v_image, image_height, image_width);
-				const float x_screen = ImageToNormalizedCameraSpace(u_image, image_width, image_height);
+				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height, image_width);
+				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width, image_height);
 				Eigen::Vector2f point_screen(x_screen, y_screen);
 				RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
 				int queue_size = 0;
@@ -229,7 +229,7 @@ void RasterizeMeshNaive(
 				std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
 				int fragment_index = workload_idx * faces_per_pixel;
-				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++){
+				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
 					pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
 					pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
 					pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
@@ -253,8 +253,94 @@ void RasterizeMeshFine(
 template<open3d::core::Device::DeviceType TDeviceType>
 void RasterizeMeshCoarse(
 		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int max_faces_per_bin) {
-	o3u::LogError("Not yet implemented!");
+		const open3d::core::SizeVector& image_size, const float blur_radius, const int bin_size, const int max_faces_per_bin
+) {
+	int image_height = static_cast<int>(image_size[0]);
+	int image_width = static_cast<int>(image_size[1]);
+
+	auto device = normalized_camera_space_face_vertices.GetDevice();
+	int64_t face_count = normalized_camera_space_face_vertices.GetLength();
+	o3tgk::NDArrayIndexer face_vertex_position_indexer(normalized_camera_space_face_vertices, 1);
+
+	o3c::Tensor face_bounding_boxes({4, face_count}, o3c::Float32, device);
+	o3c::Tensor face_skip_mask({face_count}, o3c::Bool, device);
+
+	auto face_bounding_box_data = face_bounding_boxes.GetDataPtr<float>();
+	auto face_skip_mask_data = face_skip_mask.GetDataPtr<bool>();
+
+
+	// compute triangle bounding boxes
+	o3c::ParallelFor(
+			device, face_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				auto face_vertices_data = face_vertex_position_indexer.GetDataPtr<float>(workload_idx);
+				Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
+				Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
+				Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
+				CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
+				                                   face_vertex2, blur_radius);
+			}
+	);
+
+	const int bin_count_y = 1 + (image_height - 1) / bin_size;
+	const int bin_count_x = 1 + (image_width - 1) / bin_size;
+
+	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32);
+	auto bin_face_data = bin_faces.GetDataPtr<int32_t>();
+#ifdef __CUDACC__
+	o3c::Tensor bin_face_count_tensor = o3c::Tensor::Zeros({bin_count_y, bin_count_x}, o3c::UInt16);
+	int32_t* bin_face_counts = bin_face_count_tensor.GetDataPtr<int16_t>();
+#else
+	std::vector<std::atomic<int32_t>> bin_face_counts(bin_count_x * bin_count_y);
+#endif
+
+
+	const float half_normalized_camera_range_y = GetNormalizedCameraSpaceRange(image_width, image_height) / 2.f;
+	const float half_normalized_camera_range_x = GetNormalizedCameraSpaceRange(image_height, image_width) / 2.f;
+
+	const float half_pixel_y = half_normalized_camera_range_y / static_cast<float>(image_height);
+	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
+
+	o3c::ParallelFor(
+			device, face_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				if (face_skip_mask_data[workload_idx]) {
+					return;
+				}
+				float x_min = face_bounding_box_data[0 * face_count + workload_idx];
+				float x_max = face_bounding_box_data[1 * face_count + workload_idx];
+				float y_min = face_bounding_box_data[2 * face_count + workload_idx];
+				float y_max = face_bounding_box_data[3 * face_count + workload_idx];
+
+
+				for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
+					const float bin_y_min = ImageSpaceToNormalizedCameraSpace(bin_y * bin_size, image_height, image_width) - half_pixel_y;
+					const float bin_y_max = ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_size - 1, image_height, image_width) + half_pixel_y;
+					const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
+
+					if (y_overlap) {
+						for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
+							const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_size, image_height, image_width) - half_pixel_x;
+							const float bin_x_max =
+									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_size - 1, image_height, image_width) + half_pixel_x;
+							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
+							if (x_overlap){
+								int32_t bin_index = bin_y * bin_count_x + bin_x;
+#ifdef __CUDACC__
+								int16_t insertion_position = atomicAdd(bin_face_counts + bin_index, 1);
+#else
+								int32_t insertion_position = bin_face_counts[bin_index].fetch_add(1);
+#endif
+								// store active face index into the bin if they overlap spatially
+								bin_face_data[bin_index * max_faces_per_bin + insertion_position] = static_cast<int32_t>(workload_idx);
+							}
+						}
+					}
+
+				}
+
+			}
+	);
 }
 
 } // namespace nnrt::rendering::kernel

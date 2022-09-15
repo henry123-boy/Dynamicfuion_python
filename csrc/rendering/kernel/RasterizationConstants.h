@@ -25,4 +25,6 @@ namespace nnrt::rendering::kernel {
 
 #define K_EPSILON 1e-8f
 
+#define MAX_BINS_ALONG_IMAGE_DIMENSION 22
+
 }

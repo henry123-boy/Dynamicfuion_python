@@ -33,13 +33,13 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> RasterizeMesh(
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		const open3d::core::SizeVector& image_size,
-		float blur_radius,
-		int faces_per_pixel,
-		int bin_size,
-		int max_faces_per_bin,
-		bool perspective_correct_barycentric_coordinates,
-		bool clip_barycentric_coordinates,
-		bool cull_back_faces
+		float blur_radius = 0.f,
+		int faces_per_pixel = 8,
+		int bin_size = -1,
+		int max_faces_per_bin = -1,
+		bool perspective_correct_barycentric_coordinates = false,
+		bool clip_barycentric_coordinates = false,
+		bool cull_back_faces = true
 );
 
 } // namespace nnrt::rendering

@@ -21,7 +21,6 @@
 #include "core/kernel/KdTreeUtilities.h"
 #include "core/kernel/KdTreeNodeTypes.h"
 #include "core/DeviceSelection.h"
-#include "core/DimensionCount.h"
 
 
 namespace o3gk = open3d::t::geometry::kernel;

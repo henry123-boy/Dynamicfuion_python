@@ -33,4 +33,5 @@ struct AxisAligned2dBoundingBox {
 	}
 };
 
+
 } // namespace nnrt::rendering::kernel

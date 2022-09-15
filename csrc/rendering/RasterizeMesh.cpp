@@ -71,9 +71,16 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMesh(const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::SizeVector& image_size,
-              float blur_radius, int faces_per_pixel, int bin_size, int max_faces_per_bin, bool perspective_correct_barycentric_coordinates,
-              bool clip_barycentric_coordinates, bool cull_back_faces) {
+RasterizeMesh(
+		const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::SizeVector& image_size,
+		float blur_radius,
+		int faces_per_pixel,
+		int bin_size/* = -1*/,
+		int max_faces_per_bin/* = -1*/,
+		bool perspective_correct_barycentric_coordinates /* = false */,
+		bool clip_barycentric_coordinates /* = false */,
+		bool cull_back_faces /* = true */
+) {
 
 
 	if (faces_per_pixel > MAX_POINTS_PER_PIXEL) {
@@ -82,6 +89,37 @@ RasterizeMesh(const open3d::core::Tensor& normalized_camera_space_face_vertices,
 	if (image_size.size() != 2) {
 		o3u::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
 	}
+	int64_t max_image_dimension = std::max(image_size[0], image_size[1]);
+
+	if (bin_size == -1) {
+		if (max_image_dimension <= 64) {
+			bin_size = 8;
+		} else {
+			/*
+			 * Heuristic based formula maps max_image_dimension to bin_size as follows:
+			 * max_image_dimension < 64 -> 8
+			 * 16 < max_image_dimension < 256 -> 16
+			 * 256 < max_image_dimension < 512 -> 32
+			 * 512 < max_image_dimension < 1024 -> 64
+			 * 1024 < max_image_dimension < 2048 -> 128
+			 */
+			bin_size = static_cast<int>(std::pow(2, std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
+		}
+	}
+
+	if (bin_size != 0){
+		int bins_along_max_dimension = 1 + (max_image_dimension - 1) / bin_size;
+		if (bins_along_max_dimension >= MAX_BINS_ALONG_IMAGE_DIMENSION){
+			o3u::LogError("The provided bin_size is too small: computed bin count along maximum dimension is {}, this has to be < {}.",
+						  bins_along_max_dimension, MAX_BINS_ALONG_IMAGE_DIMENSION);
+		}
+	}
+
+	if(max_faces_per_bin == -1){
+		max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
+	}
+
+
 
 	kernel::Fragments fragments;
 	if (bin_size > 0 && max_faces_per_bin > 0) {
@@ -92,7 +130,7 @@ RasterizeMesh(const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		                            image_size,
 		                            blur_radius,
 		                            bin_size,
-									max_faces_per_bin);
+		                            max_faces_per_bin);
 		kernel::RasterizeMeshFine(fragments,
 		                          normalized_camera_space_face_vertices,
 		                          bin_faces,
@@ -118,7 +156,6 @@ RasterizeMesh(const open3d::core::Tensor& normalized_camera_space_face_vertices,
 	}
 	return fragments.ToTuple();
 }
-
 
 
 } // namespace nnrt::rendering

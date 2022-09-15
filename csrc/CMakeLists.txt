@@ -38,6 +38,74 @@ set(NNRT_SOURCE_FILES
 
     debugging/debugging.hpp
 
+    core/PlatformIndependence.h
+    core/PlatformIndependentAtomics.h
+
+    core/kernel/KnnUtilities.h
+    core/kernel/KnnUtilities_PriorityQueue.h
+
+    core/KeyValuePair.h
+    core/heap/DeviceHeap.h
+    core/heap/CPU/DeviceHeapCPU.cpp
+    core/heap/CUDA/DeviceHeapCUDA.cu
+    core/heap/CPU/DeviceHeapCPU.h
+    core/heap/CUDA/DeviceHeapCUDA.cuh
+    core/heap/Heap.h
+    core/heap/Heap.cpp
+    core/heap/CPU/HostHeapCPU.h
+    core/heap/CPU/HostHeapCPUImpl.h
+    core/heap/CPU/HostHeapCPU.cpp
+    core/heap/CUDA/HostHeapCUDA.h
+    core/heap/CUDA/HostHeapCUDAImpl.cuh
+    core/heap/CUDA/HostHeapCUDA.cu
+    core/heap/CUDA/HostHeapCUDA.h
+
+    core/KdTree.h
+    core/KdTree.cpp
+    core/kernel/KdTree.h
+    core/kernel/KdTree.cpp
+    core/kernel/BuildKdTreeImpl.h
+    core/kernel/SearchKdTreeImpl.h
+    core/kernel/instantiations/KdTreeCPU.cpp
+    core/kernel/instantiations/KdTreeCUDA.cu
+
+
+    core/kernel/KdTreeUtilities.cpp
+    core/kernel/KdTreeNodeTypes.h
+
+    core/LinearIndex.cpp
+    core/LinearIndex.h
+    core/kernel/LinearIndex.cpp
+    core/kernel/LinearIndex.h
+    core/kernel/LinearIndexImpl.h
+    core/kernel/instantiations/LinearIndexCPU.cpp
+    core/kernel/instantiations/LinearIndexCUDA.cu
+
+    core/DeviceSelection.h
+
+    core/TensorManipulationRoutines.h
+    core/TensorManipulationRoutines.cpp
+
+    core/kernel/HashTableUtilities.h
+
+    core/linalg/Matmul3D.cpp
+    core/linalg/Matmul3D.h
+    core/linalg/Matmul3D_CPU.cpp
+    core/linalg/Matmul3D_CUDA.cpp
+
+    core/linalg/BlasWrapper.h
+    core/linalg/LinalgHeadersCUDA.h
+    core/linalg/LinalgHeadersCPU.h
+    core/linalg/LinalgUtils.h
+    core/linalg/LinalgUtils.cpp
+
+    core/PreprocessorStrings.h
+
+    string/split_string.h
+    string/split_string.cpp
+    string/join_string_separator.cpp
+    string/join_string_separator.h
+
     geometry/kernel/Defines.h
     geometry/NonRigidSurfaceVoxelBlockGrid.cpp
     geometry/NonRigidSurfaceVoxelBlockGrid.h
@@ -93,75 +161,6 @@ set(NNRT_SOURCE_FILES
     geometry/FindKNearestNeighbors.cpp
     geometry/FindKNearestNeighbors.h
 
-    string/split_string.h
-    string/split_string.cpp
-    string/join_string_separator.cpp
-    string/join_string_separator.h
-
-
-    core/PlatformIndependence.h
-    core/PlatformIndependentAtomics.h
-
-    core/kernel/KnnUtilities.h
-    core/kernel/KnnUtilities_PriorityQueue.h
-
-    core/KeyValuePair.h
-    core/heap/DeviceHeap.h
-    core/heap/CPU/DeviceHeapCPU.cpp
-    core/heap/CUDA/DeviceHeapCUDA.cu
-    core/heap/CPU/DeviceHeapCPU.h
-    core/heap/CUDA/DeviceHeapCUDA.cuh
-    core/heap/Heap.h
-    core/heap/Heap.cpp
-    core/heap/CPU/HostHeapCPU.h
-    core/heap/CPU/HostHeapCPUImpl.h
-    core/heap/CPU/HostHeapCPU.cpp
-    core/heap/CUDA/HostHeapCUDA.h
-    core/heap/CUDA/HostHeapCUDAImpl.cuh
-    core/heap/CUDA/HostHeapCUDA.cu
-    core/heap/CUDA/HostHeapCUDA.h
-
-    core/KdTree.h
-    core/KdTree.cpp
-    core/kernel/KdTree.h
-    core/kernel/KdTree.cpp
-    core/kernel/BuildKdTreeImpl.h
-    core/kernel/SearchKdTreeImpl.h
-    core/kernel/instantiations/KdTreeCPU.cpp
-    core/kernel/instantiations/KdTreeCUDA.cu
-
-
-    core/kernel/KdTreeUtilities.cpp
-    core/kernel/KdTreeNodeTypes.h
-
-    core/DimensionCount.h
-
-    core/LinearIndex.cpp
-    core/LinearIndex.h
-    core/kernel/LinearIndex.cpp
-    core/kernel/LinearIndex.h
-    core/kernel/LinearIndexImpl.h
-    core/kernel/instantiations/LinearIndexCPU.cpp
-    core/kernel/instantiations/LinearIndexCUDA.cu
-
-    core/DeviceSelection.h
-
-    core/TensorManipulationRoutines.h
-    core/TensorManipulationRoutines.cpp
-
-    core/kernel/HashTableUtilities.h
-
-    core/linalg/Matmul3D.cpp
-    core/linalg/Matmul3D.h
-    core/linalg/Matmul3D_CPU.cpp
-    core/linalg/Matmul3D_CUDA.cpp
-
-    core/linalg/BlasWrapper.h
-    core/linalg/LinalgHeadersCUDA.h
-    core/linalg/LinalgHeadersCPU.h
-    core/linalg/LinalgUtils.h
-    core/linalg/LinalgUtils.cpp
-
     geometry/kernel/PointAggregationBin.h
     geometry/kernel/IndexRaveling.h
     geometry/kernel/PointCollectionExtent.h
@@ -174,7 +173,47 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/instantiations/NormalsOperationsCPU.cpp
     geometry/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    core/PreprocessorStrings.h io/TensorIO.cpp io/TensorIO.h io/SizeVectorIO.cpp io/SizeVectorIO.h io/DtypeIO.cpp io/DtypeIO.h io/BlobIO.cpp io/BlobIO.h io/DeviceIO.cpp io/DeviceIO.h io/VoxelBlockGridIO.cpp io/VoxelBlockGridIO.h io/FileStreamSelector.h geometry/Unproject3dPoints.cpp geometry/Unproject3dPoints.h geometry/kernel/PointCloud.h geometry/kernel/PointCloud.cpp geometry/kernel/PointCloudImpl.h geometry/kernel/instantiations/PointCloudCPU.cpp geometry/kernel/instantiations/PointCloudCUDA.cu rendering/kernel/BarycentricCoordinateUtilities.h rendering/RasterizeMesh.h rendering/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.cpp rendering/kernel/RasterizeMesh.h rendering/kernel/RasterizeMeshImpl.h rendering/kernel/instantiations/RasterizeMeshCPU.cpp rendering/kernel/instantiations/RasterizeMeshCUDA.cu rendering/kernel/RasterizationConstants.h rendering/kernel/CoordinateSystemConversions.h rendering/kernel/RayFaceIntersection.h geometry/functional/Warping.cpp geometry/functional/Warping.h geometry/functional/WarpAnchorComputation.cpp geometry/functional/WarpAnchorComputation.h)
+    geometry/Unproject3dPoints.cpp
+    geometry/Unproject3dPoints.h
+    geometry/kernel/PointCloud.h
+    geometry/kernel/PointCloud.cpp
+    geometry/kernel/PointCloudImpl.h
+    geometry/kernel/instantiations/PointCloudCPU.cpp
+    geometry/kernel/instantiations/PointCloudCUDA.cu
+
+    geometry/functional/Warping.cpp
+    geometry/functional/Warping.h
+    geometry/functional/WarpAnchorComputation.cpp
+    geometry/functional/WarpAnchorComputation.h
+
+    io/TensorIO.cpp
+    io/TensorIO.h
+    io/SizeVectorIO.cpp
+    io/SizeVectorIO.h
+    io/DtypeIO.cpp
+    io/DtypeIO.h
+    io/BlobIO.cpp
+    io/BlobIO.h
+    io/DeviceIO.cpp
+    io/DeviceIO.h
+    io/VoxelBlockGridIO.cpp
+    io/VoxelBlockGridIO.h
+    io/FileStreamSelector.h
+
+    rendering/kernel/BarycentricCoordinateComputation.h
+    rendering/RasterizeMesh.h
+    rendering/RasterizeMesh.cpp
+    rendering/kernel/RasterizeMesh.cpp
+    rendering/kernel/RasterizeMesh.h
+    rendering/kernel/RasterizeMeshImpl.h
+    rendering/kernel/instantiations/RasterizeMeshCPU.cpp
+    rendering/kernel/instantiations/RasterizeMeshCUDA.cu
+    rendering/kernel/RasterizationConstants.h
+    rendering/kernel/CoordinateSystemConversions.h
+    rendering/kernel/RayFaceIntersection.h
+    rendering/kernel/BubbleSort.h
+
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

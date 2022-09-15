@@ -17,7 +17,6 @@
 
 #include <open3d/core/Tensor.h>
 #include <open3d/core/Blob.h>
-#include "core/DimensionCount.h"
 
 namespace nnrt::core::kernel::kdtree {
 
