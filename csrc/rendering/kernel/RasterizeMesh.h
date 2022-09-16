@@ -76,13 +76,13 @@ void RasterizeMeshFine(
 		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
 );
 
-void RasterizeMeshCoarse(
+void GridBinFaces(
 		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int max_faces_per_bin
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshCoarse(
+void GridBinFaces(
 		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int max_faces_per_bin
 );

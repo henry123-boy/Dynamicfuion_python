@@ -251,7 +251,14 @@ void RasterizeMeshFine(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshCoarse(
+void GridBin2dBoundingBoxes_Device(
+		open3d::core::Tensor& bins, const open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& boxes_to_skip_mask,
+		int grid_height_in_bins, int grid_width_in_bins, int grid_cell_side, int bin_capacity, float half_pixel_x,
+		float half_pixel_y
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void GridBinFaces(
 		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		const open3d::core::SizeVector& image_size, const float blur_radius, const int bin_size, const int max_faces_per_bin
 ) {
@@ -287,12 +294,8 @@ void RasterizeMeshCoarse(
 
 	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32);
 	auto bin_face_data = bin_faces.GetDataPtr<int32_t>();
-#ifdef __CUDACC__
-	o3c::Tensor bin_face_count_tensor = o3c::Tensor::Zeros({bin_count_y, bin_count_x}, o3c::UInt16);
-	int32_t* bin_face_counts = bin_face_count_tensor.GetDataPtr<int16_t>();
-#else
+
 	std::vector<std::atomic<int32_t>> bin_face_counts(bin_count_x * bin_count_y);
-#endif
 
 
 	const float half_normalized_camera_range_y = GetNormalizedCameraSpaceRange(image_width, image_height) / 2.f;
@@ -300,6 +303,7 @@ void RasterizeMeshCoarse(
 
 	const float half_pixel_y = half_normalized_camera_range_y / static_cast<float>(image_height);
 	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
+
 
 	o3c::ParallelFor(
 			device, face_count,
@@ -324,21 +328,16 @@ void RasterizeMeshCoarse(
 							const float bin_x_max =
 									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_size - 1, image_height, image_width) + half_pixel_x;
 							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
-							if (x_overlap){
+							if (x_overlap) {
 								int32_t bin_index = bin_y * bin_count_x + bin_x;
-#ifdef __CUDACC__
-								int16_t insertion_position = atomicAdd(bin_face_counts + bin_index, 1);
-#else
 								int32_t insertion_position = bin_face_counts[bin_index].fetch_add(1);
-#endif
+
 								// store active face index into the bin if they overlap spatially
 								bin_face_data[bin_index * max_faces_per_bin + insertion_position] = static_cast<int32_t>(workload_idx);
 							}
 						}
 					}
-
 				}
-
 			}
 	);
 }

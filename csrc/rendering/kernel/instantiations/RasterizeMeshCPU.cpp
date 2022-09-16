@@ -41,11 +41,11 @@ void RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(
 );
 
 template
-void RasterizeMeshCoarse<open3d::core::Device::DeviceType::CPU>(
+void GridBinFaces<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& bin_faces,
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
-		int max_faces_per_bin
+		const open3d::core::SizeVector& image_size, const float blur_radius, const int bin_size,
+		const int max_faces_per_bin
 );
 
 } // namespace nnrt::rendering::kernel

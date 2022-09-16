@@ -125,12 +125,12 @@ RasterizeMesh(
 	if (bin_size > 0 && max_faces_per_bin > 0) {
 		// Use coarse-to-fine rasterization
 		o3c::Tensor bin_faces;
-		kernel::RasterizeMeshCoarse(bin_faces,
-		                            normalized_camera_space_face_vertices,
-		                            image_size,
-		                            blur_radius,
-		                            bin_size,
-		                            max_faces_per_bin);
+		kernel::GridBinFaces(bin_faces,
+		                     normalized_camera_space_face_vertices,
+		                     image_size,
+		                     blur_radius,
+		                     bin_size,
+		                     max_faces_per_bin);
 		kernel::RasterizeMeshFine(fragments,
 		                          normalized_camera_space_face_vertices,
 		                          bin_faces,
