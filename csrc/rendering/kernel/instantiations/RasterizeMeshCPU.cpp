@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "rendering/kernel/RasterizeMeshImpl.h"
+#include "rendering/kernel/RasterizeMeshImplCPU.h"
 
 namespace nnrt::rendering::kernel {
 

@@ -252,8 +252,16 @@ void RasterizeMeshFine(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void GridBin2dBoundingBoxes_Device(
-		open3d::core::Tensor& bins, const open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& boxes_to_skip_mask,
-		int grid_height_in_bins, int grid_width_in_bins, int grid_cell_side, int bin_capacity, float half_pixel_x,
+		open3d::core::Tensor& bins,
+		const open3d::core::Tensor& bounding_boxes,
+		const open3d::core::Tensor& boxes_to_skip_mask,
+		int image_height,
+		int image_width,
+		int grid_height_in_bins,
+		int grid_width_in_bins,
+		int bin_side_length,
+		int bin_capacity,
+		float half_pixel_x,
 		float half_pixel_y
 );
 
@@ -293,10 +301,6 @@ void GridBinFaces(
 	const int bin_count_x = 1 + (image_width - 1) / bin_size;
 
 	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32);
-	auto bin_face_data = bin_faces.GetDataPtr<int32_t>();
-
-	std::vector<std::atomic<int32_t>> bin_face_counts(bin_count_x * bin_count_y);
-
 
 	const float half_normalized_camera_range_y = GetNormalizedCameraSpaceRange(image_width, image_height) / 2.f;
 	const float half_normalized_camera_range_x = GetNormalizedCameraSpaceRange(image_height, image_width) / 2.f;
@@ -304,42 +308,8 @@ void GridBinFaces(
 	const float half_pixel_y = half_normalized_camera_range_y / static_cast<float>(image_height);
 	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
 
-
-	o3c::ParallelFor(
-			device, face_count,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				if (face_skip_mask_data[workload_idx]) {
-					return;
-				}
-				float x_min = face_bounding_box_data[0 * face_count + workload_idx];
-				float x_max = face_bounding_box_data[1 * face_count + workload_idx];
-				float y_min = face_bounding_box_data[2 * face_count + workload_idx];
-				float y_max = face_bounding_box_data[3 * face_count + workload_idx];
-
-
-				for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
-					const float bin_y_min = ImageSpaceToNormalizedCameraSpace(bin_y * bin_size, image_height, image_width) - half_pixel_y;
-					const float bin_y_max = ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_size - 1, image_height, image_width) + half_pixel_y;
-					const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
-
-					if (y_overlap) {
-						for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
-							const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_size, image_height, image_width) - half_pixel_x;
-							const float bin_x_max =
-									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_size - 1, image_height, image_width) + half_pixel_x;
-							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
-							if (x_overlap) {
-								int32_t bin_index = bin_y * bin_count_x + bin_x;
-								int32_t insertion_position = bin_face_counts[bin_index].fetch_add(1);
-
-								// store active face index into the bin if they overlap spatially
-								bin_face_data[bin_index * max_faces_per_bin + insertion_position] = static_cast<int32_t>(workload_idx);
-							}
-						}
-					}
-				}
-			}
-	);
+	GridBin2dBoundingBoxes_Device<TDeviceType>(bin_faces, face_bounding_boxes, face_skip_mask, image_height, image_width, bin_count_y, bin_count_x,
+											   bin_size, max_faces_per_bin, half_pixel_x, half_pixel_y);
 }
 
 } // namespace nnrt::rendering::kernel

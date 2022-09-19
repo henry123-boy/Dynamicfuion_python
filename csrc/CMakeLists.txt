@@ -213,7 +213,7 @@ set(NNRT_SOURCE_FILES
     rendering/kernel/RayFaceIntersection.h
     rendering/kernel/BubbleSort.h
 
-    rendering/kernel/RasterizeMeshImpl.cuh rendering/kernel/GridBitMask.cuh)
+    rendering/kernel/RasterizeMeshImplCUDA.cuh rendering/kernel/GridBitMask.cuh rendering/kernel/RasterizeMeshImplCPU.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -20,6 +20,7 @@
 #include <open3d/core/CUDAUtils.h>
 
 // local
+#include "core/PlatformIndependentce.h"
 #include "rendering/kernel/RasterizeMeshImpl.h"
 #include "rendering/kernel/GridBitMask.cuh"
 
@@ -37,6 +38,7 @@ void GridBin2dBoundingBoxes_Kernel(
 		const int bounding_box_count,
 		const int bounding_box_count_per_batch,
 		const int batch_count_per_thread,
+
 		const int image_height,
 		const int image_width,
 		const int grid_height_bins,
@@ -88,34 +90,36 @@ void GridBin2dBoundingBoxes_Kernel(
 			}
 		}
 		__syncthreads();
-		// now, loop over bins and count up the total faces that overlap each
+
+		// loop over bins and count up the total faces that overlap each
 		for (int bin_index = static_cast<int>(threadIdx.x); bin_index < bin_count; bin_index += static_cast<int>(blockDim.x)) {
 			const int bin_y = bin_index / grid_width_bins;
 			const int bin_x = bin_index % grid_width_bins;
 			const int overlap_count = block_overlap_registry.count(bin_y, bin_x);
-
-			// This atomically increments the (global) number of elems found
-			// in the current bin, and gets the previous value of the counter;
-			// this effectively allocates space in the bin_faces array for the
-			// elems in the current chunk that fall into this bin.
+			/*
+			 * This atomically increments the (global) number of elems found in the current bin, and gets the previous value of the counter;
+			 * this effectively allocates space in the bin_faces array for the elems in the current chunk that fall into this bin.
+			 */
 			const int start = atomicAdd(bin_item_counts + bin_index, overlap_count);
 			if (start + overlap_count > bin_capacity) {
-				// The number of elems in this bin is so big that they won't fit.
-				// We print a warning using CUDA's printf. This may be invisible
-				// to notebook users, but apparent to others. It would be nice to
-				// also have a Python-friendly warning, but it is not obvious
-				// how to do this without slowing down the normal case.
-				printf("Bin size was too small in the coarse rasterization phase. "
-				       "This caused an overflow, meaning output may be incomplete. "
-				       "To solve, "
-				       "try increasing max_faces_per_bin / max_points_per_bin, "
-				       "decreasing bin_size, "
-				       "or setting bin_size to 0 to use the naive rasterization.");
+				/*
+				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
+				*/
+				printf("Bin size was too small in the coarse rasterization phase. This caused an overflow, meaning output may be incomplete. "
+				       "To correct this, try increasing max_faces_per_bin / max_points_per_bin, decreasing bin_size, or setting bin_size to 0 to use "
+				       "the naive rasterization.");
 				continue;
 			}
+			int bin_box_index = bin_index * bin_capacity;
+			// Loop over bitmask and write active bits for this bin
+			for(int i_box_in_block2 = 0; i_box_in_block2 < static_cast<int>(blockDim.x); i_box_in_block2++){
+				if(block_overlap_registry.get(bin_y, bin_x, i_box_in_block2)){
+					bins[bin_box_index] = first_block_box_index + i_box_in_block2;
+					bin_box_index++;
+				}
+			}
 		}
-
-
+		__syncthreads();
 	} // end batch loop
 }
 
@@ -124,11 +128,18 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& bins,
 		const open3d::core::Tensor& bounding_boxes,
 		const open3d::core::Tensor& boxes_to_skip_mask,
-		const int grid_height_in_bins, const int grid_width_in_bins,
-		const int bin_grid_cell_side, const int bin_capacity,
-		const float half_pixel_x, const float half_pixel_y
+		const int image_height,
+		const int image_width,
+		const int grid_height_in_bins,
+		const int grid_width_in_bins,
+		const int bin_side_length,
+		const int bin_capacity,
+		const float half_pixel_x,
+		const float half_pixel_y
 ) {
 
+// #define USE_BLOCK_BIT_MASK
+#ifdef USE_BLOCK_BIT_MASK
 	auto device = bounding_boxes.GetDevice();
 	o3c::CUDAScopedDevice scoped_device(device);
 
@@ -152,12 +163,65 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 			boxes_to_skip_mask.GetDataPtr<bool>(),
 			bounding_box_count,
 			bounding_box_count_per_block_batch,
-			batch_count_per_thread, 0, 0,
+			batch_count_per_thread,
+			image_height,
+			image_width,
 			grid_height_in_bins,
 			grid_width_in_bins,
-			bin_grid_cell_side,
-			bin_capacity, 0, 0);
+			bin_side_length,
+			bin_capacity,
+			half_pixel_x,
+			half_pixel_y);
 	o3c::OPEN3D_GET_LAST_CUDA_ERROR("GridBin2dBoundingBoxes_Device failed.");
+#else
+	auto bounding_box_count = bounding_boxes.GetLength();
+	auto bin_data = bins.GetDataPtr<int32_t>();
+	auto device = bounding_boxes.GetDevice();
+	auto boxes_mask_data = boxes_to_skip_mask.GetDataPtr<bool>();
+	auto bounding_box_data = bounding_boxes.GetDataPtr<float>();
+
+	o3c::Tensor bin_face_count_tensor = o3c::Tensor::Zeros({grid_width_in_bins,grid_height_in_bins}, o3c::Int32, device);
+	int* bin_face_counts = bin_face_count_tensor.GetDataPtr<int32_t>();
+	o3c::ParallelFor(
+			device, bounding_box_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				if (boxes_mask_data[workload_idx]) {
+					return;
+				}
+				float x_min = bounding_box_data[0 * bounding_box_count + workload_idx];
+				float x_max = bounding_box_data[1 * bounding_box_count + workload_idx];
+				float y_min = bounding_box_data[2 * bounding_box_count + workload_idx];
+				float y_max = bounding_box_data[3 * bounding_box_count + workload_idx];
+
+
+				for (int bin_y = 0; bin_y < grid_height_in_bins; bin_y++) {
+					const float bin_y_min =
+							ImageSpaceToNormalizedCameraSpace(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
+					const float bin_y_max =
+							ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
+					const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
+
+					if (y_overlap) {
+						for (int bin_x = 0; bin_x < grid_width_in_bins; bin_x++) {
+							const float bin_x_min =
+									ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_height, image_width) - half_pixel_x;
+							const float bin_x_max =
+									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_x;
+							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
+
+							if (x_overlap) {
+								int32_t bin_index = bin_y * grid_width_in_bins + bin_x;
+								int32_t insertion_position = atomicAdd(bin_face_counts + bin_index, 1);
+
+								// store active face index into the bin if they overlap spatially
+								bin_data[bin_index * bin_capacity + insertion_position] = static_cast<int32_t>(workload_idx);
+							}
+						}
+					}
+				}
+			}
+	);
+#endif
 }
 
 } // namespace nnrt::rendering::kernel
