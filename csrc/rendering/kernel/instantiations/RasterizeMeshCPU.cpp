@@ -37,7 +37,7 @@ void RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(
 template
 void RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(
 		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
-		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int faces_per_pixel,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_side_length, int faces_per_pixel,
 		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
 );
 

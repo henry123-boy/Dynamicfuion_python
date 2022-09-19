@@ -119,6 +119,8 @@ RasterizeMesh(
 		max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
 	}
 
+	o3c::AssertTensorDtype(normalized_camera_space_face_vertices, o3c::Float32);
+
 
 
 	kernel::Fragments fragments;
