@@ -33,12 +33,13 @@ class PyTorch3DRenderer:
                                   specular_color=((0.0, 0.0, 0.0),), device=self.torch_device,
                                   location=[[0.0, 0.0, -3.0]])
 
-        self.K = converters.make_pytorch3d_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(), self.torch_device)
+        self.K = converters.make_pytorch3d_ndc_intrinsic_matrix(image_size, intrinsic_matrix.cpu().numpy(),
+                                                                self.torch_device)
         # FIXME (see comments in tsdf_management/subprocedure_examples/pytorch3d_rendering_test.py)
         # camera_rotation = (torch.eye(3, dtype=torch.float32, device=self.torch_device)).unsqueeze(0)
         camera_rotation = torch.tensor([[[-1, 0, 0],
-                                     [0, -1, 0],
-                                     [0, 0, 1]]], dtype=torch.float32, device=self.torch_device)
+                                         [0, -1, 0],
+                                         [0, 0, 1]]], dtype=torch.float32, device=self.torch_device)
         self.cameras: PerspectiveCameras \
             = PerspectiveCameras(device=self.torch_device,
                                  R=camera_rotation,
@@ -46,7 +47,7 @@ class PyTorch3DRenderer:
                                  K=self.K)
 
         self.rasterization_settings = RasterizationSettings(image_size=image_size,
-                                                            cull_backfaces=True,
+                                                            cull_backfaces=False,
                                                             cull_to_frustum=True,
                                                             z_clip_value=0.5,
                                                             faces_per_pixel=1)
@@ -129,6 +130,7 @@ class PyTorch3DRenderer:
         rendered_color = None
 
         fragments = self.rasterizer(meshes_torch3d)
+
         if render_mode_mask & RenderMaskCode.DEPTH > 0:
             rendered_depth = fragments.zbuf.clone().reshape(self.image_size[0], self.image_size[1])
             rendered_depth[rendered_depth == -1.0] = 0.0

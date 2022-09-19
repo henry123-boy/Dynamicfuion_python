@@ -135,6 +135,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertices[] = {normalized_face_vertex0, normalized_face_vertex1, normalized_face_vertex2};
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
 					normalized_face_vertices[i_vertex].x() = normalized_face_vertices_xy[i_vertex].x();
+					// important: flip the y-coordinate to reflect pixel space
 					normalized_face_vertices[i_vertex].y() = normalized_face_vertices_xy[i_vertex].y();
 					normalized_face_vertices[i_vertex].z() = face_vertices[i_vertex].z();
 				}
@@ -211,6 +212,11 @@ void RasterizeMeshNaive(
 				int queue_size = 0;
 				float queue_max_depth = -1000.f;
 				int queue_max_depth_at = -1;
+
+				//__DEBUG
+				if(v_image == 95 && u_image == 175){
+					printf("Got to debug location...");
+				}
 
 				// Loop through mesh faces.
 				for (t_face_index i_face = 0; i_face < face_count; i_face++) {
@@ -415,6 +421,8 @@ void GridBinFaces(
 
 	GridBin2dBoundingBoxes_Device<TDeviceType>(bin_faces, face_bounding_boxes, face_skip_mask, image_height, image_width, bin_count_y, bin_count_x,
 	                                           bin_size, max_faces_per_bin, half_pixel_x, half_pixel_y);
+
+
 }
 
 } // namespace nnrt::rendering::kernel

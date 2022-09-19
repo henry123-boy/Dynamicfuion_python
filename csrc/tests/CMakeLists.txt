@@ -69,5 +69,6 @@ if (BUILD_CPP_TESTS)
     NNRT_add_test(test_voxel_block_grid_io)
     NNRT_add_test(test_unproject_3d_points)
     NNRT_add_test(test_extract_face_vertices)
+    NNRT_add_test(test_rasterize_mesh)
 
 endif ()

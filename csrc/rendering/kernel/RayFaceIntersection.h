@@ -38,6 +38,7 @@ struct RayFaceIntersection {
 };
 
 NNRT_DEVICE_WHEN_CUDACC
+inline
 bool operator<(const RayFaceIntersection& a, const RayFaceIntersection& b) {
 	return a.depth < b.depth || (a.depth == b.depth && a.face_index < b.face_index);
 }
@@ -89,7 +90,7 @@ inline bool PointOutsideFaceBoundingBox(
 // Determine whether the point (px, py) lies outside the face 2D bounding box while accounting for the blur radius, then record the bounding box.
 template<typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline bool CalculateAndStoreFace2dBoundingBox(
+inline void CalculateAndStoreFace2dBoundingBox(
 		float* bounding_box_data,
 		bool* skip_mask_data,
 		int64_t i_face,
@@ -176,6 +177,7 @@ inline void UpdateQueueIfPixelInsideFace(
 	Eigen::Map<Eigen::Vector2f> face_vertex1_xy(face_vertices_data + 3);
 	Eigen::Map<Eigen::Vector2f> face_vertex2_xy(face_vertices_data + 6);
 
+	// face_area is computed using the CW convention for front-facing triangles (not the default CCW convention as in OpenGL).
 	const float face_area = ComputeSignedParallelogramArea(face_vertex0_xy, face_vertex1_xy, face_vertex2_xy);
 	const bool is_back_face = face_area < 0.f;
 	const bool zero_face_area = (face_area <= K_EPSILON && face_area >= -1.f * K_EPSILON);

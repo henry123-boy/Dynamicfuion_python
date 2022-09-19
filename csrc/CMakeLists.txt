@@ -200,9 +200,9 @@ set(NNRT_SOURCE_FILES
     io/VoxelBlockGridIO.h
     io/FileStreamSelector.h
 
-    rendering/kernel/BarycentricCoordinateComputation.h
     rendering/RasterizeMesh.h
     rendering/RasterizeMesh.cpp
+    rendering/kernel/BarycentricCoordinateComputation.h
     rendering/kernel/RasterizeMesh.cpp
     rendering/kernel/RasterizeMesh.h
     rendering/kernel/RasterizeMeshImpl.h
@@ -212,8 +212,11 @@ set(NNRT_SOURCE_FILES
     rendering/kernel/CoordinateSystemConversions.h
     rendering/kernel/RayFaceIntersection.h
     rendering/kernel/BubbleSort.h
+    rendering/kernel/RasterizeMeshImplCUDA.cuh
+    rendering/kernel/GridBitMask.cuh
+    rendering/kernel/RasterizeMeshImplCPU.h
 
-    rendering/kernel/RasterizeMeshImplCUDA.cuh rendering/kernel/GridBitMask.cuh rendering/kernel/RasterizeMeshImplCPU.h)
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -31,7 +31,7 @@ inline float ComputeSignedParallelogramArea(
 		const TVertex& vertex0,
 		const TVertex& vertex1
 ) {
-	return (point.x() - vertex0.x()) * (vertex1.y() - vertex0.y()) - (point.y() - vertex0.y()) * (vertex1.x() - vertex0.x());
+	return (point.x() - vertex0.x()) * (vertex0.y() - vertex1.y()) - (point.y() - vertex0.y()) * (vertex0.x() - vertex1.x());
 }
 
 template<typename TPoint, typename TVertex>

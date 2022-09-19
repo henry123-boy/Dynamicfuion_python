@@ -27,7 +27,9 @@ def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.str
     vertices_o3d = mesh.vertex["positions"]
 
     faces_o3d = mesh.triangle["indices"]
-    vertices_torch = torch_dlpack.from_dlpack(vertices_o3d.to_dlpack()).unsqueeze(0)
+    vertices_torch = torch_dlpack.from_dlpack(vertices_o3d.to_dlpack())
+    vertices_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32, device=device_open3d_to_pytorch(faces_o3d.device))
+    vertices_torch = vertices_torch.unsqueeze(0)
     faces_torch = torch_dlpack.from_dlpack(faces_o3d.to_dlpack()).unsqueeze(0)
 
     textures_torch = None
@@ -39,7 +41,10 @@ def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.str
     vertex_normals_torch = None
     if "normals" in mesh.vertex:
         vertex_normals_o3d = mesh.vertex["normals"]
-        vertex_normals_torch = torch_dlpack.from_dlpack(vertex_normals_o3d.to_dlpack()).unsqueeze(0)
+        vertex_normals_torch = torch_dlpack.from_dlpack(vertex_normals_o3d.to_dlpack())
+        vertex_normals_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32,
+                                       device=device_open3d_to_pytorch(faces_o3d.device))
+        vertex_normals_torch = vertex_normals_torch.unsqueeze(0)
 
     return Meshes(vertices_torch, faces_torch, textures=textures_torch, verts_normals=vertex_normals_torch)
 
@@ -72,8 +77,8 @@ def make_pytorch3d_ndc_intrinsic_matrix(image_size: Tuple[int, int], intrinsic_m
     # the way it should be (+x => right).
     ndc_intrinsic_matrix = torch.tensor([[[fx, 0.0, px, 0.0],
                                           [0.0, fy, py, 0.0],
-                                          [0.0, 0.0, 0.0, -1.0],
-                                          [0.0, 0.0, -1.0, 0.0]]], dtype=torch.float32, device=torch_device)
+                                          [0.0, 0.0, 0.0, 1.0],
+                                          [0.0, 0.0, 1.0, 0.0]]], dtype=torch.float32, device=torch_device)
     return ndc_intrinsic_matrix
 
 

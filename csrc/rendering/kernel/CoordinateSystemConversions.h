@@ -86,9 +86,11 @@ IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics
 	 * ratio.
 	 */
 	double fx_normalized = 2.0 * fx / smaller_dimension;
-	double fy_normalized = 2.0 * fy / smaller_dimension;
+	// important: fy is negated to flip the y-axis from going up to going down, as in an image (or on screen)
+	double fy_normalized = -2.0 * fy / smaller_dimension;
 	double cx_normalized = -(2.0 * cx - width) / smaller_dimension;
-	double cy_normalized = -(2.0 * cy - height) / smaller_dimension;
+	// likewise, we (don't) negate cy_normalized here in order to flip top<->bottom and transition to screen space convention
+	double cy_normalized = (2.0 * cy - height) / smaller_dimension;
 	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_normalized, 0.0, cx_normalized,
 	                                                                            0.0, fy_normalized, cy_normalized,
 	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64,
