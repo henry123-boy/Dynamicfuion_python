@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+import cv2
 import open3d as o3d
 import open3d.core as o3c
 import pytorch3d.renderer as p3dr
@@ -81,8 +82,21 @@ if __name__ == "__main__":
                                   R=camera_rotation,
                                   T=torch.zeros((1, 3), dtype=torch.float32, device=device_torch),
                                   K=K)
+    lights = p3dr.PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
+                              specular_color=((0.0, 0.0, 0.0),), device=device_torch,
+                              location=[[0.0, 0.0, -3.0]])
     rasterizer = p3dr.MeshRasterizer(cameras, raster_settings=rasterization_settings)
+    shader = p3dr.SoftPhongShader(
+        device=device_torch,
+        cameras=cameras,
+        lights=lights,
+        blend_params=p3dr.BlendParams(background_color=(0.0, 0.0, 0.0))
+    )
     fragments = rasterizer(mesh_torch)
+    rendered_color = shader(fragments, mesh_torch)
+    rendered_color_uint8 = (rendered_color[0, ..., :3] * 255).to(torch.uint8)
+    # cv2.imshow("rendered color", rendered_color_uint8.cpu().numpy())
+    # cv2.waitKey()
 
     print(fragments.pix_to_face[0, 300, 250])  # should print 0
     print(fragments.pix_to_face[0, 200, 350])  # should print 1

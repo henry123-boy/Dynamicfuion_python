@@ -149,10 +149,10 @@ inline float PointTriangleDistance(
 }
 
 
-
 /*
  * Assumes normalized camera-space coordinates for face vertices and pixel
  */
+template<FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline void UpdateQueueIfPixelInsideFace(
 		const o3tgk::TArrayIndexer <t_face_index>& face_vertex_position_indexer,
@@ -178,7 +178,10 @@ inline void UpdateQueueIfPixelInsideFace(
 	Eigen::Map<Eigen::Vector2f> face_vertex2_xy(face_vertices_data + 6);
 
 	// face_area is computed using the CW convention for front-facing triangles (not the default CCW convention as in OpenGL).
-	const float face_area = ComputeSignedParallelogramArea(face_vertex0_xy, face_vertex1_xy, face_vertex2_xy);
+	const float face_area =
+			ComputeSignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+					face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
+			);
 	const bool is_back_face = face_area < 0.f;
 	const bool zero_face_area = (face_area <= K_EPSILON && face_area >= -1.f * K_EPSILON);
 
@@ -193,7 +196,9 @@ inline void UpdateQueueIfPixelInsideFace(
 		return;
 	}
 
-	Eigen::Vector3f barycentric_coordinates = ComputeBarycentricCoordinates(pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy);
+	Eigen::Vector3f barycentric_coordinates = ComputeBarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+			pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
+	);
 	if (perspective_correct_barycentric_coordinates) {
 		barycentric_coordinates =
 				PerspectiveCorrectBarycentricCoordinates(barycentric_coordinates, face_vertex0.z(), face_vertex1.z(), face_vertex2.z());

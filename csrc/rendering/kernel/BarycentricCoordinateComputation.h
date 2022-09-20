@@ -22,19 +22,31 @@
 
 namespace nnrt::rendering::kernel {
 
-// Determines whether the given point is on the right side of a 2D line segment given by end points vertex0 and vertex1.
-// Returns signed area of the parallelogram given by the vectors [point - vertex0] and [vertex1 - vertex0]
-template<typename TPoint, typename TVertex>
+enum FrontFaceVertexOrder {
+	ClockWise, CounterClockWise
+};
+
+/**
+ * Determine whether the given point is on the right side of a 2D line segment given by end points vertex0 and vertex1.
+ * Returns signed area of the parallelogram given by the vectors:
+ * [point - vertex0] and [vertex0 - vertex1] (clockwise front face vertex order case)
+ * [point - vertex0] and [vertex1 - vertex0] (counter-clockwise front face vertex order case)
+ */
+template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline float ComputeSignedParallelogramArea(
 		const TPoint& point,
 		const TVertex& vertex0,
 		const TVertex& vertex1
 ) {
-	return (point.x() - vertex0.x()) * (vertex0.y() - vertex1.y()) - (point.y() - vertex0.y()) * (vertex0.x() - vertex1.x());
+	if (TVertexOrder == ClockWise) {
+		return (point.x() - vertex0.x()) * (vertex0.y() - vertex1.y()) - (point.y() - vertex0.y()) * (vertex0.x() - vertex1.x());
+	} else {
+		return (point.x() - vertex0.x()) * (vertex1.y() - vertex0.y()) - (point.y() - vertex0.y()) * (vertex1.x() - vertex0.x());
+	}
 }
 
-template<typename TPoint, typename TVertex>
+template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f ComputeBarycentricCoordinates(
 		const TPoint& point,
@@ -42,11 +54,11 @@ inline Eigen::Vector3f ComputeBarycentricCoordinates(
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	const float area = ComputeSignedParallelogramArea(vertex2, vertex0, vertex1) + K_EPSILON;
+	const float area = ComputeSignedParallelogramArea<TVertex, TVertex, ClockWise>(vertex2, vertex0, vertex1) + K_EPSILON;
 	return {
-			ComputeSignedParallelogramArea(point, vertex1, vertex2) / area,
-			ComputeSignedParallelogramArea(point, vertex2, vertex0) / area,
-			ComputeSignedParallelogramArea(point, vertex0, vertex1) / area
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex1, vertex2) / area,
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex2, vertex0) / area,
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / area
 	};
 }
 
