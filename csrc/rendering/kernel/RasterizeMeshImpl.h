@@ -213,11 +213,6 @@ void RasterizeMeshNaive(
 				float queue_max_depth = -1000.f;
 				int queue_max_depth_at = -1;
 
-				//__DEBUG
-				if(v_image == 95 && u_image == 175){
-					printf("Got to debug location...");
-				}
-
 				// Loop through mesh faces.
 				for (t_face_index i_face = 0; i_face < face_count; i_face++) {
 					// Check if the point_screen ray goes through the face bounding box.

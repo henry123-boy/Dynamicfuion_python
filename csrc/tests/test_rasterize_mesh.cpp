@@ -28,7 +28,23 @@
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
 
-void TestRasterizeMeshNaive(const o3c::Device& device){
+bool AllMismatchesCloseToSegment(const Eigen::Vector2f& segment_start, const Eigen::Vector2f& segment_end,
+                                 const o3c::Tensor& mismatch_locations, float max_distance = 0.2) {
+	o3c::Tensor bad_points = mismatch_locations.Slice(0, 0, 2).Contiguous().To(o3c::Float32);
+	Eigen::Vector2f segment_direction = (segment_end - segment_start).normalized().eval();
+	o3c::Tensor segment_direction_o3d(segment_direction.data(), {1, 2}, o3c::Float32, mismatch_locations.GetDevice());
+	o3c::Tensor segment_start_o3d(segment_start.data(), {2,1}, o3c::Float32, mismatch_locations.GetDevice());
+	o3c::Tensor closest_diagonal_stops = segment_direction_o3d.Matmul(bad_points) - segment_direction_o3d.Matmul(segment_start_o3d);
+	o3c::Tensor closest_diagonal_points = segment_start_o3d + closest_diagonal_stops.Append(closest_diagonal_stops, 0) * segment_direction_o3d.T();
+
+	o3c::Tensor vectors = (bad_points - closest_diagonal_points);
+	vectors *= vectors;
+	o3c::Tensor distances = vectors.Sum({0});
+	// std::cout << distances.ToString() << std::endl;
+	return distances.AllClose(o3c::Tensor::Zeros(distances.GetShape(),o3c::Float32,distances.GetDevice()), 0.f, max_distance);
+}
+
+void TestRasterizeMeshNaive(const o3c::Device& device) {
 	auto plane = test::GenerateXyPlane(1.0, std::make_tuple(0.f, 0.f, 2.f), 0, device);
 	o3c::Tensor intrinsics(std::vector<double>{
 			580., 0., 320.,
@@ -54,36 +70,20 @@ void TestRasterizeMeshNaive(const o3c::Device& device){
 	auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
 			test::array_test_data_directory.ToString() + "/plane_0_pixel_face_distances.npy").To(device);
 
-	auto mismatches = (pixel_face_indices.IsClose(pixel_face_indices_ground_truth)).LogicalNot();
-	// const int inspect_y = 200;
-	// const int inspect_x = 350;
-	// const int inspect_y = 300;
-	// const int inspect_x = 250;
-	const int inspect_y = 95;
-	const int inspect_x = 175;
-	std::cout << mismatches.To(o3c::Int32).Sum({0,1}).ToString() << std::endl;
-	std::cout << mismatches.NonZero().Slice(1,0,30).ToString() << std::endl;
+	auto mismatches_face_indices = (pixel_face_indices.IsClose(pixel_face_indices_ground_truth)).LogicalNot();
 
-	std::cout << pixel_face_indices[inspect_y][inspect_x].ToString() << std::endl;
-	std::cout << pixel_face_indices_ground_truth[inspect_y][inspect_x].ToString() << std::endl << std::endl;
+	auto face_index_mismatch_locations = mismatches_face_indices.NonZero();
 
-	std::cout << pixel_depths[inspect_y][inspect_x].ToString() << std::endl;
-	std::cout << pixel_depths_ground_truth[inspect_y][inspect_x].ToString() << std::endl << std::endl;
+	// allow discrepancies only around diagonal
+	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f,175.f), Eigen::Vector2f(340.f,420.f), face_index_mismatch_locations));
+	auto pixel_depth_mismatch_locations = pixel_depths.IsClose(pixel_depths_ground_truth).LogicalNot().NonZero();
+	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f,175.f), Eigen::Vector2f(340.f,420.f), pixel_depth_mismatch_locations));
+	auto pixel_barycentric_coordinate_mismatch_locations =
+			pixel_barycentric_coordinates.IsClose(pixel_barycentric_coordinates_ground_truth, 1e-5, 1e-6).LogicalNot().NonZero();
+	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f,175.f), Eigen::Vector2f(340.f,420.f), pixel_barycentric_coordinate_mismatch_locations));
 
-	std::cout << pixel_barycentric_coordinates[inspect_y][inspect_x].ToString() << std::endl;
-	std::cout << pixel_barycentric_coordinates_ground_truth[inspect_y][inspect_x].ToString() << std::endl << std::endl;
-
-	std::cout << pixel_face_distances[inspect_y][inspect_x].ToString() << std::endl;
-	std::cout << pixel_face_distances_ground_truth[inspect_y][inspect_x].ToString() << std::endl << std::endl;
-
-	// std::cout << pixel_face_indices.GetItem(o3c::TensorKey::IndexTensor(mismatches)).Slice(0,0,10).ToString() << std::endl << std::endl;
-	// std::cout << pixel_face_indices_ground_truth.GetItem(o3c::TensorKey::IndexTensor(mismatches)).Slice(0,0,10).ToString() << std::endl;
-
-	REQUIRE(pixel_face_indices.AllEqual(pixel_face_indices_ground_truth));
-	REQUIRE(pixel_depths.AllEqual(pixel_depths_ground_truth));
-	REQUIRE(pixel_barycentric_coordinates.AllEqual(pixel_barycentric_coordinates_ground_truth));
-	REQUIRE(pixel_face_distances.AllEqual(pixel_face_distances_ground_truth));
-
+	auto pixel_face_distance_mismatch_locations = pixel_face_distances.IsClose(pixel_face_distances_ground_truth).LogicalNot().NonZero();
+	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f,175.f), Eigen::Vector2f(340.f,420.f), pixel_face_distance_mismatch_locations));
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - CPU") {

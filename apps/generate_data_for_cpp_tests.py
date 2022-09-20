@@ -106,6 +106,6 @@ if __name__ == "__main__":
             fragments.zbuf.cpu().numpy().reshape(image_size[0], image_size[1], 1))
     np.save(
         "/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_barycentric_coordinates.npy",
-        fragments.bary_coords.cpu().numpy().reshape(image_size[0], image_size[1], 3))
+        fragments.bary_coords.cpu().numpy().reshape(image_size[0], image_size[1], 1, 3))
     np.save("/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_face_distances.npy",
             fragments.dists.cpu().numpy().reshape(image_size[0], image_size[1], 1))
