@@ -102,9 +102,9 @@ class PureTorchRenderBasedOptimizer:
                              location=[[0.0, 0.0, -3.0]])
 
         rasterization_settings = RasterizationSettings(image_size=self.image_size,
-                                                       cull_backfaces=True,
+                                                       cull_backfaces=False,
                                                        cull_to_frustum=True,
-                                                       z_clip_value=0.5,
+                                                       z_clip_value=0.2,
                                                        faces_per_pixel=1)
 
         self.rasterizer = MeshRasterizer(self.cameras, raster_settings=rasterization_settings)
@@ -133,7 +133,7 @@ class PureTorchRenderBasedOptimizer:
             self.extrinsic_matrix
         )
         fragments = self.rasterizer(warped_mesh)
-        rendered_depth = fragments.zbuf.clone().reshape(self.image_size[0], self.image_size[1])
+        rendered_depth = fragments.zbuf[0, :, :, 0].clone().reshape(self.image_size[0], self.image_size[1])
         rendered_depth[rendered_depth == -1.0] = 0.0
         rendered_depth *= 1000.0
 
@@ -155,14 +155,15 @@ class PureTorchRenderBasedOptimizer:
         face_normals = vertex_normals[faces]
 
         rendered_normals = \
-            interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals) \
-                .view(-1, 3)
+            interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)[0, :, :, 0].reshape(
+                -1, 3)
+
         rendered_normals = torch.nn.functional.normalize(rendered_normals)
 
         # (image_height, image_width, 3)
         # rendered_rgb_image = self.shader(fragments, warped_mesh)[0, ..., :3]
         # (point_count, 1)
-        point_depths = fragments.zbuf[0].view(-1, 1)
+        point_depths = fragments.zbuf[0, :, :, 0].view(-1, 1)
         # (point_count, 3)
         rendered_points = self.cameras.unproject_points(
             torch.cat((self.pixel_xy_coordinates, point_depths), dim=1)

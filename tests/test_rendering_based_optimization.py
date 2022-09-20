@@ -247,8 +247,8 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
     anchor_count = 4
     node_coverage = 0.5
     anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(mesh_o3d.vertex["positions"],
-                                                                           nodes_o3d, anchor_count, 0,
-                                                                           node_coverage=node_coverage)
+                                                                                      nodes_o3d, anchor_count, 0,
+                                                                                      node_coverage=node_coverage)
 
     vertex_anchors = torch_dlpack.from_dlpack(anchors.to_dlpack())
     vertex_anchor_weights = torch_dlpack.from_dlpack(weights.to_dlpack())
@@ -331,9 +331,12 @@ def extrinsic_matrix() -> o3c.Tensor:
 @pytest.mark.parametrize("device", [o3c.Device('cuda:0'), o3c.Device('cpu:0')])
 def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extrinsic_matrix, path):
     with torch.no_grad():
-        save_images = True
-        save_debug_images = True
-        save_ground_truth = True
+        save_images = False
+        save_debug_images = False
+        save_ground_truth = False
+        print_debug_info = False
+        if print_debug_info:
+            print()  # empty print statement to add a line-return in the test output
 
         mesh_o3d, warp_field = build_test_plane_and_graph_for_device(device)
 
@@ -367,10 +370,12 @@ def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extr
         residuals = \
             optimizer.compute_residuals_from_inputs(optimizer.graph_node_rotations, optimizer.graph_node_translations)
 
-        print(torch.sqrt(residuals.max()).cpu())
+        if print_debug_info:
+            print("Residual magnitude max:",
+                  float(torch.sqrt(residuals.max()).cpu()), "vs.", math.sin(math.radians(10.0)) * 0.5)
         # maximum distance has to be within some tolerance of [sin(angle) * hypotenuse], hypotenuse is half the side
         # length of the plane here.
-        # assert math.isclose(float(torch.sqrt(residuals.max()).cpu()), math.sin(math.radians(10.0)) * 0.5, abs_tol=1e-3)
+        assert math.isclose(float(torch.sqrt(residuals.max()).cpu()), math.sin(math.radians(10.0)) * 0.5, abs_tol=1e-3)
 
         ground_truth_data_path = path.tensors / "render_based_icp_data_residual_ground_truth.pt"
         if save_ground_truth:
@@ -385,8 +390,8 @@ def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extr
             bad_indices = torch.where(torch.logical_not(close))[0].cpu().numpy()
             bad_pixels = np.dstack(np.unravel_index(bad_indices, image_size))[0]
             bad_pixel_points = bad_pixels.astype(float)
-            diagonal_start_point = np.array([103.0, 456.0])
-            diagonal_end_point = np.array([382.0, 177.0])
+            diagonal_start_point = np.array([95.0, 175.0])
+            diagonal_end_point = np.array([376.0, 456.0])
             diagonal_direction = diagonal_end_point - diagonal_start_point
             diagonal_direction /= np.linalg.norm(diagonal_direction)
             closest_diagonal_stops = (
@@ -394,6 +399,10 @@ def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extr
             closest_diagonal_points = diagonal_start_point + np.repeat(closest_diagonal_stops.reshape(-1, 1), 2,
                                                                        axis=1) * diagonal_direction
             distances = np.linalg.norm(bad_pixel_points - closest_diagonal_points, axis=1)
+
+            if print_debug_info:
+                print("Bad pixels and distances from diagonal:")
+                print(np.concatenate((bad_pixels, distances.reshape(-1, 1)), axis=1))
             assert np.allclose(distances, np.zeros_like(distances))
 
         if save_images:
