@@ -40,7 +40,6 @@ bool AllMismatchesCloseToSegment(const Eigen::Vector2f& segment_start, const Eig
 	o3c::Tensor vectors = (bad_points - closest_diagonal_points);
 	vectors *= vectors;
 	o3c::Tensor distances = vectors.Sum({0});
-	// std::cout << distances.ToString() << std::endl;
 	return distances.AllClose(o3c::Tensor::Zeros(distances.GetShape(),o3c::Float32,distances.GetDevice()), 0.f, max_distance);
 }
 

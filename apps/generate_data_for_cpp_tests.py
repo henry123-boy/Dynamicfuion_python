@@ -13,6 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #  ================================================================
+import sys
+
 import cv2
 import open3d as o3d
 import open3d.core as o3c
@@ -53,12 +55,12 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
     return mesh
 
 
-if __name__ == "__main__":
+def make_test_data_rasterize_mesh_naive(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str,
+                                        display_rendered: bool = False) -> None:
     image_size = (480, 640)
-    device_o3d = o3c.Device("CPU:0")
+    device_o3d = mesh.device
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
-    mesh_o3d = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device_o3d)
-    mesh_torch = rendering.converters.open3d_mesh_to_pytorch3d(mesh_o3d)
+    mesh_torch = rendering.converters.open3d_mesh_to_pytorch3d(mesh)
     rasterization_settings = p3dr.RasterizationSettings(image_size=image_size,
                                                         perspective_correct=False,
                                                         cull_backfaces=False,
@@ -95,17 +97,35 @@ if __name__ == "__main__":
     fragments = rasterizer(mesh_torch)
     rendered_color = shader(fragments, mesh_torch)
     rendered_color_uint8 = (rendered_color[0, ..., :3] * 255).to(torch.uint8)
-    # cv2.imshow("rendered color", rendered_color_uint8.cpu().numpy())
-    # cv2.waitKey()
 
-    print(fragments.pix_to_face[0, 300, 250])  # should print 0
-    print(fragments.pix_to_face[0, 200, 350])  # should print 1
-    np.save("/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_face_indices.npy",
-            fragments.pix_to_face.cpu().numpy().reshape(image_size[0], image_size[1], 1))
-    np.save("/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_depths.npy",
+    if display_rendered:
+        cv2.imshow("rendered color", rendered_color_uint8.cpu().numpy())
+        cv2.waitKey()
+
+    np.save(
+        f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/{file_prefix}_pixel_face_indices.npy",
+        fragments.pix_to_face.cpu().numpy().reshape(image_size[0], image_size[1], 1))
+    np.save(f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/{file_prefix}_pixel_depths.npy",
             fragments.zbuf.cpu().numpy().reshape(image_size[0], image_size[1], 1))
     np.save(
-        "/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_barycentric_coordinates.npy",
+        f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/"
+        f"arrays/{file_prefix}_pixel_barycentric_coordinates.npy",
         fragments.bary_coords.cpu().numpy().reshape(image_size[0], image_size[1], 1, 3))
-    np.save("/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/plane_0_pixel_face_distances.npy",
-            fragments.dists.cpu().numpy().reshape(image_size[0], image_size[1], 1))
+    np.save(
+        f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/{file_prefix}_pixel_face_distances.npy",
+        fragments.dists.cpu().numpy().reshape(image_size[0], image_size[1], 1))
+
+
+PROGRAM_EXIT_SUCCESS = 0
+
+
+def main():
+    device_o3d = o3c.Device("CPU:0")
+    mesh_plane = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device_o3d)
+    plane_prefix = "plane_0"
+    make_test_data_rasterize_mesh_naive(mesh_plane, plane_prefix)
+    return PROGRAM_EXIT_SUCCESS
+
+
+if __name__ == "__main__":
+    sys.exit(main())
