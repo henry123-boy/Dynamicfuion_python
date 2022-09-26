@@ -56,9 +56,10 @@ def generate_test_xy_plane(plane_side_length: float, plane_center_position: tupl
 
 
 def make_test_data_rasterize_mesh_naive(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str,
-                                        display_rendered: bool = False) -> None:
+                                        display_rendered: bool = False,
+                                        shade_flat: bool = True) -> None:
     image_size = (480, 640)
-    device_o3d = mesh.device
+    device_o3d = mesh.vertex["positions"].device
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
     mesh_torch = rendering.converters.open3d_mesh_to_pytorch3d(mesh)
     rasterization_settings = p3dr.RasterizationSettings(image_size=image_size,
@@ -84,9 +85,14 @@ def make_test_data_rasterize_mesh_naive(mesh: o3d.t.geometry.TriangleMesh, file_
                                   R=camera_rotation,
                                   T=torch.zeros((1, 3), dtype=torch.float32, device=device_torch),
                                   K=K)
-    lights = p3dr.PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
-                              specular_color=((0.0, 0.0, 0.0),), device=device_torch,
-                              location=[[0.0, 0.0, -3.0]])
+    if shade_flat:
+        lights = p3dr.PointLights(ambient_color=((1.0, 1.0, 1.0),), diffuse_color=((0.0, 0.0, 0.0),),
+                                  specular_color=((0.0, 0.0, 0.0),), device=device_torch,
+                                  location=[[0.0, 0.0, -3.0]])
+    else:
+        lights = p3dr.PointLights(ambient_color=((0.0, 0.0, 0.0),), diffuse_color=((0.5, 0.5, 0.5),),
+                                  specular_color=((0.3, 0.3, 0.3),), device=device_torch,
+                                  location=[[1.0, 1.0, -2.0]])
     rasterizer = p3dr.MeshRasterizer(cameras, raster_settings=rasterization_settings)
     shader = p3dr.SoftPhongShader(
         device=device_torch,
@@ -101,6 +107,10 @@ def make_test_data_rasterize_mesh_naive(mesh: o3d.t.geometry.TriangleMesh, file_
     if display_rendered:
         cv2.imshow("rendered color", rendered_color_uint8.cpu().numpy())
         cv2.waitKey()
+        o3d.io.write_image(
+            f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/images/{file_prefix}_render_preview.png",
+            o3d.t.geometry.Image(rendered_color_uint8)
+        )
 
     np.save(
         f"/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data/arrays/{file_prefix}_pixel_face_indices.npy",
@@ -120,10 +130,22 @@ PROGRAM_EXIT_SUCCESS = 0
 
 
 def main():
-    device_o3d = o3c.Device("CPU:0")
-    mesh_plane = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device_o3d)
-    plane_prefix = "plane_0"
-    make_test_data_rasterize_mesh_naive(mesh_plane, plane_prefix)
+    device_o3d = o3c.Device("CUDA:0")
+    # mesh_plane = generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0, device=device_o3d)
+    # plane_prefix = "plane_0"
+    # make_test_data_rasterize_mesh_naive(mesh_plane, plane_prefix)
+    mesh_64_bunny_array = \
+        o3d.t.geometry.TriangleMesh.from_legacy(
+            o3d.io.read_triangle_mesh("/home/algomorph/Workbench/NeuralTracking/cmake-build-debug/csrc/tests/test_data/"
+                                      "meshes/mesh_64_bunny_array.ply"),
+            vertex_dtype=o3c.float32, triangle_dtype=o3c.int64, device=device_o3d
+        )
+    mesh_64_bunny_array.vertex["positions"] += o3c.Tensor([0.0, 0.0, 1.0], dtype=o3c.float32, device=device_o3d)
+    mesh_64_bunny_array.vertex["colors"] = o3c.Tensor([[1.0, 1.0, 1.0]] * len(mesh_64_bunny_array.vertex["positions"]),
+                                                      dtype=o3c.float32,
+                                                      device=device_o3d)
+    mesh_64_bunny_array_prefix = "mesh_64_bunny_array"
+    make_test_data_rasterize_mesh_naive(mesh_64_bunny_array, mesh_64_bunny_array_prefix, True, False)
     return PROGRAM_EXIT_SUCCESS
 
 
