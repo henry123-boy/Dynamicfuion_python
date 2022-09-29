@@ -26,10 +26,10 @@ function(nnrt_add_test)
     endif ()
 endfunction()
 
-function(nnrt_download_test_data)
+function(nnrt_add_test_data_download_target)
     set(options)
-    set(oneValueArgs URL SHA256 DESTINATION EXTRACTED_NAME)
-    set(multiValueArgs)
+    set(oneValueArgs URL SHA256 DESTINATION)
+    set(multiValueArgs EXTRACTED_NAMES)
     cmake_parse_arguments(DOWNLOAD_DATA "${options}" "${oneValueArgs}"
         "${multiValueArgs}" ${ARGN})
 
@@ -49,18 +49,24 @@ function(nnrt_download_test_data)
     if (NOT DOWNLOAD_DATA_DESTINATION)
         message(FATAL_ERROR "nnrt_download_test_data needs the DESTINATION one-value argument.")
     endif ()
-        if (NOT DOWNLOAD_DATA_EXTRACTED_NAME)
-        message(FATAL_ERROR "nnrt_download_test_data needs the EXTRACTED_NAME one-value argument.")
+        if (NOT DOWNLOAD_DATA_EXTRACTED_NAMES)
+        message(FATAL_ERROR "nnrt_download_test_data needs the EXTRACTED_NAMES multi-value argument.")
     endif ()
 
     cmake_path(SET destination_path ${GENERATED_TEST_DATA_DIRECTORY})
     cmake_path(APPEND destination_path ${DOWNLOAD_DATA_DESTINATION})
-    cmake_path(GET destination_path PARENT_PATH extracted_path)
-    cmake_path(APPEND extracted_path ${DOWNLOAD_DATA_EXTRACTED_NAME})
+    set(byproduct_paths)
+    foreach(filename DOWNLOAD_DATA_EXTRACTED_NAMES)
+        cmake_path(GET destination_path PARENT_PATH extracted_path)
+        cmake_path(APPEND extracted_path ${DOWNLOAD_DATA_EXTRACTED_NAMES})
+        list(APPEND byproduct_paths ${extracted_path})
+    endforeach()
+
+    list(APPEND byproduct_paths ${destination_path})
 
     add_custom_target(
         ${target_name}
-        BYPRODUCTS ${destination_path} ${extracted_path}
+        BYPRODUCTS ${byproduct_paths}
         COMMAND ${CMAKE_COMMAND}
         -DURL=${DOWNLOAD_DATA_URL}
         -DDESTINATION=${destination_path}
@@ -131,14 +137,48 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_unproject_3d_points)
     nnrt_add_test(test_extract_face_vertices)
 
-    nnrt_download_test_data(
-        mesh_64_bunny_array
-        URL https://algomorph.com/storage/reco/mesh_64_bunny_array.7z
-        SHA256 95f62255410f2cac343e2b63e3099da6ec3f38d20d965129e292d39c1ed7b200
-        DESTINATION meshes/mesh_64_bunny_array.7z
-        EXTRACTED_NAME mesh_64_bunny_array.ply
+    nnrt_add_test_data_download_target(
+        test_data_mesh_bunny_res4
+        URL https://algomorph.com/storage/reco/mesh_bunny_res4.7z
+        SHA256 8d898cadad27cf3dd8b2f1455315012908a82f017aec2dcb8935dbe4c227e151
+        DESTINATION mesh_bunny_res4.7z
+        EXTRACTED_NAMES
+        meshes/mesh_bunny_res4.ply
+        arrays/mesh_bunny_res4_pixel_barycentric_coordinates.npy
+        arrays/mesh_bunny_res4_pixel_depths.npy
+        arrays/mesh_bunny_res4_pixel_face_distances.npy
+        arrays/mesh_bunny_res4_pixel_face_indices.npy
+        images/mesh_bunny_res4_render_preview.png
     )
 
-    nnrt_add_test(test_rasterize_mesh DEPENDENCIES mesh_64_bunny_array)
+    nnrt_add_test_data_download_target(
+        test_data_mesh_bunny_res2
+        URL https://algomorph.com/storage/reco/mesh_bunny_res2.7z
+        SHA256 5086803a46be1db566fcbc784cde962a7282c72e72f09703a2f7b739b1a9241e
+        DESTINATION mesh_bunny_res2.7z
+        EXTRACTED_NAMES
+        meshes/mesh_bunny_res2.ply
+        arrays/mesh_bunny_res2_pixel_barycentric_coordinates.npy
+        arrays/mesh_bunny_res2_pixel_depths.npy
+        arrays/mesh_bunny_res2_pixel_face_distances.npy
+        arrays/mesh_bunny_res2_pixel_face_indices.npy
+        images/mesh_bunny_res2_render_preview.png
+    )
+
+    nnrt_add_test_data_download_target(
+        test_data_mesh_64_bunny_array
+        URL https://algomorph.com/storage/reco/mesh_64_bunny_array.7z
+        SHA256 529944b4e5714f4fdfb5dfd3965ac4ff53d3ea306698fdb2083ce4cbf51a76f9
+        DESTINATION mesh_64_bunny_array.7z
+        EXTRACTED_NAMES
+        meshes/mesh_64_bunny_array.ply
+        arrays/mesh_64_bunny_array_pixel_barycentric_coordinates.npy
+        arrays/mesh_64_bunny_array_pixel_depths.npy
+        arrays/mesh_64_bunny_array_pixel_face_distances.npy
+        arrays/mesh_64_bunny_array_pixel_face_indices.npy
+        images/mesh_64_bunny_array_render_preview.png
+    )
+
+    nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
 endif ()

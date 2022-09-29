@@ -30,6 +30,14 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 		float far_clipping_distance = INFINITY
 );
 
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(
+		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
+		const open3d::core::Tensor& intrinsic_matrix,
+		const open3d::core::SizeVector& image_size,
+		float near_clipping_distance = 0.0,
+		float far_clipping_distance = INFINITY
+);
+
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> RasterizeMesh(
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		const open3d::core::SizeVector& image_size,

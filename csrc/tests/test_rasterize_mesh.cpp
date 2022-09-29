@@ -98,14 +98,29 @@ TEST_CASE("Test Rasterize Mesh Naive - Plane - CUDA") {
 	TestRasterizeMeshNaive_Plane(device);
 }
 
-void TestRasterizeMeshNaive_64BunnyArray(const o3c::Device& device) {
+void TestRasterizeMeshNaive(
+		const o3c::Device& device, const std::string& mesh_name,
+		const std::tuple<float, float, float>& offset = std::make_tuple(0.f, 0.f, 1.f),
+		float color_value = 1.0f, bool mesh_is_generated = true, bool save_output_to_disk = false
+) {
 	open3d::geometry::TriangleMesh mesh_legacy;
-	o3io::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/mesh_64_bunny_array.ply", mesh_legacy);
-	auto mesh_64_bunny_array = o3tg::TriangleMesh::FromLegacy(mesh_legacy, o3c::Float32, o3c::Int64, device);
-	auto vertex_count = mesh_64_bunny_array.GetVertexPositions().GetLength();
-	mesh_64_bunny_array.SetVertexColors(o3c::Tensor::Full({vertex_count, 3}, 1.0f, o3c::Float32, device));
-	mesh_64_bunny_array.SetVertexPositions(mesh_64_bunny_array.GetVertexPositions() +
-	                                       o3c::Tensor(std::vector<float>{0.0, 0.0, 1.0}, {3}, o3c::Float32, device));
+	if (mesh_is_generated) {
+		o3io::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply", mesh_legacy);
+	} else {
+		o3io::ReadTriangleMesh(test::mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply", mesh_legacy);
+	}
+
+	auto mesh = o3tg::TriangleMesh::FromLegacy(mesh_legacy, o3c::Float32, o3c::Int64, device);
+	auto vertex_count = mesh.GetVertexPositions().GetLength();
+	mesh.SetVertexColors(o3c::Tensor::Full({vertex_count, 3}, color_value, o3c::Float32, device));
+	mesh.SetVertexPositions(mesh.GetVertexPositions() +
+	                        o3c::Tensor(std::vector<float>{
+			                                    std::get<0>(offset),
+			                                    std::get<1>(offset),
+			                                    std::get<2>(offset),
+	                                    },
+	                                    {3}, o3c::Float32, device)
+	);
 
 
 	o3c::Tensor intrinsics(std::vector<double>{
@@ -115,33 +130,57 @@ void TestRasterizeMeshNaive_64BunnyArray(const o3c::Device& device) {
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 	o3c::SizeVector image_size{480, 640};
 
-	auto extracted_face_vertices = nnrt::rendering::ExtractClippedFaceVerticesInNormalizedCameraSpace(mesh_64_bunny_array, intrinsics, {480, 640},
+	auto extracted_face_vertices = nnrt::rendering::ExtractClippedFaceVerticesInNormalizedCameraSpace(mesh, intrinsics, {480, 640},
 	                                                                                                  0.0, 2.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			nnrt::rendering::RasterizeMesh(extracted_face_vertices, image_size, 0.f, 1, 0, 0, false, false, true);
 
-	auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/mesh_64_bunny_array_pixel_face_indices.npy").To(device);
+	if (save_output_to_disk) {
+		pixel_face_indices.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_indices.npy");
+		pixel_depths.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_depths.npy");
+		pixel_barycentric_coordinates.Save(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_barycentric_coordinates.npy");
+		pixel_face_distances.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_distances.npy");
+	} else {
+		auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_face_indices.npy"
+		).To(device);
 
-	auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/mesh_64_bunny_array_pixel_depths.npy").To(device);
+		auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_depths.npy").To(device);
 
-	auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/mesh_64_bunny_array_pixel_barycentric_coordinates.npy").To(device);
+		auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_barycentric_coordinates.npy").To(device);
 
-	auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/mesh_64_bunny_array_pixel_face_distances.npy").To(device);
+		auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_face_distances.npy").To(device);
+		REQUIRE(pixel_face_indices.AllClose(pixel_face_indices_ground_truth));
+	}
 
-	auto not_close = pixel_face_indices.IsClose(pixel_face_indices_ground_truth).LogicalNot();
-	std::cout << pixel_face_indices.GetItem(o3c::TensorKey::IndexTensor(not_close)).Slice(0,0,10).ToString() << std::endl << std::endl;;
-	std::cout << pixel_face_indices_ground_truth.GetItem(o3c::TensorKey::IndexTensor(not_close)).Slice(0,0,10).ToString() << std::endl;
+}
 
-	// REQUIRE(pixel_face_indices.AllClose(pixel_face_indices_ground_truth));
+TEST_CASE("Test Rasterize Mesh Naive - Cube 0 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestRasterizeMeshNaive(device, "cube_0", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, false, true);
+}
 
+TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, true);
+}
+
+TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, true);
+}
+
+TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 2 - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestRasterizeMeshNaive(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive_64BunnyArray(device);
+	TestRasterizeMeshNaive(device, "mesh_64_bunny_array");
 }

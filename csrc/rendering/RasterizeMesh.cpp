@@ -29,19 +29,18 @@ namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::rendering {
 
-
-open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
-		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::SizeVector& image_size, /* {height, width} */
-		float near_clipping_distance /* = 0.0 */,
-		float far_clipping_distance /* = INFINITY */
-) {
-	if (!camera_space_mesh.HasTriangleIndices() || !camera_space_mesh.HasVertexPositions()) {
+static void CheckMeshHasTrianglesAndVertices(const open3d::t::geometry::TriangleMesh& mesh) {
+	if (!mesh.HasTriangleIndices() || !mesh.HasVertexPositions()) {
 		o3u::LogError("Argument mesh needs to have both triangle vertex indices and vertex positions. "
 		              "Given mesh has triangle indices: {}, vertex positions: {}.",
-		              camera_space_mesh.HasTriangleIndices() ? "true" : "false", camera_space_mesh.HasVertexPositions() ? "true" : "false");
+		              mesh.HasTriangleIndices() ? "true" : "false", mesh.HasVertexPositions() ? "true" : "false");
 	}
+
+}
+
+static void CheckClippingRangeAndImageSize(const open3d::core::SizeVector& image_size, /* {height, width} */
+                                           float near_clipping_distance /* = 0.0 */,
+                                           float far_clipping_distance /* = INFINITY */) {
 	if (near_clipping_distance < MIN_NEAR_CLIPPING_DISTANCE) {
 		o3u::LogError("near_clipping_distance cannot be less than {}. Got {}.", MIN_NEAR_CLIPPING_DISTANCE, near_clipping_distance);
 	}
@@ -52,7 +51,17 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 	if (image_size.size() != 2) {
 		o3u::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
 	}
+}
 
+open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
+		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
+		const open3d::core::Tensor& intrinsic_matrix,
+		const open3d::core::SizeVector& image_size, /* {height, width} */
+		float near_clipping_distance /* = 0.0 */,
+		float far_clipping_distance /* = INFINITY */
+) {
+	CheckMeshHasTrianglesAndVertices(camera_space_mesh);
+	CheckClippingRangeAndImageSize(image_size, near_clipping_distance, far_clipping_distance);
 	const o3c::Tensor& vertex_positions_camera = camera_space_mesh.GetVertexPositions();
 	const o3c::Tensor& triangle_vertex_indices = camera_space_mesh.GetTriangleIndices();
 	o3c::AssertTensorDtype(vertex_positions_camera, o3c::Float32);
@@ -68,6 +77,32 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 	                                                          near_clipping_distance, far_clipping_distance);
 
 	return vertex_positions_clipped_normalized_camera;
+}
+
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(
+		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
+		const open3d::core::Tensor& intrinsic_matrix,
+		const open3d::core::SizeVector& image_size, /* {height, width} */
+		float near_clipping_distance /* = 0.0 */,
+		float far_clipping_distance /* = INFINITY */) {
+	CheckMeshHasTrianglesAndVertices(camera_space_mesh);
+	CheckClippingRangeAndImageSize(image_size, near_clipping_distance, far_clipping_distance);
+	const o3c::Tensor& vertex_positions_camera = camera_space_mesh.GetVertexPositions();
+	const o3c::Tensor& triangle_vertex_indices = camera_space_mesh.GetTriangleIndices();
+	o3c::AssertTensorDtype(vertex_positions_camera, o3c::Float32);
+	o3c::AssertTensorDtype(triangle_vertex_indices, o3c::Int64);
+	o3tg::CheckIntrinsicTensor(intrinsic_matrix);
+
+	auto [normalized_intrinsic_matrix, normalized_xy_range] = kernel::IntrinsicsToNormalizedCameraSpaceAndRange(intrinsic_matrix, image_size);
+	o3c::Tensor vertex_positions_normalized_camera, clipped_face_mask;
+
+	kernel::ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(vertex_positions_normalized_camera, clipped_face_mask, vertex_positions_camera,
+	                                                                  triangle_vertex_indices, normalized_intrinsic_matrix, normalized_xy_range,
+	                                                                  near_clipping_distance, far_clipping_distance);
+
+	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
@@ -103,24 +138,23 @@ RasterizeMesh(
 			 * 512 < max_image_dimension < 1024 -> 64
 			 * 1024 < max_image_dimension < 2048 -> 128
 			 */
-			bin_size = static_cast<int>(std::pow(2, std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
+			bin_size = static_cast<int>(std::pow(2,std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
 		}
 	}
 
-	if (bin_size != 0){
+	if (bin_size != 0) {
 		int bins_along_max_dimension = 1 + (max_image_dimension - 1) / bin_size;
-		if (bins_along_max_dimension >= MAX_BINS_ALONG_IMAGE_DIMENSION){
+		if (bins_along_max_dimension >= MAX_BINS_ALONG_IMAGE_DIMENSION) {
 			o3u::LogError("The provided bin_size is too small: computed bin count along maximum dimension is {}, this has to be < {}.",
-						  bins_along_max_dimension, MAX_BINS_ALONG_IMAGE_DIMENSION);
+			              bins_along_max_dimension, MAX_BINS_ALONG_IMAGE_DIMENSION);
 		}
 	}
 
-	if(max_faces_per_bin == -1){
+	if (max_faces_per_bin == -1) {
 		max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
 	}
 
 	o3c::AssertTensorDtype(normalized_camera_space_face_vertices, o3c::Float32);
-
 
 
 	kernel::Fragments fragments;
