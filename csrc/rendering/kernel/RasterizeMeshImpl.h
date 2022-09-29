@@ -196,7 +196,6 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 				Eigen::Map<Eigen::Vector3f> face_vertex2(vertex_position_indexer.GetDataPtr<float>(face_vertex_indices(2)));
 
 
-
 #ifdef NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
 				Eigen::Map<Eigen::Vector3f> face_vertices[] = {face_vertex0, face_vertex1, face_vertex2};
 #endif
@@ -293,8 +292,10 @@ inline void InitializeFragments(Fragments& fragments, const o3c::Device& device,
 template<open3d::core::Device::DeviceType TDeviceType>
 void RasterizeMeshNaive(
 		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		const open3d::core::SizeVector& image_size, float blur_radius, int faces_per_pixel,
-		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size,
+		float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
+		bool cull_back_faces
 ) {
 
 	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
@@ -321,56 +322,113 @@ void RasterizeMeshNaive(
 	auto pixel_barycentric_coordinate_ptr = fragments.pixel_barycentric_coordinates.template GetDataPtr<float>();
 	auto pixel_face_distance_ptr = fragments.pixel_face_distances.template GetDataPtr<float>();
 
-	o3c::ParallelFor(
-			device, pixel_count,
-			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
-				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
-				Eigen::Vector2f point_screen(x_screen, y_screen);
-				RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
-				int queue_size = 0;
-				float queue_max_depth = -1000.f;
-				int queue_max_depth_at = -1;
+	if (clipped_faces_mask.has_value()) {
+		const bool* clipped_faces = clipped_faces_mask.value().get().template GetDataPtr<bool>();
+		o3c::ParallelFor(
+				device, pixel_count,
+				[=] OPEN3D_DEVICE(int64_t workload_idx) {
+					const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
+					const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
+					const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
+					const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+					Eigen::Vector2f point_screen(x_screen, y_screen);
+					RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
+					int queue_size = 0;
+					float queue_max_depth = -1000.f;
+					int queue_max_depth_at = -1;
 
-				// Loop through mesh faces.
-				for (t_face_index i_face = 0; i_face < face_count; i_face++) {
-					// Check if the point_screen ray goes through the face bounding box.
-					// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
-					UpdateQueueIfPixelInsideFace(
-							face_vertex_position_indexer,
-							i_face,
-							queue,
-							queue_size,
-							queue_max_depth,
-							queue_max_depth_at,
-							blur_radius,
-							point_screen,
-							faces_per_pixel,
-							perspective_correct_barycentric_coordinates,
-							clip_barycentric_coordinates,
-							cull_back_faces
-					);
+					// Loop through mesh faces.
+					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
+						if (!clipped_faces[i_face]) {
+							continue; // skip over clipped face
+						}
+						// Check if the point_screen ray goes through the face bounding box.
+						// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
+						UpdateQueueIfPixelInsideFace(
+								face_vertex_position_indexer,
+								i_face,
+								queue,
+								queue_size,
+								queue_max_depth,
+								queue_max_depth_at,
+								blur_radius,
+								point_screen,
+								faces_per_pixel,
+								perspective_correct_barycentric_coordinates,
+								clip_barycentric_coordinates,
+								cull_back_faces
+						);
 
-				}
+					}
 
 #ifdef __CUDACC__
-				BubbleSort(queue, queue_size);
+					BubbleSort(queue, queue_size);
 #else
-				std::sort(std::begin(queue), std::begin(queue) + queue_size);
+					std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
-				int64_t fragment_index = workload_idx * faces_per_pixel;
-				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
-					pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
-					pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
-					pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
-					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
-					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
-					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
+					int64_t fragment_index = workload_idx * faces_per_pixel;
+					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
+						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
+						pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
+						pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
+					}
 				}
-			}
-	);
+		);
+	} else {
+		o3c::ParallelFor(
+				device, pixel_count,
+				[=] OPEN3D_DEVICE(int64_t workload_idx) {
+					const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
+					const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
+					const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
+					const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+					Eigen::Vector2f point_screen(x_screen, y_screen);
+					RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
+					int queue_size = 0;
+					float queue_max_depth = -1000.f;
+					int queue_max_depth_at = -1;
+
+					// Loop through mesh faces.
+					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
+						// Check if the point_screen ray goes through the face bounding box.
+						// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
+						UpdateQueueIfPixelInsideFace(
+								face_vertex_position_indexer,
+								i_face,
+								queue,
+								queue_size,
+								queue_max_depth,
+								queue_max_depth_at,
+								blur_radius,
+								point_screen,
+								faces_per_pixel,
+								perspective_correct_barycentric_coordinates,
+								clip_barycentric_coordinates,
+								cull_back_faces
+						);
+
+					}
+
+#ifdef __CUDACC__
+					BubbleSort(queue, queue_size);
+#else
+					std::sort(std::begin(queue), std::begin(queue) + queue_size);
+#endif
+					int64_t fragment_index = workload_idx * faces_per_pixel;
+					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
+						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
+						pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
+						pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
+						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
+					}
+				}
+		);
+	}
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -495,7 +553,8 @@ void GridBin2dBoundingBoxes_Device(
 template<open3d::core::Device::DeviceType TDeviceType>
 void GridBinFaces(
 		open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		const open3d::core::SizeVector& image_size, const float blur_radius, const int bin_size, const int max_faces_per_bin
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size, int max_faces_per_bin
 ) {
 	int image_height = static_cast<int>(image_size[0]);
 	int image_width = static_cast<int>(image_size[1]);
@@ -510,19 +569,39 @@ void GridBinFaces(
 	auto face_bounding_box_data = face_bounding_boxes.GetDataPtr<float>();
 	auto face_skip_mask_data = face_skip_mask.GetDataPtr<bool>();
 
-
 	// compute triangle bounding boxes
-	o3c::ParallelFor(
-			device, face_count,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				auto face_vertices_data = face_vertex_position_indexer.GetDataPtr<float>(workload_idx);
-				Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
-				Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
-				Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
-				CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
-				                                   face_vertex2, blur_radius);
-			}
-	);
+	if(clipped_faces_mask.has_value()) {
+		const bool* clipped_faces = clipped_faces_mask.value().get().template GetDataPtr<bool>();
+		o3c::ParallelFor(
+				device, face_count,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+					if(!clipped_faces[workload_idx]){
+						face_skip_mask_data[workload_idx] = true;
+						return;
+					}
+					auto face_vertices_data = face_vertex_position_indexer.GetDataPtr<float>(workload_idx);
+					Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
+					Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
+					Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
+					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
+					                                   face_vertex2, blur_radius);
+
+				}
+		);
+	}else {
+		o3c::ParallelFor(
+				device, face_count,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+					auto face_vertices_data = face_vertex_position_indexer.GetDataPtr<float>(workload_idx);
+					Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
+					Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
+					Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
+					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
+					                                   face_vertex2, blur_radius);
+				}
+		);
+	}
+
 
 	const int bin_count_y = 1 + (image_height - 1) / bin_size;
 	const int bin_count_x = 1 + (image_width - 1) / bin_size;

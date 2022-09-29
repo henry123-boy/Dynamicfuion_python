@@ -107,7 +107,9 @@ ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 RasterizeMesh(
-		const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::SizeVector& image_size,
+		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size,
 		float blur_radius,
 		int faces_per_pixel,
 		int bin_size/* = -1*/,
@@ -116,8 +118,6 @@ RasterizeMesh(
 		bool clip_barycentric_coordinates /* = false */,
 		bool cull_back_faces /* = true */
 ) {
-
-
 	if (faces_per_pixel > MAX_POINTS_PER_PIXEL) {
 		o3u::LogError("Need faces_per_pixel <= {}. Got: {}", MAX_POINTS_PER_PIXEL, faces_per_pixel);
 	}
@@ -138,7 +138,8 @@ RasterizeMesh(
 			 * 512 < max_image_dimension < 1024 -> 64
 			 * 1024 < max_image_dimension < 2048 -> 128
 			 */
-			bin_size = static_cast<int>(std::pow(2,std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
+			bin_size = static_cast<int>(std::pow(2,
+			                                     std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
 		}
 	}
 
@@ -151,7 +152,12 @@ RasterizeMesh(
 	}
 
 	if (max_faces_per_bin == -1) {
-		max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
+		if (clipped_faces_mask.has_value()) {
+			int32_t unclipped_face_count = clipped_faces_mask.value().get().To(o3c::Int32).Sum({}).ToFlatVector<int32_t>()[0];
+			max_faces_per_bin = std::max(10000, unclipped_face_count / 5);
+		} else {
+			max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
+		}
 	}
 
 	o3c::AssertTensorDtype(normalized_camera_space_face_vertices, o3c::Float32);
@@ -163,6 +169,7 @@ RasterizeMesh(
 		o3c::Tensor bin_faces;
 		kernel::GridBinFaces(bin_faces,
 		                     normalized_camera_space_face_vertices,
+		                     clipped_faces_mask,
 		                     image_size,
 		                     blur_radius,
 		                     bin_size,
@@ -182,6 +189,7 @@ RasterizeMesh(
 		// Use the naive per-pixel implementation
 		kernel::RasterizeMeshNaive(fragments,
 		                           normalized_camera_space_face_vertices,
+		                           clipped_faces_mask,
 		                           image_size,
 		                           blur_radius,
 		                           faces_per_pixel,

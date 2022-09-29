@@ -27,6 +27,7 @@
 #include "rendering/RasterizeMesh.h"
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
 namespace o3io = open3d::io;
 namespace o3tg = open3d::t::geometry;
 
@@ -57,19 +58,19 @@ void TestRasterizeMeshNaive_Plane(const o3c::Device& device) {
 	auto extracted_face_vertices = nnrt::rendering::ExtractClippedFaceVerticesInNormalizedCameraSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, image_size, 0.f, 1, 0, 0, false, false, true);
+			nnrt::rendering::RasterizeMesh(extracted_face_vertices, o3u::nullopt, image_size, 0.f, 1, 0, 0, false, false, true);
 
 	auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/plane_0_pixel_face_indices.npy").To(device);
+			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_indices.npy").To(device);
 
 	auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/plane_0_pixel_depths.npy").To(device);
+			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_depths.npy").To(device);
 
 	auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/plane_0_pixel_barycentric_coordinates.npy").To(device);
+			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_barycentric_coordinates.npy").To(device);
 
 	auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
-			test::array_test_data_directory.ToString() + "/plane_0_pixel_face_distances.npy").To(device);
+			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_distances.npy").To(device);
 
 	auto mismatches_face_indices = (pixel_face_indices.IsClose(pixel_face_indices_ground_truth)).LogicalNot();
 
@@ -130,11 +131,11 @@ void TestRasterizeMeshNaive(
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 	o3c::SizeVector image_size{480, 640};
 
-	auto extracted_face_vertices = nnrt::rendering::ExtractClippedFaceVerticesInNormalizedCameraSpace(mesh, intrinsics, {480, 640},
-	                                                                                                  0.0, 2.0);
+	auto [extracted_face_vertices, clipped_face_mask]  =
+			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 2.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, image_size, 0.f, 1, 0, 0, false, false, true);
+			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1, 0, 0, false, false, true);
 
 	if (save_output_to_disk) {
 		pixel_face_indices.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_indices.npy");

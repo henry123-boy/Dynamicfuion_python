@@ -18,36 +18,51 @@
 
 namespace nnrt::rendering::kernel {
 
-template
-void ExtractClippedFaceVerticesInNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
+template void ExtractClippedFaceVerticesInNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
 		const open3d::core::Tensor& normalized_camera_space_matrix,
 		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
-		float far_clipping_distance);
+		float far_clipping_distance
+);
 
-template
-void
-RasterizeMeshNaive<open3d::core::Device::DeviceType::CUDA>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                           const open3d::core::SizeVector& image_size, float blur_radius,
-                                                           int faces_per_pixel,
-                                                           bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-                                                           bool cull_back_faces);
+template void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& vertex_positions_normalized_camera,
+		open3d::core::Tensor& clipped_face_mask,
+		const open3d::core::Tensor& vertex_positions_camera,
+		const open3d::core::Tensor& triangle_vertex_indices,
+		const open3d::core::Tensor& normalized_intrinsic_matrix,
+		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+		float near_clipping_distance,
+		float far_clipping_distance
+);
 
-template
-void
-RasterizeMeshFine<open3d::core::Device::DeviceType::CUDA>(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                          const open3d::core::Tensor& bin_faces,
-                                                          const open3d::core::SizeVector& image_size, float blur_radius, int bin_side_length,
-                                                          int faces_per_pixel,
-                                                          bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-                                                          bool cull_back_faces);
+template void RasterizeMeshNaive<open3d::core::Device::DeviceType::CUDA>(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size,
+		float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
+		bool clip_barycentric_coordinates,
+		bool cull_back_faces
+);
 
-template
-void GridBinFaces<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& bin_faces,
-                                                          const open3d::core::Tensor& normalized_camera_space_face_vertices,
-                                                          const open3d::core::SizeVector& image_size, const float blur_radius, const int bin_size,
-                                                          const int max_faces_per_bin);
+template void RasterizeMeshFine<open3d::core::Device::DeviceType::CUDA>(
+		Fragments& fragments,
+		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::Tensor& bin_faces,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_side_length,
+		int faces_per_pixel,
+		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
+		bool cull_back_faces
+);
+
+template void GridBinFaces<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& bin_faces,
+		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
+		int max_faces_per_bin
+);
 
 } // namespace nnrt::rendering::kernel

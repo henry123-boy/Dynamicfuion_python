@@ -138,9 +138,25 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_extract_face_vertices)
 
     nnrt_add_test_data_download_target(
+        test_data_plane_and_cube_rendering
+        URL https://algomorph.com/storage/reco/plane_and_cube_rendering_test_data.7z
+        SHA256 529944b4e5714f4fdfb5dfd3965ac4ff53d3ea306698fdb2083ce4cbf51a76f9
+        DESTINATION mesh_64_bunny_array.7z
+        EXTRACTED_NAMES
+        arrays/cube_0_pixel_barycentric_coordinates.npy
+        arrays/cube_0_pixel_depths.npy
+        arrays/cube_0_pixel_face_distances.npy
+        arrays/cube_0_pixel_face_indices.npy
+        arrays/plane_0_pixel_barycentric_coordinates.npy
+        arrays/plane_0_pixel_depths.npy
+        arrays/plane_0_pixel_face_distances.npy
+        arrays/plane_0_pixel_face_indices.npy
+    )
+
+    nnrt_add_test_data_download_target(
         test_data_mesh_bunny_res4
         URL https://algomorph.com/storage/reco/mesh_bunny_res4.7z
-        SHA256 8d898cadad27cf3dd8b2f1455315012908a82f017aec2dcb8935dbe4c227e151
+        SHA256 8db8ae2812b012271116a64fe873fb0d9073936c1f99c4615693df6fa1b5563e
         DESTINATION mesh_bunny_res4.7z
         EXTRACTED_NAMES
         meshes/mesh_bunny_res4.ply
@@ -179,6 +195,7 @@ if (BUILD_CPP_TESTS)
         images/mesh_64_bunny_array_render_preview.png
     )
 
-    nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
+
+    nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
 endif ()
