@@ -211,6 +211,9 @@ void TestRasterizeMeshNaive(
 		auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
 				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_face_distances.npy").To(device);
 		REQUIRE(pixel_face_indices.AllClose(pixel_face_indices_ground_truth));
+		REQUIRE(pixel_depths_ground_truth.AllClose(pixel_depths_ground_truth));
+		REQUIRE(pixel_barycentric_coordinates.AllClose(pixel_barycentric_coordinates_ground_truth));
+		REQUIRE(pixel_face_distances.AllClose(pixel_face_distances_ground_truth));
 	}
 
 }
