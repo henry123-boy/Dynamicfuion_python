@@ -64,10 +64,13 @@ function(nnrt_add_test_data_download_target)
 
     list(APPEND byproduct_paths ${destination_path})
 
+
+
     add_custom_target(
         ${target_name}
         BYPRODUCTS ${byproduct_paths}
         COMMAND ${CMAKE_COMMAND}
+        -DBYPRODUCTS=${byproduct_paths}
         -DURL=${DOWNLOAD_DATA_URL}
         -DDESTINATION=${destination_path}
         -DSHA256=${DOWNLOAD_DATA_SHA256}
