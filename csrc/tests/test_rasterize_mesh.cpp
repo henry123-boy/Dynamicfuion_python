@@ -148,7 +148,7 @@ TEST_CASE("Test Rasterize Mesh Naive - Plane - Mask Extraction - CPU") {
 	TestRasterizeMeshNaive_Plane_MaskExtraction(device);
 }
 
-TEST_CASE("Test Rasterize Mesh Naive - Plane -Mask Extraction  CUDA") {
+TEST_CASE("Test Rasterize Mesh Naive - Plane - Mask Extraction  CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestRasterizeMeshNaive_Plane_MaskExtraction(device);
 }

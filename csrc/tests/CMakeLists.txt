@@ -55,16 +55,18 @@ function(nnrt_add_test_data_download_target)
 
     cmake_path(SET destination_path ${GENERATED_TEST_DATA_DIRECTORY})
     cmake_path(APPEND destination_path ${DOWNLOAD_DATA_DESTINATION})
+
+
+
     set(byproduct_paths)
-    foreach(filename DOWNLOAD_DATA_EXTRACTED_NAMES)
+    foreach(filename ${DOWNLOAD_DATA_EXTRACTED_NAMES})
         cmake_path(GET destination_path PARENT_PATH extracted_path)
         cmake_path(APPEND extracted_path ${DOWNLOAD_DATA_EXTRACTED_NAMES})
-        list(APPEND byproduct_paths ${extracted_path})
+        list(APPEND byproduct_paths "${extracted_path}")
+        list(LENGTH byproduct_paths byproduct_paths_length)
     endforeach()
 
     list(APPEND byproduct_paths ${destination_path})
-
-
 
     add_custom_target(
         ${target_name}
@@ -143,8 +145,8 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test_data_download_target(
         test_data_plane_and_cube_rendering
         URL https://algomorph.com/storage/reco/plane_and_cube_rendering_test_data.7z
-        SHA256 529944b4e5714f4fdfb5dfd3965ac4ff53d3ea306698fdb2083ce4cbf51a76f9
-        DESTINATION mesh_64_bunny_array.7z
+        SHA256 0c43e50fc52f5c31b5b24aa826891db251ebee328edc55c279a78af3cce343c9
+        DESTINATION plane_and_cube_rendering_test_data.7z
         EXTRACTED_NAMES
         arrays/cube_0_pixel_barycentric_coordinates.npy
         arrays/cube_0_pixel_depths.npy
@@ -197,7 +199,6 @@ if (BUILD_CPP_TESTS)
         arrays/mesh_64_bunny_array_pixel_face_indices.npy
         images/mesh_64_bunny_array_render_preview.png
     )
-
 
     nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
