@@ -13,28 +13,17 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// local
-#include "core/functional/Sorting.h"
 #include "core/functional/kernel/Sorting.h"
+#include "core/DeviceSelection.h"
 
-namespace o3c = open3d::core;
+namespace nnrt::core::functional::kernel {
 
-namespace nnrt::core::functional {
-
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted) {
-	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
-		return unsorted;
-	}
-
-	o3c::Tensor sorted;
-
-	if (unsorted.IsContiguous()) {
-		kernel::SortTensorAlongLastDimension(sorted, unsorted);
-	} else {
-		kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous());
-	}
-
-	return sorted;
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+	ExecuteOnDevice(
+			unsorted.GetDevice(),
+			[&]() { SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(sorted, unsorted); },
+			[&]() { NNRT_IF_CUDA(SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted);); }
+	);
 }
 
-} // nnrt::core::functional
+} // namespace nnrt::core::functional::kernel

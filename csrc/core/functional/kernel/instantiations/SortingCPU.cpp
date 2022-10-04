@@ -13,28 +13,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// local
-#include "core/functional/Sorting.h"
-#include "core/functional/kernel/Sorting.h"
+#include "core/functional/kernel/SortingImpl.h"
 
-namespace o3c = open3d::core;
+namespace nnrt::core::functional::kernel {
 
-namespace nnrt::core::functional {
+template void
+SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted);
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted) {
-	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
-		return unsorted;
-	}
-
-	o3c::Tensor sorted;
-
-	if (unsorted.IsContiguous()) {
-		kernel::SortTensorAlongLastDimension(sorted, unsorted);
-	} else {
-		kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous());
-	}
-
-	return sorted;
-}
-
-} // nnrt::core::functional
+} //  nnrt::core::functional::kernel

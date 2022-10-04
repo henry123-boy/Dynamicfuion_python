@@ -19,6 +19,8 @@
 namespace utility = open3d::utility;
 namespace o3c = open3d::core;
 
+//TODO: move all of these to (separate, where applicable) headers within core/functional
+
 namespace nnrt::core{
 	open3d::core::Tensor CombineAlongAxis0(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2){
 		o3c::AssertTensorDtype(tensor2, tensor1.GetDtype());

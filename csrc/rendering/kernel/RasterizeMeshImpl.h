@@ -418,7 +418,7 @@ void RasterizeMeshNaive(
 					}
 
 #ifdef __CUDACC__
-					BubbleSort(queue, queue_size);
+					core::functional::kernel::BubbleSort(queue, queue_size);
 #else
 					std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
@@ -523,7 +523,7 @@ void RasterizeMeshFine(
 
 				}
 #ifdef __CUDACC__
-				BubbleSort(queue, queue_size);
+				core::functional::kernel::BubbleSort(queue, queue_size);
 #else
 				std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif

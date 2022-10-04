@@ -14,3 +14,13 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
+// 3rd party
+#include <open3d/core/Tensor.h>
+
+namespace nnrt::core::functional {
+
+open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted);
+
+
+} // nnrt::core::functional

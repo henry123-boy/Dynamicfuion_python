@@ -26,6 +26,7 @@
 
 // code being tested
 #include "rendering/RasterizeMesh.h"
+#include "core/functional/Sorting.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -189,7 +190,7 @@ void TestRasterizeMeshNaive(
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 	o3c::SizeVector image_size{480, 640};
 
-	auto [extracted_face_vertices, clipped_face_mask]  =
+	auto [extracted_face_vertices, clipped_face_mask] =
 			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
@@ -219,14 +220,22 @@ void TestRasterizeMeshNaive(
 		auto indices_mismatched = pixel_face_indices.IsClose(pixel_face_indices_ground_truth).LogicalNot();
 		auto mismatched_face_indices_out = pixel_face_indices.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched)).Flatten();
 		auto mismatched_face_indices_gt = pixel_face_indices_ground_truth.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched)).Flatten();
-		auto mismatched_face_triangles_out = mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_out.To(o3c::Int64)));
-		auto mismatched_face_triangles_gt = mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_gt.To(o3c::Int64)));
-		// REQUIRE(mismatched_face_indices_out.Min({1}))
+		auto mismatched_face_triangles_out =
+				nnrt::core::functional::SortTensorAlongLastDimension(
+						mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_out.To(o3c::Int64)))
+				);
+		auto mismatched_face_triangles_gt =
+				nnrt::core::functional::SortTensorAlongLastDimension(
+					mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_gt.To(o3c::Int64)))
+				);
+		auto diff = mismatched_face_triangles_out.IsClose(mismatched_face_triangles_gt).LogicalNot();
+		std::cout << diff.NonZero().GetShape().ToString() << std::endl;
+		std::cout << diff.NonZero().ToString() << std::endl;
+		std::cout << mismatched_face_triangles_out[237].ToString() << std::endl;
+		std::cout << mismatched_face_indices_out[237].ToString() << std::endl;
+		std::cout << mismatched_face_triangles_gt[237].ToString() << std::endl;
+		std::cout << mismatched_face_indices_gt[237].ToString() << std::endl;
 
-		std::cout << mismatched_face_triangles_out.Min({1}).Slice(0, 0, 10).ToString() << std::endl;
-		std::cout << mismatched_face_triangles_gt.Min({1}).Slice(0, 0, 10).ToString() << std::endl;
-		std::cout << mismatched_face_triangles_out.Max({1}).Slice(0, 0, 10).ToString() << std::endl;
-		std::cout << mismatched_face_triangles_gt.Max({1}).Slice(0, 0, 10).ToString() << std::endl;
 
 
 		// auto diff_image = o3tg::Image(diff.To(o3c::UInt8) * 255);
