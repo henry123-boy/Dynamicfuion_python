@@ -17,7 +17,7 @@
 
 #include "core/PlatformIndependence.h"
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::core::functional::kernel {
 
 template<typename TElement>
 NNRT_DEVICE_WHEN_CUDACC
@@ -30,10 +30,10 @@ inline void SwapElements(TElement* array, int index_a, int index_b) {
 template<typename TElement>
 NNRT_DEVICE_WHEN_CUDACC
 inline void BubbleSort(TElement* array, int element_count) {
-	// Bubble sort. We only use it for tiny thread-local arrays (n < 8); in this
-	// regime we care more about warp divergence than computational complexity.
-	for (int i_element = 0; i_element < element_count - 1; ++i_element) {
-		for (int j_element = 0; j_element < element_count - i_element - 1; ++j_element) {
+	// Bubble sort. We only use it for tiny thread-local arrays (n < 8); in this regime we care more about warp divergence than computational
+	// complexity.
+	for (int i_element = 0; i_element < element_count - 1; i_element++) {
+		for (int j_element = 0; j_element < element_count - i_element - 1; j_element++) {
 			if (array[j_element + 1] < array[j_element]) {
 				SwapElements(array, j_element, j_element + 1);
 			}
@@ -41,4 +41,4 @@ inline void BubbleSort(TElement* array, int element_count) {
 	}
 }
 
-} // namespace nnrt::rendering::kernel
+} // namespace nnrt::core::functional::kernel

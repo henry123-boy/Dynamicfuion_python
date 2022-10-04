@@ -23,12 +23,13 @@
 #include <Eigen/Dense>
 
 // local
+#include "core/functional/kernel/BubbleSort.h"
+#include "core/PlatformIndependentAtomics.h"
 #include "rendering/kernel/RasterizeMesh.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/kernel/RayFaceIntersection.h"
-#include "rendering/kernel/BubbleSort.h"
-#include "core/PlatformIndependentAtomics.h"
+
 
 
 namespace o3c = open3d::core;
@@ -362,10 +363,14 @@ void RasterizeMeshNaive(
 					}
 
 #ifdef __CUDACC__
-					BubbleSort(queue, queue_size);
+					core::functional::kernel::BubbleSort(queue, queue_size);
 #else
 					std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
+					//__DEBUG
+					if(u_image == 367 && v_image == 246){
+						printf("debug\n");
+					}
 					int64_t fragment_index = workload_idx * faces_per_pixel;
 					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
 						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;

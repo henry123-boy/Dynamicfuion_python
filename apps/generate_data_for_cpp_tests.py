@@ -249,8 +249,7 @@ def shade_loaded_fragments(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, 
         cv2.waitKey()
         rendered_color_o3d = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_color_uint8))
         o3d.t.io.write_image(
-            f"/home/algomorph/Workbench/NeuralTracking/cmake-build-debug/csrc/tests/"
-            f"test_data/images/{file_prefix}_render_preview.png",
+            f"{GENERATED_TEST_DATA_DIR}/images/{file_prefix}_render_preview.png",
             o3d.t.geometry.Image(rendered_color_o3d)
         )
 
@@ -295,7 +294,7 @@ class Mode(Enum):
 def main():
     device_o3d = o3c.Device("CUDA:0")
 
-    mesh_data_set = MeshDataPreset.CUBE_0
+    mesh_data_set = MeshDataPreset.BUNNY_RES4
     mode = Mode.SHADE_LOADED
 
     get_mesh_by_data_set = {
