@@ -15,13 +15,15 @@
 //  ================================================================
 #pragma once
 
+// 3rd party
+#include <open3d/core/ParallelFor.h>
+#include <open3d/core/CUDAUtils.h>
+#include <open3d/core/Dispatch.h>
+#include <open3d/utility/Logging.h>
+
+// local
 #include "core/functional/kernel/Sorting.h"
 #include "core/functional/kernel/BubbleSort.h"
-#include "open3d/core/ParallelFor.h"
-#include "open3d/core/CUDAUtils.h"
-#include "open3d/core/Dispatch.h"
-#include "open3d/utility/Logging.h"
-
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;

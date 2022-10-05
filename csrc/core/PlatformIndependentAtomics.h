@@ -31,6 +31,31 @@ __device__ __forceinline__ float atomicMax (float * addr, float value) {
     return old;
 }
 
+__device__ __forceinline__ char atomicCAS(char* address, char expected, char desired) {
+	size_t long_address_modulo = (size_t) address & 3;
+	auto* base_address = (unsigned int*) ((char*) address - long_address_modulo);
+	unsigned int selectors[] = {0x3214, 0x3240, 0x3410, 0x4210};
+
+	unsigned int sel = selectors[long_address_modulo];
+	unsigned int long_old, long_assumed, long_val, replacement;
+	char old;
+
+	long_val = (unsigned int) desired;
+	long_old = *base_address;
+	do {
+		long_assumed = long_old;
+		replacement = __byte_perm(long_old, long_val, sel);
+		long_old = atomicCAS(base_address, long_assumed, replacement);
+		old = (char) ((long_old >> (long_address_modulo * 8)) & 0x000000ff);
+	} while (expected == old && long_assumed != long_old);
+
+	return old;
+}
+
+__device__ __forceinline__ bool atomicCAS(bool* address, bool expected, bool desired) {
+	return (bool)atomicCAS(reinterpret_cast<char*>(address), static_cast<char>(expected),  static_cast<char>(desired));
+}
+
 #else
 #include <atomic>
 

@@ -27,6 +27,7 @@
 // code being tested
 #include "rendering/RasterizeMesh.h"
 #include "core/functional/Sorting.h"
+#include "core/functional/Comparisons.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -159,7 +160,7 @@ TEST_CASE("Test Rasterize Mesh Naive - Plane - Mask Extraction  CUDA") {
 void TestRasterizeMeshNaive(
 		const o3c::Device& device, const std::string& mesh_name,
 		const std::tuple<float, float, float>& offset = std::make_tuple(0.f, 0.f, 1.f),
-		float color_value = 1.0f, bool mesh_is_generated = true, bool save_output_to_disk = false
+		float color_value = 1.0f, bool mesh_is_generated = true, int maximum_close_face_mismatches = 20, bool save_output_to_disk = false
 ) {
 	o3tg::TriangleMesh mesh;
 
@@ -217,24 +218,52 @@ void TestRasterizeMeshNaive(
 				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_face_distances.npy").To(device);
 
 
-		auto indices_mismatched = pixel_face_indices.IsClose(pixel_face_indices_ground_truth).LogicalNot();
-		auto mismatched_face_indices_out = pixel_face_indices.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched)).Flatten();
-		auto mismatched_face_indices_gt = pixel_face_indices_ground_truth.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched)).Flatten();
-		auto mismatched_face_triangles_out =
+		auto indices_mismatched_with_face_duplicates = pixel_face_indices.IsClose(pixel_face_indices_ground_truth).LogicalNot();
+		// filter out duplicate faces, i.e. faces with exactly the mesh vertices (but, possibly, reordered) repeated in mesh
+		auto mismatched_face_indices_with_face_duplicates_out =
+				pixel_face_indices.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched_with_face_duplicates)).Flatten();
+		auto mismatched_face_indices_with_face_duplicates_gt =
+				pixel_face_indices_ground_truth.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched_with_face_duplicates)).Flatten();
+		auto mismatched_face_triangles_with_face_duplicates_out =
 				nnrt::core::functional::SortTensorAlongLastDimension(
-						mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_out.To(o3c::Int64)))
+						mesh.GetTriangleIndices().GetItem(
+								o3c::TensorKey::IndexTensor(mismatched_face_indices_with_face_duplicates_out.To(o3c::Int64)))
 				);
-		auto mismatched_face_triangles_gt =
+		auto mismatched_face_triangles_with_face_duplicates_gt =
 				nnrt::core::functional::SortTensorAlongLastDimension(
-					mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_gt.To(o3c::Int64)))
+						mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_with_face_duplicates_gt.To(o3c::Int64)))
 				);
-		auto diff = mismatched_face_triangles_out.IsClose(mismatched_face_triangles_gt).LogicalNot();
-		std::cout << diff.NonZero().GetShape().ToString() << std::endl;
-		std::cout << diff.NonZero().ToString() << std::endl;
-		std::cout << mismatched_face_triangles_out[237].ToString() << std::endl;
-		std::cout << mismatched_face_indices_out[237].ToString() << std::endl;
-		std::cout << mismatched_face_triangles_gt[237].ToString() << std::endl;
-		std::cout << mismatched_face_indices_gt[237].ToString() << std::endl;
+		auto indices_mismatched_without_face_duplicates =
+				mismatched_face_triangles_with_face_duplicates_out.IsClose(
+						mismatched_face_triangles_with_face_duplicates_gt).LogicalNot().NonZero()[0];
+
+		// check that number of mismatches is within reason and that they only differ by at most one vertex
+		REQUIRE(indices_mismatched_without_face_duplicates.GetShape(0) < maximum_close_face_mismatches);
+		auto mismatched_face_indices_without_face_duplicates_out =
+				mismatched_face_indices_with_face_duplicates_out.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched_without_face_duplicates));
+		auto mismatched_face_indices_without_face_duplicates_gt =
+				mismatched_face_indices_with_face_duplicates_gt.GetItem(o3c::TensorKey::IndexTensor(indices_mismatched_without_face_duplicates));
+		auto mismatched_face_triangles_without_face_duplicates_out =
+				mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_without_face_duplicates_out.To(o3c::Int64)));
+		auto mismatched_face_triangles_without_face_duplicates_gt =
+				mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(mismatched_face_indices_without_face_duplicates_gt.To(o3c::Int64)));
+		std::cout << mismatched_face_triangles_without_face_duplicates_out.Flatten().ToString() << std::endl;
+
+
+		bool all_share_two_vertices =
+				nnrt::core::functional::LastDimensionSeriesMatchUpToNElements(
+						mismatched_face_triangles_without_face_duplicates_out, mismatched_face_triangles_without_face_duplicates_gt, 1
+				).All();
+
+		std::cout << "all_share_two_vertices: " << (all_share_two_vertices ? "true" : "false") << std::endl;
+
+		// std::cout << indices_mismatched_without_face_duplicates.NonZero().GetShape().ToString() << std::endl;
+		// std::cout << indices_mismatched_without_face_duplicates.NonZero().ToString() << std::endl;
+		// int inspected_mismatch_index = 292;
+		// std::cout << mismatched_face_triangles_with_face_duplicates_out[inspected_mismatch_index].ToString() << std::endl;
+		// std::cout << mismatched_face_indices_with_face_duplicates_out[inspected_mismatch_index].ToString() << std::endl;
+		// std::cout << mismatched_face_triangles_with_face_duplicates_gt[inspected_mismatch_index].ToString() << std::endl;
+		// std::cout << mismatched_face_indices_with_face_duplicates_gt[inspected_mismatch_index].ToString() << std::endl;
 
 
 
@@ -277,25 +306,25 @@ void TestRasterizeMeshNaive(
 
 TEST_CASE("Test Rasterize Mesh Naive - Cube 0 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, false);
+	TestRasterizeMeshNaive(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, false);
+	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, false);
+	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 2 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, false);
+	TestRasterizeMeshNaive(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, false);
+	TestRasterizeMeshNaive(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 20, false);
 }

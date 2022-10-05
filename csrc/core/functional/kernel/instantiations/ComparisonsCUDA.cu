@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/4/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/5/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,21 +13,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// local
-#include "core/functional/Sorting.h"
-#include "core/functional/kernel/Sorting.h"
+#include "core/functional/kernel/ComparisonsImpl.h"
 
-namespace o3c = open3d::core;
+namespace nnrt::core::functional::kernel {
 
-namespace nnrt::core::functional {
+template void
+LastDimensionSeriesMatchUpToNElements<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& matches, const open3d::core::Tensor& tensor_a, const open3d::core::Tensor& tensor_b,
+		int32_t max_mismatches_per_series, double rtol, double atol
+);
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted) {
-	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
-		return unsorted;
-	}
-	o3c::Tensor sorted;
-	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous());
-	return sorted;
-}
-
-} // nnrt::core::functional
+} //  nnrt::core::functional::kernel

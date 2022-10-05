@@ -337,7 +337,10 @@ void RasterizeMeshNaive(
 					int queue_size = 0;
 					float queue_max_depth = -1000.f;
 					int queue_max_depth_at = -1;
-
+//__DEBUG
+					if(u_image == 367 && v_image == 246){
+						printf("debug\n");
+					}
 					// Loop through mesh faces.
 					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
 						if (!clipped_faces[i_face]) {
@@ -367,10 +370,7 @@ void RasterizeMeshNaive(
 #else
 					std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
-					//__DEBUG
-					if(u_image == 367 && v_image == 246){
-						printf("debug\n");
-					}
+
 					int64_t fragment_index = workload_idx * faces_per_pixel;
 					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
 						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
