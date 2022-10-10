@@ -47,7 +47,7 @@ void LastDimensionSeriesMatchUpToNElements_Dispatched(
 	int64_t series_count = tensor_a.NumElements() / series_length;
 	const TElement* data_a = tensor_a.template GetDataPtr<TElement>();
 	const TElement* data_b = tensor_b.template GetDataPtr<TElement>();
-	o3c::Tensor series_match_counts({series_count}, o3c::Int32, device);
+	o3c::Tensor series_match_counts = o3c::Tensor::Zeros({series_count}, o3c::Int32, device);
 	int32_t* series_match_counts_data = series_match_counts.GetDataPtr<int32_t>();
 
 #ifdef __CUDACC__
@@ -73,18 +73,22 @@ void LastDimensionSeriesMatchUpToNElements_Dispatched(
 				int64_t i_element_a_within_series = workload_idx % series_length;
 				const TElement& element_a = data_a[workload_idx];
 				for (int i_element_b_within_series = 0; i_element_b_within_series < series_length; i_element_b_within_series++) {
+
 					int64_t i_element_b = workload_idx - i_element_a_within_series + i_element_b_within_series;
 					const TElement& element_b = data_b[i_element_b];
 					auto actual_error = static_cast<TElement>(abs(static_cast<double>(element_a - element_b)));
 					TElement max_error = atol + rtol * static_cast<TElement>(abs(static_cast<double>(element_b)));
 					bool matches = actual_error <= max_error;
+
 					if (matches) {
 #ifdef __CUDACC__
 						bool* match_atomic = tensor_b_matched_mask_data + i_element_b;
 #else
 						std::atomic<bool>& match_atomic = tensor_b_matched_mask[i_element_b];
+
+
 #endif
-						if (!NNRT_ATOMIC_CE(match_atomic, false, true)) {
+						if (NNRT_ATOMIC_CE(match_atomic, false, true)) {
 #ifdef __CUDACC__
 							int* count_atomic = series_match_counts_data + i_series;
 #else
