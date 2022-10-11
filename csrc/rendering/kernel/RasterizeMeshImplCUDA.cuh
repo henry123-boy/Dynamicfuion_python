@@ -31,32 +31,36 @@ template<unsigned int TChunkSize>
 __global__
 void GridBin2dBoundingBoxes_Kernel(
 		int* bins,
-		int* bin_item_counts,
+		int* bin_face_counts,
 		const float* bounding_boxes,
 		const bool* boxes_to_skip_mask,
 		const int bounding_box_count,
 		const int bounding_box_count_per_batch,
+
 		const int batch_count_per_thread,
 
 		const int image_height,
 		const int image_width,
-		const int grid_height_bins,
-		const int grid_width_bins,
+		const int bin_count_y,
+		const int bin_count_x,
 		const int bin_side_length,
 		const int bin_capacity,
 		const float half_pixel_x,
 		const float half_pixel_y
 ) {
 	extern __shared__ char shared_memory_buffer[];
-	GridBitMask block_overlap_registry((unsigned int*) shared_memory_buffer, grid_height_bins, grid_width_bins, static_cast<int>(blockDim.x));
-	const int bin_count = grid_height_bins * grid_width_bins;
+	const int block_size = static_cast<int>(blockDim.x);
+	const int block_index = static_cast<int>(blockIdx.x);
+	const int thread_index = static_cast<int>(threadIdx.x);
+	GridBitMask block_overlap_registry((unsigned int*) shared_memory_buffer, bin_count_y, bin_count_x, block_size);
+	const int bin_count = bin_count_y * bin_count_x;
 
 	for (int i_batch = 0; i_batch < batch_count_per_thread; i_batch++) {
 		block_overlap_registry.block_clear();
 
 		const int first_batch_box_index = i_batch * bounding_box_count_per_batch;
-		const int first_block_box_index = first_batch_box_index + static_cast<int>(blockDim.x * blockIdx.x);
-		const int i_box_in_block = static_cast<int>(threadIdx.x);
+		const int first_block_box_index = first_batch_box_index + block_size * block_index;
+		const int i_box_in_block = thread_index;
 		const int i_box = first_block_box_index + i_box_in_block;
 
 		if (i_box >= bounding_box_count || boxes_to_skip_mask[i_box]) {
@@ -69,19 +73,19 @@ void GridBin2dBoundingBoxes_Kernel(
 		const float y_max = bounding_boxes[3 * bounding_box_count + i_box];
 
 		// Brute-force search all bins for overlaps with bounding boxes
-		for (int bin_y = 0; bin_y < grid_height_bins; bin_y++) {
+		for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
 			const float bin_y_min = ImageSpaceToNormalizedCameraSpace(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
 			const float bin_y_max = ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
 			const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
 
 			if (y_overlap) {
-				for (int bin_x = 0; bin_x < grid_width_bins; bin_x++) {
-					const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_height, image_width) - half_pixel_x;
+				for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
+					const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
 					const float bin_x_max =
-							ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_x;
+							ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
 					const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
 					if (x_overlap) {
-						int32_t bin_index = bin_y * grid_height_bins + bin_x;
+						// int32_t bin_index = bin_y * grid_height_bins + bin_x;
 						// mark corresponding bit as "1" for overlap between grid & cell in the current block's registry.
 						block_overlap_registry.set(bin_y, bin_x, i_box_in_block);
 					}
@@ -89,17 +93,16 @@ void GridBin2dBoundingBoxes_Kernel(
 			}
 		}
 		__syncthreads();
-
 		// loop over bins and count up the total faces that overlap each
-		for (int bin_index = static_cast<int>(threadIdx.x); bin_index < bin_count; bin_index += static_cast<int>(blockDim.x)) {
-			const int bin_y = bin_index / grid_width_bins;
-			const int bin_x = bin_index % grid_width_bins;
+		for (int bin_index = static_cast<int>(threadIdx.x); bin_index < bin_count; bin_index += block_size) {
+			const int bin_y = bin_index / bin_count_x;
+			const int bin_x = bin_index % bin_count_x;
 			const int overlap_count = block_overlap_registry.count(bin_y, bin_x);
 			/*
 			 * This atomically increments the (global) number of elems found in the current bin, and gets the previous value of the counter;
 			 * this effectively allocates space in the bin_faces array for the elems in the current chunk that fall into this bin.
 			 */
-			const int start = atomicAdd(bin_item_counts + bin_index, overlap_count);
+			const int start = atomicAdd(bin_face_counts + bin_index, overlap_count);
 			if (start + overlap_count > bin_capacity) {
 				/*
 				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
@@ -111,7 +114,7 @@ void GridBin2dBoundingBoxes_Kernel(
 			}
 			int bin_box_index = bin_index * bin_capacity;
 			// Loop over bitmask and write active bits for this bin
-			for(int i_box_in_block2 = 0; i_box_in_block2 < static_cast<int>(blockDim.x); i_box_in_block2++){
+			for(int i_box_in_block2 = 0; i_box_in_block2 < block_size; i_box_in_block2++){
 				if(block_overlap_registry.get(bin_y, bin_x, i_box_in_block2)){
 					bins[bin_box_index] = first_block_box_index + i_box_in_block2;
 					bin_box_index++;
@@ -120,6 +123,9 @@ void GridBin2dBoundingBoxes_Kernel(
 		}
 		__syncthreads();
 	} // end batch loop
+
+
+
 }
 
 template<>
@@ -129,31 +135,31 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& boxes_to_skip_mask,
 		const int image_height,
 		const int image_width,
-		const int grid_height_in_bins,
-		const int grid_width_in_bins,
+		const int bin_count_y,
+		const int bin_count_x,
 		const int bin_side_length,
 		const int bin_capacity,
 		const float half_pixel_x,
 		const float half_pixel_y
 ) {
 
-// #define USE_BLOCK_BIT_MASK
+#define USE_BLOCK_BIT_MASK
 #ifdef USE_BLOCK_BIT_MASK
 	auto device = bounding_boxes.GetDevice();
 	o3c::CUDAScopedDevice scoped_device(device);
 
-	auto bounding_box_count = static_cast<const unsigned int>(bounding_boxes.GetShape(1));
+	const auto bounding_box_count = static_cast<int>(bounding_boxes.GetShape(1));
 
 	// we will always work on a single bit mask per CUDA block, since "shared memory" is only shared by threads within any given CUDA block.
 	const int bits_per_byte = 8;
-	const size_t shared_memory_per_block = grid_height_in_bins * grid_width_in_bins * NNRT_BITMASK_BLOCK_SIZE / bits_per_byte;
-	// block count will dictate how many "chunks" we can do in a single batch
+	const size_t shared_memory_per_block = bin_count_y * bin_count_x * NNRT_BITMASK_BLOCK_SIZE / bits_per_byte;
+	// block count will dictate how many blocks (and, therefore, bitmasks) we can process in a single batch
 	const size_t block_count = 64;
 	const int batch_count_per_thread = static_cast<int>((bounding_box_count - 1) / (block_count * NNRT_BITMASK_BLOCK_SIZE) + 1);
 	// corresponds to thread count in the whole CUDA grid
 	const int bounding_box_count_per_block_batch = NNRT_BITMASK_BLOCK_SIZE * block_count;
 
-	o3c::Tensor bin_face_counts = o3c::Tensor::Zeros({grid_height_in_bins, grid_width_in_bins}, o3c::UInt32);
+	o3c::Tensor bin_face_counts = o3c::Tensor::Zeros({bin_count_y, bin_count_x}, o3c::Int32, device);
 
 	GridBin2dBoundingBoxes_Kernel<NNRT_BITMASK_BLOCK_SIZE><<<block_count, NNRT_BITMASK_BLOCK_SIZE, shared_memory_per_block, o3c::cuda::GetStream()>>>(
 			bins.GetDataPtr<int32_t>(),
@@ -165,12 +171,13 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 			batch_count_per_thread,
 			image_height,
 			image_width,
-			grid_height_in_bins,
-			grid_width_in_bins,
+			bin_count_y,
+			bin_count_x,
 			bin_side_length,
 			bin_capacity,
 			half_pixel_x,
 			half_pixel_y);
+
 	o3c::OPEN3D_GET_LAST_CUDA_ERROR("GridBin2dBoundingBoxes_Device failed.");
 #else
 	auto bounding_box_count = bounding_boxes.GetShape(1);

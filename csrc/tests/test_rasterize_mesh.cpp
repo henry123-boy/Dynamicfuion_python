@@ -179,7 +179,7 @@ TEST_CASE("Test Rasterize Plane Coarse-to-Fine - Mask Extraction - CPU") {
 
 TEST_CASE("Test Rasterize Plane Coarse-to-Fine - Mask Extraction  CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizePlane_MaskExtraction(device, false, false);
+	TestRasterizePlane_MaskExtraction(device, false, true);
 }
 
 void TestRasterizeMesh(

@@ -40,7 +40,7 @@ public:
 	}
 
 	__device__ int get_word_index(int y, int x, int item_index) {
-		return y * grid_width_in_cells * word_count + x * word_count + item_index / word_bit_count;
+		return (y * grid_width_in_cells + x) * word_count + item_index / word_bit_count;
 	}
 
 	__device__ int get_bit_within_word_index(int item_index) {
