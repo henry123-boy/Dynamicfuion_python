@@ -35,7 +35,7 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CPU>(
 		const float half_pixel_x,
 		const float half_pixel_y
 ) {
-	auto bounding_box_count = bounding_boxes.GetLength();
+	auto bounding_box_count = bounding_boxes.GetShape(1);
 	auto bin_data = bins.GetDataPtr<int32_t>();
 	auto device = bounding_boxes.GetDevice();
 	auto boxes_mask_data = boxes_to_skip_mask.GetDataPtr<bool>();
@@ -71,9 +71,9 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CPU>(
 					if (y_overlap) {
 						for (int bin_x = 0; bin_x < grid_width_in_bins; bin_x++) {
 							const float bin_x_min =
-									ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_height, image_width) - half_pixel_x;
+									ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
 							const float bin_x_max =
-									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_x;
+									ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
 							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
 
 							if (x_overlap) {

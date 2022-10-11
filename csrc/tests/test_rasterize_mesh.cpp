@@ -50,7 +50,7 @@ bool AllMismatchesCloseToSegment(const Eigen::Vector2f& segment_start, const Eig
 	return distances.AllClose(o3c::Tensor::Zeros(distances.GetShape(), o3c::Float32, distances.GetDevice()), 0.f, max_distance);
 }
 
-void TestRasterizeMeshNaive_Plane_NoMaskExtraction(const o3c::Device& device) {
+void TestRasterizePlaneNaive_NoMaskExtraction(const o3c::Device& device) {
 	auto plane = test::GenerateXyPlane(1.0, std::make_tuple(0.f, 0.f, 2.f), 0, device);
 	o3c::Tensor intrinsics(std::vector<double>{
 			580., 0., 320.,
@@ -93,17 +93,17 @@ void TestRasterizeMeshNaive_Plane_NoMaskExtraction(const o3c::Device& device) {
 	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), pixel_face_distance_mismatch_locations));
 }
 
-TEST_CASE("Test Rasterize Mesh Naive - Plane - No-Mask Extraction - CPU") {
+TEST_CASE("Test Rasterize Plane Naive - No-Mask Extraction - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive_Plane_NoMaskExtraction(device);
+	TestRasterizePlaneNaive_NoMaskExtraction(device);
 }
 
-TEST_CASE("Test Rasterize Mesh Naive - Plane - No-Mask Extraction  CUDA") {
+TEST_CASE("Test Rasterize Plane Naive - No-Mask Extraction  CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive_Plane_NoMaskExtraction(device);
+	TestRasterizePlaneNaive_NoMaskExtraction(device);
 }
 
-void TestRasterizeMeshNaive_Plane_MaskExtraction(const o3c::Device& device) {
+void TestRasterizePlane_MaskExtraction(const o3c::Device& device, bool naive = true, bool save_output_to_disk = false) {
 	auto plane = test::GenerateXyPlane(1.0, std::make_tuple(0.f, 0.f, 2.f), 0, device);
 	o3c::Tensor intrinsics(std::vector<double>{
 			580., 0., 320.,
@@ -115,53 +115,79 @@ void TestRasterizeMeshNaive_Plane_MaskExtraction(const o3c::Device& device) {
 	auto [extracted_face_vertices, clipped_face_mask] =
 			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
+	int bin_size = -1;
+	int max_faces_per_bin = 4;
+	if (naive) {
+		bin_size = max_faces_per_bin = 0;
+	}
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1, 0, 0, false, false, true);
+			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+			                               bin_size, max_faces_per_bin, false, false, true);
 
-	auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
-			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_indices.npy").To(device);
+	std::string mesh_name = "plane_0";
+	if (save_output_to_disk) {
+		pixel_face_indices.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_indices.npy");
+		pixel_depths.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_depths.npy");
+		pixel_barycentric_coordinates.Save(
+				test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_barycentric_coordinates.npy");
+		pixel_face_distances.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_distances.npy");
+	} else {
+		auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_indices.npy").To(device);
 
-	auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
-			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_depths.npy").To(device);
+		auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_depths.npy").To(device);
 
-	auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
-			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_barycentric_coordinates.npy").To(device);
+		auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_barycentric_coordinates.npy").To(device);
 
-	auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
-			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_distances.npy").To(device);
+		auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
+				test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_distances.npy").To(device);
 
-	auto mismatches_face_indices = (pixel_face_indices.IsClose(pixel_face_indices_ground_truth)).LogicalNot();
+		auto mismatches_face_indices = (pixel_face_indices.IsClose(pixel_face_indices_ground_truth)).LogicalNot();
 
-	auto face_index_mismatch_locations = mismatches_face_indices.NonZero();
+		auto face_index_mismatch_locations = mismatches_face_indices.NonZero();
 
-	// allow discrepancies only around diagonal
-	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), face_index_mismatch_locations));
-	auto pixel_depth_mismatch_locations = pixel_depths.IsClose(pixel_depths_ground_truth).LogicalNot().NonZero();
-	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), pixel_depth_mismatch_locations));
-	auto pixel_barycentric_coordinate_mismatch_locations =
-			pixel_barycentric_coordinates.IsClose(pixel_barycentric_coordinates_ground_truth, 1e-5, 1e-6).LogicalNot().NonZero();
-	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f),
-	                                    pixel_barycentric_coordinate_mismatch_locations));
+		// allow discrepancies only around diagonal
+		REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), face_index_mismatch_locations));
+		auto pixel_depth_mismatch_locations = pixel_depths.IsClose(pixel_depths_ground_truth).LogicalNot().NonZero();
+		REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), pixel_depth_mismatch_locations));
+		auto pixel_barycentric_coordinate_mismatch_locations =
+				pixel_barycentric_coordinates.IsClose(pixel_barycentric_coordinates_ground_truth, 1e-5, 1e-6).LogicalNot().NonZero();
+		REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f),
+		                                    pixel_barycentric_coordinate_mismatch_locations));
 
-	auto pixel_face_distance_mismatch_locations = pixel_face_distances.IsClose(pixel_face_distances_ground_truth).LogicalNot().NonZero();
-	REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), pixel_face_distance_mismatch_locations));
+		auto pixel_face_distance_mismatch_locations = pixel_face_distances.IsClose(pixel_face_distances_ground_truth).LogicalNot().NonZero();
+		REQUIRE(AllMismatchesCloseToSegment(Eigen::Vector2f(95.f, 175.f), Eigen::Vector2f(340.f, 420.f), pixel_face_distance_mismatch_locations));
+	}
 }
 
-TEST_CASE("Test Rasterize Mesh Naive - Plane - Mask Extraction - CPU") {
+TEST_CASE("Test Rasterize Plane Naive - Mask Extraction - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive_Plane_MaskExtraction(device);
+	TestRasterizePlane_MaskExtraction(device, true);
 }
 
-TEST_CASE("Test Rasterize Mesh Naive - Plane - Mask Extraction  CUDA") {
+TEST_CASE("Test Rasterize Plane Naive - Mask Extraction  CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive_Plane_MaskExtraction(device);
+	TestRasterizePlane_MaskExtraction(device, true);
 }
 
-void TestRasterizeMeshNaive(
+TEST_CASE("Test Rasterize Plane Coarse-to-Fine - Mask Extraction - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestRasterizePlane_MaskExtraction(device, false, false);
+}
+
+TEST_CASE("Test Rasterize Plane Coarse-to-Fine - Mask Extraction  CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestRasterizePlane_MaskExtraction(device, false, false);
+}
+
+void TestRasterizeMesh(
 		const o3c::Device& device, const std::string& mesh_name,
 		const std::tuple<float, float, float>& offset = std::make_tuple(0.f, 0.f, 1.f),
 		float color_value = 1.0f, bool mesh_is_generated = true, int maximum_close_face_mismatches = 20,
-		int maximum_close_face_mismatches_not_sharing_2_vertices = 0, bool save_output_to_disk = false
+		int maximum_close_face_mismatches_not_sharing_2_vertices = 0, bool naive = true,
+		bool save_output_to_disk = false
 ) {
 	o3tg::TriangleMesh mesh;
 
@@ -195,8 +221,14 @@ void TestRasterizeMeshNaive(
 	auto [extracted_face_vertices, clipped_face_mask] =
 			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
 
+	int bin_size = -1;
+	int max_faces_per_bin = -1;
+	if (naive) {
+		bin_size = max_faces_per_bin = 0;
+	}
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1, 0, 0, false, false, true);
+			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+			                               bin_size, max_faces_per_bin, false, false, true);
 
 	if (save_output_to_disk) {
 		pixel_face_indices.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_indices.npy");
@@ -265,25 +297,25 @@ void TestRasterizeMeshNaive(
 
 TEST_CASE("Test Rasterize Mesh Naive - Cube 0 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false);
+	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, true, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 2 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, false);
+	TestRasterizeMesh(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, true, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMeshNaive(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, false);
+	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, true, false);
 }

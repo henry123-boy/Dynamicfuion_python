@@ -337,10 +337,7 @@ void RasterizeMeshNaive(
 					int queue_size = 0;
 					float queue_max_depth = -1000.f;
 					int queue_max_depth_at = -1;
-//__DEBUG
-					if(u_image == 367 && v_image == 246){
-						printf("debug\n");
-					}
+
 					// Loop through mesh faces.
 					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
 						if (!clipped_faces[i_face]) {
@@ -452,8 +449,8 @@ void RasterizeMeshFine(
 
 	o3c::Device device = bin_faces.GetDevice();
 
-	const int64_t image_width = image_size[0];
-	const int64_t image_height = image_size[1];
+	const int64_t image_height = image_size[0];
+	const int64_t image_width = image_size[1];
 	const auto image_height_int = static_cast<t_image_index>(image_height);
 	const auto image_width_int = static_cast<t_image_index>(image_width);
 	const int64_t pixel_count = image_height * image_width;
@@ -483,6 +480,7 @@ void RasterizeMeshFine(
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
 				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
+
 				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
 				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
 
@@ -496,12 +494,18 @@ void RasterizeMeshFine(
 				float queue_max_depth = -1000.f;
 				int queue_max_depth_at = -1;
 
+				const t_face_index* current_bin_data = bin_data + (v_bin * bin_count_x + u_bin) * bin_capacity;
+
 				// Loop through face indices in the pixel's bin.
 				for (int i_bin_face_index = 0; i_bin_face_index < bin_capacity; i_bin_face_index++) {
-					t_face_index face_index = bin_data[v_bin * bin_count_x + u_bin + i_bin_face_index];
+					t_face_index face_index = current_bin_data[i_bin_face_index];
 					if (face_index == -1) {
-						// -1 is the sentinel value: no more faces overlap this bin
+						// -1 is the sentinel value
+#ifdef __CUDACC__
 						continue;
+#else
+						break;
+#endif
 					}
 
 					// Check if the point_screen ray goes through the face bounding box.
@@ -611,7 +615,8 @@ void GridBinFaces(
 	const int bin_count_y = 1 + (image_height - 1) / bin_size;
 	const int bin_count_x = 1 + (image_width - 1) / bin_size;
 
-	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32);
+	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32, device);
+
 
 	const float half_normalized_camera_range_y = GetNormalizedCameraSpaceRange(image_width, image_height) / 2.f;
 	const float half_normalized_camera_range_x = GetNormalizedCameraSpaceRange(image_height, image_width) / 2.f;

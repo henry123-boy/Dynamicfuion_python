@@ -125,18 +125,25 @@ def rotate_mesh(mesh: o3d.t.geometry.TriangleMesh, rotation: o3c.Tensor) -> o3d.
     return rotated_mesh
 
 
-def build_rasterizer_and_shader(image_size: Tuple[int, int], device: torch.device, no_shading: bool,
-                                shade_flat: bool,
-                                light_position: Union[Tuple[float, float, float], None]) -> \
+def build_rasterizer_and_shader(image_size: Tuple[int, int], device: torch.device, no_shading: bool, shade_flat: bool,
+                                light_position: Union[Tuple[float, float, float], None], naive: bool = True) -> \
         Tuple[p3dr.MeshRasterizer, p3dr_shader.ShaderBase]:
-    rasterization_settings = p3dr.RasterizationSettings(image_size=image_size,
-                                                        perspective_correct=False,
-                                                        cull_backfaces=False,
-                                                        cull_to_frustum=True,
-                                                        z_clip_value=0.1,
-                                                        faces_per_pixel=1,
-                                                        bin_size=0,
-                                                        max_faces_per_bin=0)
+    if naive:
+        rasterization_settings = p3dr.RasterizationSettings(image_size=image_size,
+                                                            perspective_correct=False,
+                                                            cull_backfaces=False,
+                                                            cull_to_frustum=True,
+                                                            z_clip_value=0.1,
+                                                            faces_per_pixel=1,
+                                                            bin_size=0,
+                                                            max_faces_per_bin=0)
+    else:
+        rasterization_settings = p3dr.RasterizationSettings(image_size=image_size,
+                                                            perspective_correct=False,
+                                                            cull_backfaces=False,
+                                                            cull_to_frustum=True,
+                                                            z_clip_value=0.1,
+                                                            faces_per_pixel=1)
 
     intrinsic_matrix_o3d = o3c.Tensor([[580., 0., 320.],
                                        [0., 580., 240.],
@@ -178,16 +185,16 @@ def build_rasterizer_and_shader(image_size: Tuple[int, int], device: torch.devic
     return rasterizer, shader
 
 
-def make_test_data_rasterize_mesh_naive(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str,
-                                        display_rendered: bool = False,
-                                        no_shading: bool = True,
-                                        shade_flat: bool = False,
-                                        light_position: Union[Tuple[float, float, float], None] = None) -> None:
+def make_test_data_rasterize_mesh(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, display_rendered: bool = False,
+                                  no_shading: bool = True, shade_flat: bool = False,
+                                  light_position: Union[Tuple[float, float, float], None] = None,
+                                  naive: bool = True) -> None:
     image_size = (480, 640)
     device_o3d = mesh.vertex["positions"].device
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
     mesh_torch = rendering.converters.open3d_mesh_to_pytorch3d(mesh)
-    rasterizer, shader = build_rasterizer_and_shader(image_size, device_torch, no_shading, shade_flat, light_position)
+    rasterizer, shader = \
+        build_rasterizer_and_shader(image_size, device_torch, no_shading, shade_flat, light_position, naive)
     fragments = rasterizer(mesh_torch)
     rendered_color = shader(fragments, mesh_torch)
     rendered_color_uint8 = (rendered_color[0, ..., :3] * 255).to(torch.uint8)
@@ -233,7 +240,8 @@ def load_fragments(device_torch: torch.device, file_prefix: str) -> Fragments:
 
 
 def shade_loaded_fragments(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, display_rendered: bool = False,
-                           no_shading=True, shade_flat=False, light_position: Union[Tuple[float, float, float], None] = None):
+                           no_shading=True, shade_flat=False,
+                           light_position: Union[Tuple[float, float, float], None] = None):
     image_size = (480, 640)
     device_o3d = mesh.vertex["positions"].device
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
@@ -294,8 +302,9 @@ class Mode(Enum):
 def main():
     device_o3d = o3c.Device("CUDA:0")
 
-    mesh_data_set = MeshDataPreset.BUNNY_RES4
+    mesh_data_set = MeshDataPreset.PLANE_0
     mode = Mode.SHADE_LOADED
+    naive_rasterization = False
 
     get_mesh_by_data_set = {
         MeshDataPreset.PLANE_0: lambda: generate_test_xy_plane(1.0, (0.0, 0.0, 2.0), subdivision_count=0,
@@ -325,10 +334,11 @@ def main():
 
     mesh = get_mesh_by_data_set[mesh_data_set]()
     if mode == Mode.GENERATE:
-        make_test_data_rasterize_mesh_naive(mesh, mesh_data_set.value.prefix, display_rendered=True,
-                                            no_shading=mesh_data_set.value.no_shading,
-                                            shade_flat=mesh_data_set.value.shade_flat,
-                                            light_position=mesh_data_set.value.light_position)
+        make_test_data_rasterize_mesh(mesh, mesh_data_set.value.prefix, display_rendered=True,
+                                      no_shading=mesh_data_set.value.no_shading,
+                                      shade_flat=mesh_data_set.value.shade_flat,
+                                      light_position=mesh_data_set.value.light_position,
+                                      naive=naive_rasterization)
     elif mode == Mode.SHADE_LOADED:
         shade_loaded_fragments(mesh, mesh_data_set.value.prefix + "_out", True,
                                no_shading=mesh_data_set.value.no_shading,

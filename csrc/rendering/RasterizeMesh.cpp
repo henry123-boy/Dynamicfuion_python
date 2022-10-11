@@ -174,6 +174,7 @@ RasterizeMesh(
 		                     blur_radius,
 		                     bin_size,
 		                     max_faces_per_bin);
+
 		kernel::RasterizeMeshFine(fragments,
 		                          normalized_camera_space_face_vertices,
 		                          bin_faces,
