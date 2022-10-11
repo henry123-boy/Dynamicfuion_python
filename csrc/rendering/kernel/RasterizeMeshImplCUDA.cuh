@@ -41,8 +41,10 @@ void GridBin2dBoundingBoxes_Kernel(
 
 		const int image_height,
 		const int image_width,
+
 		const int bin_count_y,
 		const int bin_count_x,
+
 		const int bin_side_length,
 		const int bin_capacity,
 		const float half_pixel_x,
@@ -52,10 +54,12 @@ void GridBin2dBoundingBoxes_Kernel(
 	const int block_size = static_cast<int>(blockDim.x);
 	const int block_index = static_cast<int>(blockIdx.x);
 	const int thread_index = static_cast<int>(threadIdx.x);
+
 	GridBitMask block_overlap_registry((unsigned int*) shared_memory_buffer, bin_count_y, bin_count_x, block_size);
 	const int bin_count = bin_count_y * bin_count_x;
 
 	for (int i_batch = 0; i_batch < batch_count_per_thread; i_batch++) {
+
 		block_overlap_registry.block_clear();
 
 		const int first_batch_box_index = i_batch * bounding_box_count_per_batch;
@@ -63,59 +67,62 @@ void GridBin2dBoundingBoxes_Kernel(
 		const int i_box_in_block = thread_index;
 		const int i_box = first_block_box_index + i_box_in_block;
 
-		if (i_box >= bounding_box_count || boxes_to_skip_mask[i_box]) {
-			return;
-		}
+		if (i_box < bounding_box_count && !boxes_to_skip_mask[i_box]) {
+			const float x_min = bounding_boxes[0 * bounding_box_count + i_box];
+			const float x_max = bounding_boxes[1 * bounding_box_count + i_box];
+			const float y_min = bounding_boxes[2 * bounding_box_count + i_box];
+			const float y_max = bounding_boxes[3 * bounding_box_count + i_box];
 
-		const float x_min = bounding_boxes[0 * bounding_box_count + i_box];
-		const float x_max = bounding_boxes[1 * bounding_box_count + i_box];
-		const float y_min = bounding_boxes[2 * bounding_box_count + i_box];
-		const float y_max = bounding_boxes[3 * bounding_box_count + i_box];
+			// Brute-force search all bins for overlaps with bounding boxes
+			for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
+				const float bin_y_min = ImageSpaceToNormalizedCameraSpace(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
+				const float bin_y_max =
+						ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
+				const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
 
-		// Brute-force search all bins for overlaps with bounding boxes
-		for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
-			const float bin_y_min = ImageSpaceToNormalizedCameraSpace(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
-			const float bin_y_max = ImageSpaceToNormalizedCameraSpace((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
-			const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
-
-			if (y_overlap) {
-				for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
-					const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
-					const float bin_x_max =
-							ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
-					const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
-					if (x_overlap) {
-						// int32_t bin_index = bin_y * grid_height_bins + bin_x;
-						// mark corresponding bit as "1" for overlap between grid & cell in the current block's registry.
-						block_overlap_registry.set(bin_y, bin_x, i_box_in_block);
+				if (y_overlap) {
+					for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
+						const float bin_x_min = ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
+						const float bin_x_max =
+								ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
+						const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
+						if (x_overlap) {
+							// int32_t bin_index = bin_y * grid_height_bins + bin_x;
+							// mark corresponding bit as "1" for overlap between grid & cell in the current block's registry.
+							block_overlap_registry.set(bin_y, bin_x, i_box_in_block);
+						}
 					}
 				}
 			}
 		}
 		__syncthreads();
+
 		// loop over bins and count up the total faces that overlap each
-		for (int bin_index = static_cast<int>(threadIdx.x); bin_index < bin_count; bin_index += block_size) {
+		for (int bin_index = thread_index; bin_index < bin_count; bin_index += block_size) {
 			const int bin_y = bin_index / bin_count_x;
 			const int bin_x = bin_index % bin_count_x;
+
 			const int overlap_count = block_overlap_registry.count(bin_y, bin_x);
+
 			/*
-			 * This atomically increments the (global) number of elems found in the current bin, and gets the previous value of the counter;
+			 * Atomically increment the (global) number of boxes found in the current bin and gets the previous value of the counter;
 			 * this effectively allocates space in the bin_faces array for the elems in the current chunk that fall into this bin.
 			 */
 			const int start = atomicAdd(bin_face_counts + bin_index, overlap_count);
+			//__DEBUG
+			// printf("bin_index: %d, by: %d, bx: %d, overlap_count: %d, start: %d, bin_count: %d\n", bin_index, bin_y, bin_x, overlap_count, start, bin_count);
 			if (start + overlap_count > bin_capacity) {
 				/*
 				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
 				*/
-				printf("Bin size was too small in the coarse rasterization phase. This caused an overflow, meaning output may be incomplete. "
-				       "To correct this, try increasing max_faces_per_bin / max_points_per_bin, decreasing bin_size, or setting bin_size to 0 to use "
-				       "the naive rasterization.");
+				printf("Bin size was too small in the grid binning phase. This caused an overflow, meaning output may be incomplete. "
+				       "To correct this, try increasing max_faces_per_bin, decreasing bin_size, or setting bin_size to 0 to use naive rasterization.\n");
 				continue;
 			}
 			int bin_box_index = bin_index * bin_capacity;
 			// Loop over bitmask and write active bits for this bin
-			for(int i_box_in_block2 = 0; i_box_in_block2 < block_size; i_box_in_block2++){
-				if(block_overlap_registry.get(bin_y, bin_x, i_box_in_block2)){
+			for (int i_box_in_block2 = 0; i_box_in_block2 < block_size; i_box_in_block2++) {
+				if (block_overlap_registry.get(bin_y, bin_x, i_box_in_block2)) {
 					bins[bin_box_index] = first_block_box_index + i_box_in_block2;
 					bin_box_index++;
 				}
@@ -168,11 +175,15 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 			boxes_to_skip_mask.GetDataPtr<bool>(),
 			bounding_box_count,
 			bounding_box_count_per_block_batch,
+
 			batch_count_per_thread,
+
 			image_height,
 			image_width,
+
 			bin_count_y,
 			bin_count_x,
+
 			bin_side_length,
 			bin_capacity,
 			half_pixel_x,
