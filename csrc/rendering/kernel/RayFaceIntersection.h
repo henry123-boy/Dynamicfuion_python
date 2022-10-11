@@ -30,7 +30,7 @@ using t_face_index = int32_t;
 
 struct RayFaceIntersection {
 	float depth; // depth of the pixel ray intersection (in normalized camera coordinates)
-	int64_t face_index;
+	t_face_index face_index;
 	// signed distance of pixel ray to face in XY plane (in normalized camera coordinates), i.e. distance to the nearest triangle edge
 	// negative for "inside triangle", positive for "outside triangle"
 	float distance;

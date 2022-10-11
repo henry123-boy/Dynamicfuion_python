@@ -109,8 +109,7 @@ void GridBin2dBoundingBoxes_Kernel(
 			 * this effectively allocates space in the bin_faces array for the elems in the current chunk that fall into this bin.
 			 */
 			const int start = atomicAdd(bin_face_counts + bin_index, overlap_count);
-			//__DEBUG
-			// printf("bin_index: %d, by: %d, bx: %d, overlap_count: %d, start: %d, bin_count: %d\n", bin_index, bin_y, bin_x, overlap_count, start, bin_count);
+
 			if (start + overlap_count > bin_capacity) {
 				/*
 				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
@@ -197,7 +196,7 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 	auto boxes_mask_data = boxes_to_skip_mask.GetDataPtr<bool>();
 	auto bounding_box_data = bounding_boxes.GetDataPtr<float>();
 
-	o3c::Tensor bin_face_count_tensor = o3c::Tensor::Zeros({grid_width_in_bins,grid_height_in_bins}, o3c::Int32, device);
+	o3c::Tensor bin_face_count_tensor = o3c::Tensor::Zeros({bin_count_x,bin_count_y}, o3c::Int32, device);
 	int* bin_face_counts = bin_face_count_tensor.GetDataPtr<int32_t>();
 	o3c::ParallelFor(
 			device, bounding_box_count,
@@ -211,7 +210,7 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 				float y_max = bounding_box_data[3 * bounding_box_count + workload_idx];
 
 
-				for (int bin_y = 0; bin_y < grid_height_in_bins; bin_y++) {
+				for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
 					const float bin_y_min =
 							ImageSpaceToNormalizedCameraSpace(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
 					const float bin_y_max =
@@ -219,7 +218,7 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 					const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
 
 					if (y_overlap) {
-						for (int bin_x = 0; bin_x < grid_width_in_bins; bin_x++) {
+						for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
 
 							const float bin_x_min =
 									ImageSpaceToNormalizedCameraSpace(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
@@ -228,7 +227,7 @@ void GridBin2dBoundingBoxes_Device<open3d::core::Device::DeviceType::CUDA>(
 							const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
 
 							if (x_overlap) {
-								int32_t bin_index = bin_y * grid_width_in_bins + bin_x;
+								int32_t bin_index = bin_y * bin_count_x + bin_x;
 								int32_t insertion_position = atomicAdd(bin_face_counts + bin_index, 1);
 
 								// store active face index into the bin if they overlap spatially

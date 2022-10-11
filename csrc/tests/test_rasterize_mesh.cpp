@@ -300,9 +300,19 @@ TEST_CASE("Test Rasterize Mesh Naive - Cube 0 - CPU") {
 	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, true, false);
 }
 
+TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Cube 0 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false, false);
+}
+
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
 	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false);
+}
+
+TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Bunny Res 4 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CUDA") {
