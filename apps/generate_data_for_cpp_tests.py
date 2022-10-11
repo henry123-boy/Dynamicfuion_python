@@ -302,7 +302,7 @@ class Mode(Enum):
 def main():
     device_o3d = o3c.Device("CUDA:0")
 
-    mesh_data_set = MeshDataPreset.BUNNY_RES4
+    mesh_data_set = MeshDataPreset.M64_BUNNY_ARRAY
     mode = Mode.SHADE_LOADED
     naive_rasterization = False
 
