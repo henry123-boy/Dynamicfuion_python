@@ -419,6 +419,7 @@ void RasterizeMeshNaive(
 					std::sort(std::begin(queue), std::begin(queue) + queue_size);
 #endif
 
+
 					int64_t fragment_index = workload_idx * faces_per_pixel;
 					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
 						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
@@ -496,14 +497,10 @@ void RasterizeMeshFine(
 
 				const t_face_index* current_bin_data = bin_data + (v_bin * bin_count_x + u_bin) * bin_capacity;
 
-				//__DEBUG
-				if(u_image == 224 && v_image == 225){
-					printf("debug\n");
-				}
-
 				// Loop through face indices in the pixel's bin.
 				for (int i_bin_face_index = 0; i_bin_face_index < bin_capacity; i_bin_face_index++) {
 					t_face_index face_index = current_bin_data[i_bin_face_index];
+
 					if (face_index == -1) {
 						// -1 is the sentinel value
 #ifdef __CUDACC__

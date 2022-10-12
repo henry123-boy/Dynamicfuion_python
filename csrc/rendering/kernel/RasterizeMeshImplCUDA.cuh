@@ -86,6 +86,7 @@ void GridBin2dBoundingBoxes_Kernel(
 						const float bin_x_max =
 								ImageSpaceToNormalizedCameraSpace((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
 						const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
+
 						if (x_overlap) {
 							// int32_t bin_index = bin_y * grid_height_bins + bin_x;
 							// mark corresponding bit as "1" for overlap between grid & cell in the current block's registry.
@@ -108,9 +109,9 @@ void GridBin2dBoundingBoxes_Kernel(
 			 * Atomically increment the (global) number of boxes found in the current bin and gets the previous value of the counter;
 			 * this effectively allocates space in the bin_faces array for the elems in the current chunk that fall into this bin.
 			 */
-			const int start = atomicAdd(bin_face_counts + bin_index, overlap_count);
+			const int current_bin_box_count = atomicAdd(bin_face_counts + bin_index, overlap_count);
 
-			if (start + overlap_count > bin_capacity) {
+			if (current_bin_box_count + overlap_count > bin_capacity) {
 				/*
 				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
 				*/
@@ -118,7 +119,7 @@ void GridBin2dBoundingBoxes_Kernel(
 				       "To correct this, try increasing max_faces_per_bin, decreasing bin_size, or setting bin_size to 0 to use naive rasterization.\n");
 				continue;
 			}
-			int bin_box_index = bin_index * bin_capacity;
+			int bin_box_index = bin_index * bin_capacity + current_bin_box_count;
 			// Loop over bitmask and write active bits for this bin
 			for (int i_box_in_block2 = 0; i_box_in_block2 < block_size; i_box_in_block2++) {
 				if (block_overlap_registry.get(bin_y, bin_x, i_box_in_block2)) {
