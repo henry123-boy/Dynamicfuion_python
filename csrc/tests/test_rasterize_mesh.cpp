@@ -347,5 +347,5 @@ TEST_CASE("Test Rasterize Mesh Naive - 64 Bunnies - CUDA") {
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, false, true);
+	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, false, false);
 }

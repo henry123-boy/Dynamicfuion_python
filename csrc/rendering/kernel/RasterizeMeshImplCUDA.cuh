@@ -113,10 +113,11 @@ void GridBin2dBoundingBoxes_Kernel(
 
 			if (current_bin_box_count + overlap_count > bin_capacity) {
 				/*
-				* The number of elems in this bin is so big that they won't fit. Print a warning using CUDA's printf.
+				* The number of boxes in this bin is so big that they won't fit. Print a warning using CUDA's printf.
 				*/
-				printf("Bin size was too small in the grid binning phase. This caused an overflow, meaning output may be incomplete. "
-				       "To correct this, try increasing max_faces_per_bin, decreasing bin_size, or setting bin_size to 0 to use naive rasterization.\n");
+				printf("Bin capacity (%d) was too small during grid binning. This caused an overflow (%d + %d), meaning output may be incomplete. "
+				       "To correct this, try increasing max_faces_per_bin, decreasing bin_size, or setting bin_size to 0 to use naive rasterization."
+					   "\n", bin_capacity, current_bin_box_count, overlap_count);
 				continue;
 			}
 			int bin_box_index = bin_index * bin_capacity + current_bin_box_count;

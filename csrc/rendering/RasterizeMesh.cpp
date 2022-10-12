@@ -153,7 +153,7 @@ RasterizeMesh(
 
 	if (max_faces_per_bin == -1) {
 		if (clipped_faces_mask.has_value()) {
-			int32_t unclipped_face_count = clipped_faces_mask.value().get().To(o3c::Int32).Sum({}).ToFlatVector<int32_t>()[0];
+			int32_t unclipped_face_count = static_cast<int32_t>(clipped_faces_mask.value().get().NonZero().GetShape(1));
 			max_faces_per_bin = std::max(10000, unclipped_face_count / 5);
 		} else {
 			max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
