@@ -503,11 +503,12 @@ void RasterizeMeshFine(
 
 					if (face_index == -1) {
 						// -1 is the sentinel value
-#ifdef __CUDACC__
-						continue;
-#else
 						break;
-#endif
+// #ifdef __CUDACC__
+// 						continue;
+// #else
+// 						break;
+// #endif
 					}
 
 					// Check if the point_screen ray goes through the face bounding box.

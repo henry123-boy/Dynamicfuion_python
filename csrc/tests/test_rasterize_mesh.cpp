@@ -23,6 +23,8 @@
 #include <open3d/geometry/TriangleMesh.h>
 #include <open3d/t/io/TriangleMeshIO.h>
 #include <open3d/t/io/ImageIO.h>
+#include <chrono>
+#include <iomanip>
 
 // code being tested
 #include "rendering/RasterizeMesh.h"
@@ -187,7 +189,7 @@ void TestRasterizeMesh(
 		const std::tuple<float, float, float>& offset = std::make_tuple(0.f, 0.f, 1.f),
 		float color_value = 1.0f, bool mesh_is_generated = true, int maximum_close_face_mismatches = 20,
 		int maximum_close_face_mismatches_not_sharing_2_vertices = 0, bool naive = true,
-		bool save_output_to_disk = false
+		bool save_output_to_disk = false, bool print_benchmark = true
 ) {
 	o3tg::TriangleMesh mesh;
 
@@ -218,17 +220,41 @@ void TestRasterizeMesh(
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 	o3c::SizeVector image_size{480, 640};
 
-	auto [extracted_face_vertices, clipped_face_mask] =
-			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
+	int run_count = 1;
+	if (print_benchmark) {
+		run_count = 10;
+	}
+
+	auto start = std::chrono::high_resolution_clock::now();
+	o3c::Tensor extracted_face_vertices, clipped_face_mask;
+	for (int i_run = 0; i_run < run_count; i_run++){
+		auto [extracted_face_vertices_local, clipped_face_mask_local] =
+				nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
+		extracted_face_vertices = extracted_face_vertices_local;
+		clipped_face_mask = clipped_face_mask_local;
+	}
+	auto end = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+	if (print_benchmark) {
+		std::cout << "Average runtime of face vertex extraction & clip mask generation: " << std::setprecision(4) << (elapsed.count() * 1e-9)/run_count
+		          << " seconds" << std::endl;
+	}
+
 
 	int bin_size = -1;
 	int max_faces_per_bin = -1;
 	if (naive) {
 		bin_size = max_faces_per_bin = 0;
 	}
+	start = std::chrono::high_resolution_clock::now();
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
 			                               bin_size, max_faces_per_bin, false, false, true);
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+	if (print_benchmark) {
+		std::cout << "Average runtime of mesh rasterization: " << std::setprecision(4) << elapsed.count() * 1e-9 << " seconds" << std::endl;
+	}
 
 	if (save_output_to_disk) {
 		pixel_face_indices.Save(test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_out_pixel_face_indices.npy");
@@ -297,55 +323,55 @@ void TestRasterizeMesh(
 
 TEST_CASE("Test Rasterize Mesh Naive - Cube 0 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, true, false);
+	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, true, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Cube 0 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false, false);
+	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Cube 0 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false, false);
+	TestRasterizeMesh(device, "cube_0", std::make_tuple(0.f, 0.0f, 2.0f), 1.0, false, 20, 0, false, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 4 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, true, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Bunny Res 4 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false, false);
+	TestRasterizeMesh(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 20, 8, false, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - Bunny Res 2 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, true, false);
+	TestRasterizeMesh(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, true, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - Bunny Res 2 - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, false, false);
+	TestRasterizeMesh(device, "mesh_bunny_res2", std::make_tuple(0.f, -0.1f, 0.3f), 1.0, true, 100, 70, false, false, false);
 }
 
 TEST_CASE("Test Rasterize Mesh Naive - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, true, false);
+	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, true, false, true);
 }
 
 TEST_CASE("Test Rasterize Mesh Coarse-to-Fine - 64 Bunnies - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, false, false);
+	TestRasterizeMesh(device, "mesh_64_bunny_array", std::make_tuple(0.f, 0.0f, 1.0f), 1.0, true, 25000, 1200, false, false, true);
 }

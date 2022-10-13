@@ -1454,11 +1454,9 @@ void compute_pixel_anchors_shortest_path(const py::array_t<float>& point_image, 
 	const int image_height = static_cast<int>(point_image.shape(0));
 	const int image_width = static_cast<int>(point_image.shape(1));
 	const ssize_t image_pixel_count = point_image.shape(0) * point_image.shape(1);
-	const int node_count = static_cast<int>(nodes.shape(0));
-
 
 	assert(edges.shape(1) == GRAPH_K);
-	assert(edges.shape(0) == node_count);
+	assert(edges.shape(0) == static_cast<int>(nodes.shape(0)));
 	assert(point_image.shape(2) == 3);
 	assert(nodes.shape(1) == 3);
 
