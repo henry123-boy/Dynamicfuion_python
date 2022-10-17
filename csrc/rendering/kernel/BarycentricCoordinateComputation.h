@@ -27,17 +27,18 @@ enum FrontFaceVertexOrder {
 };
 
 /**
- * Determine whether the given point is on the right side of a 2D line segment given by end points vertex0 and vertex1.
- * Returns signed area of the parallelogram given by the vectors:
- * [point - vertex0] and [vertex0 - vertex1] (clockwise front face vertex order case)
- * [point - vertex0] and [vertex1 - vertex0] (counter-clockwise front face vertex order case)
+ * Returns signed area of the parallelogram given by two vectors (i.e. their exterior product, or wedge):
+ * [point - vertex0] and [vertex0 - vertex1] (in the clockwise front face vertex order case)
+ * [point - vertex0] and [vertex1 - vertex0] (in the counter-clockwise front face vertex order case)
+ * Sign of the output also determines whether the normal of the triangle (defined by point and vertices) points toward (+) or away (-)
+ * from the camera.
  */
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline float ComputeSignedParallelogramArea(
-		const TPoint& point,
-		const TVertex& vertex0,
-		const TVertex& vertex1
+		const TPoint& point, // can be a point of ray intersection or simply another face vertex
+		const TVertex& vertex0, // face vertex
+		const TVertex& vertex1 // face vertex
 ) {
 	if (TVertexOrder == ClockWise) {
 		return (point.x() - vertex0.x()) * (vertex0.y() - vertex1.y()) - (point.y() - vertex0.y()) * (vertex0.x() - vertex1.x());
@@ -48,17 +49,32 @@ inline float ComputeSignedParallelogramArea(
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
+inline void ComputePartialDerivativesOfSignedParallelogramArea(
+		const TPoint& point, // can be a point of ray intersection or simply another face vertex
+		const TVertex& vertex0, // face vertex
+		const TVertex& vertex1 // face vertex
+){
+	const Eigen::Vector2f dArea_dPoint(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
+	const Eigen::Vector2f dArea_dVertex0(point.y() - vertex1.y(), vertex1.x - point.x);
+	const Eigen::Vector2f dArea_dVertex1(vertex0.y() - point.y(), point.x - vertex0.x);
+
+}
+
+
+
+template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
+NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f ComputeBarycentricCoordinates(
 		const TPoint& point,
 		const TVertex& vertex0,
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	const float area = ComputeSignedParallelogramArea<TVertex, TVertex, ClockWise>(vertex2, vertex0, vertex1) + K_EPSILON;
+	const float face_parallelogram_area = ComputeSignedParallelogramArea<TVertex, TVertex, ClockWise>(vertex2, vertex0, vertex1) + K_EPSILON;
 	return {
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex1, vertex2) / area,
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex2, vertex0) / area,
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / area
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex1, vertex2) / face_parallelogram_area,
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex2, vertex0) / face_parallelogram_area,
+			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / face_parallelogram_area
 	};
 }
 

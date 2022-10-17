@@ -628,8 +628,11 @@ void GridBinFaces(
 	const float half_pixel_y = half_normalized_camera_range_y / static_cast<float>(image_height);
 	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
 
-	GridBin2dBoundingBoxes_Device<TDeviceType>(bin_faces, face_bounding_boxes, face_skip_mask, image_height, image_width, bin_count_y, bin_count_x,
+	GridBin2dBoundingBoxes_Device<TDeviceType>(bin_faces, face_bounding_boxes, face_skip_mask,
+											   image_height, image_width, bin_count_y, bin_count_x,
 	                                           bin_size, max_faces_per_bin, half_pixel_x, half_pixel_y);
+
+
 
 
 }
