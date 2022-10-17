@@ -202,7 +202,7 @@ set(NNRT_SOURCE_FILES
 
     rendering/RasterizeMesh.h
     rendering/RasterizeMesh.cpp
-    rendering/kernel/BarycentricCoordinateComputation.h
+    rendering/kernel/BarycentricCoordinates.h
     rendering/kernel/RasterizeMesh.cpp
     rendering/kernel/RasterizeMesh.h
     rendering/kernel/RasterizeMeshImpl.h
@@ -224,7 +224,7 @@ set(NNRT_SOURCE_FILES
     core/functional/kernel/SortingImpl.h
     core/functional/kernel/instantiations/SortingCPU.cpp
     core/functional/kernel/instantiations/SortingCUDA.cu
-    core/functional/Comparisons.cpp core/functional/Comparisons.h core/functional/kernel/Comparisons.cpp core/functional/kernel/Comparisons.h core/functional/kernel/ComparisonsImpl.h core/functional/kernel/instantiations/ComparisonsCPU.cpp core/functional/kernel/instantiations/ComparisonsCUDA.cu)
+    core/functional/Comparisons.cpp core/functional/Comparisons.h core/functional/kernel/Comparisons.cpp core/functional/kernel/Comparisons.h core/functional/kernel/ComparisonsImpl.h core/functional/kernel/instantiations/ComparisonsCPU.cpp core/functional/kernel/instantiations/ComparisonsCUDA.cu core/PlatformIndependentTuple.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

@@ -17,6 +17,7 @@
 
 #include <Eigen/Dense>
 #include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentTuple.h"
 #include "RasterizationConstants.h"
 
 
@@ -49,17 +50,16 @@ inline float ComputeSignedParallelogramArea(
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
-inline void ComputePartialDerivativesOfSignedParallelogramArea(
+inline nnrt_tuple <Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> ComputePartialDerivativesOfSignedParallelogramArea(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
-){
+) {
 	const Eigen::Vector2f dArea_dPoint(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
 	const Eigen::Vector2f dArea_dVertex0(point.y() - vertex1.y(), vertex1.x - point.x);
 	const Eigen::Vector2f dArea_dVertex1(vertex0.y() - point.y(), point.x - vertex0.x);
-
+	return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
 }
-
 
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
@@ -77,6 +77,8 @@ inline Eigen::Vector3f ComputeBarycentricCoordinates(
 			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / face_parallelogram_area
 	};
 }
+
+
 
 NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f PerspectiveCorrectBarycentricCoordinates(

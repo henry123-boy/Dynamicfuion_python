@@ -21,7 +21,7 @@
 
 // local
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "rendering/kernel/BarycentricCoordinateComputation.h"
+#include "rendering/kernel/BarycentricCoordinates.h"
 
 
 namespace o3tgk = open3d::t::geometry::kernel;
