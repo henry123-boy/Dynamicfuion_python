@@ -18,26 +18,6 @@
 
 namespace nnrt::rendering::kernel {
 
-template void ExtractClippedFaceVerticesInNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
-		float far_clipping_distance
-);
-
-template void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& vertex_positions_normalized_camera,
-		open3d::core::Tensor& clipped_face_mask,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_intrinsic_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
-);
-
 template void RasterizeMeshNaive<open3d::core::Device::DeviceType::CUDA>(
 		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,

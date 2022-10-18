@@ -39,8 +39,9 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> ExtractFaceVerticesAndCli
 );
 
 
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> RasterizeMesh(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>>
+RasterizeMesh(
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
 		const open3d::core::SizeVector& image_size,

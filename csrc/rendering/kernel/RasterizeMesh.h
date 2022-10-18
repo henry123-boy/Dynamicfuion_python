@@ -22,59 +22,18 @@
 
 namespace nnrt::rendering::kernel {
 
+typedef open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> TensorOptionalWrapper;
+
 struct Fragments {
 	open3d::core::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
+	TensorOptionalWrapper pixel_interpolated_normals;
 
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> ToTuple() {
-		return std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, TensorOptionalWrapper> ToTuple() {
+		return std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances, pixel_interpolated_normals);
 	}
 };
 
 using t_image_index = int32_t;
-
-void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
-		open3d::core::Tensor& vertex_positions_normalized_camera,
-		open3d::core::Tensor& clipped_face_mask,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_intrinsic_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
-);
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
-		open3d::core::Tensor& vertex_positions_normalized_camera,
-		open3d::core::Tensor& clipped_face_mask,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_intrinsic_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
-);
-
-void ExtractClippedFaceVerticesInNormalizedCameraSpace(
-		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
-);
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void ExtractClippedFaceVerticesInNormalizedCameraSpace(
-		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
-);
 
 void RasterizeMeshNaive(
 		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,

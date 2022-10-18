@@ -22,6 +22,7 @@
 #include "rendering/kernel/RasterizeMesh.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
+#include "rendering/kernel/ExtractClippedFaceVertices.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -105,7 +106,8 @@ ExtractFaceVerticesAndClipMaskInNormalizedCameraSpace(
 	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>>
 RasterizeMesh(
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
