@@ -26,7 +26,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(
 		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_intrinsic_matrix,
+		const open3d::core::Tensor& normalized_camera_space_matrix,
 		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
 		float near_clipping_distance,
 		float far_clipping_distance
@@ -35,7 +35,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(
 			vertex_positions_camera.GetDevice(),
 			[&] {
 				ExtractClippedFaceVerticesInNormalizedCameraSpace<o3c::Device::DeviceType::CPU>(
-						vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices, normalized_intrinsic_matrix,
+						vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices, normalized_camera_space_matrix,
 						normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 				);
 			},
@@ -43,7 +43,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(
 				NNRT_IF_CUDA(
 						ExtractClippedFaceVerticesInNormalizedCameraSpace<o3c::Device::DeviceType::CUDA>(
 								vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices,
-								normalized_intrinsic_matrix, normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
+								normalized_camera_space_matrix, normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 						);
 				);
 			}
@@ -56,7 +56,7 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 		open3d::core::Tensor& clipped_face_mask,
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_intrinsic_matrix,
+		const open3d::core::Tensor& normalized_camera_space_matrix,
 		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
 		float near_clipping_distance, float far_clipping_distance
 ) {
@@ -65,7 +65,7 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 			[&] {
 				ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace<o3c::Device::DeviceType::CPU>(
 						vertex_positions_normalized_camera, clipped_face_mask, vertex_positions_camera, triangle_vertex_indices,
-						normalized_intrinsic_matrix,
+						normalized_camera_space_matrix,
 						normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 				);
 			},
@@ -73,7 +73,7 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 				NNRT_IF_CUDA(
 						ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace<o3c::Device::DeviceType::CUDA>(
 								vertex_positions_normalized_camera, clipped_face_mask, vertex_positions_camera, triangle_vertex_indices,
-								normalized_intrinsic_matrix, normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
+								normalized_camera_space_matrix, normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 						);
 				);
 			}

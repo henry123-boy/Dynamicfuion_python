@@ -18,6 +18,7 @@
 #if defined(BUILD_CUDA_MODULE) && defined(__CUDACC__)
 # define NNRT_DEVICE_WHEN_CUDACC __device__
 # define NNRT_HOST_DEVICE_WHEN_CUDACC __host__ __device__
+# define NNRT_HOST_WHEN_CUDACC __host__
 # define NNRT_LAMBDA_CAPTURE_CLAUSE [=]
 
 // math functions
@@ -27,6 +28,7 @@
 #define FloatSquareRoot sqrtf
 #else
 # define NNRT_DEVICE_WHEN_CUDACC
+# define NNRT_HOST_WHEN_CUDACC
 # define NNRT_HOST_DEVICE_WHEN_CUDACC
 # define NNRT_LAMBDA_CAPTURE_CLAUSE [&]
 
