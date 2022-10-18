@@ -152,7 +152,7 @@ class PureTorchRenderBasedOptimizer:
 
         faces = warped_meshes.faces_packed()  # (F, 3)
         vertex_normals = warped_meshes.verts_normals_packed()  # (V, 3)
-        face_normals = vertex_normals[faces]
+        face_normals = vertex_normals[faces]  # (F, 3, 3)
 
         rendered_normals = \
             interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)[0, :, :, 0].reshape(
