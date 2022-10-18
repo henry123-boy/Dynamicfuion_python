@@ -179,7 +179,7 @@ inline void UpdateQueueIfPixelInsideFace(
 
 	// face_area is computed using the CW convention for front-facing triangles (not the default CCW convention as in OpenGL).
 	const float face_area =
-			ComputeSignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+			SignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
 					face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 			);
 	const bool is_back_face = face_area < 0.f;

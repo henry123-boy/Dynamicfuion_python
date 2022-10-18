@@ -81,7 +81,7 @@ open3d::core::Tensor ExtractClippedFaceVerticesInNormalizedCameraSpace(
 
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(
+ExtractFaceVerticesAndClipMaskInNormalizedCameraSpace(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size, /* {height, width} */

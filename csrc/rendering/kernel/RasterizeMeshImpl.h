@@ -31,7 +31,6 @@
 #include "rendering/kernel/RayFaceIntersection.h"
 
 
-
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
 namespace o3tgk = open3d::t::geometry::kernel;
@@ -39,7 +38,7 @@ namespace o3tgk = open3d::t::geometry::kernel;
 
 namespace nnrt::rendering::kernel {
 
-//TODO: test whether serial version is slower
+
 #define NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -75,11 +74,10 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 				Eigen::Map<Eigen::Vector3f> face_vertex1(vertex_position_indexer.GetDataPtr<float>(face_vertex_indices(1)));
 				Eigen::Map<Eigen::Vector3f> face_vertex2(vertex_position_indexer.GetDataPtr<float>(face_vertex_indices(2)));
 
-#ifdef NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
+
 				Eigen::Map<Eigen::Vector3f> face_vertices[] = {face_vertex0, face_vertex1, face_vertex2};
-#endif
+
 				// clip if all vertices are too near or too far
-#ifdef NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
 				bool have_vertex_within_clipping_range = false;
 				for (auto& face_vertex: face_vertices) {
 					have_vertex_within_clipping_range |= face_vertex.z() >= near_clipping_distance;
@@ -88,18 +86,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 				if (!have_vertex_within_clipping_range) {
 					return;
 				}
-#else
-				if ((face_vertex0.z() > far_clipping_distance &&
-					 face_vertex1.z() > far_clipping_distance &&
-					 face_vertex2.z() > far_clipping_distance) ||
-					(face_vertex0.z() < near_clipping_distance &&
-					 face_vertex1.z() < near_clipping_distance &&
-					 face_vertex2.z() < near_clipping_distance)) {
-					return;
-				}
-#endif
 
-#ifdef NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
 				Eigen::Vector2f normalized_face_vertices_xy[3];
 				bool has_inliner_vertex = false;
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
@@ -110,29 +97,11 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 				if (!has_inliner_vertex) {
 					return;
 				}
-#else
-				Eigen::Vector2f normalized_face_vertex_xy0, normalized_face_vertex_xy1, normalized_face_vertex_xy2;
 
-				perspective_transform.Project(face_vertex0.x(), face_vertex0.y(), face_vertex0.z(),
-											  &normalized_face_vertex_xy0.x(), &normalized_face_vertex_xy0.y());
-				perspective_transform.Project(face_vertex1.x(), face_vertex1.y(), face_vertex1.z(),
-											  &normalized_face_vertex_xy1.x(), &normalized_face_vertex_xy1.y());
-				perspective_transform.Project(face_vertex2.x(), face_vertex2.y(), face_vertex2.z(),
-											  &normalized_face_vertex_xy2.x(), &normalized_face_vertex_xy2.y());
-
-				if (!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy0) &&
-					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy1) &&
-					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy2)) {
-					// face is outside of the view frustum's top/bottom/left/right boundaries
-					return;
-				}
-
-#endif
 				auto output_face_index = static_cast<int64_t>(NNRT_ATOMIC_ADD(unclipped_face_count, 1));
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertex0(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index));
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertex1(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index) + 3);
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertex2(normalized_face_vertex_indexer.GetDataPtr<float>(output_face_index) + 6);
-#ifdef NNRT_USE_SERIAL_TRIANGLE_VERTEX_HANDLING
 				Eigen::Map<Eigen::Vector3f> normalized_face_vertices[] = {normalized_face_vertex0, normalized_face_vertex1, normalized_face_vertex2};
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
 					normalized_face_vertices[i_vertex].x() = normalized_face_vertices_xy[i_vertex].x();
@@ -140,17 +109,6 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace(open3d::core::Tensor& ver
 					normalized_face_vertices[i_vertex].y() = normalized_face_vertices_xy[i_vertex].y();
 					normalized_face_vertices[i_vertex].z() = face_vertices[i_vertex].z();
 				}
-#else
-				normalized_face_vertex0.x() = normalized_face_vertex_xy0.x();
-				normalized_face_vertex0.y() = normalized_face_vertex_xy0.y();
-				normalized_face_vertex0.z() = face_vertex0.z();
-				normalized_face_vertex1.x() = normalized_face_vertex_xy1.x();
-				normalized_face_vertex1.y() = normalized_face_vertex_xy1.y();
-				normalized_face_vertex1.z() = face_vertex1.z();
-				normalized_face_vertex2.x() = normalized_face_vertex_xy2.x();
-				normalized_face_vertex2.y() = normalized_face_vertex_xy2.y();
-				normalized_face_vertex2.z() = face_vertex2.z();
-#endif
 			}
 	);
 
@@ -218,6 +176,7 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 					(face_vertex0.z() < near_clipping_distance &&
 					 face_vertex1.z() < near_clipping_distance &&
 					 face_vertex2.z() < near_clipping_distance)) {
+					clipped_face_mask_ptr[workload_idx] = false;
 					return;
 				}
 #endif
@@ -248,6 +207,7 @@ void ExtractFaceVerticesAndClippingMaskInNormalizedCameraSpace(
 					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy1) &&
 					!normalized_camera_space_xy_range.Contains(normalized_face_vertex_xy2)) {
 					// face is outside of the view frustum's top/bottom/left/right boundaries
+					clipped_face_mask_ptr[workload_idx] = false;
 					return;
 				}
 
@@ -290,15 +250,13 @@ inline void InitializeFragments(Fragments& fragments, const o3c::Device& device,
 	fragments.pixel_face_distances = o3c::Tensor::Full({image_height, image_width, faces_per_pixel}, -1, o3c::Float32, device);
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshNaive(
-		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
-		const open3d::core::SizeVector& image_size,
-		float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
-		bool cull_back_faces
-) {
-
+template<open3d::core::Device::DeviceType TDeviceType, typename TFaceValidCheck>
+void RasterizeMeshNaive_Generic(Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+                                open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+                                const open3d::core::SizeVector& image_size,
+                                float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
+                                bool clip_barycentric_coordinates,
+                                bool cull_back_faces, TFaceValidCheck&& face_valid_check) {
 	o3c::Device device = normalized_camera_space_face_vertices.GetDevice();
 
 	o3tgk::TArrayIndexer<t_face_index> face_vertex_position_indexer(normalized_camera_space_face_vertices, 1);
@@ -323,114 +281,92 @@ void RasterizeMeshNaive(
 	auto pixel_barycentric_coordinate_ptr = fragments.pixel_barycentric_coordinates.template GetDataPtr<float>();
 	auto pixel_face_distance_ptr = fragments.pixel_face_distances.template GetDataPtr<float>();
 
+	o3c::ParallelFor(
+			device, pixel_count,
+			[=] OPEN3D_DEVICE(int64_t workload_idx) {
+				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
+				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
+				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
+				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+				Eigen::Vector2f point_screen(x_screen, y_screen);
+				RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
+				int queue_size = 0;
+				float queue_max_depth = -1000.f;
+				int queue_max_depth_at = -1;
+
+				// Loop through mesh faces.
+				for (t_face_index i_face = 0; i_face < face_count; i_face++) {
+					if (!face_valid_check(i_face)) {
+						continue; // skip over clipped face
+					}
+					// Check if the point_screen ray goes through the face bounding box.
+					// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
+					UpdateQueueIfPixelInsideFace(
+							face_vertex_position_indexer,
+							i_face,
+							queue,
+							queue_size,
+							queue_max_depth,
+							queue_max_depth_at,
+							blur_radius,
+							point_screen,
+							faces_per_pixel,
+							perspective_correct_barycentric_coordinates,
+							clip_barycentric_coordinates,
+							cull_back_faces
+					);
+
+				}
+
+#ifdef __CUDACC__
+				core::functional::kernel::BubbleSort(queue, queue_size);
+#else
+				std::sort(std::begin(queue), std::begin(queue) + queue_size);
+#endif
+				int64_t fragment_index = workload_idx * faces_per_pixel;
+				for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
+					pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
+					pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
+					pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
+					pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
+				}
+			}
+	);
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void RasterizeMeshNaive(
+		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+		const open3d::core::SizeVector& image_size,
+		float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
+		bool cull_back_faces
+) {
 	if (clipped_faces_mask.has_value()) {
-		const bool* clipped_faces = clipped_faces_mask.value().get().template GetDataPtr<bool>();
-		o3c::ParallelFor(
-				device, pixel_count,
-				[=] OPEN3D_DEVICE(int64_t workload_idx) {
-					const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
-					const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-					const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-					const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
-					Eigen::Vector2f point_screen(x_screen, y_screen);
-					RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
-					int queue_size = 0;
-					float queue_max_depth = -1000.f;
-					int queue_max_depth_at = -1;
-
-					// Loop through mesh faces.
-					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
-						if (!clipped_faces[i_face]) {
-							continue; // skip over clipped face
-						}
-						// Check if the point_screen ray goes through the face bounding box.
-						// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
-						UpdateQueueIfPixelInsideFace(
-								face_vertex_position_indexer,
-								i_face,
-								queue,
-								queue_size,
-								queue_max_depth,
-								queue_max_depth_at,
-								blur_radius,
-								point_screen,
-								faces_per_pixel,
-								perspective_correct_barycentric_coordinates,
-								clip_barycentric_coordinates,
-								cull_back_faces
-						);
-
-					}
-
-#ifdef __CUDACC__
-					core::functional::kernel::BubbleSort(queue, queue_size);
-#else
-					std::sort(std::begin(queue), std::begin(queue) + queue_size);
-#endif
-					int64_t fragment_index = workload_idx * faces_per_pixel;
-					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
-						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
-						pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
-						pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
-					}
-				}
-		);
+		const bool* face_unclipped = clipped_faces_mask.value().get().template GetDataPtr<bool>();
+		auto face_valid_check = NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(t_face_index i_face) { return face_unclipped[i_face]; };
+		RasterizeMeshNaive_Generic<TDeviceType>(fragments,
+		                                        normalized_camera_space_face_vertices,
+		                                        clipped_faces_mask,
+		                                        image_size,
+		                                        blur_radius,
+		                                        faces_per_pixel,
+		                                        perspective_correct_barycentric_coordinates,
+		                                        clip_barycentric_coordinates,
+		                                        cull_back_faces, face_valid_check);
 	} else {
-		o3c::ParallelFor(
-				device, pixel_count,
-				[=] OPEN3D_DEVICE(int64_t workload_idx) {
-					const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
-					const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-					const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-					const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
-					Eigen::Vector2f point_screen(x_screen, y_screen);
-					RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
-					int queue_size = 0;
-					float queue_max_depth = -1000.f;
-					int queue_max_depth_at = -1;
-
-					// Loop through mesh faces.
-					for (t_face_index i_face = 0; i_face < face_count; i_face++) {
-						// Check if the point_screen ray goes through the face bounding box.
-						// If it does, update the queue, queue_size, queue_max_depth and queue_max_depth_at in place.;
-						UpdateQueueIfPixelInsideFace(
-								face_vertex_position_indexer,
-								i_face,
-								queue,
-								queue_size,
-								queue_max_depth,
-								queue_max_depth_at,
-								blur_radius,
-								point_screen,
-								faces_per_pixel,
-								perspective_correct_barycentric_coordinates,
-								clip_barycentric_coordinates,
-								cull_back_faces
-						);
-
-					}
-
-#ifdef __CUDACC__
-					core::functional::kernel::BubbleSort(queue, queue_size);
-#else
-					std::sort(std::begin(queue), std::begin(queue) + queue_size);
-#endif
-
-
-					int64_t fragment_index = workload_idx * faces_per_pixel;
-					for (int i_pixel_face = 0; i_pixel_face < queue_size; i_pixel_face++) {
-						pixel_face_index_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].face_index;
-						pixel_depth_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].depth;
-						pixel_face_distance_ptr[fragment_index + i_pixel_face] = queue[i_pixel_face].distance;
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 0] = queue[i_pixel_face].barycentric_coordinates.x();
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 1] = queue[i_pixel_face].barycentric_coordinates.y();
-						pixel_barycentric_coordinate_ptr[(fragment_index + i_pixel_face) * 3 + 2] = queue[i_pixel_face].barycentric_coordinates.z();
-					}
-				}
-		);
+		auto face_valid_check = NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(t_face_index i_face) { return true; };
+		RasterizeMeshNaive_Generic<TDeviceType>(fragments,
+		                                        normalized_camera_space_face_vertices,
+		                                        clipped_faces_mask,
+		                                        image_size,
+		                                        blur_radius,
+		                                        faces_per_pixel,
+		                                        perspective_correct_barycentric_coordinates,
+		                                        clip_barycentric_coordinates,
+		                                        cull_back_faces, face_valid_check);
 	}
 }
 
@@ -583,12 +519,12 @@ void GridBinFaces(
 	auto face_skip_mask_data = face_skip_mask.GetDataPtr<bool>();
 
 	// compute triangle bounding boxes
-	if(clipped_faces_mask.has_value()) {
+	if (clipped_faces_mask.has_value()) {
 		const bool* clipped_faces = clipped_faces_mask.value().get().template GetDataPtr<bool>();
 		o3c::ParallelFor(
 				device, face_count,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-					if(!clipped_faces[workload_idx]){
+					if (!clipped_faces[workload_idx]) {
 						face_skip_mask_data[workload_idx] = true;
 						return;
 					}
@@ -596,12 +532,13 @@ void GridBinFaces(
 					Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
 					Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
 					Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
-					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
+					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0,
+					                                   face_vertex1,
 					                                   face_vertex2, blur_radius);
 
 				}
 		);
-	}else {
+	} else {
 		o3c::ParallelFor(
 				device, face_count,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
@@ -609,7 +546,8 @@ void GridBinFaces(
 					Eigen::Map<Eigen::Vector3f> face_vertex0(face_vertices_data);
 					Eigen::Map<Eigen::Vector3f> face_vertex1(face_vertices_data + 3);
 					Eigen::Map<Eigen::Vector3f> face_vertex2(face_vertices_data + 6);
-					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0, face_vertex1,
+					CalculateAndStoreFace2dBoundingBox(face_bounding_box_data, face_skip_mask_data, workload_idx, face_count, face_vertex0,
+					                                   face_vertex1,
 					                                   face_vertex2, blur_radius);
 				}
 		);
@@ -629,10 +567,8 @@ void GridBinFaces(
 	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
 
 	GridBin2dBoundingBoxes_Device<TDeviceType>(bin_faces, face_bounding_boxes, face_skip_mask,
-											   image_height, image_width, bin_count_y, bin_count_x,
+	                                           image_height, image_width, bin_count_y, bin_count_x,
 	                                           bin_size, max_faces_per_bin, half_pixel_x, half_pixel_y);
-
-
 
 
 }

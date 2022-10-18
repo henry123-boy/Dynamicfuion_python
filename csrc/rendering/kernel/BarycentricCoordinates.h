@@ -36,7 +36,7 @@ enum FrontFaceVertexOrder {
  */
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
-inline float ComputeSignedParallelogramArea(
+inline float SignedParallelogramArea(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
@@ -50,7 +50,7 @@ inline float ComputeSignedParallelogramArea(
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple <Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> ComputePartialDerivativesOfSignedParallelogramArea(
+inline nnrt_tuple <Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> PartialDerivativesOfSignedParallelogramArea(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
@@ -70,11 +70,11 @@ inline Eigen::Vector3f ComputeBarycentricCoordinates(
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	const float face_parallelogram_area = ComputeSignedParallelogramArea<TVertex, TVertex, ClockWise>(vertex2, vertex0, vertex1) + K_EPSILON;
+	const float face_parallelogram_area = SignedParallelogramArea<TVertex, TVertex, ClockWise>(vertex2, vertex0, vertex1) + K_EPSILON;
 	return {
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex1, vertex2) / face_parallelogram_area,
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex2, vertex0) / face_parallelogram_area,
-			ComputeSignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / face_parallelogram_area
+			SignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex1, vertex2) / face_parallelogram_area,
+			SignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex2, vertex0) / face_parallelogram_area,
+			SignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / face_parallelogram_area
 	};
 }
 

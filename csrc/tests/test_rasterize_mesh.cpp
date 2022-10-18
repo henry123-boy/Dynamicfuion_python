@@ -115,7 +115,7 @@ void TestRasterizePlane_MaskExtraction(const o3c::Device& device, bool naive = t
 	o3c::SizeVector image_size{480, 640};
 
 	auto [extracted_face_vertices, clipped_face_mask] =
-			nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
+			nnrt::rendering::ExtractFaceVerticesAndClipMaskInNormalizedCameraSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	int bin_size = -1;
 	int max_faces_per_bin = 4;
@@ -229,7 +229,7 @@ void TestRasterizeMesh(
 	o3c::Tensor extracted_face_vertices, clipped_face_mask;
 	for (int i_run = 0; i_run < run_count; i_run++){
 		auto [extracted_face_vertices_local, clipped_face_mask_local] =
-				nnrt::rendering::ExtracFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
+				nnrt::rendering::ExtractFaceVerticesAndClipMaskInNormalizedCameraSpace(mesh, intrinsics, image_size, 0.0, 10.0);
 		extracted_face_vertices = extracted_face_vertices_local;
 		clipped_face_mask = clipped_face_mask_local;
 	}
@@ -247,13 +247,20 @@ void TestRasterizeMesh(
 		bin_size = max_faces_per_bin = 0;
 	}
 	start = std::chrono::high_resolution_clock::now();
-	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-			                               bin_size, max_faces_per_bin, false, false, true);
+	o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
+	if (print_benchmark) {
+		auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
+				nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+				                               bin_size, max_faces_per_bin, false, false, true);
+		pixel_face_indices = pixel_face_indices_local;
+		pixel_depths = pixel_depths_local;
+		pixel_barycentric_coordinates = pixel_barycentric_coordinates_local;
+		pixel_face_distances = pixel_face_distances_local;
+	}
 	end = std::chrono::high_resolution_clock::now();
 	elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
 	if (print_benchmark) {
-		std::cout << "Average runtime of mesh rasterization: " << std::setprecision(4) << elapsed.count() * 1e-9 << " seconds" << std::endl;
+		std::cout << "Average runtime of mesh rasterization: " << std::setprecision(4) << (elapsed.count() * 1e-9)/run_count << " seconds" << std::endl;
 	}
 
 	if (save_output_to_disk) {
