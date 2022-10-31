@@ -205,6 +205,19 @@ if (BUILD_CPP_TESTS)
         images/mesh_64_bunny_array_render_preview.png
     )
 
+    nnrt_add_test_data_download_target(
+        test_data_rendered_normals
+        URL https://algomorph.com/storage/reco/interpolate_face_attribute_test_data.7z
+        SHA256 69c3e1182a604d6711a518a595ca41caca618a042977725e70c2e4d5b6a2058d
+        DESTINATION interpolate_face_attribute_test_data.7z
+        EXTRACTED_NAMES
+        arrays/mesh_64_bunny_array_rendered_normals.npy
+        arrays/mesh_bunny_res2_rendered_normals.npy
+        arrays/mesh_bunny_res4_rendered_normals.npy
+    )
+
     nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
+
+    nnrt_add_test(test_interpolate_face_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
 endif ()

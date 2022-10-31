@@ -25,6 +25,7 @@ import open3d as o3d
 import open3d.core as o3c
 import pytorch3d.renderer as p3dr
 import pytorch3d.renderer.mesh.shader as p3dr_shader
+import pytorch3d.ops as p3d_ops
 from pytorch3d.renderer.mesh.rasterizer import Fragments
 import torch
 import torch.utils.dlpack as torch_dlpack
@@ -262,6 +263,35 @@ def shade_loaded_fragments(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, 
         )
 
 
+def generate_normals(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, display_rendered: bool = False):
+    image_size = (480, 640)
+    device_o3d = mesh.vertex["positions"].device
+    nnrt.geometry.compute_vertex_normals(mesh)
+    device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
+
+    fragments = load_fragments(device_torch, file_prefix=file_prefix)
+    mesh_torch = rendering.converters.open3d_mesh_to_pytorch3d(mesh)
+    faces = mesh_torch.faces_packed()  # (F, 3)
+    vertex_normals = mesh_torch.verts_normals_packed()  # (V, 3)
+    face_normals = vertex_normals[faces]  # (F, 3, 3)
+    rendered_normals = \
+        p3d_ops.interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)[0, :, :, 0]\
+            .reshape(-1, 3)
+    np.save(f"{GENERATED_TEST_DATA_DIR}/arrays/{file_prefix}_rendered_normals.npy",
+            rendered_normals.cpu().numpy().reshape(-1, 1, 3))
+
+    rendered_normals_color = (rendered_normals.reshape(image_size[0], image_size[1], 3) * 255).to(torch.uint8)
+
+    if display_rendered:
+        cv2.imshow("rendered normals color", rendered_normals_color.cpu().numpy())
+        cv2.waitKey()
+        rendered_color_o3d = o3c.Tensor.from_dlpack(torch_dlpack.to_dlpack(rendered_normals_color))
+        o3d.t.io.write_image(
+            f"{GENERATED_TEST_DATA_DIR}/images/{file_prefix}_render_preview.png",
+            o3d.t.geometry.Image(rendered_color_o3d)
+        )
+
+
 def load_mesh_paint_and_offset(mesh_path: str, offset: Tuple[float, float, float] = (0.0, 0.0, 1.0),
                                color: Tuple[float, float, float] = (1.0, 1.0, 1.0),
                                device: o3c.Device = o3c.Device("CUDA:0")) \
@@ -295,15 +325,16 @@ class MeshDataPreset(Enum):
 
 
 class Mode(Enum):
-    GENERATE = 0,
-    SHADE_LOADED = 1
+    GENERATE_FRAGMENTS = 0,
+    SHADE_LOADED = 1,
+    GENERATE_NORMALS = 2
 
 
 def main():
     device_o3d = o3c.Device("CUDA:0")
 
     mesh_data_set = MeshDataPreset.M64_BUNNY_ARRAY
-    mode = Mode.SHADE_LOADED
+    mode = Mode.GENERATE_NORMALS
     naive_rasterization = False
 
     get_mesh_by_data_set = {
@@ -333,7 +364,7 @@ def main():
     }
 
     mesh = get_mesh_by_data_set[mesh_data_set]()
-    if mode == Mode.GENERATE:
+    if mode == Mode.GENERATE_FRAGMENTS:
         make_test_data_rasterize_mesh(mesh, mesh_data_set.value.prefix, display_rendered=True,
                                       no_shading=mesh_data_set.value.no_shading,
                                       shade_flat=mesh_data_set.value.shade_flat,
@@ -344,6 +375,8 @@ def main():
                                no_shading=mesh_data_set.value.no_shading,
                                shade_flat=mesh_data_set.value.shade_flat,
                                light_position=mesh_data_set.value.light_position)
+    elif mode == Mode.GENERATE_NORMALS:
+        generate_normals(mesh, mesh_data_set.value.prefix + "_out", True)
 
     save_mesh_to_static_mesh_directory = False
     if save_mesh_to_static_mesh_directory:

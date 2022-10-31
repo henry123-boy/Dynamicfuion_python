@@ -13,4 +13,20 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// test framework
+#include "test_main.hpp"
+#include "tests/test_utils/test_utils.hpp"
 
+// code being tested
+#include "rendering/functional/InterpolateFaceAttributes.h"
+
+namespace o3c = open3d::core;
+
+void TestInterpolateFaceAttributes(const o3c::Device& device, const std::string& mesh_name){
+	FAIL("NOT IMPLEMENTED");
+}
+
+TEST_CASE("Test Interpolate Face Attributes - Bunny Res 4 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestInterpolateFaceAttributes(device, "mesh_bunny_res4");
+}
