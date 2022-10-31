@@ -55,16 +55,24 @@ inline nnrt_tuple <Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> PartialDer
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
 ) {
-	const Eigen::Vector2f dArea_dPoint(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
-	const Eigen::Vector2f dArea_dVertex0(point.y() - vertex1.y(), vertex1.x - point.x);
-	const Eigen::Vector2f dArea_dVertex1(vertex0.y() - point.y(), point.x - vertex0.x);
-	return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
+
+	if (TVertexOrder == ClockWise) {
+		const Eigen::Vector2f dArea_dPoint(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
+		const Eigen::Vector2f dArea_dVertex0(vertex1.y() - point.y(), point.x - vertex1.x);
+		const Eigen::Vector2f dArea_dVertex1(point.y() - vertex0.y(), vertex0.x - point.x);
+		return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
+	} else {
+		const Eigen::Vector2f dArea_dPoint(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
+		const Eigen::Vector2f dArea_dVertex0(point.y() - vertex1.y(), vertex1.x - point.x);
+		const Eigen::Vector2f dArea_dVertex1(vertex0.y() - point.y(), point.x - vertex0.x);
+		return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
+	}
 }
 
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
-inline Eigen::Vector3f ComputeBarycentricCoordinates(
+inline Eigen::Vector3f BarycentricCoordinates(
 		const TPoint& point,
 		const TVertex& vertex0,
 		const TVertex& vertex1,
@@ -77,7 +85,6 @@ inline Eigen::Vector3f ComputeBarycentricCoordinates(
 			SignedParallelogramArea<TPoint, TVertex, ClockWise>(point, vertex0, vertex1) / face_parallelogram_area
 	};
 }
-
 
 
 NNRT_DEVICE_WHEN_CUDACC

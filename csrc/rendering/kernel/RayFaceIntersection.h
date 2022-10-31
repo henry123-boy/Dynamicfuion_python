@@ -196,7 +196,7 @@ inline void UpdateQueueIfPixelInsideFace(
 		return;
 	}
 
-	Eigen::Vector3f barycentric_coordinates = ComputeBarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+	Eigen::Vector3f barycentric_coordinates = BarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
 			pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 	);
 	if (perspective_correct_barycentric_coordinates) {
