@@ -537,6 +537,7 @@ if (BUILD_CPP_TESTS)
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
             GIT_TAG v3.1.1
+            PATCH_COMMAND git apply ${NNRT_3RDPARTY_DIR}/Catch2/build_catch2_with_cxx_std_17_privately.patch
         )
         FetchContent_MakeAvailable(Catch2)
         list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/contrib)
