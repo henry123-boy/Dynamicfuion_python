@@ -532,21 +532,16 @@ if (BUILD_CPP_TESTS)
         endif ()
     endif ()
     if (NOT USE_SYSTEM_CATCH2)
-#        include(${NNRT_3RDPARTY_DIR}/Catch2/Catch2.cmake)
-#        nnrt_import_3rdparty_library(3rdparty_Catch2
-#            INCLUDE_DIRS ${CATCH2_INCLUDE_DIRS}
-#            LIB_DIR      ${CATCH2_LIB_DIR}
-#            LIBRARIES    ${CATCH2_LIBRARIES}
-#            DEPENDS ext_Catch2
-#        )
-#        set(CATCH2_TARGET NNRT::3rdparty_Catch2)
         include(FetchContent)
         FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v2.13.9 # or a later release
+            GIT_TAG v3.1.1
         )
         FetchContent_MakeAvailable(Catch2)
+        list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/contrib)
+        include(CTest)
+        include(Catch)
         set(CATCH2_TARGET "Catch2::Catch2")
     endif ()
 endif ()
