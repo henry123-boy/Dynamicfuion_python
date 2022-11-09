@@ -1,0 +1,16 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index ae51bf8a..a28a015a 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -358,6 +358,11 @@ set_target_properties(Catch2WithMain
+ )
+ set_target_properties(Catch2WithMain PROPERTIES DEBUG_POSTFIX "d")
+ 
++if ("cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
++    target_compile_features(Catch2 PRIVATE cxx_std_20)
++    target_compile_features(Catch2WithMain PRIVATE cxx_std_20)
++endif()
++
+ if (NOT_SUBPROJECT)
+     # create and install an export set for catch target as Catch2::Catch
+     install(
