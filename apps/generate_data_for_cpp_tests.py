@@ -33,8 +33,8 @@ import numpy as np
 
 import rendering.converters
 
-GENERATED_TEST_DATA_DIR = "/home/algomorph/Workbench/NeuralTracking/cmake-build-debug/csrc/tests/test_data"
-STATIC_TEST_DATA_DIR = "/home/algomorph/Workbench/NeuralTracking/csrc/tests/test_data"
+GENERATED_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/csrc/tests/test_data"
+STATIC_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/csrc/tests/test_data"
 
 
 def generate_test_xy_plane(plane_side_length: float, plane_center_position: tuple,
@@ -267,6 +267,8 @@ def generate_normals(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, displa
     image_size = (480, 640)
     device_o3d = mesh.vertex["positions"].device
     nnrt.geometry.compute_vertex_normals(mesh)
+    print(mesh.vertex["normals"][mesh.triangle["indices"]][489])
+
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)
 
     fragments = load_fragments(device_torch, file_prefix=file_prefix)
@@ -274,6 +276,7 @@ def generate_normals(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, displa
     faces = mesh_torch.faces_packed()  # (F, 3)
     vertex_normals = mesh_torch.verts_normals_packed()  # (V, 3)
     face_normals = vertex_normals[faces]  # (F, 3, 3)
+
     rendered_normals = \
         p3d_ops.interpolate_face_attributes(fragments.pix_to_face, fragments.bary_coords, face_normals)[0, :, :, 0]\
             .reshape(-1, 3)
@@ -345,20 +348,17 @@ def main():
             o3c.Tensor(rotation_around_y_axis(45.0), device=device_o3d).to(o3c.float32)
         ),
         MeshDataPreset.BUNNY_RES4: lambda: load_mesh_paint_and_offset(
-            "/mnt/Data/Reconstruction/real_data/Stanford/bunny/test_scenes/mesh_bunny_res4/"
-            "meshes/mesh_bunny_res4.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_bunny_res4.ply",
             offset=(0.0, -0.1, 0.3),
             device=device_o3d
         ),
         MeshDataPreset.BUNNY_RES2: lambda: load_mesh_paint_and_offset(
-            "/mnt/Data/Reconstruction/real_data/Stanford/bunny/test_scenes/mesh_bunny_res2/"
-            "meshes/mesh_bunny_res2.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_bunny_res2.ply",
             offset=(0.0, -0.1, 0.3),
             device=device_o3d
         ),
         MeshDataPreset.M64_BUNNY_ARRAY: lambda: load_mesh_paint_and_offset(
-            "/home/algomorph/Workbench/NeuralTracking/cmake-build-debug/csrc/tests/test_data/"
-            "meshes/mesh_64_bunny_array.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_64_bunny_array.ply",
             device=device_o3d
         )
     }
@@ -376,7 +376,7 @@ def main():
                                shade_flat=mesh_data_set.value.shade_flat,
                                light_position=mesh_data_set.value.light_position)
     elif mode == Mode.GENERATE_NORMALS:
-        generate_normals(mesh, mesh_data_set.value.prefix + "_out", True)
+        generate_normals(mesh, mesh_data_set.value.prefix, True)
 
     save_mesh_to_static_mesh_directory = False
     if save_mesh_to_static_mesh_directory:

@@ -28,7 +28,7 @@ def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.str
 
     faces_o3d = mesh.triangle["indices"]
     vertices_torch = torch_dlpack.from_dlpack(vertices_o3d.to_dlpack())
-    vertices_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32, device=device_open3d_to_pytorch(faces_o3d.device))
+    # vertices_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32, device=device_open3d_to_pytorch(faces_o3d.device))
     vertices_torch = vertices_torch.unsqueeze(0)
     faces_torch = torch_dlpack.from_dlpack(faces_o3d.to_dlpack()).unsqueeze(0)
 
@@ -42,8 +42,8 @@ def open3d_mesh_to_pytorch3d(mesh: o3d.t.geometry.TriangleMesh) -> pytorch3d.str
     if "normals" in mesh.vertex:
         vertex_normals_o3d = mesh.vertex["normals"]
         vertex_normals_torch = torch_dlpack.from_dlpack(vertex_normals_o3d.to_dlpack())
-        vertex_normals_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32,
-                                       device=device_open3d_to_pytorch(faces_o3d.device))
+        # vertex_normals_torch *= torch.tensor([-1., 1., 1.], dtype=torch.float32,
+        #                                device=device_open3d_to_pytorch(faces_o3d.device))
         vertex_normals_torch = vertex_normals_torch.unsqueeze(0)
 
     return Meshes(vertices_torch, faces_torch, textures=textures_torch, verts_normals=vertex_normals_torch)

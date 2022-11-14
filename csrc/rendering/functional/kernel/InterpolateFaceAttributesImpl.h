@@ -26,8 +26,6 @@
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-typedef int32_t t_face_index;
-
 namespace nnrt::rendering::functional::kernel {
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TAttribute>
@@ -36,14 +34,15 @@ void InterpolateFaceAttributes_Dispatched(open3d::core::Tensor& pixel_attributes
 	o3c::Device device = face_attributes.GetDevice();
 	o3c::Dtype attribute_dtype = face_attributes.GetDtype();
 	int64_t attribute_element_count = face_attributes.GetShape(2);
-	int64_t pixel_count = pixel_face_indices.GetShape(0);
-	int64_t per_pixel_face_count = pixel_face_indices.GetShape(1);
+	int64_t image_height = pixel_face_indices.GetShape(0);
+	int64_t image_width = pixel_face_indices.GetShape(1);
+	int64_t per_pixel_face_count = pixel_face_indices.GetShape(2);
 
-	const auto* pixel_face_index_ptr = pixel_face_indices.template GetDataPtr<t_face_index>();
+	const auto* pixel_face_index_ptr = pixel_face_indices.template GetDataPtr<int64_t>();
 	const auto* pixel_barycentric_coordinates_ptr = pixel_barycentric_coordinates.template GetDataPtr<float>();
 	const auto* face_attribute_ptr = face_attributes.template GetDataPtr<TAttribute>();
 
-	pixel_attributes = o3c::Tensor::Zeros({pixel_count, per_pixel_face_count, attribute_element_count}, attribute_dtype, device);
+	pixel_attributes = o3c::Tensor::Zeros({image_height, image_width, per_pixel_face_count, attribute_element_count}, attribute_dtype, device);
 
 	auto* pixel_attribute_ptr = pixel_attributes.template GetDataPtr<TAttribute>();
 
@@ -54,7 +53,7 @@ void InterpolateFaceAttributes_Dispatched(open3d::core::Tensor& pixel_attributes
 				const int64_t i_attribute_element = workload_idx % attribute_element_count;
 
 				for (int i_pixel_face = 0; i_pixel_face < per_pixel_face_count; i_pixel_face++) {
-					const t_face_index i_face = pixel_face_index_ptr[i_pixel * per_pixel_face_count + i_pixel_face];
+					const int64_t i_face = pixel_face_index_ptr[i_pixel * per_pixel_face_count + i_pixel_face];
 					if (i_face < 0) {
 						break; // assume -1 is sentinel face_index value, after which there are no more non-negative entries
 					}

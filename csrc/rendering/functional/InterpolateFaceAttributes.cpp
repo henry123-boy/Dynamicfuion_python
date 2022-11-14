@@ -32,14 +32,15 @@ open3d::core::Tensor InterpolateFaceAttributes(
 	auto device = face_attributes.GetDevice();
 
 	o3c::AssertTensorDevice(pixel_face_indices, device);
-	o3c::AssertTensorDtype(pixel_face_indices, o3c::Int32);
-	int64_t pixel_count = pixel_face_indices.GetShape(0);
-	int64_t per_pixel_face_count = pixel_face_indices.GetShape(1);
-	o3c::AssertTensorShape(pixel_face_indices, {pixel_count, per_pixel_face_count});
+	o3c::AssertTensorDtype(pixel_face_indices, o3c::Int64);
+	int64_t image_height = pixel_face_indices.GetShape(0);
+	int64_t image_width = pixel_face_indices.GetShape(1);
+	int64_t per_pixel_face_count = pixel_face_indices.GetShape(2);
+	o3c::AssertTensorShape(pixel_face_indices, {image_height, image_width, per_pixel_face_count});
 
 	o3c::AssertTensorDevice(pixel_barycentric_coordinates, device);
 	o3c::AssertTensorDtype(pixel_barycentric_coordinates, o3c::Float32);
-	o3c::AssertTensorShape(pixel_barycentric_coordinates, {pixel_count, per_pixel_face_count, 3});
+	o3c::AssertTensorShape(pixel_barycentric_coordinates, {image_height, image_width, per_pixel_face_count, 3});
 
 	o3c::Tensor interpolated_attributes;
 	kernel::InterpolateFaceAttributes(interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates, face_attributes);

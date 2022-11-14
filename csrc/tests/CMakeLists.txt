@@ -204,7 +204,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test_data_download_target(
         test_data_rendered_normals
         URL https://algomorph.com/storage/reco/interpolate_face_attribute_test_data.7z
-        SHA256 69c3e1182a604d6711a518a595ca41caca618a042977725e70c2e4d5b6a2058d
+        SHA256 4247cef37c9f4fe8bda3ec1d628b169618b891602e648bdc64807c12fe9eddde
         DESTINATION interpolate_face_attribute_test_data.7z
         EXTRACTED_NAMES
         arrays/mesh_64_bunny_array_rendered_normals.npy
