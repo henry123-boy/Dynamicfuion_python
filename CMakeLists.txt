@@ -26,8 +26,6 @@ option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
 option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)
 option(SET_UP_U_2_NET             "Set up a slimmed-down version of U^2 Net for mask generation using Saliency Object Detection (requires a large ~177 Mb  download to a local folder)" ON)
-
-option(GLIBCXX_USE_CXX11_ABI      "Set use the newer (C++11 and later) ABI (Relevant to GCC compiler only)"           OFF)
 # endregion =======================================================================================
 
 ### CMake configuration based on switches
@@ -39,15 +37,6 @@ if(USE_BLAS)
 else()
     option(BUILD_BLAS_FROM_SOURCE "Build OpenBLAS from source"               OFF)
 endif()
-
-if(GLIBCXX_USE_CXX11_ABI)
-    set(CXX11_ABI_usage "1")
-else()
-    set(CXX11_ABI_usage "0")
-endif()
-
-### Diagnostic/reporting CMAKE messaging
-message(STATUS "Force GLIBCXX_USE_CXX11_ABI=" "${CXX11_ABI_usage}")
 
 ### Set up CCACHE as the default compiler launcher
 # (to speed up builds on compatible systems)
@@ -186,11 +175,6 @@ function(nnrt_set_global_properties target)
         endif()
     endif()
     target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>")
-#    if(GLIBCXX_USE_CXX11_ABI)
-#        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=1)
-#    else()
-#        target_compile_definitions(${target} PUBLIC _GLIBCXX_USE_CXX11_ABI=0)
-#    endif()
     if (USE_BLAS)
         target_compile_definitions(${target} PRIVATE USE_BLAS)
     endif()

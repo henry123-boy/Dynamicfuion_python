@@ -16,6 +16,7 @@
 #include <fmt/ranges.h>
 
 #include "test_main.hpp"
+#include "catch2/catch_approx.hpp"
 
 #include <open3d/core/Tensor.h>
 #include <geometry/Downsample3dPoints.h>
@@ -100,7 +101,7 @@ void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downs
 
 
 	REQUIRE(std::equal(downsampled_points_data.begin(), downsampled_points_data.end(), downsampled_points_gt_data.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-6).epsilon(1e-12); }));
+	                   [](float a, float b) { return a == Catch::Approx(b).margin(1e-6).epsilon(1e-12); }));
 }
 
 

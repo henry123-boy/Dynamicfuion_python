@@ -15,7 +15,7 @@
 //  ================================================================
 #include "test_main.hpp"
 
-#include <core/CPU/DeviceHeapCPU.h>
+#include <core/heap/CPU/DeviceHeapCPU.h>
 #include "core/heap/Heap.h"
 #include <open3d/core/Tensor.h>
 

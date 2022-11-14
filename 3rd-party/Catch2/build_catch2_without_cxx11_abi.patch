@@ -1,0 +1,12 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index ae51bf8a..5dbeca86 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -446,6 +446,7 @@ endif()
+ list(APPEND CATCH_WARNING_TARGETS Catch2 Catch2WithMain)
+ set(CATCH_WARNING_TARGETS ${CATCH_WARNING_TARGETS} PARENT_SCOPE)
+ 
++target_compile_definitions(Catch2 PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
+ 
+ # We still do not support building dynamic library with hidden visibility
+ # so we want to check & warn users if they do this. However, we won't abort

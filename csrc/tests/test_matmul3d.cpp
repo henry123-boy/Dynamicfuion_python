@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include <fmt/ranges.h>
+#include <catch2/catch_approx.hpp>
 
 #include "test_main.hpp"
 
@@ -55,7 +56,7 @@ void TestMatmul3D(const o3c::Device& device) {
 
 
 	REQUIRE(std::equal(C_data.begin(), C_data.end(), C_gt_data.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-6).epsilon(1e-12); }));
+	                   [](float a, float b) { return a == Catch::Approx(b).margin(1e-6).epsilon(1e-12); }));
 
 
 }

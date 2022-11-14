@@ -518,6 +518,25 @@ endif ()
 list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS "${PYBIND11_TARGET}")
 
 
+# Open3D
+find_package(Open3D REQUIRED)
+if (NOT WIN32)
+    list(APPEND Open3D_LIBRARIES dl)
+    list(APPEND Open3D_LIBRARIES stdc++fs)
+endif ()
+list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS Open3D::Open3D)
+get_target_property(OPEN3D_COMPILE_DEFINITIONS Open3D::Open3D INTERFACE_COMPILE_DEFINITIONS)
+list(FIND OPEN3D_COMPILE_DEFINITIONS "_GLIBCXX_USE_CXX11_ABI=0" Open3D_CXX11_ABI_0_INDEX)
+list(FIND OPEN3D_COMPILE_DEFINITIONS "_GLIBCXX_USE_CXX11_ABI=1" Open3D_CXX11_ABI_1_INDEX)
+set(NNRT_EXTRA_DEP_ABI_COMPILE_DEFS)
+set(NNRT_DEPS_AVOID_CXX11_ABI OFF)
+if (Open3D_CXX11_ABI_0_INDEX GREATER -1)
+    set(NNRT_EXTRA_DEP_ABI_COMPILE_DEFS _GLIBCXX_USE_CXX11_ABI=0)
+    set(NNRT_DEPS_AVOID_CXX11_ABI ON)
+    #elseif(Open3D_CXX11_ABI_0_INDEX GREATER -1)
+    #    set(NNRT_EXTRA_DEP_ABI_COMPILE_DEFS _GLIBCXX_USE_CXX11_ABI=1)
+endif ()
+
 # Catch2
 if (BUILD_CPP_TESTS)
     if (USE_SYSTEM_CATCH2)
@@ -531,14 +550,23 @@ if (BUILD_CPP_TESTS)
             set(USE_SYSTEM_CATCH2 OFF)
         endif ()
     endif ()
+
     if (NOT USE_SYSTEM_CATCH2)
         include(FetchContent)
-        FetchContent_Declare(
-            Catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.1.1
-            PATCH_COMMAND git apply ${NNRT_3RDPARTY_DIR}/Catch2/build_catch2_with_cxx_std_20_privately.patch
-        )
+        if (NNRT_DEPS_AVOID_CXX11_ABI)
+            FetchContent_Declare(
+                Catch2
+                GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+                GIT_TAG v3.1.1
+                PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace ${NNRT_3RDPARTY_DIR}/Catch2/build_catch2_without_cxx11_abi.patch || true
+            )
+        else ()
+            FetchContent_Declare(
+                Catch2
+                GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+                GIT_TAG v3.1.1
+            )
+        endif ()
         FetchContent_MakeAvailable(Catch2)
         list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/contrib)
         include(CTest)
@@ -564,14 +592,6 @@ if (NOT USE_SYSTEM_FLANN OR NOT 3rdparty_flann_FOUND)
 endif ()
 set(FLANN_TARGET "3rdparty_flann")
 list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS "${FLANN_TARGET}")
-
-# Open3D
-find_package(Open3D REQUIRED)
-if (NOT WIN32)
-    list(APPEND Open3D_LIBRARIES dl)
-    list(APPEND Open3D_LIBRARIES stdc++fs)
-endif ()
-list(APPEND NNRT_3RDPARTY_PUBLIC_TARGETS Open3D::Open3D)
 
 # Stdgpu
 if (BUILD_CUDA_MODULE)

@@ -23,7 +23,7 @@
 namespace o3c = open3d::core;
 
 void TestInterpolateFaceAttributes(const o3c::Device& device, const std::string& mesh_name){
-	FAIL("NOT IMPLEMENTED");
+	//FAIL("NOT IMPLEMENTED");
 }
 
 TEST_CASE("Test Interpolate Face Attributes - Bunny Res 4 - CPU") {

@@ -14,6 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #include "test_main.hpp"
+#include "catch2/catch_approx.hpp"
 
 #include <core/KdTree.h>
 #include <core/LinearIndex.h>
@@ -272,7 +273,7 @@ void Test3DKnnSearch(const o3c::Device& device, bool use_priority_queue = true) 
 
 	REQUIRE(nn_i_sorted == gt_nn_indices_data);
 	REQUIRE(std::equal(nn_d_sorted.begin(), nn_d_sorted.end(), gt_nn_distances_data.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
+	                   [](float a, float b) { return a == Catch::Approx(b).margin(1e-5).epsilon(1e-12); }));
 
 	std::vector<float> point_data2{-1.1, -4.4, 2.9, -3.8, 2.5, 0.7, 0.2, -2.6, 4.7, 4., -2.6,
 	                               -2.8, -3., 0.9, -1., 1.2, -1.2, -0.2, -0.4, 2.4, -2.6, -4.7,
@@ -374,7 +375,7 @@ void Test3DKnnSearch(const o3c::Device& device, bool use_priority_queue = true) 
 	REQUIRE(nn_i_sorted2 == gt_nn_indices_data2);
 
 	REQUIRE(std::equal(nn_d_sorted2.begin(), nn_d_sorted2.end(), gt_nn_distances_data2.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
+	                   [](float a, float b) { return a == Catch::Approx(b).margin(1e-5).epsilon(1e-12); }));
 
 }
 
@@ -452,7 +453,7 @@ void TestKdTreeClone(const o3c::Device& device) {
 
 	REQUIRE(nn_i_sorted == gt_nn_indices_data);
 	REQUIRE(std::equal(nn_d_sorted.begin(), nn_d_sorted.end(), gt_nn_distances_data.begin(),
-	                   [](float a, float b) { return a == Approx(b).margin(1e-5).epsilon(1e-12); }));
+	                   [](float a, float b) { return a == Catch::Approx(b).margin(1e-5).epsilon(1e-12); }));
 }
 
 TEST_CASE("Test 3D KDTree Clone CPU") {
