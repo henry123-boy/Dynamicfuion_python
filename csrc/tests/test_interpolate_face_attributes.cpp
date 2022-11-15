@@ -21,7 +21,7 @@
 #include <open3d/t/io/TriangleMeshIO.h>
 
 // code being tested
-#include "geometry/NormalsOperations.h"
+#include "geometry/functional/NormalsOperations.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
 
 namespace o3c = open3d::core;

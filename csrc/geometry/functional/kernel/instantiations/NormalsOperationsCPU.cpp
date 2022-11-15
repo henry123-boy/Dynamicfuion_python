@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 
-#include "geometry/kernel/NormalsOperationsImpl.h"
+#include "geometry/functional/kernel/NormalsOperationsImpl.h"
 
 namespace nnrt::geometry::kernel::mesh {
 

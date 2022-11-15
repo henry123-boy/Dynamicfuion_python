@@ -16,8 +16,8 @@
 
 #include <open3d/utility/Logging.h>
 
-#include "geometry/NormalsOperations.h"
-#include "geometry/kernel/NormalsOperations.h"
+#include "NormalsOperations.h"
+#include "geometry/functional/kernel/NormalsOperations.h"
 
 
 namespace utility = open3d::utility;

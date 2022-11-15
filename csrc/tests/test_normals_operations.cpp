@@ -26,7 +26,7 @@
 #include <open3d/io/ImageIO.h>
 
 // code being tested
-#include "geometry/NormalsOperations.h"
+#include "geometry/functional/NormalsOperations.h"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;

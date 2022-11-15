@@ -20,7 +20,7 @@
 
 #include "test_main.hpp"
 
-#include <geometry/NormalsOperations.h>
+#include "geometry/functional/NormalsOperations.h"
 #include <geometry/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/GraphWarpField.h>

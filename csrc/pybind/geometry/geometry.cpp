@@ -23,7 +23,6 @@
 #include "geometry/Comparison.h"
 #include "geometry/Downsample3dPoints.h"
 #include "geometry/Unproject3dPoints.h"
-#include "geometry/NormalsOperations.h"
 
 // local
 #include "functional/functional.h"
@@ -48,7 +47,6 @@ void pybind_geometry(py::module& m) {
 	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
 	pybind_geometry_pointcloud(m_submodule);
-	pybind_geometry_normals_operations(m_submodule);
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
@@ -341,11 +339,6 @@ void pybind_geometry_pointcloud(pybind11::module& m) {
 	      "depth_scale"_a = 1000.0f, "depth_max"_a = 3.0f, "preserve_pixel_layout"_a = false);
 }
 
-void pybind_geometry_normals_operations(pybind11::module& m) {
-	m.def("compute_triangle_normals", &ComputeTriangleNormals, "mesh"_a, "normalized"_a = true);
-	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
-	m.def("compute_ordered_point_cloud_normals", &ComputeOrderedPointCloudNormals, "point_cloud"_a, "source_image_size"_a);
-}
 
 } // namespace nnrt
 

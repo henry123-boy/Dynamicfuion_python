@@ -51,7 +51,7 @@ def generate_test_box(box_side_length: float, box_center_position: tuple, subdiv
             mesh_legacy,
             vertex_dtype=o3c.float32, device=device
         )
-    nnrt.geometry.compute_vertex_normals(mesh, True)
+    nnrt.geometry.functional.compute_vertex_normals(mesh, True)
     box_center_position = o3c.Tensor(list(box_center_position), dtype=o3c.float32, device=device)
 
     half_side_length = box_side_length / 2

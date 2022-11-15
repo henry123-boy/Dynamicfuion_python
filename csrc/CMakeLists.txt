@@ -165,13 +165,13 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/IndexRaveling.h
     geometry/kernel/PointCollectionExtent.h
 
-    geometry/NormalsOperations.h
-    geometry/NormalsOperations.cpp
-    geometry/kernel/NormalsOperations.cpp
-    geometry/kernel/NormalsOperations.h
-    geometry/kernel/NormalsOperationsImpl.h
-    geometry/kernel/instantiations/NormalsOperationsCPU.cpp
-    geometry/kernel/instantiations/NormalsOperationsCUDA.cu
+    geometry/functional/NormalsOperations.h
+    geometry/functional/NormalsOperations.cpp
+    geometry/functional/kernel/NormalsOperations.cpp
+    geometry/functional/kernel/NormalsOperations.h
+    geometry/functional/kernel/NormalsOperationsImpl.h
+    geometry/functional/kernel/instantiations/NormalsOperationsCPU.cpp
+    geometry/functional/kernel/instantiations/NormalsOperationsCUDA.cu
 
     geometry/Unproject3dPoints.cpp
     geometry/Unproject3dPoints.h

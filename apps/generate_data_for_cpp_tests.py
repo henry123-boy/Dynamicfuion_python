@@ -79,7 +79,7 @@ def generate_test_box(box_side_length: float, box_center_position: tuple, subdiv
             mesh_legacy,
             vertex_dtype=o3c.float32, device=device
         )
-    nnrt.geometry.compute_vertex_normals(mesh, True)
+    nnrt.geometry.functional.compute_vertex_normals(mesh, True)
     box_center_position = o3c.Tensor(list(box_center_position), dtype=o3c.float32, device=device)
 
     half_side_length = box_side_length / 2
@@ -266,7 +266,7 @@ def shade_loaded_fragments(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, 
 def generate_normals(mesh: o3d.t.geometry.TriangleMesh, file_prefix: str, display_rendered: bool = False):
     image_size = (480, 640)
     device_o3d = mesh.vertex["positions"].device
-    nnrt.geometry.compute_vertex_normals(mesh)
+    nnrt.geometry.functional.compute_vertex_normals(mesh)
     print(mesh.vertex["normals"][mesh.triangle["indices"]][489])
 
     device_torch = rendering.converters.device_open3d_to_pytorch(device_o3d)

@@ -13,10 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "functional.h"
-
+// nnrt_cpp
 #include "geometry/functional/WarpAnchorComputation.h"
 #include "geometry/functional/Warping.h"
+#include "geometry/functional/NormalsOperations.h"
+
+// local
+#include "functional.h"
 
 namespace o3tg = open3d::t::geometry;
 namespace o3c = open3d::core;
@@ -29,11 +32,13 @@ void pybind_geometry_functional(pybind11::module& m) {
 	auto size_vector_class = core_module.attr("SizeVector");
 
 	py::module m_submodule = m.def_submodule(
-			"functional", "Module with functions acting on Open3D geometry objects and Open3D-tensor-based geometry objects."
+			"functional", "Module with stateless functions acting on Open3D/NNRT geometry objects and Open3D tensor-based data representing "
+						  "geometric constructs."
 	);
 
 	pybind_geometry_functional_warp_anchor_computation(m_submodule);
 	pybind_geometry_functional_warping(m_submodule);
+	pybind_geometry_functional_normals_operations(m_submodule);
 }
 
 void pybind_geometry_functional_warp_anchor_computation(pybind11::module& m) {
@@ -62,6 +67,13 @@ void pybind_geometry_functional_warping(pybind11::module& m) {
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
 	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+}
+
+
+void pybind_geometry_functional_normals_operations(pybind11::module& m) {
+	m.def("compute_triangle_normals", &ComputeTriangleNormals, "mesh"_a, "normalized"_a = true);
+	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
+	m.def("compute_ordered_point_cloud_normals", &ComputeOrderedPointCloudNormals, "point_cloud"_a, "source_image_size"_a);
 }
 
 } // namespace nnrt::geometry::functional

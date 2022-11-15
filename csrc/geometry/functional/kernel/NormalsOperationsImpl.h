@@ -26,7 +26,7 @@
 #include <Eigen/Dense>
 
 // local
-#include "geometry/kernel/NormalsOperations.h"
+#include "geometry/functional/kernel/NormalsOperations.h"
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;

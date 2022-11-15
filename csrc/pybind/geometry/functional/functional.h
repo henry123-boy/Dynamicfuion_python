@@ -19,7 +19,9 @@
 namespace nnrt::geometry::functional {
 
 void pybind_geometry_functional(py::module& m);
+
 void pybind_geometry_functional_warp_anchor_computation(py::module& m);
 void pybind_geometry_functional_warping(py::module& m);
+void pybind_geometry_functional_normals_operations(py::module& m);
 
 } // namespace nnrt::geometry::functional
