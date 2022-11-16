@@ -44,6 +44,8 @@ void pybind_geometry(py::module& m) {
 
 	pybind_geometry_non_rigid_surface_voxel_block_grid(m_submodule);
 	pybind_geometry_graph_warp_field(m_submodule);
+
+	//TODO: move these to pybind/geometry/functional
 	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
 	pybind_geometry_pointcloud(m_submodule);
@@ -292,8 +294,16 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	                     "anchor_count"_a = 4, "minimum_valid_anchor_count"_a = 0);
 	graph_warp_field.def("get_warped_nodes", &GraphWarpField::GetWarpedNodes);
 	graph_warp_field.def("get_node_extent", &GraphWarpField::GetNodeExtent);
-	graph_warp_field.def("warp_mesh", &GraphWarpField::WarpMesh,
-	                     "input_mesh"_a, "disable_neighbor_thresholding"_a = true);
+	graph_warp_field.def("warp_mesh",
+	                     py::overload_cast<const open3d::t::geometry::TriangleMesh&, bool,
+			                     const open3d::core::Tensor&>(&GraphWarpField::WarpMesh, py::const_),
+	                     "input_mesh"_a, "disable_neighbor_thresholding"_a = true,
+	                     "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+	graph_warp_field.def("warp_mesh",
+	                     py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::core::Tensor&, const open3d::core::Tensor&,
+			                     bool, const open3d::core::Tensor&>(&GraphWarpField::WarpMesh, py::const_),
+	                     "input_mesh"_a, "anchors"_a, "anchor_weights"_a, "disable_neighbor_thresholding"_a = true,
+	                     "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 	graph_warp_field.def("clone", &GraphWarpField::Clone);
 
 	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);

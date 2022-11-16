@@ -21,8 +21,6 @@
 
 namespace nnrt::geometry::functional{
 
-//TODO: combine the below two functions, no major savings by avoiding check of a boolean parameter before calling "kernel" code, just extra code bloat
-
 // computes anchors on-the-fly, uses node thresholding
 open3d::t::geometry::PointCloud WarpPointCloud(
 		const open3d::t::geometry::PointCloud& input_point_cloud,
@@ -41,10 +39,21 @@ open3d::t::geometry::PointCloud WarpPointCloud(
 		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))
 );
 
+// computes anchors on-the-fly
 open3d::t::geometry::TriangleMesh WarpTriangleMesh(
 		const open3d::t::geometry::TriangleMesh& input_mesh,
 		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
-		int anchor_count, float node_coverage, bool threshold_nodes_by_distance = true, int minimum_valid_anchor_count = 0,
+		int anchor_count, float node_coverage,
+		bool threshold_nodes_by_distance = true, int minimum_valid_anchor_count = 0,
+		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))
+);
+
+// uses precomputed anchors
+open3d::t::geometry::TriangleMesh WarpTriangleMesh(
+		const open3d::t::geometry::TriangleMesh& input_mesh,
+		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,
+		bool threshold_nodes_by_distance = true, int minimum_valid_anchor_count = 0,
 		const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))
 );
 

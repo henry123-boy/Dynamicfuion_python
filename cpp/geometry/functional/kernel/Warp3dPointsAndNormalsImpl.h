@@ -15,7 +15,7 @@
 //  ================================================================
 #pragma once
 
-#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/kernel/GeometryIndexer.h"
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 #include "Warp3dPointsAndNormals.h"
 #include "Defines.h"

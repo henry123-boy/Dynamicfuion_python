@@ -13,11 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/GraphWarpField.h"
-
+// stdlib
 #include <utility>
 
+// local
+#include "geometry/GraphWarpField.h"
 #include "core/linalg/Matmul3D.h"
+#include "geometry/functional/WarpAnchorComputation.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -25,7 +27,6 @@ namespace o3tg = open3d::t::geometry;
 
 
 namespace nnrt::geometry {
-
 
 
 GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor edge_weights,
@@ -100,16 +101,34 @@ o3c::Tensor GraphWarpField::GetNodeExtent() const {
 }
 
 open3d::t::geometry::TriangleMesh
-GraphWarpField::WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding) const {
+GraphWarpField::WarpMesh(
+		const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding,
+		const open3d::core::Tensor& extrinsics/* = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
+) const {
 	if (disable_neighbor_thresholding) {
 		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
-		                                    false, 0);
+		                                    false, 0, extrinsics);
 	} else {
 		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, this->anchor_count, this->node_coverage,
-		                                    this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count);
+		                                    this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count, extrinsics);
 	}
 
 }
+
+open3d::t::geometry::TriangleMesh
+GraphWarpField::WarpMesh(
+		const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
+		const open3d::core::Tensor& weights, bool disable_neighbor_thresholding,
+		const open3d::core::Tensor& extrinsics/* = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
+) const {
+	if (disable_neighbor_thresholding) {
+		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights, false, 0, extrinsics);
+	} else {
+		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights,
+		                                    this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count, extrinsics);
+	}
+}
+
 
 const core::KdTree& GraphWarpField::GetIndex() const {
 	return this->index;
@@ -161,6 +180,32 @@ open3d::core::Tensor GraphWarpField::GetNodeRotations() {
 
 open3d::core::Tensor GraphWarpField::GetNodeTranslations() {
 	return this->translations;
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::PrecomputeAnchorsAndWeights(
+		const open3d::t::geometry::TriangleMesh& input_mesh,
+		AnchorComputationMethod anchor_computation_method)
+const {
+	o3c::Tensor anchors, weights;
+
+	if (!input_mesh.HasVertexPositions()) {
+		utility::LogError("Input mesh doesn't have vertex positions defined, which are required for computing warp field anchors & weights.");
+	}
+	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
+	switch (anchor_computation_method) {
+		case AnchorComputationMethod::EUCLIDEAN:
+			functional::ComputeAnchorsAndWeightsEuclidean(anchors, weights, vertex_positions, this->nodes, this->anchor_count,
+			                                              this->minimum_valid_anchor_count, this->node_coverage);
+			break;
+		case AnchorComputationMethod::SHORTEST_PATH:
+			functional::ComputeAnchorsAndWeightsShortestPath(anchors, weights, vertex_positions, this->nodes, this->edges,
+			                                                 this->anchor_count, this->node_coverage);
+			break;
+		default:
+			utility::LogError("Unsupported AnchorComputationMethod value: {}", anchor_computation_method);
+	}
+
+	return std::make_tuple(anchors, weights);
 }
 
 

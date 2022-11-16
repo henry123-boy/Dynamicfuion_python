@@ -65,7 +65,7 @@ void TestRasterizePlaneNaive_NoMaskExtraction(const o3c::Device& device) {
 
 	auto extracted_face_vertices = nnrt::rendering::MeshFaceVerticesToRaySpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
-	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances, pixel_normals] =
+	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			nnrt::rendering::RasterizeMesh(extracted_face_vertices, o3u::nullopt, image_size, 0.f, 1, 0, 0, false, false, true);
 
 	auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
@@ -124,7 +124,7 @@ void TestRasterizePlane_MaskExtraction(const o3c::Device& device, bool naive = t
 	if (naive) {
 		bin_size = max_faces_per_bin = 0;
 	}
-	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances, face_normals] =
+	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
 			                               bin_size, max_faces_per_bin, false, false, true);
 
@@ -251,7 +251,7 @@ void TestRasterizeMesh(
 	start = std::chrono::high_resolution_clock::now();
 	o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
 	if (print_benchmark) {
-		auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local, pixel_normals] =
+		auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
 				nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
 				                               bin_size, max_faces_per_bin, false, false, true);
 		pixel_face_indices = pixel_face_indices_local;

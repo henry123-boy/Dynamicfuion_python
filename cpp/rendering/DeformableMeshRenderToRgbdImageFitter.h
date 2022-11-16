@@ -24,11 +24,10 @@
 // local
 #include "geometry/GraphWarpField.h"
 
-namespace rendering {
+namespace nnrt::rendering {
 
 class DeformableMeshRenderToRgbdImageFitter {
 public:
-
 	/**
 	 * \brief
 	 * \param warp_field
@@ -41,15 +40,26 @@ public:
 	 */
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
 	                const open3d::t::geometry::RGBDImage& reference_image, const open3d::core::Tensor& intrinsic_matrix,
-					const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max);
+	                const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max)
+	const;
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-					const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::Image& reference_depth_image,
-					const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max);
+	                const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::Image& reference_depth_image,
+	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max)
+	const;
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
 	                const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::PointCloud& reference_point_cloud,
-	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix);
+	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix)
+	const;
+	open3d::core::Tensor ComputeResiduals(nnrt::geometry::GraphWarpField& warp_field,
+	                                      const open3d::t::geometry::TriangleMesh& canonical_mesh,
+	                                      const open3d::t::geometry::Image& reference_color_image,
+	                                      const open3d::t::geometry::PointCloud& reference_point_cloud,
+	                                      const open3d::core::Tensor& intrinsics,
+	                                      const open3d::core::Tensor& extrinsics,
+	                                      const open3d::core::Tensor& anchors,
+	                                      const open3d::core::Tensor& weights)
+	const;
 };
 
 
-
-} // rendering
+} // nnrt::rendering

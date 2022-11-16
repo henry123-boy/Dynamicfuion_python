@@ -100,7 +100,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMa
 
 	kernel::MeshDataAndClippingMaskToRaySpace(vertex_positions_normalized_camera, open3d::utility::nullopt, clipped_face_mask,
 	                                          vertex_positions_camera, open3d::utility::nullopt, triangle_vertex_indices,
-											  normalized_intrinsic_matrix, normalized_xy_range,
+	                                          normalized_intrinsic_matrix, normalized_xy_range,
 	                                          near_clipping_distance, far_clipping_distance);
 
 	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
@@ -111,7 +111,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size,
 		float near_clipping_distance /* = 0.0 */,
-		float far_clipping_distance /* = INFINITY */){
+		float far_clipping_distance /* = INFINITY */) {
 	CheckMeshHasTrianglesAndVertices(camera_space_mesh);
 	if (!camera_space_mesh.HasVertexNormals()) {
 		o3u::LogError("Argument mesh needs to have vertex normals defined, but it does not. ");
@@ -135,8 +135,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 	return std::make_tuple(vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask);
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor,
-		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>>
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 RasterizeMesh(
 		const open3d::core::Tensor& normalized_camera_space_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
@@ -169,8 +168,8 @@ RasterizeMesh(
 			 * 512 < max_image_dimension < 1024 -> 64
 			 * 1024 < max_image_dimension < 2048 -> 128
 			 */
-			bin_size = static_cast<int>(std::pow(2,
-			                                     std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
+			bin_size =
+					static_cast<int>(std::pow(2, std::max(static_cast<int>(std::ceil(std::log2(static_cast<double>(max_image_dimension)))) - 4, 4)));
 		}
 	}
 

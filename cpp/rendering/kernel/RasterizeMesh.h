@@ -22,14 +22,11 @@
 
 namespace nnrt::rendering::kernel {
 
-typedef open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> TensorOptionalWrapper;
-
 struct Fragments {
 	open3d::core::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
-	TensorOptionalWrapper pixel_interpolated_normals;
 
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, TensorOptionalWrapper> ToTuple() {
-		return std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances, pixel_interpolated_normals);
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> ToTuple() {
+		return std::make_tuple(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances);
 	}
 };
 

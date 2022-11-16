@@ -24,6 +24,7 @@
 #include "core/KdTree.h"
 #include "geometry/functional/Warping.h"
 #include "geometry/kernel/WarpUtilities.h"
+#include "geometry/functional/AnchorComputationMethod.h"
 
 
 namespace nnrt::geometry {
@@ -42,7 +43,16 @@ public:
 
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::Tensor GetNodeExtent() const;
-	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
+	open3d::t::geometry::TriangleMesh WarpMesh(
+			const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true,
+			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))
+	) const;
+	open3d::t::geometry::TriangleMesh WarpMesh(
+			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
+			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
+			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(const open3d::t::geometry::TriangleMesh& input_mesh,
+	                                                                                   AnchorComputationMethod anchor_computation_method) const;
 
 	void ResetRotations();
 	GraphWarpField ApplyTransformations() const;
@@ -71,7 +81,6 @@ public:
 			return true;
 		}
 	}
-
 
 
 	template<open3d::core::Device::DeviceType TDeviceType>
