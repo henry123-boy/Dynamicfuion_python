@@ -17,7 +17,7 @@
 
 #include "tests/test_utils/test_utils.hpp"
 
-#include "geometry/Unproject3dPoints.h"
+#include "geometry/functional/Unproject3dPoints.h"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;

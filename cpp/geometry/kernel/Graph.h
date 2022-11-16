@@ -18,7 +18,7 @@
 #include <open3d/core/Tensor.h>
 
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/Defines.h"
+#include "geometry/functional/kernel/Defines.h"
 
 namespace nnrt::geometry::kernel::graph{
 

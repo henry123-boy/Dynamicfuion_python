@@ -125,7 +125,7 @@ set(NNRT_SOURCE_FILES
     string/join_string_separator.cpp
     string/join_string_separator.h
 
-    geometry/kernel/Defines.h
+    geometry/functional/kernel/Defines.h
     geometry/NonRigidSurfaceVoxelBlockGrid.cpp
     geometry/NonRigidSurfaceVoxelBlockGrid.h
 
@@ -145,22 +145,22 @@ set(NNRT_SOURCE_FILES
     geometry/kernel/GraphImpl.h
 
     geometry/kernel/WarpUtilities.h
-    geometry/kernel/Warp3dPointsAndNormals.h
-    geometry/kernel/Warp3dPointsAndNormals.cpp
-    geometry/kernel/instantiations/Warp3dPointsAndNormalsCPU.cpp
-    geometry/kernel/instantiations/Warp3dPointsAndNormalsCUDA.cu
-    geometry/kernel/Warp3dPointsAndNormalsImpl.h
+    geometry/functional/kernel/Warp3dPointsAndNormals.h
+    geometry/functional/kernel/Warp3dPointsAndNormals.cpp
+    geometry/functional/kernel/instantiations/Warp3dPointsAndNormalsCPU.cpp
+    geometry/functional/kernel/instantiations/Warp3dPointsAndNormalsCUDA.cu
+    geometry/functional/kernel/Warp3dPointsAndNormalsImpl.h
 
-    geometry/kernel/Comparison.h
-    geometry/kernel/Comparison.cpp
-    geometry/kernel/instantiations/ComparisonCPU.cpp
-    geometry/kernel/instantiations/ComparisonCUDA.cu
-    geometry/kernel/ComparisonImpl.h
+    geometry/functional/kernel/Comparison.h
+    geometry/functional/kernel/Comparison.cpp
+    geometry/functional/kernel/instantiations/ComparisonCPU.cpp
+    geometry/functional/kernel/instantiations/ComparisonCUDA.cu
+    geometry/functional/kernel/ComparisonImpl.h
 
     geometry/kernel/Segment.h
 
-    geometry/Downsample3dPoints.h
-    geometry/Downsample3dPoints.cpp
+    geometry/functional/Downsample3dPoints.h
+    geometry/functional/Downsample3dPoints.cpp
 
     geometry/kernel/PointDownsampling.cpp
     geometry/kernel/PointDownsampling.h
@@ -172,17 +172,17 @@ set(NNRT_SOURCE_FILES
     geometry/VoxelBlockGrid.cpp
     geometry/kernel/VoxelGridDtypeDispatch.h
 
-    geometry/AnchorComputationMethod.h
+    geometry/functional/AnchorComputationMethod.h
     geometry/TransformationMode.h
-    geometry/Comparison.h
-    geometry/Comparison.cpp
+    geometry/functional/Comparison.h
+    geometry/functional/Comparison.cpp
 
-    geometry/FindKNearestNeighbors.cpp
-    geometry/FindKNearestNeighbors.h
+    geometry/functional/FindKNearestNeighbors.cpp
+    geometry/functional/FindKNearestNeighbors.h
 
-    geometry/kernel/PointAggregationBin.h
-    geometry/kernel/IndexRaveling.h
-    geometry/kernel/PointCollectionExtent.h
+    geometry/functional/kernel/PointAggregationBin.h
+    geometry/functional/kernel/IndexRaveling.h
+    geometry/functional/kernel/PointCollectionExtent.h
 
     geometry/functional/NormalsOperations.h
     geometry/functional/NormalsOperations.cpp
@@ -192,11 +192,11 @@ set(NNRT_SOURCE_FILES
     geometry/functional/kernel/instantiations/NormalsOperationsCPU.cpp
     geometry/functional/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    geometry/Unproject3dPoints.cpp
-    geometry/Unproject3dPoints.h
-    geometry/kernel/PointCloud.h
-    geometry/kernel/PointCloud.cpp
-    geometry/kernel/PointCloudImpl.h
+    geometry/functional/Unproject3dPoints.cpp
+    geometry/functional/Unproject3dPoints.h
+    geometry/functional/kernel/PointCloud.h
+    geometry/functional/kernel/PointCloud.cpp
+    geometry/functional/kernel/PointCloudImpl.h
     geometry/kernel/instantiations/PointCloudCPU.cpp
     geometry/kernel/instantiations/PointCloudCUDA.cu
 

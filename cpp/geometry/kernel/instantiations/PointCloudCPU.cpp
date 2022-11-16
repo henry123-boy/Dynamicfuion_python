@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/PointCloudImpl.h"
+#include "geometry/functional/kernel/PointCloudImpl.h"
 
 namespace nnrt::geometry::kernel::pointcloud {
 template void UnprojectWithoutDepthFiltering<o3c::Device::DeviceType::CPU>(

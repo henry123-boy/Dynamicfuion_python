@@ -18,8 +18,8 @@
 #include <open3d/core/Tensor.h>
 
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/Defines.h"
-#include "geometry/AnchorComputationMethod.h"
+#include "Defines.h"
+#include "geometry/functional/AnchorComputationMethod.h"
 
 namespace nnrt::geometry::kernel::warp {
 

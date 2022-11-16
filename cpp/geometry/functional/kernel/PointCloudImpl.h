@@ -16,15 +16,15 @@
 #pragma once
 
 //3rd-party
-#include <open3d/t/geometry/kernel/GeometryIndexer.h>
-#include <open3d/t/geometry/kernel/Transform.h>
-#include <open3d/t/geometry/Utility.h>
-#include <open3d/core/Dispatch.h>
-#include <open3d/core/ParallelFor.h>
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/kernel/GeometryIndexer.h"
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/kernel/Transform.h"
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/Utility.h"
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/core/Dispatch.h"
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/core/ParallelFor.h"
 
 //local
-#include "geometry/kernel/PointCloud.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "PointCloud.h"
+#include "../../../core/PlatformIndependentAtomics.h"
 
 
 namespace o3c = open3d::core;

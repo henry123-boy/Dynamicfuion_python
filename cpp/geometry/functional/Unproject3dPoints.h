@@ -15,8 +15,8 @@
 //  ================================================================
 #pragma once
 
-#include <open3d/core/Tensor.h>
-#include <open3d/t/geometry/Image.h>
+#include "../../../../Open3D/Open3D0151/install/include/open3d/core/Tensor.h"
+#include "../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/Image.h"
 
 // candidate to be moved to a separate "camera" module
 namespace nnrt::geometry {

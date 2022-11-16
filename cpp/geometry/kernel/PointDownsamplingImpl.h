@@ -29,7 +29,7 @@
 #include "core/PlatformIndependence.h"
 #include "core/PlatformIndependentAtomics.h"
 #include "core/kernel/HashTableUtilities.h"
-#include "geometry/kernel/PointAggregationBin.h"
+#include "geometry/functional/kernel/PointAggregationBin.h"
 
 namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;

@@ -26,7 +26,7 @@
 #include "core/PlatformIndependentAtomics.h"
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/kernel/VoxelGridDtypeDispatch.h"
-#include "geometry/kernel/Defines.h"
+#include "geometry/functional/kernel/Defines.h"
 #include "geometry/kernel/Segment.h"
 
 

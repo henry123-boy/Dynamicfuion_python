@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/PointCloud.h"
+#include "PointCloud.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;

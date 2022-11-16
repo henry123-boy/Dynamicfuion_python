@@ -15,11 +15,11 @@
 //  ================================================================
 #pragma once
 
-#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/kernel/GeometryIndexer.h"
 
-#include "geometry/kernel/Warp3dPointsAndNormals.h"
-#include "geometry/kernel/Defines.h"
-#include "geometry/kernel/WarpUtilities.h"
+#include "Warp3dPointsAndNormals.h"
+#include "Defines.h"
+#include "../../kernel/WarpUtilities.h"
 
 
 using namespace open3d;

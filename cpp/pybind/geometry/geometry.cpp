@@ -18,11 +18,11 @@
 // nnrt_cpp
 #include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/GraphWarpField.h"
-#include "geometry/AnchorComputationMethod.h"
+#include "geometry/functional/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
-#include "geometry/Comparison.h"
-#include "geometry/Downsample3dPoints.h"
-#include "geometry/Unproject3dPoints.h"
+#include "geometry/functional/Comparison.h"
+#include "geometry/functional/Downsample3dPoints.h"
+#include "geometry/functional/Unproject3dPoints.h"
 
 // local
 #include "functional/functional.h"

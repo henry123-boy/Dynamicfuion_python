@@ -13,8 +13,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/Comparison.h"
-#include "geometry/kernel/Comparison.h"
+#include "Comparison.h"
+#include "geometry/functional/kernel/Comparison.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry;

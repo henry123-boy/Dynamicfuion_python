@@ -13,9 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Comparison.h"
+#include "geometry/functional/kernel/Comparison.h"
 #include "open3d/core/ParallelFor.h"
-#include "geometry/kernel/ComparisonImpl.h"
+#include "geometry/functional/kernel/ComparisonImpl.h"
 
 namespace nnrt::geometry::kernel::comparison {
 template

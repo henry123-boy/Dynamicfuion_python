@@ -19,7 +19,7 @@
 #include <open3d/t/geometry/Image.h>
 
 #include "geometry/VoxelBlockGrid.h"
-#include "geometry/AnchorComputationMethod.h"
+#include "geometry/functional/AnchorComputationMethod.h"
 #include "geometry/GraphWarpField.h"
 #include "io/VoxelBlockGridIO.h"
 

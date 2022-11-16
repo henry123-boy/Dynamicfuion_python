@@ -19,7 +19,7 @@
 #include "catch2/catch_approx.hpp"
 
 #include <open3d/core/Tensor.h>
-#include <geometry/Downsample3dPoints.h>
+#include "geometry/functional/Downsample3dPoints.h"
 
 #include <Eigen/Dense>
 

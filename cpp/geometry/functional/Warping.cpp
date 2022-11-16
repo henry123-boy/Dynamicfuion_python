@@ -15,7 +15,7 @@
 //  ================================================================
 // local
 #include "Warping.h"
-#include "geometry/kernel/Warp3dPointsAndNormals.h"
+#include "geometry/functional/kernel/Warp3dPointsAndNormals.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;

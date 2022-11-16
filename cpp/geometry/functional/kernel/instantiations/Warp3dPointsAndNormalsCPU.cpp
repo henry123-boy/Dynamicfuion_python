@@ -13,9 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Warp3dPointsAndNormals.h"
+#include "geometry/functional/kernel/Warp3dPointsAndNormals.h"
 #include "open3d/core/ParallelFor.h"
-#include "geometry/kernel/Warp3dPointsAndNormalsImpl.h"
+#include "geometry/functional/kernel/Warp3dPointsAndNormalsImpl.h"
 
 using namespace open3d;
 

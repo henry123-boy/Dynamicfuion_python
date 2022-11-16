@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Warp3dPointsAndNormals.h"
+#include "Warp3dPointsAndNormals.h"
 #include "core/DeviceSelection.h"
 #include <open3d/t/geometry/Utility.h>
 

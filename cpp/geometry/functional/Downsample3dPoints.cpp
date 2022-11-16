@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/Downsample3dPoints.h"
+#include "Downsample3dPoints.h"
 #include <open3d/core/TensorCheck.h>
 #include "geometry/kernel/PointDownsampling.h"
 #include <open3d/core/hashmap/HashSet.h>

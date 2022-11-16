@@ -15,8 +15,8 @@
 //  ================================================================
 #include <open3d/t/geometry/Utility.h>
 
-#include "geometry/Unproject3dPoints.h"
-#include "geometry/kernel/PointCloud.h"
+#include "Unproject3dPoints.h"
+#include "geometry/functional/kernel/PointCloud.h"
 
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;

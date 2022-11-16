@@ -18,7 +18,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <Eigen/Dense>
 
-#include "geometry/kernel/Defines.h"
+#include "geometry/functional/kernel/Defines.h"
 #include "core/kernel/KnnUtilities.h"
 #include "core/kernel/KnnUtilities_PriorityQueue.h"
 #include "core/kernel/KdTreeNodeTypes.h"

@@ -16,12 +16,12 @@
 #pragma once
 
 // 3rd party
-#include <open3d/core/Device.h>
+#include "../../../../../Open3D/Open3D0151/install/include/open3d/core/Device.h"
 
 // local
-#include "core/PlatformIndependence.h"
-#include "core/PlatformIndependentAtomics.h"
-#include <Eigen/Dense>
+#include "../../../core/PlatformIndependence.h"
+#include "../../../core/PlatformIndependentAtomics.h"
+#include "../../../../3rd-party/Eigen/Eigen/Dense"
 
 
 struct PointAggregationBin {
