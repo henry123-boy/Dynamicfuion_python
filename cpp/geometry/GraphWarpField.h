@@ -43,6 +43,7 @@ public:
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::Tensor GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding = true) const;
+
 	void ResetRotations();
 	GraphWarpField ApplyTransformations() const;
 
@@ -70,6 +71,8 @@ public:
 			return true;
 		}
 	}
+
+
 
 	template<open3d::core::Device::DeviceType TDeviceType>
 	NNRT_DEVICE_WHEN_CUDACC Eigen::Vector3f

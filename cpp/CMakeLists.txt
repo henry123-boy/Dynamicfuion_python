@@ -40,6 +40,7 @@ set(NNRT_SOURCE_FILES
 
     core/PlatformIndependence.h
     core/PlatformIndependentAtomics.h
+    core/PlatformIndependentTuple.h
 
     core/kernel/KnnUtilities.h
     core/kernel/KnnUtilities_PriorityQueue.h
@@ -100,6 +101,24 @@ set(NNRT_SOURCE_FILES
     core/linalg/LinalgUtils.cpp
 
     core/PreprocessorStrings.h
+
+    core/functional/Sorting.cpp
+    core/functional/Sorting.h
+    core/functional/kernel/BubbleSort.h
+    core/functional/kernel/Sorting.cpp
+    core/functional/kernel/Sorting.h
+    core/functional/kernel/SortingImpl.h
+    core/functional/kernel/instantiations/SortingCPU.cpp
+    core/functional/kernel/instantiations/SortingCUDA.cu
+
+    core/functional/Comparisons.cpp
+    core/functional/Comparisons.h
+    core/functional/kernel/Comparisons.cpp
+    core/functional/kernel/Comparisons.h
+    core/functional/kernel/ComparisonsImpl.h
+    core/functional/kernel/instantiations/ComparisonsCPU.cpp
+    core/functional/kernel/instantiations/ComparisonsCUDA.cu
+
 
     string/split_string.h
     string/split_string.cpp
@@ -216,15 +235,23 @@ set(NNRT_SOURCE_FILES
     rendering/kernel/GridBitMask.cuh
     rendering/kernel/RasterizeMeshImplCPU.h
 
-    core/functional/Sorting.cpp
-    core/functional/Sorting.h
-    core/functional/kernel/BubbleSort.h
-    core/functional/kernel/Sorting.cpp
-    core/functional/kernel/Sorting.h
-    core/functional/kernel/SortingImpl.h
-    core/functional/kernel/instantiations/SortingCPU.cpp
-    core/functional/kernel/instantiations/SortingCUDA.cu
-    core/functional/Comparisons.cpp core/functional/Comparisons.h core/functional/kernel/Comparisons.cpp core/functional/kernel/Comparisons.h core/functional/kernel/ComparisonsImpl.h core/functional/kernel/instantiations/ComparisonsCPU.cpp core/functional/kernel/instantiations/ComparisonsCUDA.cu core/PlatformIndependentTuple.h rendering/kernel/ExtractClippedFaceVertices.cpp rendering/kernel/ExtractClippedFaceVertices.h rendering/kernel/ExtractClippedFaceVerticesImpl.h rendering/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp rendering/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu rendering/functional/InterpolateFaceAttributes.cpp rendering/functional/InterpolateFaceAttributes.h rendering/functional/kernel/InterpolateFaceAttributes.cpp rendering/functional/kernel/InterpolateFaceAttributes.h rendering/functional/kernel/InterpolateFaceAttributesImpl.h rendering/functional/kernel/instantiations/InterpolateFaceAttributesCPU.cpp rendering/functional/kernel/instantiations/InterpolateFaceAttributesCUDA.cu)
+    rendering/kernel/ExtractClippedFaceVertices.cpp
+    rendering/kernel/ExtractClippedFaceVertices.h
+    rendering/kernel/ExtractClippedFaceVerticesImpl.h
+    rendering/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
+    rendering/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
+
+    rendering/functional/InterpolateFaceAttributes.cpp
+    rendering/functional/InterpolateFaceAttributes.h
+    rendering/functional/kernel/InterpolateFaceAttributes.cpp
+    rendering/functional/kernel/InterpolateFaceAttributes.h
+    rendering/functional/kernel/InterpolateFaceAttributesImpl.h
+    rendering/functional/kernel/instantiations/InterpolateFaceAttributesCPU.cpp
+    rendering/functional/kernel/instantiations/InterpolateFaceAttributesCUDA.cu
+
+    rendering/DeformableMeshRenderToImageFitter.cpp
+    rendering/DeformableMeshRenderToRgbdImageFitter.h
+    )
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

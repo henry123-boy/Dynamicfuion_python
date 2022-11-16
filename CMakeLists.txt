@@ -59,7 +59,7 @@ message(STATUS "Downloading 3rdparty dependencies to ${NNRT_THIRD_PARTY_DOWNLOAD
 
 
 ### Parse NNRT version number
-file(STRINGS "csrc/version.txt" NNRT_VERSION_READ)
+file(STRINGS "cpp/version.txt" NNRT_VERSION_READ)
 foreach(ver ${NNRT_VERSION_READ})
     if (ver MATCHES "NNRT_VERSION_(MAJOR|MINOR|PATCH) +([^ ]+)$")
         set(NNRT_VERSION_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}" CACHE INTERNAL "")
@@ -187,5 +187,5 @@ include(NNRTShowAndAbortOnWarning)
 
 ### subdirectories
 
-add_subdirectory(csrc)
+add_subdirectory(cpp)
 

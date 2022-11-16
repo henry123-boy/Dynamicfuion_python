@@ -34,7 +34,7 @@ import numpy as np
 import rendering.converters
 
 GENERATED_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/csrc/tests/test_data"
-STATIC_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/csrc/tests/test_data"
+STATIC_TEST_DATA_DIR = "/cpp/tests/test_data"
 
 
 def generate_test_xy_plane(plane_side_length: float, plane_center_position: tuple,
