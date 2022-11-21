@@ -32,7 +32,7 @@
 
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tgk = open3d::t::geometry::kernel;
 
 

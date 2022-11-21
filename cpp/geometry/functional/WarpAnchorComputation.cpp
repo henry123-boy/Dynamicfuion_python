@@ -18,7 +18,7 @@
 #include "geometry/kernel/Graph.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 namespace nnrt::geometry::functional {
 
@@ -29,15 +29,15 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 	o3c::AssertTensorDtype(nodes, o3c::Dtype::Float32);
 	o3c::AssertTensorDevice(nodes, device);
 	if (minimum_valid_anchor_count > anchor_count) {
-		o3u::LogError("minimum_valid_anchor_count (now, {}) has to be smaller than or equal to anchor_count, which is {}.",
-		              minimum_valid_anchor_count, anchor_count);
+		utility::LogError("minimum_valid_anchor_count (now, {}) has to be smaller than or equal to anchor_count, which is {}.",
+		                  minimum_valid_anchor_count, anchor_count);
 	}
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	auto points_shape = points.GetShape();
 	if (points_shape.size() < 2 || points_shape.size() > 3) {
-		o3u::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
+		utility::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
 	}
 	o3c::Tensor points_array;
 	enum PointMode {
@@ -45,11 +45,11 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 	};
 	PointMode point_mode;
 	if (points_shape.size() == 2) {
-		o3c::AssertTensorShape(points, { o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, 3 });
 		points_array = points;
 		point_mode = POINT_ARRAY;
 	} else {
-		o3c::AssertTensorShape(points, { o3u::nullopt, o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, utility::nullopt, 3 });
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}
@@ -77,11 +77,11 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	o3c::AssertTensorDtype(nodes, o3c::Dtype::Float32);
 	o3c::AssertTensorDtype(edges, o3c::Dtype::Int32);
 	if (anchor_count < 1) {
-		o3u::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
+		utility::LogError("anchor_count needs to be greater than one. Got: {}.", anchor_count);
 	}
 	auto points_shape = points.GetShape();
 	if (points_shape.size() < 2 || points_shape.size() > 3) {
-		o3u::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
+		utility::LogError("`points` needs to have 2 or 3 dimensions. Got: {} dimensions.", points_shape.size());
 	}
 	o3c::Tensor points_array;
 	enum PointMode {
@@ -89,11 +89,11 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	};
 	PointMode point_mode;
 	if (points_shape.size() == 2) {
-		o3c::AssertTensorShape(points, { o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, 3 });
 		points_array = points;
 		point_mode = POINT_ARRAY;
 	} else {
-		o3c::AssertTensorShape(points, { o3u::nullopt, o3u::nullopt, 3 });
+		o3c::AssertTensorShape(points, { utility::nullopt, utility::nullopt, 3 });
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}

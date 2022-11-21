@@ -16,13 +16,17 @@
 
 // open3d
 #include <open3d/t/geometry/PointCloud.h>
+#include <open3d/core/Dispatch.h>
 
 // local
+#include "core/functional/Masking.h"
 #include "rendering/DeformableMeshRenderToRgbdImageFitter.h"
 #include "rendering/RasterizeMesh.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
 
+
 namespace o3c = open3d::core;
+namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::rendering {
@@ -38,17 +42,31 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 
 }
 
-void DeformableMeshRenderToRgbdImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field,
-		const open3d::t::geometry::TriangleMesh& canonical_mesh,
+void
+DeformableMeshRenderToRgbdImageFitter::FitToImage(
+		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::Image& reference_color_image,
 		const open3d::t::geometry::Image& reference_depth_image,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max
+		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+		const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
+		float depth_scale, float depth_max
 ) const {
-	open3d::t::geometry::PointCloud point_cloud =
-			o3tg::PointCloud::CreateFromDepthImage(reference_depth_image, intrinsic_matrix,
-			                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), depth_scale, depth_max);
+	open3d::t::geometry::PointCloud point_cloud;
+	if (reference_image_mask.has_value()) {
+		DISPATCH_DTYPE_TO_TEMPLATE(reference_depth_image.GetDtype(), [&](){
+			auto depth_tensor = reference_depth_image.AsTensor();
+			auto masked_reference_depth_image = o3tg::Image(core::SetMaskedToValue(depth_tensor, reference_image_mask.value().get(),
+																				   static_cast<scalar_t>(0.0)));
+			point_cloud =
+					o3tg::PointCloud::CreateFromDepthImage(masked_reference_depth_image, intrinsic_matrix,
+					                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), depth_scale, depth_max);
+
+		});
+	} else {
+		point_cloud =
+				o3tg::PointCloud::CreateFromDepthImage(reference_depth_image, intrinsic_matrix,
+				                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), depth_scale, depth_max);
+	}
 	FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, intrinsic_matrix, extrinsic_matrix);
 }
 
@@ -56,10 +74,11 @@ void
 DeformableMeshRenderToRgbdImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::RGBDImage& reference_image,
+		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
 		const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
 		float depth_scale, float depth_max
 ) const {
-	FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, intrinsic_matrix, extrinsic_matrix,
+	FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, reference_image_mask, intrinsic_matrix, extrinsic_matrix,
 	           depth_scale, depth_max);
 }
 
@@ -82,14 +101,26 @@ open3d::core::Tensor DeformableMeshRenderToRgbdImageFitter::ComputeResiduals(nnr
 	auto face_vertex_normals = vertex_normals.GetItem(o3c::TensorKey::IndexTensor(triangle_indices));
 	auto rendered_normals = functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
 	int64_t pixel_attribute_count = rendered_normals.GetShape(3);
-	// both statements below assume 1 x faces per pixel, neet to get first slice along pixel-face axis otherwise
+	// both statements below assume 1x faces per pixel, neet to get first slice along pixel-face axis otherwise
 	rendered_normals = rendered_normals.Reshape({image_size[0] * image_size[1], pixel_attribute_count});
 	pixel_depths = pixel_depths.Reshape({image_size[0], image_size[1]});
+
+
+	auto negative_ones = -1 * o3c::Tensor::Ones(pixel_depths.GetShape(), pixel_depths.GetDtype(), pixel_depths.GetDevice());
+	o3c::Tensor rendered_point_mask = pixel_depths.IsClose(negative_ones, 0, 0).LogicalNot();
+	core::SetMaskedToValue(pixel_depths, rendered_point_mask, 0.f);
+
+
 	o3tg::PointCloud rendered_point_cloud =
 			o3tg::PointCloud::CreateFromDepthImage(o3tg::Image(pixel_depths), intrinsics, o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")),
 			                                       1.0, 1000.0f);
 
-
+	o3c::Tensor rendered_points = rendered_point_cloud.GetPointPositions().GetItem(o3c::TensorKey::IndexTensor(rendered_point_mask));
+	const o3c::Tensor& reference_points = reference_point_cloud.GetPointPositions();
+	o3c::Tensor source_to_target_point_vectors = rendered_points - reference_points;
+	// all masked values should produce distances of 0.
+	o3c::Tensor distances = (rendered_normals * source_to_target_point_vectors).Sum({1});
+	return distances;
 }
 
 

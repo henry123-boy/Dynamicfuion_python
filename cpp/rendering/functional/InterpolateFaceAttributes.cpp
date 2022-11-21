@@ -18,7 +18,7 @@
 #include "rendering/functional/kernel/InterpolateFaceAttributes.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 
 namespace nnrt::rendering::functional {
 
@@ -27,7 +27,7 @@ open3d::core::Tensor InterpolateFaceAttributes(
 		const open3d::core::Tensor& pixel_barycentric_coordinates,
 		const open3d::core::Tensor& face_attributes
 ) {
-	o3c::AssertTensorShape(face_attributes, { o3u::nullopt, 3 , o3u::nullopt});
+	o3c::AssertTensorShape(face_attributes, { utility::nullopt, 3 , utility::nullopt});
 	o3c::AssertTensorDtypes(face_attributes, { o3c::Float32, o3c::Float64 });
 	auto device = face_attributes.GetDevice();
 

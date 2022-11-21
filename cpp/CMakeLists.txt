@@ -251,7 +251,7 @@ set(NNRT_SOURCE_FILES
 
     rendering/DeformableMeshRenderToImageFitter.cpp
     rendering/DeformableMeshRenderToRgbdImageFitter.h
-    )
+    core/functional/Masking.cpp core/functional/Masking.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

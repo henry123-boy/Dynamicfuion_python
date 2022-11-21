@@ -25,14 +25,14 @@
 #include "rendering/kernel/ExtractClippedFaceVertices.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::rendering {
 
 static void CheckMeshHasTrianglesAndVertices(const open3d::t::geometry::TriangleMesh& mesh) {
 	if (!mesh.HasTriangleIndices() || !mesh.HasVertexPositions()) {
-		o3u::LogError("Argument mesh needs to have both triangle vertex indices and vertex positions. "
+		utility::LogError("Argument mesh needs to have both triangle vertex indices and vertex positions. "
 		              "Given mesh has triangle indices: {}, vertex positions: {}.",
 		              mesh.HasTriangleIndices() ? "true" : "false", mesh.HasVertexPositions() ? "true" : "false");
 	}
@@ -43,14 +43,14 @@ static void CheckClippingRangeAndImageSize(const open3d::core::SizeVector& image
                                            float near_clipping_distance /* = 0.0 */,
                                            float far_clipping_distance /* = INFINITY */) {
 	if (near_clipping_distance < MIN_NEAR_CLIPPING_DISTANCE) {
-		o3u::LogError("near_clipping_distance cannot be less than {}. Got {}.", MIN_NEAR_CLIPPING_DISTANCE, near_clipping_distance);
+		utility::LogError("near_clipping_distance cannot be less than {}. Got {}.", MIN_NEAR_CLIPPING_DISTANCE, near_clipping_distance);
 	}
 	if (near_clipping_distance > far_clipping_distance) {
-		o3u::LogError("near_clipping_distance cannot be greater than far_clipping_distance. Got {} and {}, respectively.",
-		              near_clipping_distance, far_clipping_distance);
+		utility::LogError("near_clipping_distance cannot be greater than far_clipping_distance. Got {} and {}, respectively.",
+		                  near_clipping_distance, far_clipping_distance);
 	}
 	if (image_size.size() != 2) {
-		o3u::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
+		utility::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
 	}
 }
 
@@ -114,7 +114,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 		float far_clipping_distance /* = INFINITY */) {
 	CheckMeshHasTrianglesAndVertices(camera_space_mesh);
 	if (!camera_space_mesh.HasVertexNormals()) {
-		o3u::LogError("Argument mesh needs to have vertex normals defined, but it does not. ");
+		utility::LogError("Argument mesh needs to have vertex normals defined, but it does not. ");
 	}
 	CheckClippingRangeAndImageSize(image_size, near_clipping_distance, far_clipping_distance);
 	const o3c::Tensor& vertex_positions_camera = camera_space_mesh.GetVertexPositions();
@@ -149,10 +149,10 @@ RasterizeMesh(
 		bool cull_back_faces /* = true */
 ) {
 	if (faces_per_pixel > MAX_POINTS_PER_PIXEL) {
-		o3u::LogError("Need faces_per_pixel <= {}. Got: {}", MAX_POINTS_PER_PIXEL, faces_per_pixel);
+		utility::LogError("Need faces_per_pixel <= {}. Got: {}", MAX_POINTS_PER_PIXEL, faces_per_pixel);
 	}
 	if (image_size.size() != 2) {
-		o3u::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
+		utility::LogError("image_size should be a SizeVector of size 2. Got size {}.", image_size.size());
 	}
 	int64_t max_image_dimension = std::max(image_size[0], image_size[1]);
 
@@ -176,8 +176,8 @@ RasterizeMesh(
 	if (bin_size != 0) {
 		int bins_along_max_dimension = 1 + (max_image_dimension - 1) / bin_size;
 		if (bins_along_max_dimension >= MAX_BINS_ALONG_IMAGE_DIMENSION) {
-			o3u::LogError("The provided bin_size is too small: computed bin count along maximum dimension is {}, this has to be < {}.",
-			              bins_along_max_dimension, MAX_BINS_ALONG_IMAGE_DIMENSION);
+			utility::LogError("The provided bin_size is too small: computed bin count along maximum dimension is {}, this has to be < {}.",
+			                  bins_along_max_dimension, MAX_BINS_ALONG_IMAGE_DIMENSION);
 		}
 	}
 

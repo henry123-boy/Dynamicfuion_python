@@ -32,7 +32,7 @@
 #include "core/functional/Comparisons.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3io = open3d::io;
 namespace o3tg = open3d::t::geometry;
 namespace o3tio = open3d::t::io;
@@ -66,7 +66,7 @@ void TestRasterizePlaneNaive_NoMaskExtraction(const o3c::Device& device) {
 	auto extracted_face_vertices = nnrt::rendering::MeshFaceVerticesToRaySpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			nnrt::rendering::RasterizeMesh(extracted_face_vertices, o3u::nullopt, image_size, 0.f, 1, 0, 0, false, false, true);
+			nnrt::rendering::RasterizeMesh(extracted_face_vertices, utility::nullopt, image_size, 0.f, 1, 0, 0, false, false, true);
 
 	auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
 			test::generated_array_test_data_directory.ToString() + "/plane_0_pixel_face_indices.npy").To(device);

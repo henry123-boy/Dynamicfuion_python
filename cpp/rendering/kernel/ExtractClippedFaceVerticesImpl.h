@@ -24,7 +24,7 @@
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace o3tgk = open3d::t::geometry::kernel;
 
 
@@ -135,7 +135,7 @@ void MeshVerticesClippedToNormalizedCameraSpace(open3d::core::Tensor& vertex_pos
 		return static_cast<int64_t>(NNRT_ATOMIC_ADD(unclipped_face_count, 1));
 	};
 	ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic<TDeviceType, false>(
-			vertex_positions_normalized_camera, o3u::nullopt, vertex_positions_camera, o3u::nullopt,
+			vertex_positions_normalized_camera, utility::nullopt, vertex_positions_camera, utility::nullopt,
 			triangle_vertex_indices, normalized_camera_space_matrix,
 			normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance,
 			run_before_return_invalid, get_output_face_index
@@ -157,9 +157,9 @@ void MeshDataAndClippingMaskToRaySpace(open3d::core::Tensor& vertex_positions_no
 	o3c::Device device = vertex_positions_camera.GetDevice();
 
 	if (face_vertex_normals_camera.has_value() != vertex_normals_camera.has_value()) {
-		o3u::LogError("either both or none of face_vertex_normals_camera[out] and normals_camera[in] need to have Tensor values passed in. "
+		utility::LogError("either both or none of face_vertex_normals_camera[out] and normals_camera[in] need to have Tensor values passed in. "
 		              "face_vertex_normals_camera: {}; normals_camera: {}}", (face_vertex_normals_camera.has_value() ? " has value" : " is null"),
-		              (vertex_normals_camera.has_value() ? " has value" : " is null"));
+		                  (vertex_normals_camera.has_value() ? " has value" : " is null"));
 	}
 	bool extract_normals = vertex_normals_camera.has_value();
 

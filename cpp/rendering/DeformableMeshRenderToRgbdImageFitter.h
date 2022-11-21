@@ -39,12 +39,17 @@ public:
 	 * \param depth_max
 	 */
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                const open3d::t::geometry::RGBDImage& reference_image, const open3d::core::Tensor& intrinsic_matrix,
-	                const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max)
+	                const open3d::t::geometry::RGBDImage& reference_image,
+	                const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
+	                float depth_scale, float depth_max)
 	const;
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::Image& reference_depth_image,
-	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix, float depth_scale, float depth_max)
+	                const open3d::t::geometry::Image& reference_color_image,
+	                const open3d::t::geometry::Image& reference_depth_image,
+	                const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
+	                float depth_scale, float depth_max)
 	const;
 	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
 	                const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::PointCloud& reference_point_cloud,

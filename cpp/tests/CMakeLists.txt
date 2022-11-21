@@ -142,6 +142,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_voxel_block_grid_io)
     nnrt_add_test(test_unproject_3d_points)
     nnrt_add_test(test_extract_face_vertices)
+    nnrt_add_test(test_deformable_mesh_fitter)
 
     nnrt_add_test_data_download_target(
         test_data_plane_and_cube_rendering

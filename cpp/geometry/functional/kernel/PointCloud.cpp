@@ -17,7 +17,7 @@
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
-namespace o3u = open3d::utility;
+namespace utility = open3d::utility;
 namespace nnrt::geometry::kernel::pointcloud {
 
 void UnprojectWithoutDepthFiltering(
