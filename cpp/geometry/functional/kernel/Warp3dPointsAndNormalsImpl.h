@@ -19,14 +19,14 @@
 
 #include "Warp3dPointsAndNormals.h"
 #include "Defines.h"
-#include "../../kernel/WarpUtilities.h"
+#include "geometry/functional/kernel/WarpUtilities.h"
 
 
 using namespace open3d;
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
-namespace nnrt::geometry::kernel::warp {
+namespace nnrt::geometry::functional::kernel::warp {
 
 // region ======== POINTS ONLY version for computing anchors in real-time ==========
 
@@ -433,4 +433,4 @@ void Warp3dPointsAndNormals(
 
 // endregion
 
-} // namespace nnrt::geometry::kernel::warp
+} // namespace nnrt::geometry::functional::kernel::warp

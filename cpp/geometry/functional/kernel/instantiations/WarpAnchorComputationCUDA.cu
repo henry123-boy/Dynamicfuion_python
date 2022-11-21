@@ -13,12 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Graph.h"
+#include "geometry/functional/kernel/WarpAnchorComputation.h"
 #include "open3d/core/ParallelFor.h"
 #include "core/heap/CUDA/DeviceHeapCUDA.cuh"
-#include "geometry/kernel/GraphImpl.h"
+#include "geometry/functional/kernel/WarpAnchorComputationImpl.h"
 
-namespace nnrt::geometry::kernel::graph {
+namespace nnrt::geometry::functional::kernel {
 
 template
 void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CUDA, true>(
@@ -50,4 +50,4 @@ void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CUDA
 		const float node_coverage
 );
 
-} // namespace nnrt::geometry::kernel::graph
+} // namespace nnrt::geometry::functional::kernel

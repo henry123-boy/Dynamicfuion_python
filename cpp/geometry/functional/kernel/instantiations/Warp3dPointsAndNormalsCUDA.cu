@@ -19,7 +19,7 @@
 
 using namespace open3d;
 
-namespace nnrt::geometry::kernel::warp {
+namespace nnrt::geometry::functional::kernel::warp {
 // region ============================= POINTS ONLY ==================================================================================================
 // computes anchors on-the-fly, does not use node distance thresholding
 template void Warp3dPoints<o3c::Device::DeviceType::CUDA>(
@@ -91,4 +91,4 @@ template void Warp3dPointsAndNormals<o3c::Device::DeviceType::CUDA>(
 );
 // endregion
 
-} // namespace nnrt::geometry::kernel::warp
+} // namespace nnrt::geometry::functional::kernel::warp

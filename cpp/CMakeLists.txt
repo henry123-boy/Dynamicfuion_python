@@ -138,13 +138,13 @@ set(NNRT_SOURCE_FILES
     geometry/GraphWarpField.h
     geometry/GraphWarpField.cpp
 
-    geometry/kernel/Graph.h
-    geometry/kernel/Graph.cpp
-    geometry/kernel/instantiations/GraphCPU.cpp
-    geometry/kernel/instantiations/GraphCUDA.cu
-    geometry/kernel/GraphImpl.h
+    geometry/functional/kernel/WarpAnchorComputation.h
+    geometry/functional/kernel/WarpAnchorComputation.cpp
+    geometry/functional/kernel/instantiations/WarpAnchorComputationCPU.cpp
+    geometry/functional/kernel/instantiations/WarpAnchorComputationCUDA.cu
+    geometry/functional/kernel/WarpAnchorComputationImpl.h
 
-    geometry/kernel/WarpUtilities.h
+    geometry/functional/kernel/WarpUtilities.h
     geometry/functional/kernel/Warp3dPointsAndNormals.h
     geometry/functional/kernel/Warp3dPointsAndNormals.cpp
     geometry/functional/kernel/instantiations/Warp3dPointsAndNormalsCPU.cpp
@@ -251,7 +251,7 @@ set(NNRT_SOURCE_FILES
 
     rendering/DeformableMeshRenderToImageFitter.cpp
     rendering/DeformableMeshRenderToRgbdImageFitter.h
-    core/functional/Masking.cpp core/functional/Masking.h)
+    core/functional/Masking.cpp core/functional/Masking.h rendering/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp rendering/functional/WarpedMeshToReferencePointCloud_PointToPlane.h rendering/functional/PartialDerivatives.cpp rendering/functional/PartialDerivatives.h rendering/functional/kernel/PartialDerivatives.cpp rendering/functional/kernel/PartialDerivatives.h rendering/functional/kernel/PartialDerivativesImpl.h)
 
 add_library(nnrt_cpp STATIC
     ${NNRT_SOURCE_FILES}

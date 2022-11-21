@@ -13,11 +13,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/Graph.h"
+#include "WarpAnchorComputation.h"
 
 using namespace open3d;
 
-namespace nnrt::geometry::kernel::graph {
+namespace nnrt::geometry::functional::kernel{
 void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
                                        const open3d::core::Tensor& nodes, const int anchor_count, const int minimum_valid_anchor_count,
                                        const float node_coverage) {
@@ -78,4 +78,4 @@ void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& w
 	}
 }
 
-} // namespace nnrt::geometry::kernel::graph
+} // namespace nnrt::geometry::functional::kernel

@@ -29,7 +29,7 @@ namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 namespace kdtree = nnrt::core::kernel::kdtree;
 
-namespace nnrt::geometry::kernel::warp {
+namespace nnrt::geometry::functional::kernel::warp {
 
 template<o3c::Device::DeviceType TDeviceType>
 NNRT_DEVICE_WHEN_CUDACC

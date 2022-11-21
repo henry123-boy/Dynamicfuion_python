@@ -22,7 +22,6 @@
 #include "core/functional/Masking.h"
 #include "rendering/DeformableMeshRenderToRgbdImageFitter.h"
 #include "rendering/RasterizeMesh.h"
-#include "rendering/functional/InterpolateFaceAttributes.h"
 
 
 namespace o3c = open3d::core;
@@ -82,46 +81,7 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
 	           depth_scale, depth_max);
 }
 
-open3d::core::Tensor DeformableMeshRenderToRgbdImageFitter::ComputeResiduals(nnrt::geometry::GraphWarpField& warp_field,
-                                                                             const open3d::t::geometry::TriangleMesh& canonical_mesh,
-                                                                             const open3d::t::geometry::Image& reference_color_image,
-                                                                             const open3d::t::geometry::PointCloud& reference_point_cloud,
-                                                                             const open3d::core::Tensor& intrinsics,
-                                                                             const open3d::core::Tensor& extrinsics,
-                                                                             const open3d::core::Tensor& anchors,
-                                                                             const open3d::core::Tensor& weights) const {
-	o3c::SizeVector image_size = {reference_color_image.AsTensor().GetShape(0), reference_color_image.AsTensor().GetShape(1)};
-	o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(canonical_mesh, anchors, weights, true, extrinsics);
-	auto [extracted_face_vertices, clipped_face_mask] =
-			MeshFaceVerticesAndClipMaskToRaySpace(warped_mesh, intrinsics, image_size);
-	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true, false, true);
-	auto vertex_normals = warped_mesh.GetVertexNormals();
-	auto triangle_indices = warped_mesh.GetTriangleIndices();
-	auto face_vertex_normals = vertex_normals.GetItem(o3c::TensorKey::IndexTensor(triangle_indices));
-	auto rendered_normals = functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
-	int64_t pixel_attribute_count = rendered_normals.GetShape(3);
-	// both statements below assume 1x faces per pixel, neet to get first slice along pixel-face axis otherwise
-	rendered_normals = rendered_normals.Reshape({image_size[0] * image_size[1], pixel_attribute_count});
-	pixel_depths = pixel_depths.Reshape({image_size[0], image_size[1]});
 
-
-	auto negative_ones = -1 * o3c::Tensor::Ones(pixel_depths.GetShape(), pixel_depths.GetDtype(), pixel_depths.GetDevice());
-	o3c::Tensor rendered_point_mask = pixel_depths.IsClose(negative_ones, 0, 0).LogicalNot();
-	core::SetMaskedToValue(pixel_depths, rendered_point_mask, 0.f);
-
-
-	o3tg::PointCloud rendered_point_cloud =
-			o3tg::PointCloud::CreateFromDepthImage(o3tg::Image(pixel_depths), intrinsics, o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")),
-			                                       1.0, 1000.0f);
-
-	o3c::Tensor rendered_points = rendered_point_cloud.GetPointPositions().GetItem(o3c::TensorKey::IndexTensor(rendered_point_mask));
-	const o3c::Tensor& reference_points = reference_point_cloud.GetPointPositions();
-	o3c::Tensor source_to_target_point_vectors = rendered_points - reference_points;
-	// all masked values should produce distances of 0.
-	o3c::Tensor distances = (rendered_normals * source_to_target_point_vectors).Sum({1});
-	return distances;
-}
 
 
 } // nnrt::rendering

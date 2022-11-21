@@ -20,7 +20,7 @@
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
 
-namespace nnrt::geometry::kernel::warp {
+namespace nnrt::geometry::functional::kernel::warp {
 
 // region =========================== POINTS ONLY ====================================================================================================
 // computes anchors on-the-fly, does not use node distance thresholding
@@ -236,4 +236,4 @@ void Warp3dPointsAndNormals(
 	);
 }
 // endregion
-} // namespace nnrt::geometry::kernel::warp
+} // namespace nnrt::geometry::functional::kernel::warp

@@ -23,7 +23,7 @@
 // local
 #include "core/KdTree.h"
 #include "geometry/functional/Warping.h"
-#include "geometry/kernel/WarpUtilities.h"
+#include "geometry/functional/kernel/WarpUtilities.h"
 #include "geometry/functional/AnchorComputationMethod.h"
 
 
@@ -71,11 +71,11 @@ public:
 	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(int32_t* anchor_indices, float* anchor_weights,
 	                                                    const Eigen::Vector3f& point) const {
 		if (UseNodeDistanceThreshold) {
-			return kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
+			return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
 					point, node_coverage_squared);
 		} else {
-			kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree<TDeviceType>(
+			geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
 					point, node_coverage_squared);
 			return true;
@@ -87,7 +87,7 @@ public:
 	NNRT_DEVICE_WHEN_CUDACC Eigen::Vector3f
 	WarpPoint(const Eigen::Vector3f& point, const int32_t* anchor_indices, const float* anchor_weights) const {
 		Eigen::Vector3f warped_point(0.f, 0.f, 0.f);
-		kernel::warp::BlendWarp(
+		functional::kernel::warp::BlendWarp(
 				warped_point, anchor_indices, anchor_weights, anchor_count, point, node_indexer,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
 					return GetRotationForNode(i_node);
@@ -103,7 +103,10 @@ public:
 
 
 	open3d::core::Tensor GetNodeRotations();
+	const open3d::core::Tensor& GetNodeRotations() const;
 	open3d::core::Tensor GetNodeTranslations();
+	const open3d::core::Tensor& GetNodeTranslations() const;
+	const open3d::core::Tensor& GetNodePositions() const;
 
 	void SetNodeRotations(const o3c::Tensor& node_rotations);
 	void SetNodeTranslations(const o3c::Tensor& node_translations);

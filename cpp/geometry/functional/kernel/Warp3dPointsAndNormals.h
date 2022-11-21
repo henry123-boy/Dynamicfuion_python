@@ -21,7 +21,7 @@
 #include "Defines.h"
 #include "geometry/functional/AnchorComputationMethod.h"
 
-namespace nnrt::geometry::kernel::warp {
+namespace nnrt::geometry::functional::kernel::warp {
 
 // region ============== POINTS ONLY: FOR EXTERNAL USAGE =============================================================================================
 
@@ -170,4 +170,4 @@ void Warp3dPointsAndNormals(
 		const open3d::core::Tensor& extrinsics
 );
 // endregion
-} // namespace nnrt::geometry::kernel::warp
+} // namespace nnrt::geometry::functional::kernel::warp

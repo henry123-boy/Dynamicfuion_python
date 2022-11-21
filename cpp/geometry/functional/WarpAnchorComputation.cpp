@@ -15,7 +15,7 @@
 //  ================================================================
 #include "WarpAnchorComputation.h"
 
-#include "geometry/kernel/Graph.h"
+#include "geometry/functional/kernel/WarpAnchorComputation.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -53,7 +53,7 @@ void ComputeAnchorsAndWeightsEuclidean(o3c::Tensor& anchors, o3c::Tensor& weight
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}
-	kernel::graph::ComputeAnchorsAndWeightsEuclidean(anchors, weights, points_array, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+	kernel::ComputeAnchorsAndWeightsEuclidean(anchors, weights, points_array, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
 	if (point_mode == POINT_IMAGE) {
 		anchors = anchors.Reshape({points_shape[0], points_shape[1], anchor_count});
 		weights = weights.Reshape({points_shape[0], points_shape[1], anchor_count});
@@ -97,7 +97,7 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 		points_array = points.Reshape({-1, 3});
 		point_mode = POINT_IMAGE;
 	}
-	kernel::graph::ComputeAnchorsAndWeightsShortestPath(anchors, weights, points_array, nodes, edges, anchor_count, node_coverage);
+	kernel::ComputeAnchorsAndWeightsShortestPath(anchors, weights, points_array, nodes, edges, anchor_count, node_coverage);
 	if (point_mode == POINT_IMAGE) {
 		anchors = anchors.Reshape({points_shape[0], points_shape[1], anchor_count});
 		weights = weights.Reshape({points_shape[0], points_shape[1], anchor_count});

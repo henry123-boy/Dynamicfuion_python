@@ -25,8 +25,8 @@
 #include <open3d/utility/Console.h>
 
 #include "core/PlatformIndependence.h"
-#include "geometry/kernel/WarpUtilities.h"
-#include "Graph.h"
+#include "WarpUtilities.h"
+#include "geometry/functional/kernel/WarpAnchorComputation.h"
 
 
 using namespace open3d;
@@ -36,7 +36,7 @@ using namespace open3d::t::geometry::kernel;
 
 
 
-namespace nnrt::geometry::kernel::graph {
+namespace nnrt::geometry::functional::kernel{
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
 void ComputeAnchorsAndWeightsEuclidean
@@ -120,4 +120,4 @@ void ComputeAnchorsAndWeightsShortestPath(o3c::Tensor& anchors, o3c::Tensor& wei
 	);
 }
 
-} // namespace nnrt::geometry::kernel::graph
+} // namespace nnrt::geometry::functional::kernel

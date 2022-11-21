@@ -178,8 +178,20 @@ open3d::core::Tensor GraphWarpField::GetNodeRotations() {
 	return this->rotations;
 }
 
+const open3d::core::Tensor& GraphWarpField::GetNodeRotations() const {
+	return rotations;
+}
+
 open3d::core::Tensor GraphWarpField::GetNodeTranslations() {
 	return this->translations;
+}
+
+const open3d::core::Tensor& GraphWarpField::GetNodeTranslations() const {
+	return this->translations;
+}
+
+const open3d::core::Tensor& GraphWarpField::GetNodePositions() const {
+	return nodes;
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::PrecomputeAnchorsAndWeights(
@@ -207,6 +219,10 @@ const {
 
 	return std::make_tuple(anchors, weights);
 }
+
+
+
+
 
 
 } // namespace nnrt::geometry
