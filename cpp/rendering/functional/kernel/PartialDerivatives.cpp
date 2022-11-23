@@ -46,4 +46,27 @@ void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open
 	);
 
 }
+
+void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics) {
+	core::ExecuteOnDevice(
+			warped_vertex_positions.GetDevice(),
+			[&] {
+				WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
+						rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions,
+						warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ray_space_intrinsics
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA>(
+								rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions,
+								warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ray_space_intrinsics
+						);
+				);
+			}
+	);
+}
 } // namespace nnrt::rendering::functional::kernel

@@ -16,6 +16,7 @@
 // stdlib includes
 // third-party includes
 #include <open3d/core/Tensor.h>
+#include <Eigen/Dense>
 // local includes
 // test utils
 #include "test_main.hpp"
@@ -24,13 +25,22 @@
 namespace o3c = open3d::core;
 
 TEST_CASE("experiment") {
-	auto device = o3c::Device("CUDA:0");
-	auto tensor = o3c::Tensor::Zeros({4}, o3c::Float32, device);
-	auto mask = o3c::Tensor(std::vector<bool>({true, false, true, false}), {4}, o3c::Bool, device);
-	auto value = o3c::Tensor::Ones({1}, o3c::Float32, device);
-	tensor.SetItem(o3c::TensorKey::IndexTensor(mask), value);
-	auto gt = o3c::Tensor(std::vector<float>({1.0, 0.0, 1.0, 0.0}), {4}, o3c::Float32, device);
-	std::cout << tensor.ToString() << std::endl;
-	std::cout << gt.ToString() << std::endl;
-	REQUIRE(tensor.AllClose(gt));
+	// auto device = o3c::Device("CUDA:0");
+	// auto tensor = o3c::Tensor::Zeros({4}, o3c::Float32, device);
+	// auto mask = o3c::Tensor(std::vector<bool>({true, false, true, false}), {4}, o3c::Bool, device);
+	// auto value = o3c::Tensor::Ones({1}, o3c::Float32, device);
+	// tensor.SetItem(o3c::TensorKey::IndexTensor(mask), value);
+	// auto gt = o3c::Tensor(std::vector<float>({1.0, 0.0, 1.0, 0.0}), {4}, o3c::Float32, device);
+	// std::cout << tensor.ToString() << std::endl;
+	// std::cout << gt.ToString() << std::endl;
+	// REQUIRE(tensor.AllClose(gt));
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> x;
+	x << 1.0, 0.0, 0.0,
+			0.0, 1.0, 0.0,
+			0.0, 0.0, 1.0;
+	Eigen::Vector3f y(1.f, 2.f, 3.f);
+	auto z = x * y;
+	std::cout << z << std::endl;
+	std::cout << z.asSkewSymmetric().toDenseMatrix() << std::endl;
+	std::cout << z.asSkewSymmetric().toDenseMatrix() << std::endl;
 }

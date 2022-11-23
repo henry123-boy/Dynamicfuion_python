@@ -22,15 +22,27 @@
 // local includes
 
 namespace nnrt::rendering::functional::kernel {
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open3d::core::Tensor& normal_jacobians,
+void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
                                     const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
                                     const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open3d::core::Tensor& normal_jacobians,
+void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
                                     const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
                                     const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights);
+
+
+void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics);
 
 } // namespace nnrt::rendering::functional::kernel

@@ -24,7 +24,28 @@
 #include "geometry/GraphWarpField.h"
 
 namespace nnrt::rendering::functional {
+/**
+ * \brief Compute non-zero, non-trivial entries of warped mesh vertices and normals w.r.t. to node rotations & translations
+ * \details Note, the function doesn't compute all the jacobians explicitly.
+ * Firstly, the jacobians w.r.t. rotation it stores in vector form (i.e. zero entries of skew-symmetric form are omitted).
+ * Secondly, the vertex jacobians w.r.t. translation it does not explicitly compute, as these are simply -anchor_weight * identity. Instead,
+ * the negative anchor weights are stored to be easily retrieved later for that computation.
+ * Finally, the normal jacobians w.r.t. translation are all [3x3] zero matrices, so these are not stored at all.
+ * \param canonical_mesh canonical (original, not warped) mesh
+ * \param warp_field
+ * \param warp_anchors
+ * \param warp_anchor_weights
+ * \return non-zero, non-trivial entries of warped vertex and normal jacobians w.r.t. to rotations & translations (see details above).
+ */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJacobians(
-		const open3d::geometry::TriangleMesh& warped_mesh, const geometry::GraphWarpField& warp_field,
-		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights);
+	const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
+	const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
+);
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> RenderedVertexAndNormalJacobians(
+	const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
+	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics
+);
+
+
 } // namespace nnrt::rendering::functional

@@ -221,7 +221,7 @@ set(NNRT_SOURCE_FILES
 
     rendering/RasterizeMesh.h
     rendering/RasterizeMesh.cpp
-    rendering/kernel/BarycentricCoordinates.h
+    rendering/functional/kernel/BarycentricCoordinates.h
     rendering/kernel/RasterizeMesh.cpp
     rendering/kernel/RasterizeMesh.h
     rendering/kernel/RasterizeMeshImpl.h

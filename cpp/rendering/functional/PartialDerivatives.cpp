@@ -27,19 +27,40 @@ namespace o3c = open3d::core;
 
 // local includes
 namespace nnrt::rendering::functional {
-std::tuple <open3d::core::Tensor, open3d::core::Tensor>
-WarpedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh, const geometry::GraphWarpField& warp_field,
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+WarpedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
                                const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights) {
-	if (!warped_mesh.HasVertexNormals() || !warped_mesh.HasVertexPositions()) {
+	if (!canonical_mesh.HasVertexNormals() || !canonical_mesh.HasVertexPositions()) {
 		utility::LogError("warped_mesh needs to have both vertex positions and vertex normals defined. In argument, vertex positions are {} defined, "
-		                  "and vertex normals are {} defined.", (warped_mesh.HasVertexPositions() ? "" : "not"),
-		                  +(warped_mesh.HasVertexNormals() ? "" : "not"));
+		                  "and vertex normals are {} defined.", (canonical_mesh.HasVertexPositions() ? "" : "not"),
+		                  (canonical_mesh.HasVertexNormals() ? "" : "not"));
 	}
 
-	o3c::Tensor vertex_jacobians, normal_jacobians;
-	kernel::WarpedVertexAndNormalJacobians(vertex_jacobians, normal_jacobians, warped_mesh.GetVertexPositions(),
-	                                       warped_mesh.GetVertexNormals(), warp_field.GetNodePositions(),
+	o3c::Tensor warped_vertex_jacobians, warped_normal_jacobians;
+	kernel::WarpedVertexAndNormalJacobians(warped_vertex_jacobians, warped_normal_jacobians, canonical_mesh.GetVertexPositions(),
+	                                       canonical_mesh.GetVertexNormals(), warp_field.GetNodePositions(),
 	                                       warp_field.GetNodeRotations(), warp_anchors, warp_anchor_weights);
-	return std::make_tuple(vertex_jacobians, normal_jacobians);
+	return std::make_tuple(warped_vertex_jacobians, warped_normal_jacobians);
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh,
+                                 const open3d::core::Tensor& pixel_faces,
+                                 const open3d::core::Tensor& barycentric_coordinates,
+                                 const open3d::core::Tensor& ray_space_intrinsics) {
+	if (!warped_mesh.HasVertexNormals() || !warped_mesh.HasVertexPositions() || !warped_mesh.HasTriangleIndices()) {
+		utility::LogError("warped_mesh needs to have vertex positions, triangle indices, and vertex normals defined. "
+		                  "In argument, vertex positions are {} defined, triangle indices are {} defined, and vertex normals are {} defined.",
+		                  (warped_mesh.HasVertexPositions() ? "" : "not"),
+		                  (warped_mesh.HasTriangleIndices() ? "" : "not"),
+		                  (warped_mesh.HasVertexNormals() ? "" : "not"));
+	}
+
+	o3c::Tensor rendered_vertex_jacobians, rendered_normal_jacobians;
+	kernel::RenderedVertexAndNormalJacobians(rendered_vertex_jacobians, rendered_normal_jacobians, warped_mesh.GetVertexPositions(),
+	                                         warped_mesh.GetTriangleIndices(), warped_mesh.GetVertexNormals(), pixel_faces, barycentric_coordinates,
+	                                         ray_space_intrinsics);
+
+	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }
 } // namespace nnrt::rendering::functional

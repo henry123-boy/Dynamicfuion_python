@@ -18,10 +18,10 @@
 #include <Eigen/Dense>
 #include "core/PlatformIndependence.h"
 #include "core/PlatformIndependentTuple.h"
-#include "RasterizationConstants.h"
+#include "rendering/kernel/RasterizationConstants.h"
 
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::rendering::functional::kernel {
 
 enum FrontFaceVertexOrder {
 	ClockWise, CounterClockWise
@@ -50,7 +50,7 @@ inline float SignedParallelogramArea(
 
 template<typename TPoint, typename TVertex, FrontFaceVertexOrder TVertexOrder = ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple <Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> PartialDerivativesOfSignedParallelogramArea(
+inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedParallelogramAreaJacobian(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
@@ -94,13 +94,57 @@ inline Eigen::Vector3f PerspectiveCorrectBarycentricCoordinates(
 		const float vertex1z,
 		const float vertex2z
 ) {
-	const float coord0_numerator = distorted_barycentric_coordinates.x() * vertex1z * vertex2z;
-	const float coord1_numerator = vertex0z * distorted_barycentric_coordinates.y() * vertex2z;
-	const float coord2_numerator = vertex0z * vertex1z * distorted_barycentric_coordinates.z();
+	const float coord0_numerator = distorted_barycentric_coordinates(0) * vertex1z * vertex2z;
+	const float coord1_numerator = vertex0z * distorted_barycentric_coordinates(1) * vertex2z;
+	const float coord2_numerator = vertex0z * vertex1z * distorted_barycentric_coordinates(2);
 	const float denominator = FloatMax(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
 	return {coord0_numerator / denominator,
 	        coord1_numerator / denominator,
 	        coord2_numerator / denominator};
+}
+
+NNRT_DEVICE_WHEN_CUDACC
+inline nnrt_tuple<Eigen::Vector3f, Eigen::Matrix3f> PerspectiveCorrectBarycentricCoordinateJacobian(
+		const Eigen::Vector3f& distorted_barycentric_coordinates,
+		const float vertex0z,
+		const float vertex1z,
+		const float vertex2z
+) {
+	const float partial_coord0_numerator_wrt_distorted0 = vertex1z * vertex2z;
+	const float partial_coord1_numerator_wrt_distorted1 = vertex0z * vertex2z;
+	const float partial_coord2_numerator_wrt_distorted2 = vertex0z * vertex1z;
+
+	const float coord0_numerator = distorted_barycentric_coordinates(0) * partial_coord0_numerator_wrt_distorted0;
+	const float coord1_numerator = distorted_barycentric_coordinates(1) * partial_coord1_numerator_wrt_distorted1;
+	const float coord2_numerator = distorted_barycentric_coordinates(2) * partial_coord2_numerator_wrt_distorted2;
+	const float denominator = FloatMax(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
+	const float denominator_squared = denominator * denominator;
+
+	Eigen::Vector3f partial_coords_wrt_distorted(
+			(denominator - coord0_numerator) * partial_coord0_numerator_wrt_distorted0 / denominator_squared,
+			(denominator - coord1_numerator) * partial_coord1_numerator_wrt_distorted1 / denominator_squared,
+			(denominator - coord2_numerator) * partial_coord2_numerator_wrt_distorted2 / denominator_squared
+	);
+	const float partial_denominator_wrt_z0 = distorted_barycentric_coordinates(1) * vertex2z + vertex1z * distorted_barycentric_coordinates(2);
+	const float partial_denominator_wrt_z1 = distorted_barycentric_coordinates(0) * vertex2z + vertex0z * distorted_barycentric_coordinates(2);
+	const float partial_denominator_wrt_z2 = distorted_barycentric_coordinates(0) * vertex1z + vertex0z * distorted_barycentric_coordinates(1);
+
+	Eigen::Matrix3f partial_coords_wrt_z;
+	partial_coords_wrt_z <<
+			-coord0_numerator * partial_denominator_wrt_z0,
+			denominator * distorted_barycentric_coordinates(0) * vertex2z - coord0_numerator * partial_denominator_wrt_z1,
+			denominator * distorted_barycentric_coordinates(0) * vertex1z - coord0_numerator * partial_denominator_wrt_z2,
+
+			denominator * distorted_barycentric_coordinates(1) * vertex2z - coord1_numerator * partial_denominator_wrt_z0,
+			-coord1_numerator * partial_denominator_wrt_z1,
+			denominator * distorted_barycentric_coordinates(1) * vertex0z - coord1_numerator * partial_denominator_wrt_z2,
+
+			denominator * distorted_barycentric_coordinates(2) * vertex1z - coord2_numerator * partial_denominator_wrt_z0,
+			denominator * distorted_barycentric_coordinates(2) * vertex0z - coord2_numerator * partial_denominator_wrt_z1,
+			-coord2_numerator * partial_denominator_wrt_z2;
+	partial_coords_wrt_z /= denominator_squared;
+
+	return make_tuple(partial_coords_wrt_distorted, partial_coords_wrt_z);
 }
 
 NNRT_DEVICE_WHEN_CUDACC
@@ -115,4 +159,4 @@ inline Eigen::Vector3f ClipBarycentricCoordinates(const Eigen::Vector3f& unclipp
 	return clipped;
 }
 
-} // namespace nnrt::rendering::kernel
+} // namespace nnrt::rendering::functional::kernel

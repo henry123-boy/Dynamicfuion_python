@@ -21,7 +21,7 @@
 
 // local
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "rendering/kernel/BarycentricCoordinates.h"
+#include "rendering/functional/kernel/BarycentricCoordinates.h"
 
 
 namespace o3tgk = open3d::t::geometry::kernel;
@@ -152,7 +152,7 @@ inline float PointTriangleDistance(
 /*
  * Assumes normalized camera-space coordinates for face vertices and pixel
  */
-template<FrontFaceVertexOrder TVertexOrder = ClockWise>
+template<functional::kernel::FrontFaceVertexOrder TVertexOrder = functional::kernel::ClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline void UpdateQueueIfPixelInsideFace(
 		const o3tgk::TArrayIndexer <t_face_index>& face_vertex_position_indexer,
@@ -179,7 +179,7 @@ inline void UpdateQueueIfPixelInsideFace(
 
 	// face_area is computed using the CW convention for front-facing triangles (not the default CCW convention as in OpenGL).
 	const float face_area =
-			SignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+			functional::kernel::SignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
 					face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 			);
 	const bool is_back_face = face_area < 0.f;
@@ -196,15 +196,15 @@ inline void UpdateQueueIfPixelInsideFace(
 		return;
 	}
 
-	Eigen::Vector3f barycentric_coordinates = BarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+	Eigen::Vector3f barycentric_coordinates = functional::kernel::BarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
 			pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 	);
 	if (perspective_correct_barycentric_coordinates) {
 		barycentric_coordinates =
-				PerspectiveCorrectBarycentricCoordinates(barycentric_coordinates, face_vertex0.z(), face_vertex1.z(), face_vertex2.z());
+				functional::kernel::PerspectiveCorrectBarycentricCoordinates(barycentric_coordinates, face_vertex0.z(), face_vertex1.z(), face_vertex2.z());
 	}
 	Eigen::Vector3f barycentric_coordinates_clipped =
-			clip_barycentric_coordinates ? ClipBarycentricCoordinates(barycentric_coordinates) : barycentric_coordinates;
+			clip_barycentric_coordinates ? functional::kernel::ClipBarycentricCoordinates(barycentric_coordinates) : barycentric_coordinates;
 
 	const float intersection_depth =
 			barycentric_coordinates_clipped.x() * face_vertex0.z() +
