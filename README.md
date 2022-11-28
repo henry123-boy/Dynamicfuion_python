@@ -62,7 +62,7 @@ Although in theory, it is possible to build and run the fusion pipeline without 
 
 #### CMake ####
 
-The build requires CMake 3.18 or above. You may find [these instructions](media/Open3D_Build_Instructions.md) helpful if you don't have it.
+The build requires CMake 3.18 or above. You may find [these instructions](media/CMake_Installation_Instructions.md) helpful if you don't have it.
 
 #### Python ####
 
