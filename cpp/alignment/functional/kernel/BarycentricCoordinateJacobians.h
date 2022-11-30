@@ -28,7 +28,8 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
+template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise,
+        typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedParallelogramAreaJacobianWrtRaySpaceVertices(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
@@ -36,7 +37,7 @@ inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedParal
 		const TVertex& vertex1 // face vertex
 ) {
 
-	if (TVertexOrder == CounterClockWise) {
+	if (TVertexOrder == rendering::functional::kernel::CounterClockWise) {
 		const Eigen::Vector2f dArea_dPoint(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
 		const Eigen::Vector2f dArea_dVertex0(vertex1.y() - point.y(), point.x - vertex1.x);
 		const Eigen::Vector2f dArea_dVertex1(point.y() - vertex0.y(), vertex0.x - point.x);
@@ -49,14 +50,18 @@ inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedParal
 	}
 }
 
-template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex, typename TVector3>
+template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise, typename TPoint,
+        typename TVertex, typename TVector3>
 NNRT_DEVICE_WHEN_CUDACC
 inline void BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersectionPoint,
 															 const TVertex& vertex0,
 															 const TVertex& vertex1,
 															 const TVertex& vertex2,
 															 const TVector3 distorted_barycentric_coordinates){
-	const float face_parallelogram_area = SignedParallelogramArea<TVertex, TVertex, CounterClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
+	const float face_parallelogram_area =
+			rendering::functional::kernel::
+			SignedParallelogramArea<TVertex, TVertex, rendering::functional::kernel::CounterClockWise>(vertex0, vertex1, vertex2)
+			        + K_EPSILON;
 	const float face_parallelogram_area_squared = face_parallelogram_area * face_parallelogram_area;
 	const float triangle0_area = distorted_barycentric_coordinates(0) * face_parallelogram_area;
 	const float triangle1_area = distorted_barycentric_coordinates(1) * face_parallelogram_area;
@@ -64,7 +69,8 @@ inline void BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& inter
 	const nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> d_face_area_wrt_vertices =
 			SignedParallelogramAreaJacobianWrtRaySpaceVertices<TVertexOrder>(vertex0, vertex1, vertex2);
 
-	auto d_area_
+	//auto d_area_
+	//TODO finish
 
 
 }

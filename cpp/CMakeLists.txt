@@ -263,7 +263,7 @@ set(
     alignment/functional/kernel/Jacobians.cpp
     alignment/functional/kernel/Jacobians.h
     alignment/functional/kernel/JacobiansImpl.h
-    alignment/functional/kernel/BarycentricCoordinateJacobian.h
+    alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
 )

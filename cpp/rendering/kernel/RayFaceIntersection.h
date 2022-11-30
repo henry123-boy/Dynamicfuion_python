@@ -179,7 +179,7 @@ inline void UpdateQueueIfPixelInsideFace(
 
 	// face_area is computed using the CW convention for front-facing triangles (not the default CCW convention as in OpenGL).
 	const float face_area =
-			functional::kernel::SignedParallelogramArea<Eigen::Map<Eigen::Vector2f>, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+			functional::kernel::SignedParallelogramArea<TVertexOrder>(
 					face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 			);
 	const bool is_back_face = face_area < 0.f;
@@ -196,7 +196,7 @@ inline void UpdateQueueIfPixelInsideFace(
 		return;
 	}
 
-	Eigen::Vector3f barycentric_coordinates = functional::kernel::BarycentricCoordinates<Eigen::Vector2f, Eigen::Map<Eigen::Vector2f>, TVertexOrder>(
+	Eigen::Vector3f barycentric_coordinates = functional::kernel::BarycentricCoordinates<TVertexOrder>(
 			pixel, face_vertex0_xy, face_vertex1_xy, face_vertex2_xy
 	);
 	if (perspective_correct_barycentric_coordinates) {
