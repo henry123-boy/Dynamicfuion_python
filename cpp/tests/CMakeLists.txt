@@ -23,8 +23,12 @@ function(nnrt_add_test)
     if (ADD_TEST_DEPENDENCIES)
         add_dependencies(${name} ${ADD_TEST_DEPENDENCIES})
     endif ()
-    add_test(NAME cmake_test_${name} COMMAND ${name})
 
+    if(UNIX)
+        target_link_libraries(${name} PUBLIC rt)
+    endif()
+
+    add_test(NAME cmake_test_${name} COMMAND ${name})
 endfunction()
 
 function(nnrt_add_test_data_download_target)

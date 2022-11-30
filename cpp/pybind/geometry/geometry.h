@@ -24,7 +24,6 @@ void pybind_geometry_enums(py::module& m);
 void pybind_geometry_voxel_block_grid(py::module& m);
 void pybind_geometry_non_rigid_surface_voxel_block_grid(py::module& m);
 void pybind_geometry_graph_warp_field(py::module& m);
-void pybind_geometry_comparison(py::module& m);
 void pybind_geometry_downsampling(py::module& m);
 void pybind_geometry_pointcloud(py::module& m);
 

@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 9/15/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/28/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#include "pybind/nnrt_pybind.h"
+// stdlib includes
 
-namespace nnrt::geometry::functional {
+// third-party includes
 
-void pybind_geometry_functional(py::module& m);
+// local includes
 
-void pybind_geometry_functional_warp_anchor_computation(py::module& m);
-void pybind_geometry_functional_warping(py::module& m);
-void pybind_geometry_functional_normals_operations(py::module& m);
+namespace nnrt::rendering::functional::kernel {
 
-void pybind_geometry_functional_comparison(py::module& m);
+enum FrontFaceVertexOrder {
+	CounterClockWise, ClockWise
+};
 
-} // namespace nnrt::geometry::functional
+} // namespace nnrt::rendering::functional::kernel

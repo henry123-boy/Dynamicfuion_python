@@ -17,7 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 
-namespace nnrt::geometry::kernel::comparison {
+namespace nnrt::geometry::functional::kernel::comparison {
 void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& normals1,
                                   const open3d::core::Tensor& vertices1,
@@ -29,4 +29,4 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& vertices1,
                                   const open3d::core::Tensor& vertices2);
 
-} // namespace nnrt::geometry::kernel::comparison
+} // namespace nnrt::geometry::functional::kernel::comparison

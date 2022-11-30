@@ -20,7 +20,7 @@ using namespace open3d;
 using namespace open3d::t::geometry;
 
 
-namespace nnrt::geometry {
+namespace nnrt::geometry::functional {
 
 open3d::core::Tensor
 ComputePointToPlaneDistances(const TriangleMesh& mesh1, const TriangleMesh& mesh2) {
@@ -39,7 +39,8 @@ ComputePointToPlaneDistances(const TriangleMesh& mesh1, const TriangleMesh& mesh
 	}
 
 	core::Tensor distances;
-	kernel::comparison::ComputePointToPlaneDistances(distances, normals1, vertices1, vertices2);
+
+	functional::kernel::comparison::ComputePointToPlaneDistances(distances, normals1, vertices1, vertices2);
 	return distances;
 }
 
@@ -47,7 +48,7 @@ open3d::core::Tensor
 ComputePointToPlaneDistances(const TriangleMesh& mesh, const PointCloud& point_cloud) {
 	if (mesh.GetDevice() != point_cloud.GetDevice()) {
 		utility::LogError("Devices for the mesh and point cloud need to match. Got: {} and {}.",
-						  mesh.GetDevice().ToString(), point_cloud.GetDevice().ToString());
+		                  mesh.GetDevice().ToString(), point_cloud.GetDevice().ToString());
 	}
 	if (!mesh.HasVertexNormals()) {
 		utility::LogError("Mesh needs to have vertex normals defined.");
@@ -62,7 +63,7 @@ ComputePointToPlaneDistances(const TriangleMesh& mesh, const PointCloud& point_c
 	}
 
 	core::Tensor distances;
-	kernel::comparison::ComputePointToPlaneDistances(distances, vertex_normals, vertex_positions, point_positions);
+	functional::kernel::comparison::ComputePointToPlaneDistances(distances, vertex_normals, vertex_positions, point_positions);
 	return distances;
 }
 
@@ -84,7 +85,7 @@ open3d::core::Tensor ComputePointToPlaneDistances(const PointCloud& point_cloud1
 	}
 
 	core::Tensor distances;
-	kernel::comparison::ComputePointToPlaneDistances(distances, point_normals1, point_positions1, point_positions2);
+	functional::kernel::comparison::ComputePointToPlaneDistances(distances, point_normals1, point_positions1, point_positions2);
 	return distances;
 }
-} //namespace nnrt::geometry
+} // namespace nnrt::geometry::functional

@@ -19,9 +19,9 @@
 #include <open3d/t/geometry/PointCloud.h>
 
 
-namespace nnrt::geometry{
+namespace nnrt::geometry::functional{
 	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh1, const open3d::t::geometry::TriangleMesh& mesh2);
 	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::TriangleMesh& mesh, const open3d::t::geometry::PointCloud& point_cloud);
 	open3d::core::Tensor ComputePointToPlaneDistances(const open3d::t::geometry::PointCloud& point_cloud1, const open3d::t::geometry::PointCloud& point_cloud2);
 
-} // namespace nnrt::geometry
+} // namespace nnrt::geometry::functional

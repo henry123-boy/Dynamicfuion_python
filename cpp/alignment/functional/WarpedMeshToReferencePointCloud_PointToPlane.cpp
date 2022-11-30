@@ -24,7 +24,7 @@
 #include "geometry/GraphWarpField.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
 #include "rendering/RasterizeMesh.h"
-#include "rendering/functional/WarpedMeshToReferencePointCloud_PointToPlane.h"
+#include "WarpedMeshToReferencePointCloud_PointToPlane.h"
 
 
 namespace o3c = open3d::core;

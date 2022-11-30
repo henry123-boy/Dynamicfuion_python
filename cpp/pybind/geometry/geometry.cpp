@@ -20,7 +20,7 @@
 #include "geometry/GraphWarpField.h"
 #include "geometry/functional/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
-#include "geometry/functional/Comparison.h"
+
 #include "geometry/functional/Downsample3dPoints.h"
 #include "geometry/functional/Unproject3dPoints.h"
 
@@ -46,7 +46,6 @@ void pybind_geometry(py::module& m) {
 	pybind_geometry_graph_warp_field(m_submodule);
 
 	//TODO: move these to pybind/geometry/functional
-	pybind_geometry_comparison(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
 	pybind_geometry_pointcloud(m_submodule);
 }
@@ -309,8 +308,8 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);
 	graph_warp_field.def("apply_transformations", &GraphWarpField::ApplyTransformations);
 
-	graph_warp_field.def("get_node_rotations", &GraphWarpField::GetNodeRotations);
-	graph_warp_field.def("get_node_translations", &GraphWarpField::GetNodeTranslations);
+	graph_warp_field.def("get_node_rotations", py::overload_cast<>(&GraphWarpField::GetNodeRotations));
+	graph_warp_field.def("get_node_translations", py::overload_cast<>(&GraphWarpField::GetNodeTranslations));
 	graph_warp_field.def("set_node_rotations", &GraphWarpField::SetNodeRotations, "node_rotations"_a);
 	graph_warp_field.def("set_node_translations", &GraphWarpField::SetNodeTranslations, "node_translations"_a);
 	graph_warp_field.def("translate_nodes", &GraphWarpField::TranslateNodes, "node_translation_deltas"_a);
@@ -324,14 +323,6 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 
 }
 
-void pybind_geometry_comparison(pybind11::module& m) {
-	m.def("compute_point_to_plane_distances",
-	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::TriangleMesh&>
-			      (&ComputePointToPlaneDistances), "mesh1"_a, "mesh2"_a);
-	m.def("compute_point_to_plane_distances",
-	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::PointCloud&>
-			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
-}
 
 void pybind_geometry_downsampling(pybind11::module& m) {
 	m.def("grid_downsample_3d_points", &GridDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);

@@ -18,7 +18,7 @@
 
 namespace o3c = open3d::core;
 
-namespace nnrt::geometry::kernel::comparison {
+namespace nnrt::geometry::functional::kernel::comparison {
 
 void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& normals1,
@@ -31,4 +31,4 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
 	);
 }
 
-} // nnrt::geometry::kernel::comparison
+} // namespace nnrt::geometry::functional::kernel::comparison

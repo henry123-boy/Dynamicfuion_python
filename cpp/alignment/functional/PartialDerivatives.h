@@ -27,10 +27,10 @@ namespace nnrt::rendering::functional {
 /**
  * \brief Compute non-zero, non-trivial entries of warped mesh vertices and normals w.r.t. to node rotations & translations
  * \details Note, the function doesn't compute all the jacobians explicitly.
- * Firstly, the jacobians w.r.t. rotation it stores in vector form (i.e. zero entries of skew-symmetric form are omitted).
- * Secondly, the vertex jacobians w.r.t. translation it does not explicitly compute, as these are simply -anchor_weight * identity. Instead,
+ * Firstly, the Jacobians w.r.t. rotation it stores in vector form (i.e. zero entries of skew-symmetric form are omitted).
+ * Secondly, the vertex Jacobians w.r.t. translation it does not explicitly compute, as these are simply -anchor_weight * identity. Instead,
  * the negative anchor weights are stored to be easily retrieved later for that computation.
- * Finally, the normal jacobians w.r.t. translation are all [3x3] zero matrices, so these are not stored at all.
+ * Finally, the normals' Jacobians w.r.t. translation are all [3x3] zero matrices, so these are not stored at all.
  * \param canonical_mesh canonical (original, not warped) mesh
  * \param warp_field
  * \param warp_anchors
@@ -44,7 +44,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJaco
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> RenderedVertexAndNormalJacobians(
 	const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
-	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics
+	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
+	bool perspective_corrected_barycentric_coordinates
 );
 
 

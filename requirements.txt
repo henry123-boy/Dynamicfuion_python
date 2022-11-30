@@ -30,3 +30,4 @@ ext_argparse>=0.1.2
 icecream>=2.1.1
 mypy>=0.9
 deprecated>=1.2.13
+ninja>=1.11.1

@@ -21,7 +21,7 @@
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
 
-namespace nnrt::geometry::kernel::comparison {
+namespace nnrt::geometry::functional::kernel::comparison {
 template<open3d::core::Device::DeviceType TDeviceType>
 void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& normals1,
@@ -49,4 +49,4 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
 			}
 	);
 }
-} // nnrt::geometry::kernel::comparison
+} // namespace nnrt::geometry::functional::kernel::comparison

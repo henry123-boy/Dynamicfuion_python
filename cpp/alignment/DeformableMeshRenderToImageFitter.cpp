@@ -20,7 +20,7 @@
 
 // local
 #include "core/functional/Masking.h"
-#include "rendering/DeformableMeshRenderToRgbdImageFitter.h"
+#include "DeformableMeshRenderToRgbdImageFitter.h"
 #include "rendering/RasterizeMesh.h"
 
 

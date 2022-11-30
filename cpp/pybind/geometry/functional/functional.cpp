@@ -17,6 +17,7 @@
 #include "geometry/functional/WarpAnchorComputation.h"
 #include "geometry/functional/Warping.h"
 #include "geometry/functional/NormalsOperations.h"
+#include "geometry/functional/Comparison.h"
 
 // local
 #include "functional.h"
@@ -33,12 +34,13 @@ void pybind_geometry_functional(pybind11::module& m) {
 
 	py::module m_submodule = m.def_submodule(
 			"functional", "Module with stateless functions acting on Open3D/NNRT geometry objects and Open3D tensor-based data representing "
-						  "geometric constructs."
+			              "geometric constructs."
 	);
 
 	pybind_geometry_functional_warp_anchor_computation(m_submodule);
 	pybind_geometry_functional_warping(m_submodule);
 	pybind_geometry_functional_normals_operations(m_submodule);
+	pybind_geometry_functional_comparison(m_submodule);
 }
 
 void pybind_geometry_functional_warp_anchor_computation(pybind11::module& m) {
@@ -52,21 +54,37 @@ void pybind_geometry_functional_warp_anchor_computation(pybind11::module& m) {
 }
 
 void pybind_geometry_functional_warping(pybind11::module& m) {
-	m.def("warp_triangle_mesh", &WarpTriangleMesh, "input_mesh"_a, "nodes"_a, "node_rotations"_a,
+	m.def("warp_triangle_mesh",
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::core::Tensor&,
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, int, float, bool, int,
+			      const open3d::core::Tensor&>(&WarpTriangleMesh),
+	      "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a, "threshold_nodes_by_distance"_a = false,
-	      "minimum_valid_anchor_count"_a = 0, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+	      "minimum_valid_anchor_count"_a = 0,
+	      "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+
+	m.def("warp_triangle_mesh",
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::core::Tensor&,
+			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, bool, int,
+			      const open3d::core::Tensor&>(&WarpTriangleMesh),
+	      "input_mesh"_a, "nodes"_a, "node_rotations"_a,
+	      "node_translations"_a, "anchors"_a, "anchor_weights"_a, "threshold_nodes_by_distance"_a = false,
+	      "minimum_valid_anchor_count"_a = 0,
+	      "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 
 	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
 			      const o3c::Tensor&, const o3c::Tensor&, int, float, int, const o3c::Tensor&>(&WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchor_count"_a, "node_coverage"_a,
-	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+	      "minimum_valid_anchor_count"_a,
+	      "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 
 	m.def("warp_point_cloud", py::overload_cast<const open3d::t::geometry::PointCloud&, const o3c::Tensor&,
 			      const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int, const o3c::Tensor&>(&WarpPointCloud),
 	      "input_point_cloud"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a,
-	      "minimum_valid_anchor_count"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
+	      "minimum_valid_anchor_count"_a,
+	      "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 }
 
 
@@ -74,6 +92,16 @@ void pybind_geometry_functional_normals_operations(pybind11::module& m) {
 	m.def("compute_triangle_normals", &ComputeTriangleNormals, "mesh"_a, "normalized"_a = true);
 	m.def("compute_vertex_normals", &ComputeVertexNormals, "mesh"_a, "normalized"_a = true);
 	m.def("compute_ordered_point_cloud_normals", &ComputeOrderedPointCloudNormals, "point_cloud"_a, "source_image_size"_a);
+}
+
+
+void pybind_geometry_functional_comparison(pybind11::module& m) {
+	m.def("compute_point_to_plane_distances",
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::TriangleMesh&>
+			      (&ComputePointToPlaneDistances), "mesh1"_a, "mesh2"_a);
+	m.def("compute_point_to_plane_distances",
+	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::PointCloud&>
+			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
 }
 
 } // namespace nnrt::geometry::functional

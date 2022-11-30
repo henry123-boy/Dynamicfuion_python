@@ -103,7 +103,8 @@ template<open3d::core::Device::DeviceType TDeviceType>
 void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
                                       const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
                                       const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics) {
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
+                                      bool perspective_corrected_barycentric_coordinates) {
 	auto device = warped_vertex_positions.GetDevice();
 	o3c::AssertTensorDevice(warped_triangle_indices, device);
 	o3c::AssertTensorDevice(warped_vertex_normals, device);
@@ -176,6 +177,8 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 					Eigen::Map<const Eigen::Vector3f> face_vertex = face_vertices[i_vertex];
 					Eigen::Map<const Eigen::Vector3f> face_normal = face_normals[i_vertex];
 					Eigen::Map<const Eigen::Vector3f> pixel_barycentric_coordinate = pixel_barycentric_coordinates[i_vertex];
+
+
 
 
 				}

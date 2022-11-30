@@ -17,7 +17,7 @@
 #include "open3d/core/ParallelFor.h"
 #include "geometry/functional/kernel/ComparisonImpl.h"
 
-namespace nnrt::geometry::kernel::comparison {
+namespace nnrt::geometry::functional::kernel::comparison{
 template
 void ComputePointToPlaneDistances<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& distances,
@@ -25,4 +25,4 @@ void ComputePointToPlaneDistances<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& vertices1,
 		const open3d::core::Tensor& vertices2);
 
-} // nnrt::geometry::kernel::comparison
+} // namespace nnrt::geometry::functional::kernel::comparison

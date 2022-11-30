@@ -152,7 +152,7 @@ inline float PointTriangleDistance(
 /*
  * Assumes normalized camera-space coordinates for face vertices and pixel
  */
-template<functional::kernel::FrontFaceVertexOrder TVertexOrder = functional::kernel::ClockWise>
+template<functional::kernel::FrontFaceVertexOrder TVertexOrder = functional::kernel::CounterClockWise>
 NNRT_DEVICE_WHEN_CUDACC
 inline void UpdateQueueIfPixelInsideFace(
 		const o3tgk::TArrayIndexer <t_face_index>& face_vertex_position_indexer,
