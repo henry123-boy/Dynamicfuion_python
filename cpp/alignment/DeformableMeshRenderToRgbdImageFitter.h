@@ -24,7 +24,7 @@
 // local
 #include "../geometry/GraphWarpField.h"
 
-namespace nnrt::rendering {
+namespace nnrt::alignment {
 
 class DeformableMeshRenderToRgbdImageFitter {
 public:
@@ -67,4 +67,4 @@ public:
 };
 
 
-} // nnrt::rendering
+} // namespace nnrt::alignment

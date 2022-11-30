@@ -18,15 +18,15 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/PartialDerivatives.h"
-#include "PartialDerivatives.h"
+#include "alignment/functional/kernel/Jacobians.h"
+#include "Jacobians.h"
 
 
 namespace utility = open3d::utility;
 namespace o3c = open3d::core;
 
 // local includes
-namespace nnrt::rendering::functional {
+namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 WarpedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
                                const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights) {
@@ -64,4 +64,4 @@ RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped
 
 	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }
-} // namespace nnrt::rendering::functional
+} // namespace nnrt::alignment::functional

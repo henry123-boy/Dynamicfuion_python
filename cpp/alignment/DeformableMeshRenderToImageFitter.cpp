@@ -28,7 +28,7 @@ namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
-namespace nnrt::rendering {
+namespace nnrt::alignment {
 
 void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
@@ -38,7 +38,8 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 		const open3d::core::Tensor& extrinsic_matrix
 ) const {
 	auto [anchors, weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh, nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
-
+	//TODO finish impl
+	utility::LogError("Not Implemented");
 }
 
 void
@@ -84,4 +85,4 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
 
 
 
-} // nnrt::rendering
+} // namespace nnrt::alignment

@@ -19,9 +19,9 @@
 
 // local includes
 #include "core/DeviceSelection.h"
-#include "PartialDerivatives.h"
+#include "Jacobians.h"
 
-namespace nnrt::rendering::functional::kernel {
+namespace nnrt::alignment::functional::kernel {
 
 void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open3d::core::Tensor& normal_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
@@ -72,4 +72,4 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 			}
 	);
 }
-} // namespace nnrt::rendering::functional::kernel
+} // namespace nnrt::alignment::functional::kernel

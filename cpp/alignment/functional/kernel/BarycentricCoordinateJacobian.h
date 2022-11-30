@@ -26,7 +26,7 @@
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
 
-namespace nnrt::rendering::functional::kernel {
+namespace nnrt::alignment::functional::kernel {
 
 template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
@@ -113,4 +113,4 @@ inline nnrt_tuple<Eigen::Vector3f, Eigen::Matrix3f> PerspectiveCorrectBarycentri
 	return make_tuple(partial_coords_wrt_distorted, partial_coords_wrt_z);
 }
 
-} // namespace nnrt::rendering::functional::kernel
+} // namespace nnrt::alignment::functional::kernel

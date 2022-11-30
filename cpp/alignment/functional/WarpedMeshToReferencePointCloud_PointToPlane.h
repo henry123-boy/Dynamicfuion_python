@@ -24,7 +24,7 @@
 // local includes
 #include "geometry/GraphWarpField.h"
 
-namespace nnrt::rendering::functional {
+namespace nnrt::alignment::functional {
 
 struct PartialDifferentiationState {
 	open3d::core::Tensor rendered_normals;
@@ -40,4 +40,4 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
                                               const open3d::core::Tensor& extrinsics,
                                               const open3d::core::Tensor& anchors,
                                               const open3d::core::Tensor& weights);
-} // namespace nnrt::rendering::functional
+} // namespace nnrt::alignment::functional

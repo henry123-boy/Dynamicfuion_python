@@ -23,7 +23,7 @@
 // local includes
 #include "geometry/GraphWarpField.h"
 
-namespace nnrt::rendering::functional {
+namespace nnrt::alignment::functional {
 /**
  * \brief Compute non-zero, non-trivial entries of warped mesh vertices and normals w.r.t. to node rotations & translations
  * \details Note, the function doesn't compute all the jacobians explicitly.
@@ -49,4 +49,4 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> RenderedVertexAndNormalJa
 );
 
 
-} // namespace nnrt::rendering::functional
+} // namespace nnrt::alignment::functional

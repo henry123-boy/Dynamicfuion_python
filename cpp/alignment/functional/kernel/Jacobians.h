@@ -21,7 +21,7 @@
 
 // local includes
 
-namespace nnrt::rendering::functional::kernel {
+namespace nnrt::alignment::functional::kernel {
 void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
                                     const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
@@ -47,4 +47,4 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
                                       const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
                                       bool perspective_corrected_barycentric_coordinates);
 
-} // namespace nnrt::rendering::functional::kernel
+} // namespace nnrt::alignment::functional::kernel

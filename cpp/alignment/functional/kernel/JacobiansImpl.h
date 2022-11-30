@@ -22,14 +22,14 @@
 #include <Eigen/Dense>
 
 // local includes
-#include "rendering/functional/kernel/PartialDerivatives.h"
+#include "alignment/functional/kernel/Jacobians.h"
 #include "core/PlatformIndependence.h"
 
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
 namespace utility = open3d::utility;
 
-namespace nnrt::rendering::functional::kernel {
+namespace nnrt::alignment::functional::kernel {
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
@@ -189,5 +189,5 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 
 }
 
-} // namespace nnrt::rendering::functional::kernel
+} // namespace nnrt::alignment::functional::kernel
 

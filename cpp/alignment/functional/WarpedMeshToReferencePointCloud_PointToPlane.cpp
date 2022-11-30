@@ -31,7 +31,7 @@ namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
-namespace nnrt::rendering::functional {
+namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, PartialDifferentiationState>
 ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpField& warp_field,
                                               const open3d::t::geometry::TriangleMesh& canonical_mesh,
@@ -45,13 +45,13 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 	o3c::SizeVector image_size = {reference_color_image.AsTensor().GetShape(0), reference_color_image.AsTensor().GetShape(1)};
 	o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(canonical_mesh, anchors, weights, true, extrinsics);
 	auto [extracted_face_vertices, clipped_face_mask] =
-			MeshFaceVerticesAndClipMaskToRaySpace(warped_mesh, intrinsics, image_size);
+			rendering::MeshFaceVerticesAndClipMaskToRaySpace(warped_mesh, intrinsics, image_size);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true, false, true);
+			rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true, false, true);
 	auto vertex_normals = warped_mesh.GetVertexNormals();
 	auto triangle_indices = warped_mesh.GetTriangleIndices();
 	auto face_vertex_normals = vertex_normals.GetItem(o3c::TensorKey::IndexTensor(triangle_indices));
-	auto rendered_normals = functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
+	auto rendered_normals = rendering::functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
 	differentiation_state.rendered_normals = rendered_normals;
 	int64_t pixel_attribute_count = rendered_normals.GetShape(3);
 	// both statements below assume 1x faces per pixel, neet to get first slice along pixel-face axis otherwise
@@ -77,5 +77,5 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 	return std::make_tuple(distances,differentiation_state);
 }
 
-} // namespace nnrt::rendering::functional
+} // namespace nnrt::alignment::functional
 
