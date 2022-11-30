@@ -23,7 +23,7 @@
 
 // local includes
 #include "alignment/functional/kernel/Jacobians.h"
-// #include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
+#include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
 #include "core/PlatformIndependence.h"
 
 namespace o3c = open3d::core;
@@ -178,7 +178,7 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 					Eigen::Map<const Eigen::Vector3f> face_vertex = face_vertices[i_vertex];
 					Eigen::Map<const Eigen::Vector3f> face_normal = face_normals[i_vertex];
 					Eigen::Map<const Eigen::Vector3f> pixel_barycentric_coordinate = pixel_barycentric_coordinates[i_vertex];
-
+					//TODO: finish
 
 
 
@@ -187,7 +187,8 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 
 			}
 	);
-
+	//FIXME
+	utility::LogError("Not fully implemented");
 }
 
 } // namespace nnrt::alignment::functional::kernel

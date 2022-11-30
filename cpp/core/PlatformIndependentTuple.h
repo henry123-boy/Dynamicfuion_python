@@ -24,7 +24,7 @@ template<typename... Ts>
 using nnrt_tuple = thrust::tuple<Ts...>;
 
 template<typename... Ts>
-inline std::tuple<Ts...> make_tuple(Ts... args){
+inline thrust::tuple<Ts...> make_tuple(Ts... args){
 	return thrust::make_tuple(args...);
 }
 
