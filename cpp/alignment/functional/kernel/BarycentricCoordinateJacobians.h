@@ -25,54 +25,125 @@
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
+typedef Eigen::Matrix<float, 3, 2, Eigen::RowMajor> Matrix3x2f;
 
 namespace nnrt::alignment::functional::kernel {
 
 template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise,
-        typename TPoint, typename TVertex>
+		typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedParallelogramAreaJacobianWrtRaySpaceVertices(
-		const TPoint& point, // can be a point of ray intersection or simply another face vertex
-		const TVertex& vertex0, // face vertex
-		const TVertex& vertex1 // face vertex
+inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedFaceParallelogramAreaJacobianWrtRaySpaceVertices(
+		const TVertex& vertex0,
+		const TVertex& vertex1,
+		const TVertex& vertex2
 ) {
-
 	if (TVertexOrder == rendering::functional::kernel::CounterClockWise) {
-		const Eigen::Vector2f dArea_dPoint(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
-		const Eigen::Vector2f dArea_dVertex0(vertex1.y() - point.y(), point.x - vertex1.x);
-		const Eigen::Vector2f dArea_dVertex1(point.y() - vertex0.y(), vertex0.x - point.x);
-		return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
+		const Eigen::Vector2f dArea_dVertex0(vertex1.y() - vertex2.y(), vertex2.x - vertex1.x);
+		const Eigen::Vector2f dArea_dVertex1(vertex2.y() - vertex0.y(), vertex0.x - vertex2.x);
+		const Eigen::Vector2f dArea_dVertex2(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
+		return make_tuple(dArea_dVertex0, dArea_dVertex1, dArea_dVertex2);
 	} else {
-		const Eigen::Vector2f dArea_dPoint(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
-		const Eigen::Vector2f dArea_dVertex0(point.y() - vertex1.y(), vertex1.x - point.x);
-		const Eigen::Vector2f dArea_dVertex1(vertex0.y() - point.y(), point.x - vertex0.x);
-		return make_tuple(dArea_dPoint, dArea_dVertex0, dArea_dVertex1);
+		const Eigen::Vector2f dArea_dVertex0(vertex2.y() - vertex1.y(), vertex1.x - vertex2.x);
+		const Eigen::Vector2f dArea_dVertex1(vertex0.y() - vertex2.y(), vertex2.x - vertex0.x);
+		const Eigen::Vector2f dArea_dVertex2(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
+		return make_tuple(dArea_dVertex0, dArea_dVertex1, dArea_dVertex2);
+	}
+}
+
+template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise,
+		typename TPoint, typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(
+		const TPoint& point,
+		const TVertex& vertex0,
+		const TVertex& vertex1
+) {
+	if (TVertexOrder == rendering::functional::kernel::CounterClockWise) {
+		const Eigen::Vector2f dArea_dVertex1(vertex1.y() - point.y(), point.x - vertex1.x);
+		const Eigen::Vector2f dArea_dVertex2(point.y() - vertex0.y(), vertex0.x - point.x);
+		return make_tuple(dArea_dVertex1, dArea_dVertex2);
+	} else {
+		const Eigen::Vector2f dArea_dVertex1(point.y() - vertex1.y(), vertex1.x - point.x);
+		const Eigen::Vector2f dArea_dVertex2(vertex0.y() - point.y(), point.x - vertex0.x);
+		return make_tuple(dArea_dVertex1, dArea_dVertex2);
 	}
 }
 
 template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise, typename TPoint,
-        typename TVertex, typename TVector3>
+		typename TVertex, typename TVector3>
 NNRT_DEVICE_WHEN_CUDACC
-inline void BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersectionPoint,
-															 const TVertex& vertex0,
-															 const TVertex& vertex1,
-															 const TVertex& vertex2,
-															 const TVector3 distorted_barycentric_coordinates){
+inline nnrt_tuple<Matrix3x2f,Matrix3x2f,Matrix3x2f>
+BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersection_point,
+                                                 const TVertex& vertex0,
+                                                 const TVertex& vertex1,
+                                                 const TVertex& vertex2,
+                                                 const TVector3 distorted_barycentric_coordinates) {
+	// "p" stands for "parallelogram"
 	const float face_parallelogram_area =
 			rendering::functional::kernel::
 			SignedParallelogramArea<TVertex, TVertex, rendering::functional::kernel::CounterClockWise>(vertex0, vertex1, vertex2)
-			        + K_EPSILON;
+			+ K_EPSILON;
 	const float face_parallelogram_area_squared = face_parallelogram_area * face_parallelogram_area;
-	const float triangle0_area = distorted_barycentric_coordinates(0) * face_parallelogram_area;
-	const float triangle1_area = distorted_barycentric_coordinates(1) * face_parallelogram_area;
-	const float triangle2_area = distorted_barycentric_coordinates(2) * face_parallelogram_area;
 	const nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> d_face_area_wrt_vertices =
-			SignedParallelogramAreaJacobianWrtRaySpaceVertices<TVertexOrder>(vertex0, vertex1, vertex2);
+			SignedFaceParallelogramAreaJacobianWrtRaySpaceVertices<TVertexOrder>(vertex0, vertex1, vertex2);
 
-	//auto d_area_
-	//TODO finish
+	// "p_area" stands for parallelogram_area
+	const float sub_face0_p_area = distorted_barycentric_coordinates(0) * face_parallelogram_area;
+	const float sub_face1_p_area = distorted_barycentric_coordinates(1) * face_parallelogram_area;
+	const float sub_face2_p_area = distorted_barycentric_coordinates(2) * face_parallelogram_area;
+	// const float sub_face_p_areas[] = {sub_face0_p_area, sub_face1_p_area, sub_face2_p_area};
 
+	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face0_p_area_wrt_vertices_1_2 =
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex1, vertex2);
+	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face1_p_area_wrt_vertices_2_0 =
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex2, vertex0);
+	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face2_p_area_wrt_vertices_0_1 =
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex0, vertex1);
 
+	Matrix3x2f d_distorted_coords_wrt_vertex0;
+	Matrix3x2f d_distorted_coords_wrt_vertex1;
+	Matrix3x2f d_distorted_coords_wrt_vertex2; // = Matrix3x2f::Zero(); -- how to start with zeros for Eigen
+
+	// for the below, we use the derivatives' quotient rule, i.e.
+	// A_
+	// ∂ρ0/∂p0 , uses sub_face0 & vertex0
+	d_distorted_coords_wrt_vertex0.row(0) =
+			(-sub_face0_p_area * get<0>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+	// ∂ρ1/∂p0 , uses sub_face1 & vertex0
+	d_distorted_coords_wrt_vertex0.row(1) =
+			(face_parallelogram_area * get<1>(d_sub_face1_p_area_wrt_vertices_2_0) - sub_face1_p_area * get<0>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared ;
+	// ∂ρ2/∂p0 , uses sub_face2 & vertex0
+	d_distorted_coords_wrt_vertex0.row(2) =
+			(face_parallelogram_area * get<0>(d_sub_face2_p_area_wrt_vertices_0_1) - sub_face2_p_area * get<0>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+
+	// ∂ρ0/∂p1 , uses sub_face0 & vertex1
+	d_distorted_coords_wrt_vertex1.row(0) =
+			(face_parallelogram_area * get<0>(d_sub_face0_p_area_wrt_vertices_1_2) - sub_face0_p_area * get<1>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+	// ∂ρ1/∂p1 , uses sub_face1 & vertex1
+	d_distorted_coords_wrt_vertex1.row(1) =
+			(-sub_face1_p_area * get<1>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+	// ∂ρ2/∂p1 , uses sub_face2 & vertex1
+	d_distorted_coords_wrt_vertex1.row(2) =
+			(face_parallelogram_area * get<1>(d_sub_face2_p_area_wrt_vertices_0_1) - sub_face2_p_area * get<1>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+
+	// ∂ρ0/∂p2 , uses sub_face0 & vertex2
+	d_distorted_coords_wrt_vertex2.row(0) =
+			(face_parallelogram_area * get<1>(d_sub_face0_p_area_wrt_vertices_1_2) - sub_face0_p_area * get<2>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
+	// ∂ρ1/∂p2 , uses sub_face1 & vertex2
+	d_distorted_coords_wrt_vertex2.row(1) =
+			(face_parallelogram_area * get<0>(d_sub_face1_p_area_wrt_vertices_2_0) - sub_face1_p_area * get<2>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared ;
+	// ∂ρ2/∂p2 , uses sub_face2 & vertex2
+	d_distorted_coords_wrt_vertex2.row(2) =
+			(-sub_face2_p_area * get<2>(d_face_area_wrt_vertices))
+			/ face_parallelogram_area_squared;
 }
 
 NNRT_DEVICE_WHEN_CUDACC
