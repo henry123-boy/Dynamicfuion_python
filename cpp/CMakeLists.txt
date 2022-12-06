@@ -266,7 +266,7 @@ set(
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
-    alignment/functional/kernel/MathTypedefs.h)
+    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

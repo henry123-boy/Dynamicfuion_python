@@ -20,6 +20,20 @@
 #include <Eigen/Dense>
 
 // local includes
-typedef Eigen::Matrix<float, 3, 2, Eigen::RowMajor> Matrix3x2f;
-typedef Eigen::Matrix<float, 2, 3, Eigen::RowMajor> Matrix2x3f;
-typedef Eigen::Matrix<float, 3, 9, Eigen::RowMajor> Matrix3x9f;
+#include "core/PlatformIndependence.h"
+
+namespace nnrt::alignment::functional::kernel {
+template<typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline Matrix2x3f CameraToNdcSpaceProjectionJacobian(float ndc_focal_coefficient_x,
+                                                     float ndc_focal_coefficient_y,
+                                                     TVertex camera_space_vertex) {
+	Matrix2x3f jacobian;
+	//TODO: try optimizing by avoiding the comma initializer syntax,
+	// see https://stackoverflow.com/a/17704129/844728
+	jacobian <<
+	         ndc_focal_coefficient_x / camera_space_vertex.z(), 0.f, -ndc_focal_coefficient_x * camera_space_vertex.x() / camera_space_vertex.z(),
+			0.f, ndc_focal_coefficient_y / camera_space_vertex.z(), -ndc_focal_coefficient_y * camera_space_vertex.y() / camera_space_vertex.z();
+	return jacobian;
+}
+} // namespace nnrt::alignment::functional::kernel

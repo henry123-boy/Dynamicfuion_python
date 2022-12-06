@@ -24,6 +24,7 @@
 // local includes
 #include "alignment/functional/kernel/Jacobians.h"
 #include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
+#include "alignment/functional/kernel/ProjectionJacobians.h"
 #include "core/PlatformIndependence.h"
 
 namespace o3c = open3d::core;

@@ -54,7 +54,7 @@ static void CheckClippingRangeAndImageSize(const open3d::core::SizeVector& image
 	}
 }
 
-open3d::core::Tensor MeshFaceVerticesToNdcSpace(
+open3d::core::Tensor MeshFaceVerticesToNdc(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size, /* {height, width} */
@@ -73,15 +73,15 @@ open3d::core::Tensor MeshFaceVerticesToNdcSpace(
 
 	o3c::Tensor vertex_positions_clipped_normalized_camera;
 
-	kernel::MeshVerticesClippedToNdcSpace(vertex_positions_clipped_normalized_camera, vertex_positions_camera,
-	                                      triangle_vertex_indices, normalized_intrinsic_matrix, normalized_xy_range,
-	                                      near_clipping_distance, far_clipping_distance);
+	kernel::MeshVerticesClippedToNdc(vertex_positions_clipped_normalized_camera, vertex_positions_camera,
+	                                 triangle_vertex_indices, normalized_intrinsic_matrix, normalized_xy_range,
+	                                 near_clipping_distance, far_clipping_distance);
 
 	return vertex_positions_clipped_normalized_camera;
 }
 
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMaskToNdcSpace(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMaskToNdc(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size, /* {height, width} */
@@ -98,10 +98,10 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMa
 	auto [normalized_intrinsic_matrix, normalized_xy_range] = kernel::IntrinsicsToNormalizedCameraSpaceAndRange(intrinsic_matrix, image_size);
 	o3c::Tensor vertex_positions_normalized_camera, clipped_face_mask;
 
-	kernel::MeshDataAndClippingMaskToNdcSpace(vertex_positions_normalized_camera, open3d::utility::nullopt, clipped_face_mask,
-	                                          vertex_positions_camera, open3d::utility::nullopt, triangle_vertex_indices,
-	                                          normalized_intrinsic_matrix, normalized_xy_range,
-	                                          near_clipping_distance, far_clipping_distance);
+	kernel::MeshDataAndClippingMaskToNdc(vertex_positions_normalized_camera, open3d::utility::nullopt, clipped_face_mask,
+	                                     vertex_positions_camera, open3d::utility::nullopt, triangle_vertex_indices,
+	                                     normalized_intrinsic_matrix, normalized_xy_range,
+	                                     near_clipping_distance, far_clipping_distance);
 
 	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
 }
@@ -127,10 +127,10 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 	auto [normalized_intrinsic_matrix, normalized_xy_range] = kernel::IntrinsicsToNormalizedCameraSpaceAndRange(intrinsic_matrix, image_size);
 	o3c::Tensor vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask;
 
-	kernel::MeshDataAndClippingMaskToNdcSpace(vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask,
-	                                          vertex_positions_camera, vertex_normals_camera, triangle_vertex_indices,
-	                                          normalized_intrinsic_matrix, normalized_xy_range,
-	                                          near_clipping_distance, far_clipping_distance);
+	kernel::MeshDataAndClippingMaskToNdc(vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask,
+	                                     vertex_positions_camera, vertex_normals_camera, triangle_vertex_indices,
+	                                     normalized_intrinsic_matrix, normalized_xy_range,
+	                                     near_clipping_distance, far_clipping_distance);
 
 	return std::make_tuple(vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask);
 }

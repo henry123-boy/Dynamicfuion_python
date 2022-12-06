@@ -121,13 +121,13 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void MeshVerticesClippedToNdcSpace(open3d::core::Tensor& vertex_positions_normalized_camera,
-                                   const open3d::core::Tensor& vertex_positions_camera,
-                                   const open3d::core::Tensor& triangle_vertex_indices,
-                                   const open3d::core::Tensor& normalized_camera_space_matrix,
-                                   kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-                                   float near_clipping_distance,
-                                   float far_clipping_distance) {
+void MeshVerticesClippedToNdc(open3d::core::Tensor& vertex_positions_normalized_camera,
+                              const open3d::core::Tensor& vertex_positions_camera,
+                              const open3d::core::Tensor& triangle_vertex_indices,
+                              const open3d::core::Tensor& normalized_camera_space_matrix,
+                              kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                              float near_clipping_distance,
+                              float far_clipping_distance) {
 	NNRT_DECLARE_ATOMIC_INT(unclipped_face_count);
 	NNRT_INITIALIZE_ATOMIC(int, unclipped_face_count, 0);
 	auto run_before_return_invalid = NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) { return; };
@@ -145,14 +145,14 @@ void MeshVerticesClippedToNdcSpace(open3d::core::Tensor& vertex_positions_normal
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void MeshDataAndClippingMaskToNdcSpace(open3d::core::Tensor& vertex_positions_normalized_camera,
-                                       open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
-                                       open3d::core::Tensor& clipped_face_mask, const open3d::core::Tensor& vertex_positions_camera,
-                                       open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
-                                       const open3d::core::Tensor& triangle_vertex_indices,
-                                       const open3d::core::Tensor& normalized_camera_space_matrix,
-                                       kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
-                                       float far_clipping_distance) {
+void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normalized_camera,
+                                  open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
+                                  open3d::core::Tensor& clipped_face_mask, const open3d::core::Tensor& vertex_positions_camera,
+                                  open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
+                                  const open3d::core::Tensor& triangle_vertex_indices,
+                                  const open3d::core::Tensor& normalized_camera_space_matrix,
+                                  kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
+                                  float far_clipping_distance) {
 	auto face_count = triangle_vertex_indices.GetLength();
 	o3c::Device device = vertex_positions_camera.GetDevice();
 
