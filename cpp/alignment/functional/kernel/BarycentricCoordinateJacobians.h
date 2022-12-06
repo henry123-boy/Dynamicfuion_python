@@ -25,14 +25,21 @@
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
-typedef Eigen::Matrix<float, 3, 2, Eigen::RowMajor> Matrix3x2f;
+#include "alignment/functional/kernel/MathTypedefs.h"
+
 
 namespace nnrt::alignment::functional::kernel {
+
+template<typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline Matrix2x3f CameraToNdcSpaceProjectionJacobian (){
+
+}
 
 template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise,
 		typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedFaceParallelogramAreaJacobianWrtRaySpaceVertices(
+inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedFaceParallelogramAreaJacobianWrtNdcVertices(
 		const TVertex& vertex0,
 		const TVertex& vertex1,
 		const TVertex& vertex2
@@ -53,7 +60,7 @@ inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> SignedFaceP
 template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise,
 		typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(
+inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> SignedSubFaceParallelogramAreaJacobianWrtPointAndNdcVertices(
 		const TPoint& point,
 		const TVertex& vertex0,
 		const TVertex& vertex1
@@ -73,11 +80,11 @@ template<rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rend
 		typename TVertex, typename TVector3>
 NNRT_DEVICE_WHEN_CUDACC
 inline nnrt_tuple<Matrix3x2f,Matrix3x2f,Matrix3x2f>
-BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersection_point,
-                                                 const TVertex& vertex0,
-                                                 const TVertex& vertex1,
-                                                 const TVertex& vertex2,
-                                                 const TVector3 distorted_barycentric_coordinates) {
+BarycentricCoordinateJacobianWrtNdcVertices(const TPoint& intersection_point,
+                                            const TVertex& vertex0,
+                                            const TVertex& vertex1,
+                                            const TVertex& vertex2,
+                                            const TVector3 distorted_barycentric_coordinates) {
 	// "p" stands for "parallelogram"
 	const float face_parallelogram_area =
 			rendering::functional::kernel::
@@ -85,7 +92,7 @@ BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersection_poin
 			+ K_EPSILON;
 	const float face_parallelogram_area_squared = face_parallelogram_area * face_parallelogram_area;
 	const nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> d_face_area_wrt_vertices =
-			SignedFaceParallelogramAreaJacobianWrtRaySpaceVertices<TVertexOrder>(vertex0, vertex1, vertex2);
+			SignedFaceParallelogramAreaJacobianWrtNdcVertices<TVertexOrder>(vertex0, vertex1, vertex2);
 
 	// "p_area" stands for parallelogram_area
 	const float sub_face0_p_area = distorted_barycentric_coordinates(0) * face_parallelogram_area;
@@ -94,18 +101,23 @@ BarycentricCoordinateJacobianWrtRaySpaceVertices(const TPoint& intersection_poin
 	// const float sub_face_p_areas[] = {sub_face0_p_area, sub_face1_p_area, sub_face2_p_area};
 
 	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face0_p_area_wrt_vertices_1_2 =
-			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex1, vertex2);
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndNdcVertices(intersection_point, vertex1, vertex2);
 	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face1_p_area_wrt_vertices_2_0 =
-			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex2, vertex0);
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndNdcVertices(intersection_point, vertex2, vertex0);
 	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face2_p_area_wrt_vertices_0_1 =
-			SignedSubFaceParallelogramAreaJacobianWrtPointAndRaySpaceVertices(intersection_point, vertex0, vertex1);
+			SignedSubFaceParallelogramAreaJacobianWrtPointAndNdcVertices(intersection_point, vertex0, vertex1);
 
 	Matrix3x2f d_distorted_coords_wrt_vertex0;
 	Matrix3x2f d_distorted_coords_wrt_vertex1;
 	Matrix3x2f d_distorted_coords_wrt_vertex2; // = Matrix3x2f::Zero(); -- how to start with zeros for Eigen
 
-	// for the below, we use the derivatives' quotient rule, i.e.
-	// A_
+	// For the below jacobian, in code comments, we use ρ ("rho") for barycentric coordinates, and p for
+	// projected normalized (Normalized Device Coordinate, or NDC space) triangle vertex coordinates.
+	// i.e. if A_i is sub face signed parallelogram area (SPA) opposite vertex i and A_F is SPA of the whole triangular face,
+	// The quotient rule works for all entries of the Jacobian (with {i, j, k} being {0, 1, 2} in any fixed order):
+	//
+	// ∂ρ_i/∂[p_i p_j p_k] = (A_F(∂A_i/∂[p_i p_j p_k]) - A_i(∂A_F/∂[p_i p_j p_k])) / A_F^2
+	//
 	// ∂ρ0/∂p0 , uses sub_face0 & vertex0
 	d_distorted_coords_wrt_vertex0.row(0) =
 			(-sub_face0_p_area * get<0>(d_face_area_wrt_vertices))

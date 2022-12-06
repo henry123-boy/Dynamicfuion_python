@@ -39,7 +39,7 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 			0., 0., 1.,
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 
-	auto extracted_face_vertices = nnrt::rendering::MeshFaceVerticesToRaySpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
+	auto extracted_face_vertices = nnrt::rendering::MeshFaceVerticesToNdcSpace(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	REQUIRE(extracted_face_vertices.GetLength() == 334);
 

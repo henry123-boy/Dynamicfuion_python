@@ -22,7 +22,7 @@
 
 namespace nnrt::rendering {
 
-open3d::core::Tensor MeshFaceVerticesToRaySpace(
+open3d::core::Tensor MeshFaceVerticesToNdcSpace(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size,
@@ -30,7 +30,7 @@ open3d::core::Tensor MeshFaceVerticesToRaySpace(
 		float far_clipping_distance = INFINITY
 );
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMaskToRaySpace(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMaskToNdcSpace(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size,
@@ -38,7 +38,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMa
 		float far_clipping_distance = INFINITY
 );
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndNormalsAndClipMaskToRaySpace(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndNormalsAndClipMaskToNdc(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size,

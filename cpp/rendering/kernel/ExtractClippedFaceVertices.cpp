@@ -22,7 +22,7 @@ namespace utility = open3d::utility;
 namespace nnrt::rendering::kernel {
 
 
-void MeshVerticesClippedToNormalizedCameraSpace(
+void MeshVerticesClippedToNdcSpace(
 		open3d::core::Tensor& vertex_positions_clipped_normalized_camera,
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
@@ -34,14 +34,14 @@ void MeshVerticesClippedToNormalizedCameraSpace(
 	core::ExecuteOnDevice(
 			vertex_positions_camera.GetDevice(),
 			[&] {
-				MeshVerticesClippedToNormalizedCameraSpace<o3c::Device::DeviceType::CPU>(
+				MeshVerticesClippedToNdcSpace<o3c::Device::DeviceType::CPU>(
 						vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices, normalized_camera_space_matrix,
 						normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						MeshVerticesClippedToNormalizedCameraSpace<o3c::Device::DeviceType::CUDA>(
+						MeshVerticesClippedToNdcSpace<o3c::Device::DeviceType::CUDA>(
 								vertex_positions_clipped_normalized_camera, vertex_positions_camera, triangle_vertex_indices,
 								normalized_camera_space_matrix, normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance
 						);
@@ -51,7 +51,7 @@ void MeshVerticesClippedToNormalizedCameraSpace(
 }
 
 
-void MeshDataAndClippingMaskToRaySpace(open3d::core::Tensor& vertex_positions_normalized_camera,
+void MeshDataAndClippingMaskToNdcSpace(open3d::core::Tensor& vertex_positions_normalized_camera,
                                        open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
                                        open3d::core::Tensor& clipped_face_mask, const open3d::core::Tensor& vertex_positions_camera,
                                        open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> normals_camera,
@@ -62,7 +62,7 @@ void MeshDataAndClippingMaskToRaySpace(open3d::core::Tensor& vertex_positions_no
 	core::ExecuteOnDevice(
 			vertex_positions_camera.GetDevice(),
 			[&] {
-				MeshDataAndClippingMaskToRaySpace<o3c::Device::DeviceType::CPU>(
+				MeshDataAndClippingMaskToNdcSpace<o3c::Device::DeviceType::CPU>(
 						vertex_positions_normalized_camera, face_vertex_normals_camera,
 						clipped_face_mask, vertex_positions_camera, normals_camera,
 						triangle_vertex_indices,
@@ -72,7 +72,7 @@ void MeshDataAndClippingMaskToRaySpace(open3d::core::Tensor& vertex_positions_no
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						MeshDataAndClippingMaskToRaySpace<o3c::Device::DeviceType::CUDA>(
+						MeshDataAndClippingMaskToNdcSpace<o3c::Device::DeviceType::CUDA>(
 								vertex_positions_normalized_camera, face_vertex_normals_camera,
 								clipped_face_mask, vertex_positions_camera, normals_camera,
 								triangle_vertex_indices,

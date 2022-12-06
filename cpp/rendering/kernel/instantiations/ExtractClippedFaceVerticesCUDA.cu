@@ -17,7 +17,7 @@
 namespace nnrt::rendering::kernel {
 
 
-template void MeshVerticesClippedToNormalizedCameraSpace<open3d::core::Device::DeviceType::CUDA>(
+template void MeshVerticesClippedToNdcSpace<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& vertex_positions_normalized_camera,
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
@@ -26,7 +26,7 @@ template void MeshVerticesClippedToNormalizedCameraSpace<open3d::core::Device::D
 		float far_clipping_distance
 );
 
-template void MeshDataAndClippingMaskToRaySpace<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& vertex_positions_normalized_camera,
+template void MeshDataAndClippingMaskToNdcSpace<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& vertex_positions_normalized_camera,
                                                                                         open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
                                                                                         open3d::core::Tensor& clipped_face_mask,
                                                                                         const open3d::core::Tensor& vertex_positions_camera,
