@@ -20,14 +20,17 @@
 #include <Eigen/Dense>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
+
 // local includes
 #include "core/PlatformIndependence.h"
 #include "core/PlatformIndependentTuple.h"
+#include "core/PlatformIndependentArray.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
 #include "alignment/functional/kernel/MathTypedefs.h"
 #include "alignment/functional/kernel/ProjectionJacobians.h"
+
 
 
 namespace o3tgk = open3d::t::geometry::kernel;
@@ -38,7 +41,7 @@ typedef rendering::functional::kernel::FrontFaceVertexOrder VertexOrder;
 
 template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename T2dVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedFaceParallelogramAreaWrt2dVertices(
+inline tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedFaceParallelogramAreaWrt2dVertices(
 		const T2dVertex& vertex0,
 		const T2dVertex& vertex1,
 		const T2dVertex& vertex2
@@ -58,7 +61,7 @@ inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_Si
 
 template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcIntersectionPoint, typename TNdcVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(
+inline tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(
 		const TNdcIntersectionPoint& point,
 		const TNdcVertex& vertex0,
 		const TNdcVertex& vertex1
@@ -76,7 +79,8 @@ inline nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParall
 
 template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector>
 NNRT_DEVICE_WHEN_CUDACC
-inline nnrt_tuple<Matrix3x2f, Matrix3x2f, Matrix3x2f>
+//inline tuple<Matrix3x2f, Matrix3x2f, Matrix3x2f>
+inline array<Matrix3x2f, 3>
 Jacobian_BarycentricCoordinateWrtNdcVertices(
 		const TNdcRayPoint& ray_point,
 		const TNdcVertex& vertex0,
@@ -90,7 +94,7 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 			SignedParallelogramArea<TNdcVertex, TNdcVertex, rendering::functional::kernel::CounterClockWise>(vertex0, vertex1, vertex2)
 			+ K_EPSILON;
 	const float face_parallelogram_area_squared = face_parallelogram_area * face_parallelogram_area;
-	const nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> d_face_area_wrt_vertices =
+	const tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> d_face_area_wrt_vertices =
 			Jacobian_SignedFaceParallelogramAreaWrt2dVertices<TVertexOrder>(vertex0, vertex1, vertex2);
 
 	// "p_area" stands for parallelogram_area
@@ -99,16 +103,15 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 	const float sub_face2_p_area = distorted_barycentric_coordinates(2) * face_parallelogram_area;
 	// const float sub_face_p_areas[] = {sub_face0_p_area, sub_face1_p_area, sub_face2_p_area};
 
-	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face0_p_area_wrt_vertices_1_2 =
+	tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face0_p_area_wrt_vertices_1_2 =
 			Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(ray_point, vertex1, vertex2);
-	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face1_p_area_wrt_vertices_2_0 =
+	tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face1_p_area_wrt_vertices_2_0 =
 			Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(ray_point, vertex2, vertex0);
-	nnrt_tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face2_p_area_wrt_vertices_0_1 =
+	tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face2_p_area_wrt_vertices_0_1 =
 			Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(ray_point, vertex0, vertex1);
 
-	Matrix3x2f d_distorted_coords_wrt_vertex0;
-	Matrix3x2f d_distorted_coords_wrt_vertex1;
-	Matrix3x2f d_distorted_coords_wrt_vertex2; // = Matrix3x2f::Zero(); -- how to start with zeros for Eigen
+	Matrix3x2f d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1, d_distorted_coords_wrt_vertex2;
+	//Note: = Matrix3x2f::Zero(); -- how to initialize zero matrix for Eigen
 
 	// For the below jacobian, in code comments, we use ρ ("rho") for barycentric coordinates, and p for
 	// projected normalized (Normalized Device Coordinate, or NDC space) triangle vertex coordinates.
@@ -155,12 +158,14 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 	d_distorted_coords_wrt_vertex2.row(2) =
 			(-sub_face2_p_area * get<2>(d_face_area_wrt_vertices))
 			/ face_parallelogram_area_squared;
+
+	return array<Matrix3x2f, 3>({d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1, d_distorted_coords_wrt_vertex2});
 }
 
 
-NNRT_DEVICE_WHEN_CUDACC
 template<typename TBarycentricCoordinateVector>
-inline nnrt_tuple<Eigen::Vector3f, Eigen::Matrix3f> Jacobian_PerspectiveCorrectBarycentricCoordinateWrtDistortedAndZ(
+NNRT_DEVICE_WHEN_CUDACC
+inline tuple<Eigen::RowVector3f, Eigen::Matrix3f> Jacobian_PerspectiveCorrectBarycentricCoordinateWrtDistortedAndZ(
 		TBarycentricCoordinateVector distorted_barycentric_coordinates,
 		const float vertex0z,
 		const float vertex1z,
@@ -176,7 +181,8 @@ inline nnrt_tuple<Eigen::Vector3f, Eigen::Matrix3f> Jacobian_PerspectiveCorrectB
 	const float denominator = FloatMax(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
 	const float denominator_squared = denominator * denominator;
 
-	Eigen::Vector3f partial_coords_wrt_distorted(
+	//TODO: this should be a row-major matrix instead! Fix math!
+	Eigen::RowVector3f partial_coords_wrt_distorted(
 			(denominator - coord0_numerator) * partial_coord0_numerator_wrt_distorted0 / denominator_squared,
 			(denominator - coord1_numerator) * partial_coord1_numerator_wrt_distorted1 / denominator_squared,
 			(denominator - coord2_numerator) * partial_coord2_numerator_wrt_distorted2 / denominator_squared
@@ -204,64 +210,57 @@ inline nnrt_tuple<Eigen::Vector3f, Eigen::Matrix3f> Jacobian_PerspectiveCorrectB
 }
 
 
-template<bool TWithPerspectiveCorrection>
-struct Functor_Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices {
-	NNRT_DEVICE_WHEN_CUDACC
-	template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint, typename TBarycentricCoordinateVector>
-	inline nnrt_tuple<Eigen::Matrix3f, Eigen::Matrix3f, Eigen::Matrix3f> Compute(
-			const TPoint& ray_point,
-			const TVertex& vertex0,
-			const TVertex& vertex1,
-			const TVertex& vertex2,
-			const o3tgk::TransformIndexer& perspective_projection,
-			const TBarycentricCoordinateVector& distorted_barycentric_coordinates);
-};
+template<bool TWithPerspectiveCorrection, VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint,
+		typename TBarycentricCoordinateVector>
+NNRT_DEVICE_WHEN_CUDACC
+inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices(
+		const TPoint& ray_point,
+		const TVertex& vertex0,
+		const TVertex& vertex1,
+		const TVertex& vertex2,
+		const o3tgk::TransformIndexer& perspective_projection,
+		const TBarycentricCoordinateVector& distorted_barycentric_coordinates) {
+	TVertex vertices_camera_space[] = {vertex0, vertex1, vertex2};
+	Eigen::Vector2f ndc_vertex0, ndc_vertex1, ndc_vertex2;
+	Eigen::Vector2f vertices_ndc[] = {ndc_vertex0, ndc_vertex1, ndc_vertex2};
+	//TODO: test whether it makes sense to run this in multiple kernels, i.e. precompute per-pixel per-vertex operations in separate kernels in
+	// order to utilize 3X number of threads.
+	for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
+		perspective_projection.Project(vertices_camera_space[i_vertex].x(), vertices_camera_space[i_vertex].y(),
+		                               vertices_camera_space[i_vertex].z(),
+		                               &vertices_ndc[i_vertex].x(), &vertices_ndc[i_vertex].y());
+	}
+	tuple<Matrix3x2f, Matrix3x2f, Matrix3x2f> d_barycentric_coordinates_d_ndc_tuple =
+			Jacobian_BarycentricCoordinateWrtNdcVertices<TVertexOrder>(ray_point, ndc_vertex0, ndc_vertex1, ndc_vertex2,
+			                                                           distorted_barycentric_coordinates);
+	Matrix3x2f d_barycentric_coordinates_d_ndc[] = {get<0>(d_barycentric_coordinates_d_ndc_tuple),
+	                                                get<1>(d_barycentric_coordinates_d_ndc_tuple),
+	                                                get<2>(d_barycentric_coordinates_d_ndc_tuple)};
+	float ndc_focal_coefficient_x, ndc_focal_coefficient_y;
+	perspective_projection.GetFocalLength(&ndc_focal_coefficient_x, &ndc_focal_coefficient_y);
+	//TODO: see above
+	// Eigen::Matrix3f d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1, d_barycentric_coordinates_d_vertex2;
+	// Eigen::Matrix3f d_barycentric_coordinates_d_vertices[] = {d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1,
+	//                                                           d_barycentric_coordinates_d_vertex2};
+	Matrix3x9f d_barycentric_coordinates_d_vertices;
 
-template<>
-struct Functor_Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices<false> {
-	NNRT_DEVICE_WHEN_CUDACC
-	template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint, typename TBarycentricCoordinateVector>
-	inline nnrt_tuple<Eigen::Matrix3f, Eigen::Matrix3f, Eigen::Matrix3f> Compute(
-			const TPoint& ray_point,
-			const TVertex& vertex0,
-			const TVertex& vertex1,
-			const TVertex& vertex2,
-			const o3tgk::TransformIndexer& perspective_projection,
-			const TBarycentricCoordinateVector& distorted_barycentric_coordinates) {
-		TVertex vertices_camera_space[] = {vertex0, vertex1, vertex2};
-		Eigen::Vector2f ndc_vertex0, ndc_vertex1, ndc_vertex2;
-		Eigen::Vector2f vertices_ndc[] = {ndc_vertex0, ndc_vertex1, ndc_vertex2};
-		//TODO: test whether it makes sense to run this in multiple kernels, i.e. precompute per-pixel per-vertex operations in separate kernels in
-		// order to utilize 3X number of threads.
-		for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
-			perspective_projection.Project(vertices_camera_space[i_vertex].x(), vertices_camera_space[i_vertex].y(),
-			                               vertices_camera_space[i_vertex].z(),
-			                               &vertices_ndc[i_vertex].x(), &vertices_ndc[i_vertex].y());
-		}
-		nnrt_tuple<Matrix3x2f, Matrix3x2f, Matrix3x2f> d_barycentric_coordinates_d_ndc_tuple =
-				Jacobian_BarycentricCoordinateWrtNdcVertices<TVertexOrder>(ray_point, ndc_vertex0, ndc_vertex1, ndc_vertex2,
-				                                                           distorted_barycentric_coordinates);
-		Matrix3x2f d_barycentric_coordinates_d_ndc[] = {get<0>(d_barycentric_coordinates_d_ndc_tuple),
-		                                                get<1>(d_barycentric_coordinates_d_ndc_tuple),
-		                                                get<2>(d_barycentric_coordinates_d_ndc_tuple)};
-		float ndc_focal_coefficient_x, ndc_focal_coefficient_y;
-		perspective_projection.GetFocalLength(&ndc_focal_coefficient_x, &ndc_focal_coefficient_y);
-		//TODO: see above
-		// Matrix2x3f d_ndc0_d_vertex0, d_ndc1_d_vertex1, d_ndc2_d_vertex2;
-		// Matrix2x3f d_ndc_d_vertices[] = {d_ndc0_d_vertex0, d_ndc1_d_vertex1, d_ndc2_d_vertex2};
-		Eigen::Matrix3f d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1, d_barycentric_coordinates_d_vertex2;
-		Eigen::Matrix3f d_barycentric_coordinates_d_vertices[] = {d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1,
-		                                                          d_barycentric_coordinates_d_vertex2};
-		for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
-			d_barycentric_coordinates_d_vertices[i_vertex] =
-					d_barycentric_coordinates_d_ndc[i_vertex] *
-					CameraToNdcSpaceProjectionJacobian(ndc_focal_coefficient_x, ndc_focal_coefficient_y,
-					                                   vertices_camera_space[i_vertex]);
-		}
-		return make_tuple(d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1, d_barycentric_coordinates_d_vertex2);
+	for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
+		d_barycentric_coordinates_d_vertices.block<3,3>(0, i_vertex*3) =
+				d_barycentric_coordinates_d_ndc[i_vertex] *
+				CameraToNdcSpaceProjectionJacobian(ndc_focal_coefficient_x, ndc_focal_coefficient_y,
+				                                   vertices_camera_space[i_vertex]);
+	}
+
+	if(TWithPerspectiveCorrection){
+		tuple<Eigen::RowVector3f, Eigen::Matrix3f> d_perspective_corrected_d_distorted_and_z =
+				Jacobian_PerspectiveCorrectBarycentricCoordinateWrtDistortedAndZ(distorted_barycentric_coordinates, vertex0.z(), vertex1.z(), vertex2.z());
+		Eigen::RowVector3f d_perspective_corrected_d_distorted = get<0>(d_perspective_corrected_d_distorted_and_z);
 
 	}
-};
+
+	// return make_tuple(d_barycentric_coordinates_d_vertex0, d_barycentric_coordinates_d_vertex1, d_barycentric_coordinates_d_vertex2);
+	return d_barycentric_coordinates_d_vertices;
+}
 
 
 } // namespace nnrt::alignment::functional::kernel

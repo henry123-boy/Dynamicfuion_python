@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/17/22.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 12/6/22.
 //  Copyright (c) 2022 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,39 +14,14 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-
 #ifdef __CUDACC__
-#include <cuda/std/tuple>
-namespace nnrt {
-template<typename... Ts>
-using tuple = cuda::std::tuple<Ts...>;
-
-template<typename... Ts>
-inline cuda::std::tuple<Ts...> make_tuple(Ts... args){
-	return cuda::std::make_tuple(args...);
-}
-
-template<int IItem, typename TTuple, typename TItem>
-inline TItem get(TTuple& tuple) {
-	return cuda::std::get<IItem>(tuple);
-}
-} // namespace nnrt
+#include <cuda/std/array>
+template<typename T, cuda::std::size_t N>
+using array = cuda::std::array<T, N>;
 #else
-#include <tuple>
+#include <array>
 namespace nnrt {
-template<typename... Ts>
-using tuple = std::tuple<Ts...>;
-
-template<typename... Ts>
-inline std::tuple<Ts...> make_tuple(Ts... args){
-	return std::make_tuple(args...);
-}
-
-template<int IItem, typename TTuple, typename TItem>
-inline TItem get(TTuple& tuple) {
-	return std::get<IItem>(tuple);
-}
+template<typename T, std::size_t N>
+using array = std::array<T, N>;
 } // namespace nnrt
 #endif
-
-

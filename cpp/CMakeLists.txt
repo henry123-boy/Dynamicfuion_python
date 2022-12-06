@@ -266,7 +266,7 @@ set(
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
-    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h)
+    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
@@ -309,7 +309,6 @@ pybind11_add_module(
 )
 
 target_include_directories(nnrt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
 
