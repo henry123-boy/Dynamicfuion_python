@@ -37,7 +37,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic(
 		const open3d::core::Tensor& vertex_positions_camera,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
+		const open3d::core::Tensor& ndc_intrinsic_matrix,
 		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
 		float near_clipping_distance,
 		float far_clipping_distance,
@@ -54,7 +54,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic(
 	// output & output indexers
 	vertex_positions_normalized_camera = open3d::core::Tensor({face_count, 3, 3}, o3c::Float32, device);
 	o3tgk::NDArrayIndexer normalized_face_vertex_indexer(vertex_positions_normalized_camera, 1);
-	o3tgk::TransformIndexer perspective_transform(normalized_camera_space_matrix, o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.0f);
+	o3tgk::TransformIndexer perspective_transform(ndc_intrinsic_matrix, o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.0f);
 
 	float* face_vertex_normal_ptr = nullptr;
 	const float* vertex_normal_ptr = nullptr;

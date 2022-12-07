@@ -50,14 +50,14 @@ void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open
 void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
                                       const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
                                       const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
                                       bool perspective_corrected_barycentric_coordinates) {
 	core::ExecuteOnDevice(
 			warped_vertex_positions.GetDevice(),
 			[&] {
 				RenderedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
 						rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions,
-						warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ray_space_intrinsics,
+						warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics,
 						perspective_corrected_barycentric_coordinates
 				);
 			},
@@ -65,7 +65,7 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 				NNRT_IF_CUDA(
 						RenderedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA>(
 								rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions,
-								warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ray_space_intrinsics,
+								warped_triangle_indices, warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics,
 								perspective_corrected_barycentric_coordinates
 						);
 				);

@@ -47,7 +47,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh,
                                  const open3d::core::Tensor& pixel_faces,
                                  const open3d::core::Tensor& barycentric_coordinates,
-                                 const open3d::core::Tensor& ray_space_intrinsics,
+                                 const open3d::core::Tensor& ndc_intrinsics,
                                  bool perspective_corrected_barycentric_coordinates) {
 	if (!warped_mesh.HasVertexNormals() || !warped_mesh.HasVertexPositions() || !warped_mesh.HasTriangleIndices()) {
 		utility::LogError("warped_mesh needs to have vertex positions, triangle indices, and vertex normals defined. "
@@ -60,7 +60,7 @@ RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped
 	o3c::Tensor rendered_vertex_jacobians, rendered_normal_jacobians;
 	kernel::RenderedVertexAndNormalJacobians(rendered_vertex_jacobians, rendered_normal_jacobians, warped_mesh.GetVertexPositions(),
 	                                         warped_mesh.GetTriangleIndices(), warped_mesh.GetVertexNormals(), pixel_faces, barycentric_coordinates,
-	                                         ray_space_intrinsics, false);
+	                                         ndc_intrinsics, false);
 
 	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }

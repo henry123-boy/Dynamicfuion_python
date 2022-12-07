@@ -24,7 +24,6 @@
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 
 
-
 namespace nnrt::rendering::functional::kernel {
 
 /**
@@ -49,7 +48,6 @@ inline float SignedParallelogramArea(
 }
 
 
-
 template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f BarycentricCoordinates(
@@ -63,6 +61,29 @@ inline Eigen::Vector3f BarycentricCoordinates(
 			SignedParallelogramArea<CounterClockWise>(point, vertex1, vertex2) / face_parallelogram_area, // A_0 / A_f
 			SignedParallelogramArea<CounterClockWise>(point, vertex2, vertex0) / face_parallelogram_area, // A_1 / A_f
 			SignedParallelogramArea<CounterClockWise>(point, vertex0, vertex1) / face_parallelogram_area  // A_2 / A_f
+	};
+}
+
+template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
+NNRT_DEVICE_WHEN_CUDACC
+inline Eigen::Vector3f BarycentricCoordinates_PreserveAreas(
+		float& face_parallelogram_area,
+		Eigen::Vector3f& sub_face_areas,
+		const TPoint& point,
+		const TVertex& vertex0,
+		const TVertex& vertex1,
+		const TVertex& vertex2
+) {
+	face_parallelogram_area = SignedParallelogramArea<CounterClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
+	sub_face_areas = Eigen::Vector3f(
+			SignedParallelogramArea<CounterClockWise>(point, vertex1, vertex2),
+			SignedParallelogramArea<CounterClockWise>(point, vertex2, vertex0),
+			SignedParallelogramArea<CounterClockWise>(point, vertex0, vertex1)
+	);
+	return {
+			sub_face_areas(0) / face_parallelogram_area, // A_0 / A_f
+			sub_face_areas(1) / face_parallelogram_area, // A_1 / A_f
+			sub_face_areas(2) / face_parallelogram_area  // A_2 / A_f
 	};
 }
 

@@ -44,7 +44,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJaco
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> RenderedVertexAndNormalJacobians(
 	const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
-	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
+	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
 	bool perspective_corrected_barycentric_coordinates
 );
 

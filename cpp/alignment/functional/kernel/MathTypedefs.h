@@ -20,6 +20,9 @@
 #include <Eigen/Dense>
 
 // local includes
+typedef Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Matrix3f;
+typedef Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Matrix3f;
+
 typedef Eigen::Matrix<float, 3, 2, Eigen::RowMajor> Matrix3x2f;
 typedef Eigen::Matrix<float, 2, 3, Eigen::RowMajor> Matrix2x3f;
 typedef Eigen::Matrix<float, 3, 9, Eigen::RowMajor> Matrix3x9f;

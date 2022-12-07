@@ -101,24 +101,27 @@ void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobi
 
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection,
+		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise>
 void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
                                       const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
                                       const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ray_space_intrinsics,
-                                      bool perspective_corrected_barycentric_coordinates) {
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics) {
 	auto device = warped_vertex_positions.GetDevice();
 	o3c::AssertTensorDevice(warped_triangle_indices, device);
 	o3c::AssertTensorDevice(warped_vertex_normals, device);
 	o3c::AssertTensorDevice(pixel_faces, device);
 	o3c::AssertTensorDevice(pixel_barycentric_coordinates, device);
 
-	o3tg::CheckIntrinsicTensor(ray_space_intrinsics);
-	auto device_ray_space_intrinsics = ray_space_intrinsics.To(device).To(o3c::Float32);
-	auto image_height = pixel_faces.GetShape(0);
-	auto image_width = pixel_faces.GetShape(1);
-	auto faces_per_pixel = pixel_faces.GetShape(2);
-	auto vertex_count = warped_vertex_positions.GetLength();
+	o3tg::CheckIntrinsicTensor(ndc_intrinsics);
+	o3tgk::TransformIndexer perspective_projection(ndc_intrinsics, o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.0f);
+
+	const auto image_height = pixel_faces.GetShape(0);
+	const auto image_width = pixel_faces.GetShape(1);
+	const auto image_height_int = static_cast<int32_t>(image_height);
+	const auto image_width_int = static_cast<int32_t>(image_width);
+	const auto faces_per_pixel = pixel_faces.GetShape(2);
+	const auto vertex_count = warped_vertex_positions.GetLength();
 
 	o3c::AssertTensorShape(warped_vertex_positions, { vertex_count, 3 });
 	o3c::AssertTensorShape(warped_vertex_normals, { vertex_count, 3 });
@@ -142,15 +145,19 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 
 
 	rendered_vertex_jacobians = o3c::Tensor({image_height, image_width, 3, 9}, o3c::Float32, device);
-	rendered_normal_jacobians = o3c::Tensor({image_height, image_width, 3, 9}, o3c::Float32, device);
+	rendered_normal_jacobians = o3c::Tensor({image_height, image_width, 3, 10}, o3c::Float32, device);
 
 
 	o3c::ParallelFor(
 			device, pixel_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t v = workload_idx / image_width;
-				int64_t u = workload_idx % image_width;
-				auto i_face = pixel_face_data[(v * image_width * faces_per_pixel) + (u * faces_per_pixel)];
+				int64_t v_image = workload_idx / image_width;
+				int64_t u_image = workload_idx % image_width;
+				const float y_screen = rendering::kernel::ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
+				const float x_screen = rendering::kernel::ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+				Eigen::Vector2f ray_point(x_screen, y_screen);
+
+				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 
 				if (i_face == -1) {
 					return;
@@ -168,20 +175,28 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 				Eigen::Map<const Eigen::Vector3f> face_normal2(vertex_normal_data + face_vertex_indices(2) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_normals[] = {face_normal0, face_normal1, face_normal2};
 
-				auto barycentric_coordinates_index = (v * image_width * faces_per_pixel * 3) + (u * faces_per_pixel * 3);
-				Eigen::Map<const Eigen::Vector3f> barycentric_coordinate0(barycentric_coordinate_data + barycentric_coordinates_index + 0 * 3);
-				Eigen::Map<const Eigen::Vector3f> barycentric_coordinate1(barycentric_coordinate_data + barycentric_coordinates_index + 1 * 3);
-				Eigen::Map<const Eigen::Vector3f> barycentric_coordinate2(barycentric_coordinate_data + barycentric_coordinates_index + 2 * 3);
-				Eigen::Map<const Eigen::Vector3f> pixel_barycentric_coordinates[] =
-						{barycentric_coordinate0, barycentric_coordinate1, barycentric_coordinate2};
+				Matrix3x9f barycentric_coordinate_jacobian;
+
+				auto barycentric_coordinates_index = (v_image * image_width * faces_per_pixel * 3) + (u_image * faces_per_pixel * 3);
+				Eigen::Map<const Eigen::Vector3f> barycentric_coordinates(barycentric_coordinate_data + barycentric_coordinates_index);
+
+				if (TWithPerspectiveCorrection) {
+					barycentric_coordinate_jacobian =
+							Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithPerspectiveCorrection<TVertexOrder>(
+									ray_point, face_vertex0, face_vertex1, face_vertex2, perspective_projection
+							);
+				} else {
+					// avoid recomputing distorted barycentric coordinates
+					barycentric_coordinate_jacobian =
+							Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithoutPerspectiveCorrection<TVertexOrder>(
+									ray_point, face_vertex0, face_vertex1, face_vertex2, perspective_projection, barycentric_coordinates
+							);
+				}
+
 
 				for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
 					Eigen::Map<const Eigen::Vector3f> face_vertex = face_vertices[i_vertex];
 					Eigen::Map<const Eigen::Vector3f> face_normal = face_normals[i_vertex];
-					Eigen::Map<const Eigen::Vector3f> pixel_barycentric_coordinate = pixel_barycentric_coordinates[i_vertex];
-					//TODO: finish
-
-
 
 				}
 
@@ -190,6 +205,25 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 	);
 	//FIXME
 	utility::LogError("Not fully implemented");
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
+                                      bool perspective_corrected_barycentric_coordinates) {
+	if (perspective_corrected_barycentric_coordinates) {
+		RenderedVertexAndNormalJacobians<TDeviceType, true>(
+				rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
+		);
+	} else {
+		RenderedVertexAndNormalJacobians<TDeviceType, false>(
+				rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
+		);
+	}
 }
 
 } // namespace nnrt::alignment::functional::kernel
