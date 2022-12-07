@@ -179,6 +179,8 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 				Eigen::Map<const Eigen::Vector3f> face_normal0(vertex_normal_data + face_vertex_indices(0) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_normal1(vertex_normal_data + face_vertex_indices(1) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_normal2(vertex_normal_data + face_vertex_indices(2) * 3);
+				Matrix3f face_normal_matrix;
+				face_normal_matrix << face_normal0, face_normal1, face_normal2;
 
 
 				Matrix3x9f barycentric_coordinate_jacobian;
@@ -203,13 +205,15 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 				Eigen::Map<Matrix3x9f> pixel_rendered_normal_jacobian_wrt_face_vertices(rendered_normal_jacobian_data + workload_idx * (3*10));
 				Eigen::Map<Eigen::RowVector3f> barycentric_coordinates_out(rendered_normal_jacobian_data + workload_idx * (3*10) + (3*9));
 
-				// pixel_rendered_vertex_jacobian_wrt_face_vertices =
+				pixel_rendered_vertex_jacobian_wrt_face_vertices =
+						face_vertex_matrix * barycentric_coordinate_jacobian + Eigen::kroneckerProduct(barycentric_coordinates, Matrix3f::Identity());
 
-
+				pixel_rendered_normal_jacobian_wrt_face_vertices =
+						face_normal_matrix * barycentric_coordinate_jacobian;
+				// this will be used to compute ∂(ρn)/∂n later, which is just ρ ⊗ 𝕀_3x3
+				barycentric_coordinates_out = barycentric_coordinates;
 			}
 	);
-	//FIXME
-	utility::LogError("Not fully implemented");
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>

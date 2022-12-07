@@ -35,13 +35,47 @@ TEST_CASE("experiment") {
 	// std::cout << gt.ToString() << std::endl;
 	// REQUIRE(tensor.AllClose(gt));
 	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> x;
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> y;
+	Eigen::Matrix<float, 3, 3, Eigen::ColMajor> y;
+	Eigen::Matrix<float, 3, 9, Eigen::RowMajor> z = Eigen::Matrix<float, 3, 9, Eigen::RowMajor>::Random();
+
 
 	Eigen::Vector3f a(1.f, 2.f, 3.f);
 	Eigen::Vector3f b(4.f, 5.f, 6.f);
 	Eigen::Vector3f c(7.f, 8.f, 9.f);
-	x << a, b, c;
-	y << a, b, c;
-	std::cout << x << std::endl;
-	std::cout << y << std::endl;
+
+
+	int repetition_count = 1000000;
+
+	auto begin = std::chrono::high_resolution_clock::now();
+	for(int i = 0; i< repetition_count; i++){
+		x << a, b, c;
+	}
+	auto end = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	std::cout << "Total time elapsed for all x (row-major) << a, b, c; repetitions: " << elapsed.count() << " ms" << std::endl;
+
+	begin = std::chrono::high_resolution_clock::now();
+	for(int i = 0; i< repetition_count; i++){
+		y << a, b, c;
+	}
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	std::cout << "Total time elapsed for all y (column-major) << a, b, c; repetitions: " << elapsed.count() << " ms" << std::endl;
+
+	begin = std::chrono::high_resolution_clock::now();
+	for(int i = 0; i< repetition_count; i++){
+		auto e = x * z;
+	}
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	std::cout << "Total time elapsed for all e = x * z; repetitions: " << elapsed.count() << " ms" << std::endl;
+
+	begin = std::chrono::high_resolution_clock::now();
+	for(int i = 0; i< repetition_count; i++){
+		auto e = y * z;
+	}
+	end = std::chrono::high_resolution_clock::now();
+	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	std::cout << "Total time elapsed for all e = y * z; repetitions: " << elapsed.count() << " ms" << std::endl;
+
 }
