@@ -35,12 +35,13 @@ TEST_CASE("experiment") {
 	// std::cout << gt.ToString() << std::endl;
 	// REQUIRE(tensor.AllClose(gt));
 	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> x;
-	x << 1.0, 0.0, 0.0,
-			0.0, 1.0, 0.0,
-			0.0, 0.0, 1.0;
-	Eigen::Vector3f y(1.f, 2.f, 3.f);
-	auto z = x * y;
-	std::cout << z << std::endl;
-	std::cout << z.asSkewSymmetric().toDenseMatrix() << std::endl;
-	std::cout << z.asSkewSymmetric().toDenseMatrix() << std::endl;
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> y;
+
+	Eigen::Vector3f a(1.f, 2.f, 3.f);
+	Eigen::Vector3f b(4.f, 5.f, 6.f);
+	Eigen::Vector3f c(7.f, 8.f, 9.f);
+	x << a, b, c;
+	y << a, b, c;
+	std::cout << x << std::endl;
+	std::cout << y << std::endl;
 }

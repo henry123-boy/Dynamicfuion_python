@@ -168,7 +168,7 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 		const TNdcVertex& vertex2,
 		const TBarycentricCoordinateVector distorted_barycentric_coordinates
 ) {
-	Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
+	return Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
 			ray_point, vertex0, vertex1, vertex2,
 			[&distorted_barycentric_coordinates](int i_sub_face, float face_parallelogram_area) {
 				return distorted_barycentric_coordinates(i_sub_face) * face_parallelogram_area;
@@ -178,7 +178,6 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 				       SignedParallelogramArea<TNdcVertex, TNdcVertex, rendering::functional::kernel::CounterClockWise>(vertex0, vertex1, vertex2)
 				       + K_EPSILON;
 			}
-
 	);
 }
 
@@ -193,7 +192,7 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 		const float face_parallelogram_area,
 		const Eigen::Vector3f& sub_face_parallelogram_areas
 ) {
-	Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
+	return Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
 			ray_point, vertex0, vertex1, vertex2,
 			[&sub_face_parallelogram_areas](int i_sub_face, float face_parallelogram_area) {
 				return sub_face_parallelogram_areas(i_sub_face);
@@ -325,7 +324,7 @@ inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithPers
 		const TVertex& vertex2,
 		const o3tgk::TransformIndexer& perspective_projection) {
 	Eigen::Vector3f distorted_barycentric_coordinates;
-	Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_Generic(
+	return Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_Generic(
 			ray_point, vertex0, vertex1, vertex2, perspective_projection,
 			[&ray_point, &distorted_barycentric_coordinates](const Eigen::Vector2f& ndc_vertex0,
 			                                                 const Eigen::Vector2f& ndc_vertex1,
@@ -365,7 +364,7 @@ inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithoutP
 		const TVertex& vertex2,
 		const o3tgk::TransformIndexer& perspective_projection,
 		const TBarycentricCoordinateVector& distorted_barycentric_coordinates) {
-	Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_Generic(
+	return Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_Generic(
 			ray_point, vertex0, vertex1, vertex2, perspective_projection,
 			[&ray_point, &distorted_barycentric_coordinates](const Eigen::Vector2f& ndc_vertex0,
 			                                                 const Eigen::Vector2f& ndc_vertex1,
