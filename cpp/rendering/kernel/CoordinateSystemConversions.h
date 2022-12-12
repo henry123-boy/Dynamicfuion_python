@@ -15,10 +15,14 @@
 //  ================================================================
 #pragma once
 
+// 3rd party
 #include <open3d/core/Tensor.h>
-#include "core/PlatformIndependence.h"
-#include "AxisAlignedBoundingBox.h"
 #include <open3d/t/geometry/Utility.h>
+
+// local
+#include "core/PlatformIndependence.h"
+#include <core/PlatformIndependentAlgorithm.h>
+#include "AxisAlignedBoundingBox.h"
 
 namespace nnrt::rendering::kernel {
 
@@ -34,7 +38,7 @@ namespace nnrt::rendering::kernel {
  */
 template<typename TDimension>
 NNRT_HOST_DEVICE_WHEN_CUDACC
-inline float GetNormalizedCameraSpaceRange(TDimension dimension1, TDimension dimension2) {
+inline float GetNdcRange(TDimension dimension1, TDimension dimension2) {
 	float range = 2.0f;
 	if (dimension1 > dimension2) {
 		range = (static_cast<float>(dimension1) * range) / static_cast<float>(dimension2);
@@ -55,16 +59,22 @@ inline float GetNormalizedCameraSpaceRange(TDimension dimension1, TDimension dim
  *     y = ImageToScreenSpace(v, image_height, image_width)
  */
 NNRT_DEVICE_WHEN_CUDACC
-inline float ImageSpaceToNormalizedCameraSpace(int i_pixel_along_dimension1, int dimension1, int dimension2) {
-	float range = GetNormalizedCameraSpaceRange(dimension1, dimension2);
+inline float ImageSpacePixelToNdc(int i_pixel_along_dimension1, int dimension1, int dimension2) {
+	float range = GetNdcRange(dimension1, dimension2);
 	const float offset = (range / 2.0f);
 	return -offset + (range * static_cast<float>(i_pixel_along_dimension1) + offset) / static_cast<float>(dimension1);
+}
+
+NNRT_DEVICE_WHEN_CUDACC
+inline float ImageSpaceDistanceToNdc(float distance_pixels, int dimension1, int dimension2) {
+	auto half_min_dim = static_cast<float>(nnrt::min(dimension1, dimension2)) / 2.0f;
+	return distance_pixels / half_min_dim;
 }
 
 // Candidate function to be moved into a separate "camera" module
 inline
 std::tuple<open3d::core::Tensor, kernel::AxisAligned2dBoundingBox>
-IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics, const open3d::core::SizeVector& image_size) {
+ImageSpaceIntrinsicsToNdc(const open3d::core::Tensor& intrinsics, const open3d::core::SizeVector& image_size) {
 	open3d::t::geometry::CheckIntrinsicTensor(intrinsics);
 	auto values = intrinsics.ToFlatVector<double>();
 	double fx = values[0];
@@ -76,8 +86,8 @@ IntrinsicsToNormalizedCameraSpaceAndRange(const open3d::core::Tensor& intrinsics
 	auto width = static_cast<double>(image_size[1]);
 
 	double smaller_dimension = std::min(width, height);
-	float range_x = GetNormalizedCameraSpaceRange(static_cast<int>(image_size[1]), static_cast<int>(image_size[0]));
-	float range_y = GetNormalizedCameraSpaceRange(static_cast<int>(image_size[0]), static_cast<int>(image_size[1]));
+	float range_x = GetNdcRange(static_cast<int>(image_size[1]), static_cast<int>(image_size[0]));
+	float range_y = GetNdcRange(static_cast<int>(image_size[0]), static_cast<int>(image_size[1]));
 
 	/*
 	 * The default normalized camera range is [-1, 1]. However, in the case

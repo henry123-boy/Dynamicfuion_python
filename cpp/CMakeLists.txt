@@ -266,7 +266,7 @@ set(
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
-    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h)
+    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h rendering/EdgeShader.cpp rendering/EdgeShader.h core/PlatformIndependentAlgorithm.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

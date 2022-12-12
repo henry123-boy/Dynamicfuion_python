@@ -157,8 +157,8 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				int64_t v_image = workload_idx / image_width;
 				int64_t u_image = workload_idx % image_width;
-				const float y_screen = rendering::kernel::ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-				const float x_screen = rendering::kernel::ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+				const float y_screen = rendering::kernel::ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
+				const float x_screen = rendering::kernel::ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
 				Eigen::Vector2f ray_point(x_screen, y_screen);
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];

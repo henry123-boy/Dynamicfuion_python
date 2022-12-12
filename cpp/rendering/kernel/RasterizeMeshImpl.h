@@ -86,8 +86,8 @@ void RasterizeMeshNaive_Generic(Fragments& fragments, const open3d::core::Tensor
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
 				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+				const float y_screen = ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
+				const float x_screen = ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
 				Eigen::Vector2f point_screen(x_screen, y_screen);
 				RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
 				int queue_size = 0;
@@ -218,8 +218,8 @@ void RasterizeMeshFine(
 				const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
 				const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
 
-				const float y_screen = ImageSpaceToNormalizedCameraSpace(v_image, image_height_int, image_width_int);
-				const float x_screen = ImageSpaceToNormalizedCameraSpace(u_image, image_width_int, image_height_int);
+				const float y_screen = ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
+				const float x_screen = ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
 
 				const int v_bin = v_image / bin_side_length;
 				const int u_bin = u_image / bin_side_length;
@@ -360,8 +360,8 @@ void GridBinFaces(
 	bin_faces = o3c::Tensor::Full({bin_count_y, bin_count_x, max_faces_per_bin}, -1, o3c::Int32, device);
 
 
-	const float half_normalized_camera_range_y = GetNormalizedCameraSpaceRange(image_width, image_height) / 2.f;
-	const float half_normalized_camera_range_x = GetNormalizedCameraSpaceRange(image_height, image_width) / 2.f;
+	const float half_normalized_camera_range_y = GetNdcRange(image_width, image_height) / 2.f;
+	const float half_normalized_camera_range_x = GetNdcRange(image_height, image_width) / 2.f;
 
 	const float half_pixel_y = half_normalized_camera_range_y / static_cast<float>(image_height);
 	const float half_pixel_x = half_normalized_camera_range_x / static_cast<float>(image_width);
