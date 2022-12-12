@@ -27,24 +27,33 @@ namespace nnrt::rendering {
 class EdgeShader {
 
 public:
-	EdgeShader(float pixel_line_width_, const open3d::core::SizeVector& rendered_image_size_, const nnrt::array<float, 3> line_color_);
+    EdgeShader(
+            float pixel_line_width_,
+            const open3d::core::SizeVector &rendered_image_size_,
+            const nnrt::array<float, 3> line_color_
+    );
 
-	open3d::t::geometry::Image ShadeMeshes(
-			const open3d::core::Tensor& pixel_face_indices,
-			const open3d::core::Tensor& pixel_depths,
-			const open3d::core::Tensor& pixel_barycentric_coordinates,
-			const open3d::core::Tensor& pixel_face_distances,
-			const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
-	) const;
-	void SetPixelLineWidth(float width);
-	void SetRenderedImageSize(const open3d::core::SizeVector& size);
-	const float& GetNdcWidth() const;
-	void SetLineColor(const nnrt::array<float, 3>& color);
+    open3d::t::geometry::Image ShadeMeshes(
+            const open3d::core::Tensor &pixel_face_indices,
+            const open3d::core::Tensor &pixel_depths,
+            const open3d::core::Tensor &pixel_barycentric_coordinates,
+            const open3d::core::Tensor &pixel_face_distances,
+            open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+    ) const;
+
+    void SetPixelLineWidth(float width);
+
+    void SetRenderedImageSize(const open3d::core::SizeVector &size);
+
+    const float &GetNdcWidth() const;
+
+    void SetLineColor(const nnrt::array<float, 3> &color);
+
 private:
-	open3d::core::SizeVector rendered_image_size;
-	float ndc_width;
-	float pixel_line_width;
-	nnrt::array<float, 3> line_color;
+    open3d::core::SizeVector rendered_image_size;
+    float ndc_width;
+    float pixel_line_width;
+    nnrt::array<float, 3> line_color;
 };
 
 } // nnrt::rendering
