@@ -10,7 +10,7 @@ This repository is a work-in-progress on the application of the Neural Non-Rigid
 Part of the pipeline is an extension to Open3D, because it yields two advantages over most alternatives:
 
 1) Support for dynamically-allocated spatial voxel hash structures to manage the TSDF voxel volume in a sparse, computationally-efficient way.
-2) Support for color within the TSDF voxel structure, enabling to rebuild colored, animated meshes. 
+2) Support for line_color within the TSDF voxel structure, enabling to rebuild colored, animated meshes. 
 
 We are also currently experimenting with PyTorch3D in order to be able to render a mesh, which may yield certain tracking improvements if we manage to successfully integrate deformed mesh rendering into the Gauss-Newton alignment optimization to refine point associations.
 

@@ -89,11 +89,11 @@ class VisualizerApp(Generic3DViewerApp):
             else self.point_cloud_names[self.shown_point_cloud_index]
         self.text_mapper.SetInput(f"Frame: {start_frame_ix:d}\n"
                                   f"Showing mesh: {self.mesh_names[self.shown_mesh_index]:s}\n"
-                                  f"Mesh color mode: f{self.mesh_color_mode.name:s}\n"
+                                  f"Mesh line_color mode: f{self.mesh_color_mode.name:s}\n"
                                   f"Showing point cloud: {shown_point_cloud:s}\n"
-                                  f"Point color mode: f{self.point_color_mode.name:s}"
+                                  f"Point line_color mode: f{self.point_color_mode.name:s}"
                                   f"Visible correspondences: 0%\n"
-                                  f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
+                                  f"Corresp. line_color mode: {self.correspondence_color_mode.name:s}\n")
 
         text_lines = self.text_mapper.GetInput().splitlines()
         self.number_of_text_lines = len(text_lines)
@@ -372,8 +372,8 @@ class VisualizerApp(Generic3DViewerApp):
             self.correspondence_set.visible_match_percentage
         self.text_mapper.SetInput(f"Frame: {self.current_frame:d}\n"
                                   f"Showing mesh: {mesh_mode:s}\n"
-                                  f"Mesh color mode: {self.mesh_color_mode.name:s}\n"
+                                  f"Mesh line_color mode: {self.mesh_color_mode.name:s}\n"
                                   f"Showing point cloud: {point_cloud_iteration_text:s}\n"
-                                  f"Point color mode: {self.point_color_mode.name:s}\n"
+                                  f"Point line_color mode: {self.point_color_mode.name:s}\n"
                                   f"Visible correspondences: {visible_correspondence_percentage}%\n"
-                                  f"Corresp. color mode: {self.correspondence_color_mode.name:s}\n")
+                                  f"Corresp. line_color mode: {self.correspondence_color_mode.name:s}\n")

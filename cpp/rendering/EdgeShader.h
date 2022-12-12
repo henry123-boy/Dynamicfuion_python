@@ -19,26 +19,32 @@
 #include <open3d/t/geometry/Image.h>
 #include <open3d/t/geometry/TriangleMesh.h>
 
+// local
+#include <core/PlatformIndependentArray.h>
+
 namespace nnrt::rendering {
 
 class EdgeShader {
 
 public:
-	open3d::t::geometry::Image ShadeMeshes(const open3d::core::Tensor& pixel_face_indices,
-	                                       const open3d::core::Tensor& pixel_depths,
-	                                       const open3d::core::Tensor& pixel_barycentric_coordinates,
-	                                       const open3d::core::Tensor& pixel_face_distances,
-	                                       const open3d::utility::optional<std::reference_wrapper<std::vector<open3d::t::geometry::TriangleMesh>>>
-	                                       meshes) const;
-	void SetPixelLineWidth(float pixel_line_width);
+	EdgeShader(float pixel_line_width_, const open3d::core::SizeVector& rendered_image_size_, const nnrt::array<float, 3> line_color_);
 
-	void SetRenderedImageSize(const open3d::core::SizeVector& size_vector){
-
-	}
+	open3d::t::geometry::Image ShadeMeshes(
+			const open3d::core::Tensor& pixel_face_indices,
+			const open3d::core::Tensor& pixel_depths,
+			const open3d::core::Tensor& pixel_barycentric_coordinates,
+			const open3d::core::Tensor& pixel_face_distances,
+			const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+	) const;
+	void SetPixelLineWidth(float width);
+	void SetRenderedImageSize(const open3d::core::SizeVector& size);
+	const float& GetNdcWidth() const;
+	void SetLineColor(const nnrt::array<float, 3>& color);
 private:
 	open3d::core::SizeVector rendered_image_size;
-	float _ndc_width;
-	float _pixel_line_width;
+	float ndc_width;
+	float pixel_line_width;
+	nnrt::array<float, 3> line_color;
 };
 
 } // nnrt::rendering

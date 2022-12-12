@@ -20,20 +20,41 @@
 
 namespace nnrt::rendering {
 
+EdgeShader::EdgeShader(float pixel_line_width_, const open3d::core::SizeVector& rendered_image_size_, const nnrt::array<float, 3> line_color_) {
+	this->rendered_image_size = rendered_image_size_;
+	SetPixelLineWidth(pixel_line_width_);
+	this->line_color = line_color_;
+}
+
 open3d::t::geometry::Image EdgeShader::ShadeMeshes(
 		const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& pixel_depths,
 		const open3d::core::Tensor& pixel_barycentric_coordinates,
 		const open3d::core::Tensor& pixel_face_distances,
-		const open3d::utility::optional<std::reference_wrapper<std::vector<open3d::t::geometry::TriangleMesh>>> meshes)
+		const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes)
 const {
 	open3d::utility::LogError("Not implemented");
 	return open3d::t::geometry::Image();
 }
 
-void EdgeShader::SetPixelLineWidth(float pixel_line_width) {
-	this->_pixel_line_width = pixel_line_width;
-	this->_ndc_width = kernel::ImageSpaceDistanceToNdc(pixel_line_width, this->rendered_image_size[0], this->rendered_image_size[1]);
+void EdgeShader::SetPixelLineWidth(float width) {
+	this->pixel_line_width = width;
+	this->ndc_width = kernel::ImageSpaceDistanceToNdc(width, this->rendered_image_size[0], this->rendered_image_size[1]);
 }
+
+void EdgeShader::SetRenderedImageSize(const open3d::core::SizeVector& size) {
+	this->rendered_image_size = size;
+	this->ndc_width = kernel::ImageSpaceDistanceToNdc(this->pixel_line_width, this->rendered_image_size[0], this->rendered_image_size[1]);
+}
+
+const float& EdgeShader::GetNdcWidth() const {
+	return this->ndc_width;
+}
+
+void EdgeShader::SetLineColor(const nnrt::array<float, 3>& color) {
+	this->line_color = color;
+}
+
+
 
 } // nnrt::rendering

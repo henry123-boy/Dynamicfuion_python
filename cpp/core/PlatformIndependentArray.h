@@ -16,8 +16,10 @@
 #pragma once
 #ifdef __CUDACC__
 #include <cuda/std/array>
+namespace nnrt {
 template<typename T, cuda::std::size_t N>
 using array = cuda::std::array<T, N>;
+} // namespace nnrt
 #else
 #include <array>
 namespace nnrt {

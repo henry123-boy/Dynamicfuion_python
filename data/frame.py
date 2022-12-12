@@ -24,8 +24,8 @@ class DatasetType(Enum):
 def make_frame_file_name_mask(name: str, extension: str) -> str:
     """
     Compile a mask based on specified frame file name and extension
-    :param name: name of the file (excluding the extension), e.g. if the whole file is "frame-000000.color.png",
-    the name is "frame-000000.color". The function expects the name to have the index as the ONLY continuous,
+    :param name: name of the file (excluding the extension), e.g. if the whole file is "frame-000000.line_color.png",
+    the name is "frame-000000.line_color". The function expects the name to have the index as the ONLY continuous,
     0-padded digit within the name.
     :param extension: extension, e.g. ".png" or ".jpg"
     :return:
@@ -55,7 +55,7 @@ class GenericDataset:
          DatasetType.CUSTOM requires custom_frame_folder to be set to the root of the sequence on disk.
         :param has_masks: whether the dataset has or doesn't have masks.
         :param custom_frame_directory: Root of the sequence on disk for CUSTOM base_dataset_type
-         Depth & color frames should be either at the root or in their respective subfolders.
+         Depth & line_color frames should be either at the root or in their respective subfolders.
         :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
         :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
         :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme residuals,
@@ -114,7 +114,7 @@ class GenericDataset:
             self._mask_image_filename_mask = None
 
             def looks_like_color_image(_name: str, _extension: str) -> bool:
-                return _extension in [".png", ".jpg", ".jpeg"] and ("color" in _name or "rgb" in _name)
+                return _extension in [".png", ".jpg", ".jpeg"] and ("line_color" in _name or "rgb" in _name)
 
             def looks_like_depth_image(_name: str, _extension: str) -> bool:
                 return _extension == ".png" and "depth" in _name
@@ -164,10 +164,10 @@ class GenericDataset:
                     raise ValueError(f"Could not find any depth frame data in {self._base_data_directory}")
 
             if self._color_image_filename_mask is None:
-                potential_color_subfolders = ["color", "color_images", "color_frames"]
+                potential_color_subfolders = ["line_color", "color_images", "color_frames"]
                 self._color_image_filename_mask = search_subfolders_for_image_data(potential_color_subfolders, [".jpg", ".png"])
                 if self._color_image_filename_mask is None:
-                    raise ValueError(f"Could not find any color frame data in {self._base_data_directory}")
+                    raise ValueError(f"Could not find any line_color frame data in {self._base_data_directory}")
 
             if self._has_masks and self._mask_image_filename_mask is None:
                 if self._masks_subfolder is None:
@@ -183,7 +183,7 @@ class GenericDataset:
                 raise ValueError(f"A dataset of type DatasetType.DEEP_DEFORM requires an integer sequence_id "
                                  f"and split of type DataSplit. Got sequence id {str(self.sequence_id)} and split {str(self.split)}.")
             self._sequence_directory = os.path.join(self._base_data_directory, "{:s}/seq{:03d}".format(self.split.value, self.sequence_id))
-            self._color_frame_directory = os.path.join(self._sequence_directory, "color")
+            self._color_frame_directory = os.path.join(self._sequence_directory, "line_color")
             self._depth_frame_directory = os.path.join(self._sequence_directory, "depth")
             self._color_image_filename_mask = os.path.join(self._color_frame_directory, "{:06d}.jpg")
             self._depth_image_filename_mask = os.path.join(self._depth_frame_directory, "{:06d}.png")
@@ -287,7 +287,7 @@ class StandaloneFrameDataset(FrameDataset, GenericDataset):
          DatasetType.CUSTOM requires custom_frame_folder to be set to the root of the sequence on disk.
         :param has_masks: whether the dataset has or doesn't have masks.
         :param custom_frame_directory: Root of the sequence on disk for CUSTOM base_dataset_type
-         Depth & color frames should be either at the root or in their respective subfolders.
+         Depth & line_color frames should be either at the root or in their respective subfolders.
         :param masks_subfolder: an optional subfolder where to look for masks. Used for any dataset type.
         :param far_clipping_distance: used for clipping depth pixels when reading the depth sequence. Set in meters.
         :param mask_lower_threshold: used when applying the masks. When mask image takes on non-extreme residuals,
