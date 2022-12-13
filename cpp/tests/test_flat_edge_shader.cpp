@@ -76,12 +76,19 @@ void TestDrawTriangle(const o3c::Device& device) {
     auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
                                     pixel_face_distances, o3u::nullopt);
 
-    o3tio::WriteImage(test::generated_image_test_data_directory.ToString() + "/triangle.png", image);
+    o3tg::Image ground_truth_image;
+    o3tio::ReadImage(test::image_test_data_directory.ToString() + "/triangle.png", ground_truth_image);
+    ground_truth_image = ground_truth_image.To(device);
 
-
+    REQUIRE(image.AsTensor().AllClose(ground_truth_image.AsTensor()));
 }
 
-TEST_CASE("Test Grid Downsampling - Hash - CPU") {
+TEST_CASE("Test Flat Edge Shader - CPU") {
     auto device = o3c::Device("CPU:0");
+    TestDrawTriangle(device);
+}
+
+TEST_CASE("Test Flat Edge Shader - CUDA") {
+    auto device = o3c::Device("CUDA:0");
     TestDrawTriangle(device);
 }

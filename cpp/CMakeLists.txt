@@ -266,7 +266,7 @@ set(
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
-    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h rendering/FlatEdgeShader.cpp rendering/FlatEdgeShader.h core/PlatformIndependentAlgorithm.h rendering/kernel/FlatEdgeShader.cpp rendering/kernel/FlatEdgeShader.h rendering/kernel/FlatEdgeShaderImpl.h rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu)
+    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h rendering/FlatEdgeShader.cpp rendering/FlatEdgeShader.h core/PlatformIndependentAlgorithm.h rendering/kernel/FlatEdgeShader.cpp rendering/kernel/FlatEdgeShader.h rendering/kernel/FlatEdgeShaderImpl.h rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu alignment/FlatTriangleFitter.h alignment/FlatTriangleFitter.cpp)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
