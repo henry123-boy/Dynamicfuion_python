@@ -78,6 +78,7 @@ void ShadeEdgesFlat(
 
                 if (pixel_face_distance < ndc_line_width_squared) {
                     auto pixel_memory_location = v_pixel * image_width * 3 + u_pixel * 3;
+                    // TODO: sort this out if need be or remove dead code
 //                    if (pixel_face_distance < quarter_ndc_line_width_squared) {
 //                        pixels_data[pixel_memory_location + 0] = static_cast<u_char>(255.f * r);
 //                        pixels_data[pixel_memory_location + 1] = static_cast<u_char>(255.f * g);

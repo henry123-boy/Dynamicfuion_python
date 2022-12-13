@@ -104,7 +104,7 @@ void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobi
 }
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection,
-		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::CounterClockWise>
+		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::ClockWise>
 void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
                                       const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
                                       const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,

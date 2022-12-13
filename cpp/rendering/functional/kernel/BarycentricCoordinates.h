@@ -33,14 +33,14 @@ namespace nnrt::rendering::functional::kernel {
  * Sign of the output also determines whether the normal of the triangle (defined by point and vertices) points toward (+) or away (-)
  * from the camera.
  */
-template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
+template<FrontFaceVertexOrder TVertexOrder = ClockWise, typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline float SignedParallelogramArea(
 		const TPoint& point, // can be a point of ray intersection or simply another face vertex
 		const TVertex& vertex0, // face vertex
 		const TVertex& vertex1 // face vertex
 ) {
-	if (TVertexOrder == CounterClockWise) {
+	if (TVertexOrder == ClockWise) {
 		return (point.x() - vertex0.x()) * (vertex0.y() - vertex1.y()) - (point.y() - vertex0.y()) * (vertex0.x() - vertex1.x());
 	} else {
 		return (point.x() - vertex0.x()) * (vertex1.y() - vertex0.y()) - (point.y() - vertex0.y()) * (vertex1.x() - vertex0.x());
@@ -48,7 +48,7 @@ inline float SignedParallelogramArea(
 }
 
 
-template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
+template<FrontFaceVertexOrder TVertexOrder = ClockWise, typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f BarycentricCoordinates(
 		const TPoint& point,
@@ -56,15 +56,15 @@ inline Eigen::Vector3f BarycentricCoordinates(
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	const float face_parallelogram_area = SignedParallelogramArea<CounterClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
+	const float face_parallelogram_area = SignedParallelogramArea<ClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
 	return {
-			SignedParallelogramArea<CounterClockWise>(point, vertex1, vertex2) / face_parallelogram_area, // A_0 / A_f
-			SignedParallelogramArea<CounterClockWise>(point, vertex2, vertex0) / face_parallelogram_area, // A_1 / A_f
-			SignedParallelogramArea<CounterClockWise>(point, vertex0, vertex1) / face_parallelogram_area  // A_2 / A_f
+            SignedParallelogramArea<ClockWise>(point, vertex1, vertex2) / face_parallelogram_area, // A_0 / A_f
+			SignedParallelogramArea<ClockWise>(point, vertex2, vertex0) / face_parallelogram_area, // A_1 / A_f
+			SignedParallelogramArea<ClockWise>(point, vertex0, vertex1) / face_parallelogram_area  // A_2 / A_f
 	};
 }
 
-template<FrontFaceVertexOrder TVertexOrder = CounterClockWise, typename TPoint, typename TVertex>
+template<FrontFaceVertexOrder TVertexOrder = ClockWise, typename TPoint, typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f BarycentricCoordinates_PreserveAreas(
 		float& face_parallelogram_area,
@@ -74,11 +74,11 @@ inline Eigen::Vector3f BarycentricCoordinates_PreserveAreas(
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	face_parallelogram_area = SignedParallelogramArea<CounterClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
+	face_parallelogram_area = SignedParallelogramArea<ClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
 	sub_face_areas = Eigen::Vector3f(
-			SignedParallelogramArea<CounterClockWise>(point, vertex1, vertex2),
-			SignedParallelogramArea<CounterClockWise>(point, vertex2, vertex0),
-			SignedParallelogramArea<CounterClockWise>(point, vertex0, vertex1)
+			SignedParallelogramArea<ClockWise>(point, vertex1, vertex2),
+			SignedParallelogramArea<ClockWise>(point, vertex2, vertex0),
+			SignedParallelogramArea<ClockWise>(point, vertex0, vertex1)
 	);
 	return {
 			sub_face_areas(0) / face_parallelogram_area, // A_0 / A_f

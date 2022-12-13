@@ -31,58 +31,62 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::alignment {
 
 void DeformableMeshRenderToRgbdImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		const open3d::t::geometry::Image& reference_color_image,
-		const open3d::t::geometry::PointCloud& reference_point_cloud,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::Tensor& extrinsic_matrix
+        nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
+        const open3d::t::geometry::Image& reference_color_image,
+        const open3d::t::geometry::PointCloud& reference_point_cloud,
+        const open3d::core::Tensor& intrinsic_matrix,
+        const open3d::core::Tensor& extrinsic_matrix
 ) const {
-	auto [anchors, weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh, nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
-	//TODO finish impl
-	utility::LogError("Not Implemented");
+    auto [anchors, weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
+                                                                     nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
+    //TODO finish impl
+    utility::LogError("Not Implemented");
 }
 
 void
 DeformableMeshRenderToRgbdImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		const open3d::t::geometry::Image& reference_color_image,
-		const open3d::t::geometry::Image& reference_depth_image,
-		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-		const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
-		float depth_scale, float depth_max
+        nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
+        const open3d::t::geometry::Image& reference_color_image,
+        const open3d::t::geometry::Image& reference_depth_image,
+        const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+        const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
+        float depth_scale, float depth_max
 ) const {
-	open3d::t::geometry::PointCloud point_cloud;
-	if (reference_image_mask.has_value()) {
-		DISPATCH_DTYPE_TO_TEMPLATE(reference_depth_image.GetDtype(), [&](){
-			auto depth_tensor = reference_depth_image.AsTensor();
-			auto masked_reference_depth_image = o3tg::Image(core::SetMaskedToValue(depth_tensor, reference_image_mask.value().get(),
-																				   static_cast<scalar_t>(0.0)));
-			point_cloud =
-					o3tg::PointCloud::CreateFromDepthImage(masked_reference_depth_image, intrinsic_matrix,
-					                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), depth_scale, depth_max);
+    open3d::t::geometry::PointCloud point_cloud;
+    if (reference_image_mask.has_value()) {
+        DISPATCH_DTYPE_TO_TEMPLATE(reference_depth_image.GetDtype(), [&]() {
+            auto depth_tensor = reference_depth_image.AsTensor();
+            auto masked_reference_depth_image = o3tg::Image(
+                    core::functional::SetMaskedToValue(depth_tensor, reference_image_mask.value().get(),
+                                                       static_cast<scalar_t>(0.0))
+            );
+            point_cloud =
+                    o3tg::PointCloud::CreateFromDepthImage(masked_reference_depth_image, intrinsic_matrix,
+                                                           o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")),
+                                                           depth_scale, depth_max);
 
-		});
-	} else {
-		point_cloud =
-				o3tg::PointCloud::CreateFromDepthImage(reference_depth_image, intrinsic_matrix,
-				                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), depth_scale, depth_max);
-	}
-	FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, intrinsic_matrix, extrinsic_matrix);
+        });
+    } else {
+        point_cloud =
+                o3tg::PointCloud::CreateFromDepthImage(reference_depth_image, intrinsic_matrix,
+                                                       o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")),
+                                                       depth_scale, depth_max);
+    }
+    FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, intrinsic_matrix, extrinsic_matrix);
 }
 
 void
 DeformableMeshRenderToRgbdImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		const open3d::t::geometry::RGBDImage& reference_image,
-		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-		const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
-		float depth_scale, float depth_max
+        nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
+        const open3d::t::geometry::RGBDImage& reference_image,
+        const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+        const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
+        float depth_scale, float depth_max
 ) const {
-	FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, reference_image_mask, intrinsic_matrix, extrinsic_matrix,
-	           depth_scale, depth_max);
+    FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, reference_image_mask,
+               intrinsic_matrix, extrinsic_matrix,
+               depth_scale, depth_max);
 }
-
-
 
 
 } // namespace nnrt::alignment

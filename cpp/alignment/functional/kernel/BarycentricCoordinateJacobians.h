@@ -39,14 +39,14 @@ namespace nnrt::alignment::functional::kernel {
 
 typedef rendering::functional::kernel::FrontFaceVertexOrder VertexOrder;
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename T2dVertex>
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename T2dVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedFaceParallelogramAreaWrt2dVertices(
 		const T2dVertex& vertex0,
 		const T2dVertex& vertex1,
 		const T2dVertex& vertex2
 ) {
-	if (TVertexOrder == rendering::functional::kernel::CounterClockWise) {
+	if (TVertexOrder == rendering::functional::kernel::ClockWise) {
 		const Eigen::Vector2f dArea_dVertex0(vertex1.y() - vertex2.y(), vertex2.x - vertex1.x);
 		const Eigen::Vector2f dArea_dVertex1(vertex2.y() - vertex0.y(), vertex0.x - vertex2.x);
 		const Eigen::Vector2f dArea_dVertex2(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
@@ -59,14 +59,14 @@ inline tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedF
 	}
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcIntersectionPoint, typename TNdcVertex>
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcIntersectionPoint, typename TNdcVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(
 		const TNdcIntersectionPoint& point,
 		const TNdcVertex& vertex0,
 		const TNdcVertex& vertex1
 ) {
-	if (TVertexOrder == rendering::functional::kernel::CounterClockWise) {
+	if (TVertexOrder == rendering::functional::kernel::ClockWise) {
 		const Eigen::Vector2f dArea_dVertex1(vertex1.y() - point.y(), point.x - vertex1.x);
 		const Eigen::Vector2f dArea_dVertex2(point.y() - vertex0.y(), vertex0.x - point.x);
 		return make_tuple(dArea_dVertex1, dArea_dVertex2);
@@ -77,7 +77,7 @@ inline tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParallelogr
 	}
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector,
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector,
 		typename TGetFaceSubArea, typename TGetFaceParallelogramArea>
 NNRT_DEVICE_WHEN_CUDACC
 inline array<Matrix3x2f, 3>
@@ -158,7 +158,7 @@ Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
 	return array<Matrix3x2f, 3>({d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1, d_distorted_coords_wrt_vertex2});
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector>
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector>
 NNRT_DEVICE_WHEN_CUDACC
 inline array<Matrix3x2f, 3>
 Jacobian_BarycentricCoordinateWrtNdcVertices(
@@ -175,13 +175,13 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
 			},
 			[&vertex0, &vertex1, &vertex2]() {
 				return rendering::functional::kernel::
-				       SignedParallelogramArea<TNdcVertex, TNdcVertex, rendering::functional::kernel::CounterClockWise>(vertex0, vertex1, vertex2)
+				       SignedParallelogramArea<TNdcVertex, TNdcVertex, rendering::functional::kernel::ClockWise>(vertex0, vertex1, vertex2)
 				       + K_EPSILON;
 			}
 	);
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TNdcRayPoint, typename TNdcVertex>
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcRayPoint, typename TNdcVertex>
 NNRT_DEVICE_WHEN_CUDACC
 inline array<Matrix3x2f, 3>
 Jacobian_BarycentricCoordinateWrtNdcVertices(
@@ -266,7 +266,7 @@ inline tuple<Matrix3f, Matrix3f> Jacobian_PerspectiveCorrectBarycentricCoordinat
 }
 
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint,
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TVertex, typename TPoint,
 		typename TComputeJacobianBarycentricCoordinatesWrtNdcVertices,
 		typename TApplyPerspectiveCorrectionJacobian>
 NNRT_DEVICE_WHEN_CUDACC
@@ -314,7 +314,7 @@ inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_Generic(
 	return d_barycentric_coordinates_d_vertices;
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint,
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TVertex, typename TPoint,
 		typename TBarycentricCoordinateVector>
 NNRT_DEVICE_WHEN_CUDACC
 inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithPerspectiveCorrection(
@@ -354,7 +354,7 @@ inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithPers
 
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::CounterClockWise, typename TVertex, typename TPoint,
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TVertex, typename TPoint,
 		typename TBarycentricCoordinateVector>
 NNRT_DEVICE_WHEN_CUDACC
 inline Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithoutPerspectiveCorrection(

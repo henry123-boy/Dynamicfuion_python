@@ -23,7 +23,7 @@
 namespace nnrt::rendering::functional::kernel {
 
 enum FrontFaceVertexOrder {
-	CounterClockWise, ClockWise
+	ClockWise, CounterClockWise
 };
 
 } // namespace nnrt::rendering::functional::kernel

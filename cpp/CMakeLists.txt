@@ -41,6 +41,8 @@ set(
 
     core/PlatformIndependence.h
     core/PlatformIndependentAtomics.h
+    core/PlatformIndependentAlgorithm.h
+    core/PlatformIndependentArray.h
     core/PlatformIndependentTuple.h
 
     core/kernel/KnnUtilities.h
@@ -62,7 +64,7 @@ set(
     core/heap/CUDA/HostHeapCUDA.cu
     core/heap/CUDA/HostHeapCUDA.h
 
-    core/functional/Masking.cpp
+    core/functional/MaskingImpl.h
     core/functional/Masking.h
 
     core/KdTree.h
@@ -244,6 +246,14 @@ set(
     rendering/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
     rendering/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
 
+    rendering/FlatEdgeShader.cpp
+    rendering/FlatEdgeShader.h
+    rendering/kernel/FlatEdgeShader.cpp
+    rendering/kernel/FlatEdgeShader.h
+    rendering/kernel/FlatEdgeShaderImpl.h
+    rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp
+    rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu
+
     rendering/functional/InterpolateFaceAttributes.cpp
     rendering/functional/InterpolateFaceAttributes.h
     rendering/functional/kernel/InterpolateFaceAttributes.cpp
@@ -266,7 +276,14 @@ set(
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
-    alignment/functional/kernel/MathTypedefs.h alignment/functional/kernel/ProjectionJacobians.h alignment/functional/kernel/ProjectionJacobians.h core/PlatformIndependentArray.h rendering/FlatEdgeShader.cpp rendering/FlatEdgeShader.h core/PlatformIndependentAlgorithm.h rendering/kernel/FlatEdgeShader.cpp rendering/kernel/FlatEdgeShader.h rendering/kernel/FlatEdgeShaderImpl.h rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu alignment/FlatTriangleFitter.h alignment/FlatTriangleFitter.cpp)
+
+    alignment/functional/kernel/MathTypedefs.h
+    alignment/functional/kernel/ProjectionJacobians.h
+
+    alignment/FlatTriangleFitter.h
+    alignment/FlatTriangleFitter.cpp
+    core/functional/instantiations/Masking.cpp
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

@@ -27,12 +27,14 @@ namespace nnrt::alignment {
 // Exists mostly for testing purposes -- an optimization that tests various routines that are used for the
 // bigger mesh-to-image fitting routine
 class FlatTriangleFitter {
-
 public:
+    FlatTriangleFitter();
     std::vector<open3d::t::geometry::Image> FitFlatTriangles(
-            const Matrix3x2f& subject_triangle, const Matrix3x2f& reference_triangle, open3d::core::Device
+            const Matrix3x2f& start_triangle,
+            const Matrix3x2f& reference_triangle,
+            open3d::core::Device,
+            float depth
     );
-
 
 };
 

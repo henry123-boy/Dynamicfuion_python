@@ -26,7 +26,7 @@ namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
 
-namespace nnrt::core {
+namespace nnrt::core::functional {
 template<typename TElement>
 open3d::core::Tensor SetMaskedToValue(open3d::core::Tensor& tensor, const open3d::core::Tensor& mask, TElement element) {
 	auto dtype = tensor.GetDtype();
@@ -39,9 +39,20 @@ open3d::core::Tensor SetMaskedToValue(open3d::core::Tensor& tensor, const open3d
 			auto valueTensor = o3c::Tensor(std::vector<TElement>{element}, {1}, dtype, device);
 			tensor.SetItem(o3c::TensorKey::IndexTensor(mask), valueTensor);
 		} else {
-			utility::LogError("Attempting to set values of tensor with dtype {} to value {} (type mismatch).", dtype, element);
+			utility::LogError("Attempting to set values of tensor with dtype {} to value {} (type mismatch).", dtype.ToString(), element);
 		}
 	});
-	return tensor;
+    return tensor;
 }
-} // namespace nnrt::core
+
+
+template<typename TElement>
+open3d::core::Tensor ReplaceValue(open3d::core::Tensor& tensor, TElement old_value, TElement new_value) {
+    auto old_value_tensor = o3c::Tensor(tensor.GetShape(), tensor.GetDtype(), tensor.GetDevice());
+    old_value_tensor.Fill(old_value);
+	o3c::Tensor mask = tensor.IsClose(old_value_tensor, 0, 0).LogicalNot();
+	SetMaskedToValue<TElement>(tensor, mask, new_value);
+    return mask;
+}
+
+} // namespace nnrt::core::functional

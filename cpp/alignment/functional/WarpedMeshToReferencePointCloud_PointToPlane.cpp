@@ -61,7 +61,7 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 
 	auto negative_ones = -1 * o3c::Tensor::Ones(pixel_depths.GetShape(), pixel_depths.GetDtype(), pixel_depths.GetDevice());
 	o3c::Tensor rendered_point_mask = pixel_depths.IsClose(negative_ones, 0, 0).LogicalNot();
-	core::SetMaskedToValue(pixel_depths, rendered_point_mask, 0.f);
+	core::functional::SetMaskedToValue(pixel_depths, rendered_point_mask, 0.f);
 
 
 	o3tg::PointCloud rendered_point_cloud =

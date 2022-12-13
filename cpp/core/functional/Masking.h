@@ -20,8 +20,12 @@
 #include <open3d/core/Tensor.h>
 // local includes
 
-namespace nnrt::core{
+namespace nnrt::core::functional{
 template<typename TElement>
-open3d::core::Tensor SetMaskedToValue(open3d::core::Tensor& tensor, const open3d::core::Tensor& mask, TElement element);
-} // namespace nnrt::core
+open3d::core::Tensor  SetMaskedToValue(open3d::core::Tensor& tensor, const open3d::core::Tensor& mask, TElement element);
+
+template<typename TElement>
+open3d::core::Tensor ReplaceValue(open3d::core::Tensor& tensor, TElement old_value, TElement new_value);
+
+} // namespace nnrt::core::functional
 
