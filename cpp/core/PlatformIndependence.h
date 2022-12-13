@@ -34,12 +34,10 @@
 
 
 // math functions
-#define FloatMin std::min
-#define FloatMax std::max
 #define FloatClampTo0To1(x) std::min(std::max(x, 0.00f), 1.00f);
 #define FloatSquareRoot std::sqrt
 #endif
 
 // math functions
-#define FloatMin3(a, b, c) FloatMin(FloatMin(a,b),c)
-#define FloatMax3(a, b, c) FloatMax(FloatMax(a,b),c)
+#define FloatMin3(a, b, c) fminf(fminf(a,b),c)
+#define FloatMax3(a, b, c) fmaxf(fmaxf(a,b),c)

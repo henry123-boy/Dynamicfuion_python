@@ -18,34 +18,37 @@
 // third-party includes
 
 // local includes
-#include "rendering/kernel/EdgeShader.h"
+#include "rendering/kernel/FlatEdgeShader.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 
 namespace nnrt::rendering::kernel {
 
-void ShadeEdges(
-        open3d::core::Tensor &pixels,
-        const open3d::core::Tensor &pixel_face_indices,
-        const open3d::core::Tensor &pixel_depths,
-        const open3d::core::Tensor &pixel_barycentric_coordinates,
-        const open3d::core::Tensor &pixel_face_distances,
-        const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+void ShadeEdgesFlat(
+        open3d::core::Tensor& pixels,
+        const open3d::core::Tensor& pixel_face_indices,
+        const open3d::core::Tensor& pixel_depths,
+        const open3d::core::Tensor& pixel_barycentric_coordinates,
+        const open3d::core::Tensor& pixel_face_distances,
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes,
+        float ndc_line_width,
+        const std::array<float, 3>& color
 ) {
     o3c::Device device = pixel_face_indices.GetDevice();
     core::ExecuteOnDevice(
             device,
             [&] {
-                ShadeEdges<o3c::Device::DeviceType::CPU>(pixels, pixel_face_indices, pixel_depths,
-                                                         pixel_barycentric_coordinates,
-                                                         pixel_face_distances, meshes);
+                ShadeEdgesFlat<o3c::Device::DeviceType::CPU>(pixels, pixel_face_indices, pixel_depths,
+                                                             pixel_barycentric_coordinates,
+                                                             pixel_face_distances, meshes, ndc_line_width, color);
             },
             [&] {
                 NNRT_IF_CUDA(
-                        ShadeEdges<o3c::Device::DeviceType::CUDA>(pixels, pixel_face_indices, pixel_depths,
-                                                                  pixel_barycentric_coordinates,
-                                                                  pixel_face_distances, meshes);
+                        ShadeEdgesFlat<o3c::Device::DeviceType::CUDA>(pixels, pixel_face_indices, pixel_depths,
+                                                                      pixel_barycentric_coordinates,
+                                                                      pixel_face_distances, meshes, ndc_line_width,
+                                                                      color);
                 );
             }
     );

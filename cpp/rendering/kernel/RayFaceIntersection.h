@@ -191,7 +191,7 @@ inline void UpdateQueueIfPixelInsideFace(
 	 * (3) we're culling back-faces and the face is back-facing,
 	 * do nothing and return.
 	 */
-	if (PointOutsideFaceBoundingBox(face_vertex0, face_vertex1, face_vertex2, FloatSquareRoot(blur_radius), pixel) ||
+	if (PointOutsideFaceBoundingBox(face_vertex0, face_vertex1, face_vertex2, blur_radius, pixel) ||
 	    (cull_back_faces && is_back_face) || zero_face_area) {
 		return;
 	}

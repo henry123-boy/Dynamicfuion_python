@@ -15,23 +15,21 @@
 //  ================================================================
 
 // local
-#include "EdgeShader.h"
+#include "FlatEdgeShader.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "rendering/kernel/EdgeShader.h"
+#include "rendering/kernel/FlatEdgeShader.h"
 
 namespace nnrt::rendering {
 
-EdgeShader::EdgeShader(
+FlatEdgeShader::FlatEdgeShader(
         float pixel_line_width_,
-        const open3d::core::SizeVector &rendered_image_size_,
-        const nnrt::array<float, 3> line_color_
+        const std::array<float, 3>& line_color_
 ) {
-    this->rendered_image_size = rendered_image_size_;
     SetPixelLineWidth(pixel_line_width_);
     this->line_color = line_color_;
 }
 
-open3d::t::geometry::Image EdgeShader::ShadeMeshes(
+open3d::t::geometry::Image FlatEdgeShader::ShadeMeshes(
         const open3d::core::Tensor &pixel_face_indices,
         const open3d::core::Tensor &pixel_depths,
         const open3d::core::Tensor &pixel_barycentric_coordinates,
@@ -40,29 +38,26 @@ open3d::t::geometry::Image EdgeShader::ShadeMeshes(
 )
 const {
     open3d::core::Tensor pixels;
-    kernel::ShadeEdges(pixels, pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances,
-                       meshes);
+    int64_t image_height = pixel_face_indices.GetShape(0);
+    int64_t image_width = pixel_face_indices.GetShape(1);
 
-    return open3d::t::geometry::Image(pixels);
+    kernel::ShadeEdgesFlat(pixels, pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
+                           pixel_face_distances,
+                           meshes, this->GetNdcLineWidth(static_cast<int>(image_height), static_cast<int>(image_width)),
+                           this->line_color);
+
+    return {pixels};
 }
 
-void EdgeShader::SetPixelLineWidth(float width) {
+void FlatEdgeShader::SetPixelLineWidth(float width) {
     this->pixel_line_width = width;
-    this->ndc_width = kernel::ImageSpaceDistanceToNdc(width, this->rendered_image_size[0],
-                                                      this->rendered_image_size[1]);
 }
 
-void EdgeShader::SetRenderedImageSize(const open3d::core::SizeVector &size) {
-    this->rendered_image_size = size;
-    this->ndc_width = kernel::ImageSpaceDistanceToNdc(this->pixel_line_width, this->rendered_image_size[0],
-                                                      this->rendered_image_size[1]);
+float FlatEdgeShader::GetNdcLineWidth(int image_height, int image_width) const {
+    return kernel::ImageSpaceDistanceToNdc(this->pixel_line_width, image_height, image_width);
 }
 
-const float &EdgeShader::GetNdcWidth() const {
-    return this->ndc_width;
-}
-
-void EdgeShader::SetLineColor(const nnrt::array<float, 3> &color) {
+void FlatEdgeShader::SetLineColor(const std::array<float, 3> &color) {
     this->line_color = color;
 }
 

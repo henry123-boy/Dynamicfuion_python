@@ -20,26 +20,31 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Optional.h>
 #include <open3d/t/geometry/TriangleMesh.h>
+#include <core/PlatformIndependentArray.h>
 
 // local includes
 namespace nnrt::rendering::kernel {
-void ShadeEdges(
+void ShadeEdgesFlat(
         open3d::core::Tensor &pixels,
         const open3d::core::Tensor &pixel_face_indices,
         const open3d::core::Tensor &pixel_depths,
         const open3d::core::Tensor &pixel_barycentric_coordinates,
         const open3d::core::Tensor &pixel_face_distances,
-        const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes,
+        float ndc_line_width,
+        const std::array<float, 3>& color
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ShadeEdges(
+void ShadeEdgesFlat(
         open3d::core::Tensor &pixels,
         const open3d::core::Tensor &pixel_face_indices,
         const open3d::core::Tensor &pixel_depths,
         const open3d::core::Tensor &pixel_barycentric_coordinates,
         const open3d::core::Tensor &pixel_face_distances,
-        const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes,
+        float ndc_line_width,
+        const std::array<float, 3>& color
 );
 
 } // namespace nnrt::rendering::kernel

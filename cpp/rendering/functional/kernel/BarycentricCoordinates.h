@@ -98,7 +98,7 @@ inline Eigen::Vector3f PerspectiveCorrectBarycentricCoordinates(
 	const float coord0_numerator = distorted_barycentric_coordinates(0) * vertex1z * vertex2z;
 	const float coord1_numerator = vertex0z * distorted_barycentric_coordinates(1) * vertex2z;
 	const float coord2_numerator = vertex0z * vertex1z * distorted_barycentric_coordinates(2);
-	const float denominator = FloatMax(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
+	const float denominator = fmaxf(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
 	return {coord0_numerator / denominator,
 	        coord1_numerator / denominator,
 	        coord2_numerator / denominator};
@@ -109,9 +109,9 @@ NNRT_DEVICE_WHEN_CUDACC
 inline Eigen::Vector3f ClipBarycentricCoordinates(const Eigen::Vector3f& unclipped_barycentric_coordinates) {
 	// Clip lower bound only
 	Eigen::Vector3f clipped(
-			FloatMax(unclipped_barycentric_coordinates.x(), 0.f),
-			FloatMax(unclipped_barycentric_coordinates.y(), 0.f),
-			FloatMax(unclipped_barycentric_coordinates.z(), 0.f)
+			fmaxf(unclipped_barycentric_coordinates.x(), 0.f),
+			fmaxf(unclipped_barycentric_coordinates.y(), 0.f),
+			fmaxf(unclipped_barycentric_coordinates.z(), 0.f)
 	);
 	clipped.normalize();
 	return clipped;

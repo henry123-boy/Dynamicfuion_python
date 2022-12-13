@@ -18,17 +18,20 @@
 // third-party includes
 
 // local includes
-#include "rendering/kernel/EdgeShaderImpl.h"
+#include "rendering/kernel/FlatEdgeShaderImpl.h"
 
 namespace nnrt::rendering::kernel {
 
 template
-void ShadeEdges<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& pixels, const open3d::core::Tensor& pixel_face_indices,
-		const open3d::core::Tensor& pixel_depths,
-		const open3d::core::Tensor& pixel_barycentric_coordinates,
-		const open3d::core::Tensor& pixel_face_distances,
-		const open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes
+void ShadeEdgesFlat<open3d::core::Device::DeviceType::CUDA>(
+        open3d::core::Tensor& pixels,
+        const open3d::core::Tensor& pixel_face_indices,
+        const open3d::core::Tensor& pixel_depths,
+        const open3d::core::Tensor& pixel_barycentric_coordinates,
+        const open3d::core::Tensor& pixel_face_distances,
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::t::geometry::TriangleMesh>>> meshes,
+        float ndc_line_width,
+        const std::array<float, 3>& color
 );
 
 } // namespace nnrt::rendering::kernel

@@ -20,26 +20,26 @@ namespace nnrt::rendering::kernel {
 
 
 template void RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(
-		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
-		const open3d::core::SizeVector& image_size,
-		float blur_radius, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
-		bool clip_barycentric_coordinates,
-		bool cull_back_faces
+        Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc,
+        open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+        const open3d::core::SizeVector& image_size,
+        float blur_radius_ndc, int faces_per_pixel, bool perspective_correct_barycentric_coordinates,
+        bool clip_barycentric_coordinates,
+        bool cull_back_faces
 );
 
 template void RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(
-		Fragments& fragments, const open3d::core::Tensor& normalized_camera_space_face_vertices, const open3d::core::Tensor& bin_faces,
-		const open3d::core::SizeVector& image_size, float blur_radius, int bin_side_length, int faces_per_pixel,
-		bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+        Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc, const open3d::core::Tensor& bin_faces,
+        const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_side_length, int faces_per_pixel,
+        bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
 );
 
 template void GridBinFaces<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& bin_faces,
-		const open3d::core::Tensor& normalized_camera_space_face_vertices,
-		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
-		const open3d::core::SizeVector& image_size, float blur_radius, int bin_size,
-		int max_faces_per_bin
+        open3d::core::Tensor& bin_faces,
+        const open3d::core::Tensor& normalized_camera_space_face_vertices,
+        open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
+        const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_size,
+        int max_faces_per_bin
 );
 
 } // namespace nnrt::rendering::kernel

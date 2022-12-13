@@ -24,13 +24,12 @@
 
 namespace nnrt::rendering {
 
-class EdgeShader {
+class FlatEdgeShader {
 
 public:
-    EdgeShader(
+    FlatEdgeShader(
             float pixel_line_width_,
-            const open3d::core::SizeVector &rendered_image_size_,
-            const nnrt::array<float, 3> line_color_
+            const std::array<float, 3>& line_color_
     );
 
     open3d::t::geometry::Image ShadeMeshes(
@@ -43,17 +42,13 @@ public:
 
     void SetPixelLineWidth(float width);
 
-    void SetRenderedImageSize(const open3d::core::SizeVector &size);
+    float GetNdcLineWidth(int image_height, int image_width) const;
 
-    const float &GetNdcWidth() const;
-
-    void SetLineColor(const nnrt::array<float, 3> &color);
+    void SetLineColor(const std::array<float, 3> &color);
 
 private:
-    open3d::core::SizeVector rendered_image_size;
-    float ndc_width;
     float pixel_line_width;
-    nnrt::array<float, 3> line_color;
+    std::array<float, 3> line_color;
 };
 
 } // nnrt::rendering

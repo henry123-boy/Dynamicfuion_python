@@ -137,10 +137,10 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 RasterizeMesh(
-		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::Tensor& ndc_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
 		const open3d::core::SizeVector& image_size,
-		float blur_radius,
+		float blur_radius_pixels,
 		int faces_per_pixel,
 		int bin_size/* = -1*/,
 		int max_faces_per_bin/* = -1*/,
@@ -186,47 +186,49 @@ RasterizeMesh(
 			int32_t unclipped_face_count = static_cast<int32_t>(clipped_faces_mask.value().get().NonZero().GetShape(1));
 			max_faces_per_bin = std::max(10000, unclipped_face_count / 5);
 		} else {
-			max_faces_per_bin = std::max(10000, static_cast<int>(normalized_camera_space_face_vertices.GetLength()) / 5);
+			max_faces_per_bin = std::max(10000, static_cast<int>(ndc_face_vertices.GetLength()) / 5);
 		}
 	}
 
-	o3c::AssertTensorDtype(normalized_camera_space_face_vertices, o3c::Float32);
+	o3c::AssertTensorDtype(ndc_face_vertices, o3c::Float32);
 
 
 	kernel::Fragments fragments;
+    float blur_radius_ndc = kernel::ImageSpaceDistanceToNdc(blur_radius_pixels, image_size[0], image_size[1]);
+
 	if (bin_size > 0 && max_faces_per_bin > 0) {
 		// Use coarse-to-fine rasterization
 		o3c::Tensor bin_faces;
 		kernel::GridBinFaces(bin_faces,
-		                     normalized_camera_space_face_vertices,
-		                     clipped_faces_mask,
-		                     image_size,
-		                     blur_radius,
-		                     bin_size,
-		                     max_faces_per_bin);
+                             ndc_face_vertices,
+                             clipped_faces_mask,
+                             image_size,
+                             blur_radius_ndc,
+                             bin_size,
+                             max_faces_per_bin);
 
 		kernel::RasterizeMeshFine(fragments,
-		                          normalized_camera_space_face_vertices,
-		                          bin_faces,
-		                          image_size,
-		                          blur_radius,
-		                          bin_size,
-		                          faces_per_pixel,
-		                          perspective_correct_barycentric_coordinates,
-		                          clip_barycentric_coordinates,
-		                          cull_back_faces);
+                                  ndc_face_vertices,
+                                  bin_faces,
+                                  image_size,
+                                  blur_radius_ndc,
+                                  bin_size,
+                                  faces_per_pixel,
+                                  perspective_correct_barycentric_coordinates,
+                                  clip_barycentric_coordinates,
+                                  cull_back_faces);
 	} else {
 
 		// Use the naive per-pixel implementation
 		kernel::RasterizeMeshNaive(fragments,
-		                           normalized_camera_space_face_vertices,
-		                           clipped_faces_mask,
-		                           image_size,
-		                           blur_radius,
-		                           faces_per_pixel,
-		                           perspective_correct_barycentric_coordinates,
-		                           clip_barycentric_coordinates,
-		                           cull_back_faces);
+                                   ndc_face_vertices,
+                                   clipped_faces_mask,
+                                   image_size,
+                                   blur_radius_ndc,
+                                   faces_per_pixel,
+                                   perspective_correct_barycentric_coordinates,
+                                   clip_barycentric_coordinates,
+                                   cull_back_faces);
 
 	}
 	return fragments.ToTuple();

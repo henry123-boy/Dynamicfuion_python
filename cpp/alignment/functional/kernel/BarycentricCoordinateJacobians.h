@@ -222,7 +222,7 @@ inline tuple<Matrix3f, Matrix3f> Jacobian_PerspectiveCorrectBarycentricCoordinat
 	const float coord0_numerator = distorted_barycentric_coordinates(0) * v1z_x_v2z;
 	const float coord1_numerator = distorted_barycentric_coordinates(1) * v0z_x_v2z;
 	const float coord2_numerator = distorted_barycentric_coordinates(2) * v0z_x_v1z;
-	const float denominator = FloatMax(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
+	const float denominator = fmaxf(coord0_numerator + coord1_numerator + coord2_numerator, K_EPSILON);
 	const float denominator_squared = denominator * denominator;
 
 	Matrix3f partial_coords_wrt_distorted;

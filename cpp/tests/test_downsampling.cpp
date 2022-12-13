@@ -13,15 +13,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include <fmt/ranges.h>
-
-#include "test_main.hpp"
-#include "catch2/catch_approx.hpp"
-
+// third-party
 #include <open3d/core/Tensor.h>
-#include "geometry/functional/Downsample3dPoints.h"
-
 #include <Eigen/Dense>
+
+// local
+#include "tests/test_main.hpp"
+#include "catch2/catch_approx.hpp"
+#include "geometry/functional/Downsample3dPoints.h"
 
 using namespace nnrt;
 namespace o3c = open3d::core;

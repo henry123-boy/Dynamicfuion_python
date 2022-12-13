@@ -49,10 +49,10 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Mes
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 RasterizeMesh(
-		const open3d::core::Tensor& normalized_camera_space_face_vertices,
+		const open3d::core::Tensor& ndc_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
 		const open3d::core::SizeVector& image_size,
-		float blur_radius = 0.f,
+		float blur_radius_pixels = 0.f,
 		int faces_per_pixel = 8,
 		int bin_size = -1,
 		int max_faces_per_bin = -1,
