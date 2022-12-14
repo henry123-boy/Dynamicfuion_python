@@ -75,16 +75,19 @@ void GridBin2dBoundingBoxes_Kernel(
 
 			// Brute-force search all bins for overlaps with bounding boxes
 			for (int bin_y = 0; bin_y < bin_count_y; bin_y++) {
-				const float bin_y_min = ImageSpacePixelToNdc(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
+				const float bin_y_min =
+                        ImageSpacePixelAlongDimensionToNdc(bin_y * bin_side_length, image_height, image_width) - half_pixel_y;
 				const float bin_y_max =
-						ImageSpacePixelToNdc((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
+                        ImageSpacePixelAlongDimensionToNdc((bin_y + 1) * bin_side_length - 1, image_height, image_width) + half_pixel_y;
 				const bool y_overlap = (y_min <= bin_y_max) && (bin_y_min < y_max);
 
 				if (y_overlap) {
 					for (int bin_x = 0; bin_x < bin_count_x; bin_x++) {
-						const float bin_x_min = ImageSpacePixelToNdc(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
+						const float bin_x_min =
+                                ImageSpacePixelAlongDimensionToNdc(bin_x * bin_side_length, image_width, image_height) - half_pixel_x;
 						const float bin_x_max =
-								ImageSpacePixelToNdc((bin_x + 1) * bin_side_length - 1, image_width, image_height) + half_pixel_x;
+                                ImageSpacePixelAlongDimensionToNdc((bin_x + 1) * bin_side_length - 1, image_width,
+                                                                   image_height) + half_pixel_x;
 						const bool x_overlap = (x_min <= bin_x_max) && (bin_x_min < x_max);
 
 						if (x_overlap) {

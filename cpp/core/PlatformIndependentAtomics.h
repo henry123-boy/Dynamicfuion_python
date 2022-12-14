@@ -188,9 +188,9 @@ inline bool CompareExchange_CUDA(T* var, T expected, T desired){
 #define NNRT_DECLARE_ATOMIC_FLOAT(name) float* name = nullptr
 #define NNRT_DECLARE_ATOMIC_DOUBLE(name) double* name = nullptr
 #define NNRT_CLEAN_UP_ATOMIC(name) OPEN3D_CUDA_CHECK (cudaFree(name))
-#define NNRT_SET_ATOMIC_VALUE_CPU(name, value) SetDataCPU(name, value)
-#define NNRT_GET_ATOMIC_VALUE(name) (* name)
-#define NNRT_GET_ATOMIC_VALUE_CPU(name) GetDataCPU( name )
+#define NNRT_SET_ATOMIC_VALUE_HOST(name, value) SetDataCPU(name, value)
+#define NNRT_GET_ATOMIC_VALUE_KERNEL(name) (* name)
+#define NNRT_GET_ATOMIC_VALUE_HOST(name) GetDataCPU( name )
 #define NNRT_ATOMIC_ARGUMENT(type) type *
 #define NNRT_ATOMIC_FLOAT_ARGUMENT_TYPE float*
 #define NNRT_ATOMIC_INT_ARGUMENT_TYPE int*
@@ -208,9 +208,9 @@ OPEN3D_CUDA_CHECK(cudaMemcpy(var, &val, sizeof( type ), cudaMemcpyHostToDevice))
 #define NNRT_DECLARE_ATOMIC_FLOAT(name) std::atomic<float> name = {0}
 #define NNRT_DECLARE_ATOMIC_DOUBLE(name) std::atomic<double> name = {0}
 #define NNRT_CLEAN_UP_ATOMIC(name) ;
-#define NNRT_SET_ATOMIC_VALUE_CPU(name, value) (name .store(value))
-#define NNRT_GET_ATOMIC_VALUE(name) (name .load())
-#define NNRT_GET_ATOMIC_VALUE_CPU(name) NNRT_GET_ATOMIC_VALUE(name)
+#define NNRT_SET_ATOMIC_VALUE_HOST(name, value) (name .store(value))
+#define NNRT_GET_ATOMIC_VALUE_KERNEL(name) (name .load())
+#define NNRT_GET_ATOMIC_VALUE_HOST(name) NNRT_GET_ATOMIC_VALUE_KERNEL(name)
 #define NNRT_ATOMIC_ARGUMENT(type) std::atomic< type >&
 #define NNRT_ATOMIC_FLOAT_ARGUMENT_TYPE std::atomic<float>&
 #define NNRT_ATOMIC_INT_ARGUMENT_TYPE std::atomic<int>&
@@ -234,6 +234,7 @@ initializeAtomic_CPU< type > (var, value)
 #define NNRT_ATOMIC_MIN(name, value) atomicMin_CPU( name, value )
 #define NNRT_ATOMIC_CE(name, expected, desired) CompareExchange_CPU( name, expected, desired )
 #endif
+
 //endregion
 
 

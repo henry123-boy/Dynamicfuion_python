@@ -17,9 +17,9 @@
 
 #include <Eigen/Dense>
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
-namespace nnrt::rendering::kernel{
+namespace nnrt::geometry::kernel{
 
 struct AxisAligned2dBoundingBox {
 	float min_x;
@@ -31,6 +31,13 @@ struct AxisAligned2dBoundingBox {
 	bool Contains(const Eigen::Vector2f& point) const {
 		return point.y() >= min_y && point.x() >= min_x && point.y() <= max_y && point.x() <= max_x;
 	}
+
+    NNRT_DEVICE_WHEN_CUDACC
+    Eigen::Matrix<float, 2, 2, Eigen::RowMajor> ToMatrix() const{
+        Eigen::Matrix<float, 2, 2, Eigen::RowMajor> matrix;
+        matrix << min_y, max_y, min_x, max_x;
+        return matrix;
+    }
 };
 
 

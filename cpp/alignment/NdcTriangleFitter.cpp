@@ -16,14 +16,17 @@
 // 3rd-party
 #include <open3d/t/geometry/TriangleMesh.h>
 #include <open3d/t/geometry/PointCloud.h>
+#include <open3d/t/geometry/kernel/PointCloud.h>
+#include <open3d/t/geometry/Utility.h>
 
 // local
-#include "alignment/FlatTriangleFitter.h"
+#include "alignment/NdcTriangleFitter.h"
 #include "rendering/RasterizeMesh.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
-#include "geometry/functional/Unproject3dPoints.h"
+#include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/Comparison.h"
 #include "core/functional/Masking.h"
+#include "rendering/kernel/CoordinateSystemConversions.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -31,55 +34,76 @@ namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::alignment {
 
-inline
-o3tg::TriangleMesh MeshFrom2dTriangle(const Matrix3x2f& triangle, const o3c::Device& device, float depth) {
+inline o3tg::TriangleMesh MeshFrom2dTriangle(
+        const Matrix3x2f& triangle_ndc,
+        const o3c::Device& device,
+        float depth,
+        const o3c::Tensor& ndc_intrinsics
+) {
+    o3tg::CheckIntrinsicTensor(ndc_intrinsics);
     o3tg::TriangleMesh mesh(device);
-    std::vector<float> triangle_vertices = {
-            triangle(0, 0), triangle(0, 1), depth,
-            triangle(1, 0), triangle(1, 1), depth,
-            triangle(2, 0), triangle(2, 1), depth
+    std::vector<float> projected_vertex_data = {
+            triangle_ndc(0, 0), triangle_ndc(0, 1),
+            triangle_ndc(1, 0), triangle_ndc(1, 1),
+            triangle_ndc(2, 0), triangle_ndc(2, 1),
     };
+    o3c::Tensor projected_vertices(projected_vertex_data, {3, 2}, o3c::Float32, device);
+    o3c::Tensor projected_vertex_depth(std::vector<float>({depth}), {1}, o3c::Float32, device);
+
+    o3c::Tensor vertex_positions =
+            geometry::functional::UnprojectProjectedPoints(projected_vertices, projected_vertex_depth, ndc_intrinsics);
+
     std::vector<float> triangle_normals = {
             0.f, 0.f, -1.f,
             0.f, 0.f, -1.f,
             0.f, 0.f, -1.f
     };
 
-    mesh.SetVertexPositions(o3c::Tensor(triangle_vertices, {3, 3}, o3c::Float32, device));
+    mesh.SetVertexPositions(vertex_positions);
     mesh.SetTriangleIndices(o3c::Tensor(std::vector<int64_t>({0, 1, 2}), {1, 3}, o3c::Int64, device));
     mesh.SetVertexNormals(o3c::Tensor(triangle_normals, {3, 3}, o3c::Float32, device));
     return mesh;
 }
 
 inline
-o3c::Tensor ComputeJacobianTJacobian(const o3c::Tensor& rendered_normals, const o3c::Tensor& rendered_points, const o3c::Tensor& observed_points, ){
+o3c::Tensor ComputeJacobianTJacobian(
+        const o3c::Tensor& rendered_normals,
+        const o3c::Tensor& rendered_points,
+        const o3c::Tensor& observed_points
+) {
     o3u::LogError("NotImplemented");
 
     return o3c::Tensor();
 }
 
+void CheckTriangleFitsNdc(const Matrix3x2f& triangle, const Matrix2f& ndc_bounds, const std::string& triangle_prefix) {
+    for (int i_vertex; i_vertex < 3; i_vertex++) {
+        if (triangle(i_vertex, 0) < ndc_bounds(1, 0) || triangle(i_vertex, 0) > ndc_bounds(1, 1) ||
+            triangle(i_vertex, 1) < ndc_bounds(0, 0) || triangle(i_vertex, 1) > ndc_bounds(0, 1)) {
+            o3u::LogError("{} triangle vertex x:{} y:{} out-of-bounds x_min:{} x_max:{} y_min:{} y_max{}",
+                          triangle_prefix,
+                          triangle(i_vertex, 0), triangle(i_vertex, 1),
+                          ndc_bounds(1, 0), ndc_bounds(1, 1), ndc_bounds(0, 0), ndc_bounds(0, 1));
+        }
+    }
+}
 
-std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
+
+std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
         const Matrix3x2f& start_triangle,
         const Matrix3x2f& reference_triangle,
-        open3d::core::Device device,
-        float depth
+        const open3d::core::Device& device
 ) {
+    CheckTriangleFitsNdc(start_triangle, this->ndc_bounds, "Start");
+    CheckTriangleFitsNdc(reference_triangle, this->ndc_bounds, "Reference");
+    const float depth = 5.0;
+
+
     std::vector<open3d::t::geometry::Image> iteration_shots;
 
-    o3tg::TriangleMesh reference_mesh = MeshFrom2dTriangle(reference_triangle, device, depth);
-    o3tg::TriangleMesh start_mesh = MeshFrom2dTriangle(start_triangle, device, depth);
+    o3tg::TriangleMesh reference_mesh = MeshFrom2dTriangle(reference_triangle, device, depth, ndc_intrinsics);
+    o3tg::TriangleMesh start_mesh = MeshFrom2dTriangle(start_triangle, device, depth, ndc_intrinsics);
 
-    o3c::Tensor intrinsics(
-            std::vector<double>(
-                    {
-                            500.0, 0.0, 320.0,
-                            0.0, 500.0, 240.0,
-                            0.0, 0.0, 1.0
-                    }), {3, 3}, o3c::Float64, o3c::Device("CPU:0"
-            )
-    );
-    o3c::SizeVector image_size = {480, 640};
 
     auto [reference_ndc_face_vertices, reference_face_mask] =
             nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(reference_mesh, intrinsics, image_size);
@@ -95,7 +119,7 @@ std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
     iteration_shots.emplace_back(((reference_pixel_depths / (background_depth)) * 255).To(o3c::UInt8));
 
     o3c::Tensor reference_3d_points, dummy;
-    geometry::functional::Unproject3dPointsWithoutDepthFiltering(
+    geometry::functional::UnprojectDepthImageWithoutFiltering(
             reference_3d_points, dummy, reference_pixel_depths, intrinsics,
             o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.f, background_depth, true
     );
@@ -106,7 +130,7 @@ std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
     Matrix3x2f current_triangle = start_triangle;
 
     for (int i_iteration; i_iteration < max_iteration_count; i_iteration++) {
-        o3tg::TriangleMesh mesh = MeshFrom2dTriangle(current_triangle, device, depth);
+        o3tg::TriangleMesh mesh = MeshFrom2dTriangle(current_triangle, device, depth, ndc_intrinsics);
         auto [ndc_face_vertices, face_mask] =
                 nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(mesh, intrinsics, image_size);
         auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
@@ -114,7 +138,7 @@ std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
         o3c::Tensor point_mask =
                 nnrt::core::functional::ReplaceValue(pixel_depths, -1.f, background_depth);
         o3c::Tensor rendered_points;
-        geometry::functional::Unproject3dPointsWithoutDepthFiltering(
+        geometry::functional::UnprojectDepthImageWithoutFiltering(
                 rendered_points, dummy, pixel_depths, intrinsics,
                 o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.f, background_depth, true
         );
@@ -128,7 +152,7 @@ std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
         o3c::Tensor point_to_plane_distances =
                 geometry::functional::ComputePointToPlaneDistances(rendered_cloud, reference_cloud);
 
-        o3c::Tensor jacobianT_jacobian = ComputeJacobianTJacobian();
+//        o3c::Tensor jacobianT_jacobian = ComputeJacobianTJacobian();
 
     }
 
@@ -136,7 +160,38 @@ std::vector<open3d::t::geometry::Image> FlatTriangleFitter::FitFlatTriangles(
     return iteration_shots;
 }
 
-FlatTriangleFitter::FlatTriangleFitter() {
+NdcTriangleFitter::NdcTriangleFitter(const open3d::core::SizeVector& image_size_pixels) {
+    if (image_size_pixels.size() > 2) {
+        o3u::LogError("Image size is expected to be a vector of size 2, i.e. <height, width>, got size: {}",
+                      image_size_pixels.size());
+    }
+    this->image_size = image_size_pixels;
+
+    int64_t height = image_size[0];
+    int64_t width = image_size[1];
+    const double smaller_dimension_fov_radians = 0.8726; // 50 degrees
+    double fx, fy;
+    if (height > width) {
+        fx = static_cast<double>(width / 2) / tan(smaller_dimension_fov_radians / 2);
+        fy = fx;
+    } else {
+        fy = static_cast<double>(height / 2) / tan(smaller_dimension_fov_radians / 2);
+        fx = fy;
+    }
+
+    intrinsics = o3c::Tensor(
+            std::vector<double>(
+                    {
+                            fx, 0.0, static_cast<double>(image_size[1] / 2),
+                            0.0, fy, static_cast<double>(image_size[0] / 2),
+                            0.0, 0.0, 1.0
+                    }
+            ), {3, 3}, o3c::Float64, o3c::Device("CPU:0")
+    );
+
+    auto [ndc_intrinsics_, ndc_range] = rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsics, image_size);
+    this->ndc_intrinsics = ndc_intrinsics_;
+    this->ndc_bounds = ndc_range.ToMatrix();
 }
 
 } // namespace nnrt::alignment

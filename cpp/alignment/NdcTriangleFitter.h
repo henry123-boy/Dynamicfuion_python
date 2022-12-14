@@ -18,6 +18,7 @@
 // 3rd party
 #include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/Image.h>
+#include <Eigen/Dense>
 
 // local
 #include "alignment/functional/kernel/MathTypedefs.h"
@@ -26,16 +27,23 @@ namespace nnrt::alignment {
 
 // Exists mostly for testing purposes -- an optimization that tests various routines that are used for the
 // bigger mesh-to-image fitting routine
-class FlatTriangleFitter {
+class NdcTriangleFitter {
 public:
-    FlatTriangleFitter();
-    std::vector<open3d::t::geometry::Image> FitFlatTriangles(
+    NdcTriangleFitter(const open3d::core::SizeVector& image_size_pixels);
+
+    std::vector<open3d::t::geometry::Image> FitTriangles(
             const Matrix3x2f& start_triangle,
             const Matrix3x2f& reference_triangle,
-            open3d::core::Device,
-            float depth
+            const open3d::core::Device& device
     );
 
+private:
+    open3d::core::SizeVector image_size;
+    open3d::core::Tensor intrinsics;
+    open3d::core::Tensor ndc_intrinsics;
+    // y_min, y_max
+    // x_min, x_max
+    Eigen::Matrix<float, 2, 2, Eigen::RowMajor> ndc_bounds;
 };
 
 } // namespace nnrt::alignment

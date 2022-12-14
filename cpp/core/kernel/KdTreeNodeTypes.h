@@ -16,7 +16,7 @@
 #pragma once
 
 #include <cstdint>
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace nnrt::core::kernel::kdtree {
 struct KdTreeNode {

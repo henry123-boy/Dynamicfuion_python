@@ -15,7 +15,7 @@
 //  ================================================================
 #pragma once
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include <open3d/core/Device.h>
 #include <Eigen/Dense>
 

@@ -17,7 +17,7 @@
 
 #include <cstdint>
 #include <open3d/core/Blob.h>
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace nnrt::core::kernel::kdtree {
 

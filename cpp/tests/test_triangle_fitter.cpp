@@ -23,29 +23,30 @@
 // local includes
 #include "tests/test_main.hpp"
 #include "tests/test_utils/test_utils.hpp"
-#include "alignment/FlatTriangleFitter.h"
+#include "alignment/NdcTriangleFitter.h"
 
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
 namespace o3tio = open3d::t::io;
 
 void TestTriangleFitter(const o3c::Device& device) {
-    nnrt::alignment::FlatTriangleFitter fitter;
+    nnrt::alignment::NdcTriangleFitter fitter({480, 640});
     Matrix3x2f start_triangle, reference_triangle;
-    start_triangle << -2.37f, -1.31f,
-            0.43f, 2.3f,
-            0.79f, -0.61f;
+    start_triangle << -1.185f, -0.655f,
+            0.215f, 1.15f,
+            0.395f, -0.305f;
 
-    reference_triangle << -1.5f, -2.2f,
-            -1.5f, 2.2f,
-            2.0f, 0.0f;
+    reference_triangle << -0.75f, -1.1f,
+            -0.75f, 1.1f,
+            1.f, 0.f;
 
     std::cout << "Start triangle: " << std::endl << start_triangle << std::endl;
     std::cout << "Reference triangle: " << std::endl << reference_triangle << std::endl;
 
-    std::vector<o3tg::Image> diagnostic_images = fitter.FitFlatTriangles(start_triangle, reference_triangle, device, 5.0f);
+    std::vector<o3tg::Image> diagnostic_images = fitter.FitTriangles(start_triangle, reference_triangle, device);
 
-    o3tio::WriteImage(test::generated_image_test_data_directory.ToString() + "/fit_triangle_000_reference.png", diagnostic_images[0]);
+    o3tio::WriteImage(test::generated_image_test_data_directory.ToString() + "/fit_triangle_000_reference.png",
+                      diagnostic_images[0]);
 
 }
 

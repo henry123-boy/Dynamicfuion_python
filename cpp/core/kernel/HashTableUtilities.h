@@ -18,7 +18,7 @@
 #include <open3d/core/Tensor.h>
 #include <Eigen/Dense>
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;

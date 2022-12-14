@@ -39,7 +39,7 @@ set(
 
     debugging/debugging.hpp
 
-    core/PlatformIndependence.h
+    core/PlatformIndependentQualifiers.h
     core/PlatformIndependentAtomics.h
     core/PlatformIndependentAlgorithm.h
     core/PlatformIndependentArray.h
@@ -198,13 +198,13 @@ set(
     geometry/functional/kernel/instantiations/NormalsOperationsCPU.cpp
     geometry/functional/kernel/instantiations/NormalsOperationsCUDA.cu
 
-    geometry/functional/Unproject3dPoints.cpp
-    geometry/functional/Unproject3dPoints.h
-    geometry/functional/kernel/PointCloud.h
-    geometry/functional/kernel/PointCloud.cpp
-    geometry/functional/kernel/PointCloudImpl.h
-    geometry/functional/kernel/instantiations/PointCloudCPU.cpp
-    geometry/functional/kernel/instantiations/PointCloudCUDA.cu
+    geometry/functional/PerspectiveProjection.cpp
+    geometry/functional/PerspectiveProjection.h
+    geometry/functional/kernel/PerspectiveProjection.h
+    geometry/functional/kernel/PerspectiveProjection.cpp
+    geometry/functional/kernel/PerspectiveProjectionImpl.h
+    geometry/functional/kernel/instantiations/PerspectiveProjectionCPU.cpp
+    geometry/functional/kernel/instantiations/PerspectiveProjectionCUDA.cu
 
     geometry/functional/Warping.cpp
     geometry/functional/Warping.h
@@ -281,10 +281,10 @@ set(
     alignment/functional/kernel/MathTypedefs.h
     alignment/functional/kernel/ProjectionJacobians.h
 
-    alignment/FlatTriangleFitter.h
-    alignment/FlatTriangleFitter.cpp
+    alignment/NdcTriangleFitter.h
+    alignment/NdcTriangleFitter.cpp
 
-)
+    geometry/kernel/AxisAlignedBoundingBox.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

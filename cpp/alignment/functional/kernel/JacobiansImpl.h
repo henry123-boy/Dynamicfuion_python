@@ -27,7 +27,7 @@
 #include "alignment/functional/kernel/Jacobians.h"
 #include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
 #include "alignment/functional/kernel/ProjectionJacobians.h"
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
@@ -155,10 +155,12 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 	o3c::ParallelFor(
 			device, pixel_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t v_image = workload_idx / image_width;
-				int64_t u_image = workload_idx % image_width;
-				const float y_screen = rendering::kernel::ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
-				const float x_screen = rendering::kernel::ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
+				auto v_image = static_cast<int>(workload_idx / image_width);
+				auto u_image =  static_cast<int>(workload_idx % image_width);
+				const float y_screen = rendering::kernel::ImageSpacePixelAlongDimensionToNdc(v_image, image_height_int,
+                                                                                             image_width_int);
+				const float x_screen = rendering::kernel::ImageSpacePixelAlongDimensionToNdc(u_image, image_width_int,
+                                                                                             image_height_int);
 				Eigen::Vector2f ray_point(x_screen, y_screen);
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];

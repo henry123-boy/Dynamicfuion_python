@@ -93,8 +93,8 @@ void RasterizeMeshNaive_Generic(
             [=] OPEN3D_DEVICE(int64_t workload_idx) {
                 const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
                 const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
-                const float y_screen = ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
-                const float x_screen = ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
+                const float y_screen = ImageSpacePixelAlongDimensionToNdc(v_image, image_height_int, image_width_int);
+                const float x_screen = ImageSpacePixelAlongDimensionToNdc(u_image, image_width_int, image_height_int);
                 Eigen::Vector2f point_screen(x_screen, y_screen);
                 RayFaceIntersection queue[MAX_POINTS_PER_PIXEL];
                 int queue_size = 0;
@@ -232,8 +232,8 @@ void RasterizeMeshFine(
                 const auto v_image = static_cast<t_image_index>(workload_idx / image_width);
                 const auto u_image = static_cast<t_image_index>(workload_idx % image_width);
 
-                const float y_screen = ImageSpacePixelToNdc(v_image, image_height_int, image_width_int);
-                const float x_screen = ImageSpacePixelToNdc(u_image, image_width_int, image_height_int);
+                const float y_screen = ImageSpacePixelAlongDimensionToNdc(v_image, image_height_int, image_width_int);
+                const float x_screen = ImageSpacePixelAlongDimensionToNdc(u_image, image_width_int, image_height_int);
 
                 const int v_bin = v_image / bin_side_length;
                 const int u_bin = u_image / bin_side_length;

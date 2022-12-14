@@ -17,7 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "Defines.h"
 #include "geometry/functional/AnchorComputationMethod.h"
 

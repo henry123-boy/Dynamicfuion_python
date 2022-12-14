@@ -19,7 +19,7 @@
 #include "../../../../../Open3D/Open3D0151/install/include/open3d/core/Device.h"
 
 // local
-#include "../../../core/PlatformIndependence.h"
+#include "../../../core/PlatformIndependentQualifiers.h"
 #include "../../../core/PlatformIndependentAtomics.h"
 #include "../../../../3rd-party/Eigen/Eigen/Dense"
 

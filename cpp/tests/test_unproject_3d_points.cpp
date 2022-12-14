@@ -17,7 +17,7 @@
 
 #include "tests/test_utils/test_utils.hpp"
 
-#include "geometry/functional/Unproject3dPoints.h"
+#include "geometry/functional/PerspectiveProjection.h"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;
@@ -71,7 +71,8 @@ void TestUnproject3dPointsWithoutDepthFiltering(const o3c::Device& device, bool 
 	}, mask_gt_size, o3c::Bool, device);
 
 	o3c::Tensor points, mask;
-	nnrt::geometry::functional::Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_image_layout);
+	nnrt::geometry::functional::UnprojectDepthImageWithoutFiltering(points, mask, depth, intrinsics, extrinsics,
+																	depth_scale, depth_max, preserve_image_layout);
 
 	REQUIRE(points.AllClose(points_ground_truth));
 	REQUIRE(mask.AllEqual(mask_ground_truth));

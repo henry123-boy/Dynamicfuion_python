@@ -17,7 +17,7 @@
 
 #include <open3d/core/Tensor.h>
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "geometry/functional/kernel/Defines.h"
 
 namespace nnrt::geometry::functional::kernel{

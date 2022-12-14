@@ -27,7 +27,7 @@
 
 //local
 #include "core/functional/kernel/Comparisons.h"
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;

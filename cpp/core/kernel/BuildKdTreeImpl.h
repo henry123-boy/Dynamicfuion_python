@@ -25,7 +25,7 @@
 #include "core/kernel/KdTree.h"
 #include "core/KeyValuePair.h"
 #include "core/heap/DeviceHeap.h"
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 
 namespace o3c = open3d::core;

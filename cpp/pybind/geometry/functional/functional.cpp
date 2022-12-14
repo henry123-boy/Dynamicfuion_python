@@ -18,7 +18,7 @@
 #include "geometry/functional/Warping.h"
 #include "geometry/functional/NormalsOperations.h"
 #include "geometry/functional/Comparison.h"
-#include "geometry/functional/Unproject3dPoints.h"
+#include "geometry/functional/PerspectiveProjection.h"
 
 // local
 #include "functional.h"
@@ -108,11 +108,12 @@ void pybind_geometry_functional_comparison(pybind11::module& m) {
 }
 
 void pybind_geometry_functional_pointcloud(pybind11::module& m) {
-	m.def("unproject_3d_points_without_depth_filtering",
+	m.def("unproject_raster_depth_without_filtering",
 	      [](const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
 	         float depth_scale, float depth_max, bool preserve_pixel_layout) {
 		      o3c::Tensor points, mask;
-		      Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_pixel_layout);
+              UnprojectDepthImageWithoutFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale,
+                                                  depth_max, preserve_pixel_layout);
 		      return py::make_tuple(points, mask);
 	      }, "depth"_a, "intrinsics"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float32, open3d::core::Device("CPU:0")),
 	      "depth_scale"_a = 1000.0f, "depth_max"_a = 3.0f, "preserve_pixel_layout"_a = false);

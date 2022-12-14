@@ -140,7 +140,7 @@ void MeshVerticesClippedToNdc(open3d::core::Tensor& vertex_positions_normalized_
 			normalized_camera_space_xy_range, near_clipping_distance, far_clipping_distance,
 			run_before_return_invalid, get_output_face_index
 	);
-	int unclipped_face_count_host = NNRT_GET_ATOMIC_VALUE_CPU(unclipped_face_count);
+	int unclipped_face_count_host = NNRT_GET_ATOMIC_VALUE_HOST(unclipped_face_count);
 	vertex_positions_normalized_camera = vertex_positions_normalized_camera.Slice(0, 0, unclipped_face_count_host);
 }
 

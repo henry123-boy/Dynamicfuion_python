@@ -22,7 +22,7 @@
 #include <open3d/core/MemoryManager.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentAtomics.h"
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/kernel/VoxelGridDtypeDispatch.h"
@@ -391,7 +391,7 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
 				}
 
 			});
-			segment_count = NNRT_GET_ATOMIC_VALUE_CPU(segment_count_atomic);
+			segment_count = NNRT_GET_ATOMIC_VALUE_HOST(segment_count_atomic);
 			NNRT_CLEAN_UP_ATOMIC(segment_count_atomic);
 	});
 	//@formatter:on

@@ -22,7 +22,7 @@
 
 
 // local includes
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentTuple.h"
 #include "core/PlatformIndependentArray.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"

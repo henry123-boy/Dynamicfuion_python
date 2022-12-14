@@ -22,6 +22,7 @@
 // local
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
+#include "core/PlatformIndependentAlgorithm.h"
 
 
 namespace o3tgk = open3d::t::geometry::kernel;
@@ -57,13 +58,13 @@ inline void ComputeFace2dBoundingBoxAndCheckZMin(
 		const TVertex& vertex1,
 		const TVertex& vertex2
 ) {
-	x_min = FloatMin3(vertex0.x(), vertex1.x(), vertex2.x()) - blur_radius;
-	x_max = FloatMax3(vertex0.x(), vertex1.x(), vertex2.x()) + blur_radius;
+	x_min = fmin3f(vertex0.x(), vertex1.x(), vertex2.x()) - blur_radius;
+	x_max = fmax3f(vertex0.x(), vertex1.x(), vertex2.x()) + blur_radius;
 
-	y_min = FloatMin3(vertex0.y(), vertex1.y(), vertex2.y()) - blur_radius;
-	y_max = FloatMax3(vertex0.y(), vertex1.y(), vertex2.y()) + blur_radius;
+	y_min = fmin3f(vertex0.y(), vertex1.y(), vertex2.y()) - blur_radius;
+	y_max = fmax3f(vertex0.y(), vertex1.y(), vertex2.y()) + blur_radius;
 
-	const float z_min = FloatMin3(vertex0.z(), vertex1.z(), vertex2.z());
+	const float z_min = fmax3f(vertex0.z(), vertex1.z(), vertex2.z());
 
 	// Faces with at least one vertex behind the camera won't render correctly
 	// and should be removed or clipped before rasterizing
@@ -125,7 +126,7 @@ inline float PointSegmentSquareDistance(
 		const TPoint vertex1_to_point = point - segment_vertex1;
 		return vertex1_to_point.dot(vertex1_to_point);
 	}
-	ratio_of_closest_point_along_segment = FloatClampTo0To1(ratio_of_closest_point_along_segment);
+	ratio_of_closest_point_along_segment = saturatef(ratio_of_closest_point_along_segment);
 	const TPoint closest_point_on_segment = segment_vertex0 + ratio_of_closest_point_along_segment * segment;
 	const TPoint point_to_segment = (closest_point_on_segment - point);
 	return point_to_segment.dot(point_to_segment); // squared distance
@@ -144,7 +145,7 @@ inline float PointTriangleDistance(
 	const float e01_dist = PointSegmentSquareDistance(point, vertex0, vertex1);
 	const float e02_dist = PointSegmentSquareDistance(point, vertex0, vertex2);
 	const float e12_dist = PointSegmentSquareDistance(point, vertex1, vertex2);
-	const float edge_dist = FloatMin3(e01_dist, e02_dist, e12_dist);
+	const float edge_dist = fmin3f(e01_dist, e02_dist, e12_dist);
 	return edge_dist;
 }
 

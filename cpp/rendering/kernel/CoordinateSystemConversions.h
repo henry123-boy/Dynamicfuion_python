@@ -15,30 +15,35 @@
 //  ================================================================
 #pragma once
 
+// TODO Candidate functions to be moved into a separate "camera" module
+// ==== KERNEL-LEVEL FUNCTIONS =====
+
 // 3rd party
 #include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/Utility.h>
 
 // local
-#include "core/PlatformIndependence.h"
-#include <core/PlatformIndependentAlgorithm.h>
-#include "AxisAlignedBoundingBox.h"
+#include "core/PlatformIndependentQualifiers.h"
+#include "core/PlatformIndependentAlgorithm.h"
+#include "geometry/kernel/AxisAlignedBoundingBox.h"
 
 namespace nnrt::rendering::kernel {
+
+typedef geometry::kernel::AxisAligned2dBoundingBox AxisAligned2dBoundingBox;
 
 // NOTE: We define normalized camera space as normalized to the frustum in x/y plane, i.e. (-1,-1) to (1, 1).
 
 /*
- * The default value of the normalized camera-space range is [-1, 1], however in
- * the case that image_height != image_width, the range is set such that the
- * shorter side has range [-1, 1] and the longer side is scaled by the ratio of
- * image_height:image_width.
+ * The NDC range is set such that the shorter image side has range [-1, 1] and the longer side range is scaled up by
+ * the longer_side:shorter_side ratio, i.e. if image_width > image_height, the NDC range along the x-axis is
+ * -image_width/image_height, image_width/image_height.
+ *
  * To get the normalized camera-space range in the x direction,
  * dimension1 = image_width and dimension2 = image_height.
  */
-template<typename TDimension>
+template<typename TPixelCount>
 NNRT_HOST_DEVICE_WHEN_CUDACC
-inline float GetNdcRange(TDimension dimension1, TDimension dimension2) {
+inline float GetNdcRange(const TPixelCount dimension1,const TPixelCount dimension2) {
 	float range = 2.0f;
 	if (dimension1 > dimension2) {
 		range = (static_cast<float>(dimension1) * range) / static_cast<float>(dimension2);
@@ -47,31 +52,56 @@ inline float GetNdcRange(TDimension dimension1, TDimension dimension2) {
 }
 
 /*
- * Given a pixel coordinate 0 <= i < S1, convert it to normalized camera-space coordinates.
- * We divide the normalized camera-space range into S1 evenly-sized pixels, and assume that
- * each pixel falls in the *center* of its range.
- * The default normalized camera range is [-1, 1]. However, in the case
- * that image_height != image_width, the range is set such that the shorter side
- * has range [-1, 1] and the longer side is scaled by the image_height:image_width
- * ratio. For example, to get the x and y normalized camera-space coordinates for a given
- * pixel (u,v), proceed as follows:
- *     x = ImageToScreenSpace(u, image_width, image_height)
- *     y = ImageToScreenSpace(v, image_height, image_width)
+ * The NDC range is set such that the shorter image side has range [-1, 1] and the longer side range is scaled up by
+ * the longer_side:shorter_side ratio, i.e. if image_width > image_height, the NDC range along the x-axis is
+ * -image_width/image_height, image_width/image_height.
+ *
+ * To get the NDC x and y for a given pixel (u,v), proceed as follows:
+ *     x_ndc = ImageSpacePixelAlongDimensionToNdc(u, image_width, image_height)
+ *     y_ndc = ImageSpacePixelAlongDimensionToNdc(v, image_height, image_width)
  */
-NNRT_DEVICE_WHEN_CUDACC
-inline float ImageSpacePixelToNdc(int i_pixel_along_dimension1, int dimension1, int dimension2) {
+template<typename TPixelCount>
+NNRT_HOST_DEVICE_WHEN_CUDACC
+inline float ImageSpacePixelAlongDimensionToNdc(
+        const TPixelCount i_pixel_along_dimension1, const TPixelCount dimension1, const TPixelCount dimension2){
 	float range = GetNdcRange(dimension1, dimension2);
 	const float offset = (range / 2.0f);
 	return -offset + (range * static_cast<float>(i_pixel_along_dimension1) + offset) / static_cast<float>(dimension1);
 }
 
-NNRT_DEVICE_WHEN_CUDACC
+template<typename  TPixelCount>
+NNRT_HOST_DEVICE_WHEN_CUDACC
+inline void ImageSpacePixelToNdc(float& x_ndc, float& y_ndc, const TPixelCount u_pixel, const TPixelCount v_pixel,
+                                 const TPixelCount image_width, const TPixelCount image_height) {
+	x_ndc = ImageSpacePixelAlongDimensionToNdc(u_pixel, image_width, image_height);
+    y_ndc = ImageSpacePixelAlongDimensionToNdc(v_pixel, image_height, image_width);
+}
+
+template<typename TPixelCount>
+NNRT_HOST_DEVICE_WHEN_CUDACC
+inline TPixelCount NdcAlongDimensionToImageSpacePixel(
+        const float ndc_along_dimension1, const TPixelCount dimension1, const TPixelCount dimension2){
+	float range = GetNdcRange(dimension1, dimension2);
+	const float offset = (range / 2.0f);
+	return static_cast<TPixelCount>((static_cast<float>(dimension1) * (ndc_along_dimension1 + offset) - offset) / range);
+}
+
+template<typename  TPixelCount>
+NNRT_HOST_DEVICE_WHEN_CUDACC
+inline void NdcToImageSpace(TPixelCount& u_pixel, TPixelCount& v_pixel, const float x_ndc, const float y_ndc,
+                             const int image_width, const int image_height) {
+	u_pixel = NdcAlongDimensionToImageSpacePixel(x_ndc, image_width, image_height);
+    v_pixel = NdcAlongDimensionToImageSpacePixel(y_ndc, image_height, image_width);
+}
+
+NNRT_HOST_DEVICE_WHEN_CUDACC
 inline float ImageSpaceDistanceToNdc(float distance_pixels, int dimension1, int dimension2) {
-	auto half_min_dim = static_cast<float>(nnrt::min(dimension1, dimension2)) / 2.0f;
+	auto half_min_dim = static_cast<float>(fminf(dimension1, dimension2)) / 2.0f;
 	return distance_pixels / half_min_dim;
 }
 
-// Candidate function to be moved into a separate "camera" module
+
+// ==== HOST-LEVEL FUNCTIONS =====
 inline
 std::tuple<open3d::core::Tensor, kernel::AxisAligned2dBoundingBox>
 ImageSpaceIntrinsicsToNdc(const open3d::core::Tensor& intrinsics, const open3d::core::SizeVector& image_size) {
@@ -95,20 +125,20 @@ ImageSpaceIntrinsicsToNdc(const open3d::core::Tensor& intrinsics, const open3d::
 	 * has range [-1, 1] and the longer side is scaled by the image_height:image_width
 	 * ratio.
 	 */
-	double fx_normalized = 2.0 * fx / smaller_dimension;
+	double fx_ndc = 2.0 * fx / smaller_dimension;
 	// important: fy is negated to flip the y-axis from going up to going down, as in an image (or on screen)
-	double fy_normalized = -2.0 * fy / smaller_dimension;
-	double cx_normalized = -(2.0 * cx - width) / smaller_dimension;
+	double fy_ndc = -2.0 * fy / smaller_dimension;
+	double cx_ndc = -(2.0 * cx - width) / smaller_dimension;
 	// likewise, we (don't) negate cy_normalized here in order to flip top<->bottom and transition to screen space convention
-	double cy_normalized = (2.0 * cy - height) / smaller_dimension;
-	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_normalized, 0.0, cx_normalized,
-	                                                                            0.0, fy_normalized, cy_normalized,
-	                                                                            0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64,
+	double cy_ndc = (2.0 * cy - height) / smaller_dimension;
+	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_ndc, 0.0, cx_ndc,
+                                                                                0.0, fy_ndc, cy_ndc,
+                                                                                0.0, 0.0, 1.0}, {3, 3}, open3d::core::Float64,
 	                                                        open3d::core::Device("CPU:0"));
-	kernel::AxisAligned2dBoundingBox range{static_cast<float>(cx_normalized - range_x / 2.f),
-	                                                 static_cast<float>(cx_normalized + range_x / 2.f),
-	                                                 static_cast<float>(cy_normalized - range_y / 2.f),
-	                                                 static_cast<float>(cy_normalized + range_y / 2.f)};
+	kernel::AxisAligned2dBoundingBox range{static_cast<float>(cx_ndc - range_x / 2.f),
+	                                                 static_cast<float>(cx_ndc + range_x / 2.f),
+	                                                 static_cast<float>(cy_ndc - range_y / 2.f),
+	                                                 static_cast<float>(cy_ndc + range_y / 2.f)};
 
 	return std::make_tuple(normalized_camera_intrinsic_matrix, range);
 }

@@ -20,7 +20,7 @@
 #include <Eigen/Dense>
 
 // local includes
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace nnrt::alignment::functional::kernel {
 template<typename TVertex>

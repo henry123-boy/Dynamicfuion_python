@@ -15,7 +15,7 @@
 //  ================================================================
 #pragma once
 
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace nnrt::core::functional::kernel {
 

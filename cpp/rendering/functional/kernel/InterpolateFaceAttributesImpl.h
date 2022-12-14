@@ -21,7 +21,7 @@
 
 //local
 #include "rendering/functional/kernel/InterpolateFaceAttributes.h"
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;

@@ -21,7 +21,7 @@
 
 // local includes
 #include "rendering/kernel/FlatEdgeShader.h"
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentArray.h"
 
 namespace utility = open3d::utility;

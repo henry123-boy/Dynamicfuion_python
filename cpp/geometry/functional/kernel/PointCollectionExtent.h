@@ -23,7 +23,7 @@
 
 
 // local
-#include "core/PlatformIndependence.h"
+#include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentAtomics.h"
 
 
@@ -60,8 +60,8 @@ void FindPointCollectionBounds(Eigen::Vector3f& grid_bin_min_bound, Eigen::Vecto
 			}
 	);
 
-	grid_bin_min_bound = Eigen::Vector3f(NNRT_GET_ATOMIC_VALUE_CPU(min_x), NNRT_GET_ATOMIC_VALUE_CPU(min_y), NNRT_GET_ATOMIC_VALUE_CPU(min_z));
-	grid_bin_max_bound = Eigen::Vector3f(NNRT_GET_ATOMIC_VALUE_CPU(max_x), NNRT_GET_ATOMIC_VALUE_CPU(max_y), NNRT_GET_ATOMIC_VALUE_CPU(max_z));
+	grid_bin_min_bound = Eigen::Vector3f(NNRT_GET_ATOMIC_VALUE_HOST(min_x), NNRT_GET_ATOMIC_VALUE_HOST(min_y), NNRT_GET_ATOMIC_VALUE_HOST(min_z));
+	grid_bin_max_bound = Eigen::Vector3f(NNRT_GET_ATOMIC_VALUE_HOST(max_x), NNRT_GET_ATOMIC_VALUE_HOST(max_y), NNRT_GET_ATOMIC_VALUE_HOST(max_z));
 
 	NNRT_CLEAN_UP_ATOMIC(min_x);NNRT_CLEAN_UP_ATOMIC(min_y);NNRT_CLEAN_UP_ATOMIC(min_z);NNRT_CLEAN_UP_ATOMIC(max_x);NNRT_CLEAN_UP_ATOMIC(
 			max_y);NNRT_CLEAN_UP_ATOMIC(max_z);
