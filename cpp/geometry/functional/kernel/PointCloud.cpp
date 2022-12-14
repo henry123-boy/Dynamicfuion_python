@@ -18,7 +18,7 @@
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
-namespace nnrt::geometry::kernel::pointcloud {
+namespace nnrt::geometry::functional::kernel{
 
 void UnprojectWithoutDepthFiltering(
 		open3d::core::Tensor& points, open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> colors,
@@ -40,4 +40,4 @@ void UnprojectWithoutDepthFiltering(
 			}
 	);
 }
-} // namespace nnrt::geometry::kernel::pointcloud
+} // namespace nnrt::geometry::functional::kernel

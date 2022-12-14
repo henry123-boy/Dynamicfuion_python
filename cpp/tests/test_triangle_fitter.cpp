@@ -43,7 +43,7 @@ void TestTriangleFitter(const o3c::Device& device) {
     std::cout << "Start triangle: " << std::endl << start_triangle << std::endl;
     std::cout << "Reference triangle: " << std::endl << reference_triangle << std::endl;
 
-    std::vector<o3tg::Image> diagnostic_images = fitter.FitFlatTriangles(start_triangle, reference_triangle, device, 6.0f);
+    std::vector<o3tg::Image> diagnostic_images = fitter.FitFlatTriangles(start_triangle, reference_triangle, device, 5.0f);
 
     o3tio::WriteImage(test::generated_image_test_data_directory.ToString() + "/fit_triangle_000_reference.png", diagnostic_images[0]);
 

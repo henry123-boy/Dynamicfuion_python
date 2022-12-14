@@ -50,7 +50,7 @@ template<typename TElement>
 open3d::core::Tensor ReplaceValue(open3d::core::Tensor& tensor, TElement old_value, TElement new_value) {
     auto old_value_tensor = o3c::Tensor(tensor.GetShape(), tensor.GetDtype(), tensor.GetDevice());
     old_value_tensor.Fill(old_value);
-	o3c::Tensor mask = tensor.IsClose(old_value_tensor, 0, 0).LogicalNot();
+	o3c::Tensor mask = tensor.IsClose(old_value_tensor, 0, 0);
 	SetMaskedToValue<TElement>(tensor, mask, new_value);
     return mask;
 }

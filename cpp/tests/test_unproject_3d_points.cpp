@@ -71,7 +71,7 @@ void TestUnproject3dPointsWithoutDepthFiltering(const o3c::Device& device, bool 
 	}, mask_gt_size, o3c::Bool, device);
 
 	o3c::Tensor points, mask;
-	nnrt::geometry::Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_image_layout);
+	nnrt::geometry::functional::Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_image_layout);
 
 	REQUIRE(points.AllClose(points_ground_truth));
 	REQUIRE(mask.AllEqual(mask_ground_truth));

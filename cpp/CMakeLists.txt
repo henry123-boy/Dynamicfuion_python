@@ -66,6 +66,7 @@ set(
 
     core/functional/MaskingImpl.h
     core/functional/Masking.h
+    core/functional/instantiations/Masking.cpp
 
     core/KdTree.h
     core/KdTree.cpp
@@ -202,8 +203,8 @@ set(
     geometry/functional/kernel/PointCloud.h
     geometry/functional/kernel/PointCloud.cpp
     geometry/functional/kernel/PointCloudImpl.h
-    geometry/kernel/instantiations/PointCloudCPU.cpp
-    geometry/kernel/instantiations/PointCloudCUDA.cu
+    geometry/functional/kernel/instantiations/PointCloudCPU.cpp
+    geometry/functional/kernel/instantiations/PointCloudCUDA.cu
 
     geometry/functional/Warping.cpp
     geometry/functional/Warping.h
@@ -282,7 +283,7 @@ set(
 
     alignment/FlatTriangleFitter.h
     alignment/FlatTriangleFitter.cpp
-    core/functional/instantiations/Masking.cpp
+
 )
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})

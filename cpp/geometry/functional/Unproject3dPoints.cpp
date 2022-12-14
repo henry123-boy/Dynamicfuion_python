@@ -22,7 +22,7 @@ namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
 namespace utility = open3d::utility;
 
-namespace nnrt::geometry {
+namespace nnrt::geometry::functional {
 void
 Unproject3dPointsWithoutDepthFiltering(
 		open3d::core::Tensor& points, open3d::core::Tensor& mask, const open3d::t::geometry::Image& depth,
@@ -33,11 +33,11 @@ Unproject3dPointsWithoutDepthFiltering(
 	o3tg::CheckIntrinsicTensor(intrinsics);
 	o3tg::CheckExtrinsicTensor(extrinsics);
 
-	kernel::pointcloud::UnprojectWithoutDepthFiltering(
+	kernel::UnprojectWithoutDepthFiltering(
 			points, utility::nullopt, mask, depth.AsTensor(), utility::nullopt, intrinsics,
 			extrinsics, depth_scale, depth_max, preserve_pixel_layout
 	);
 
 
 }
-} // namespace nnrt::geometry
+} // namespace nnrt::geometry::functional

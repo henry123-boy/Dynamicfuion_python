@@ -18,7 +18,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Optional.h>
 
-namespace nnrt::geometry::kernel::pointcloud {
+namespace nnrt::geometry::functional::kernel{
 
 void UnprojectWithoutDepthFiltering(
 		open3d::core::Tensor& points, open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> colors,
@@ -35,4 +35,4 @@ void UnprojectWithoutDepthFiltering(
 		const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics, float depth_scale, float depth_max, bool preserve_image_layout
 );
 
-} //namespace nnrt::geometry::kernel::pointcloud
+} // namespace nnrt::geometry::functional::kernel

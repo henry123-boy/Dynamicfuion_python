@@ -19,7 +19,7 @@
 #include "../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/Image.h"
 
 // candidate to be moved to a separate "camera" module
-namespace nnrt::geometry {
+namespace nnrt::geometry::functional {
 
 void Unproject3dPointsWithoutDepthFiltering(
 		open3d::core::Tensor& points, open3d::core::Tensor& mask, const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics,
@@ -27,4 +27,4 @@ void Unproject3dPointsWithoutDepthFiltering(
 		float depth_scale = 1000.0f, float depth_max = 3.0f, bool preserve_pixel_layout = false
 );
 
-}//namespace nnrt::geometry
+}//namespace nnrt::geometry::functional

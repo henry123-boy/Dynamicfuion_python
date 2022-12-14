@@ -358,9 +358,10 @@ def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extr
                 o3d.t.io.write_image(str(reference_depth_normalized_path), reference_image_depth_normalized_o3d)
 
         reference_points, reference_in_depth_range_mask = \
-            nnrt.geometry.unproject_3d_points_without_depth_filtering(reference_image_depth_o3d, intrinsic_matrix,
-                                                                      extrinsic_matrix, depth_scale=1000,
-                                                                      depth_max=10.0, preserve_pixel_layout=False)
+            nnrt.geometry.functional.unproject_3d_points_without_depth_filtering(
+                reference_image_depth_o3d, intrinsic_matrix, extrinsic_matrix, depth_scale=1000,
+                depth_max=10.0, preserve_pixel_layout=False
+            )
         reference_point_cloud = o3d.t.geometry.PointCloud(reference_points)
 
         optimizer = PureTorchRenderBasedOptimizer(reference_image_color_o3d, reference_point_cloud,

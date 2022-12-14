@@ -18,9 +18,11 @@
 #include "geometry/functional/Warping.h"
 #include "geometry/functional/NormalsOperations.h"
 #include "geometry/functional/Comparison.h"
+#include "geometry/functional/Unproject3dPoints.h"
 
 // local
 #include "functional.h"
+
 
 namespace o3tg = open3d::t::geometry;
 namespace o3c = open3d::core;
@@ -41,6 +43,7 @@ void pybind_geometry_functional(pybind11::module& m) {
 	pybind_geometry_functional_warping(m_submodule);
 	pybind_geometry_functional_normals_operations(m_submodule);
 	pybind_geometry_functional_comparison(m_submodule);
+    pybind_geometry_functional_pointcloud(m_submodule);
 }
 
 void pybind_geometry_functional_warp_anchor_computation(pybind11::module& m) {
@@ -102,6 +105,17 @@ void pybind_geometry_functional_comparison(pybind11::module& m) {
 	m.def("compute_point_to_plane_distances",
 	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::t::geometry::PointCloud&>
 			      (&ComputePointToPlaneDistances), "mesh"_a, "point_cloud"_a);
+}
+
+void pybind_geometry_functional_pointcloud(pybind11::module& m) {
+	m.def("unproject_3d_points_without_depth_filtering",
+	      [](const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+	         float depth_scale, float depth_max, bool preserve_pixel_layout) {
+		      o3c::Tensor points, mask;
+		      Unproject3dPointsWithoutDepthFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale, depth_max, preserve_pixel_layout);
+		      return py::make_tuple(points, mask);
+	      }, "depth"_a, "intrinsics"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float32, open3d::core::Device("CPU:0")),
+	      "depth_scale"_a = 1000.0f, "depth_max"_a = 3.0f, "preserve_pixel_layout"_a = false);
 }
 
 } // namespace nnrt::geometry::functional
