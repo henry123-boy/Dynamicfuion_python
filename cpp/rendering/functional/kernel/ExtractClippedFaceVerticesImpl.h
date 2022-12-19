@@ -20,7 +20,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 //local
-#include "rendering/kernel/ExtractClippedFaceVertices.h"
+#include "ExtractClippedFaceVertices.h"
 #include "core/PlatformIndependentAtomics.h"
 
 namespace o3c = open3d::core;
@@ -28,7 +28,7 @@ namespace utility = open3d::utility;
 namespace o3tgk = open3d::t::geometry::kernel;
 
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::rendering::functional::kernel {
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TExtractNormals, typename TRunBeforeReturnInvalid, typename TGetOutputIndex>
 void ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic(
@@ -188,4 +188,4 @@ void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normali
 
 }
 
-} // namespace nnrt::rendering::kernel;
+} // namespace nnrt::rendering::functional::kernel;

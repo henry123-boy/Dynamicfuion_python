@@ -13,9 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "rendering/kernel/ExtractClippedFaceVerticesImpl.h"
+#include "rendering/functional/kernel/ExtractClippedFaceVerticesImpl.h"
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::rendering::functional::kernel {
 
 
 template void MeshVerticesClippedToNdc<open3d::core::Device::DeviceType::CPU>(
@@ -40,4 +40,4 @@ template void MeshDataAndClippingMaskToNdc<open3d::core::Device::DeviceType::CPU
         float far_clipping_distance
 );
 
-} // namespace nnrt::rendering::kernel
+} // namespace nnrt::rendering::functional::kernel

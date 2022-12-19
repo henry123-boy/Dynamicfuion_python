@@ -25,6 +25,7 @@
 #include "rendering/functional/InterpolateFaceAttributes.h"
 #include "rendering/RasterizeMesh.h"
 #include "WarpedMeshToReferencePointCloud_PointToPlane.h"
+#include "rendering/functional/ExtractFaceVertices.h"
 
 
 namespace o3c = open3d::core;
@@ -45,7 +46,7 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 	o3c::SizeVector image_size = {reference_color_image.AsTensor().GetShape(0), reference_color_image.AsTensor().GetShape(1)};
 	o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(canonical_mesh, anchors, weights, true, extrinsics);
 	auto [extracted_face_vertices, clipped_face_mask] =
-            rendering::GetMeshNdcFaceVerticesAndClipMask(warped_mesh, intrinsics, image_size);
+            rendering::functional::GetMeshNdcFaceVerticesAndClipMask(warped_mesh, intrinsics, image_size);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true, false, true);
 	auto vertex_normals = warped_mesh.GetVertexNormals();

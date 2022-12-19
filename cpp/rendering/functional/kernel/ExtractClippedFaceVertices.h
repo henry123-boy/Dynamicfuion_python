@@ -17,7 +17,7 @@
 #include <open3d/core/Tensor.h>
 #include "geometry/kernel/AxisAlignedBoundingBox.h"
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::rendering::functional::kernel {
 using t_image_index = int32_t;
 
 void MeshVerticesClippedToNdc(
@@ -60,4 +60,4 @@ void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normali
                                   geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
                                   float far_clipping_distance);
 
-} // namespace nnrt::rendering::kernel
+} // namespace nnrt::rendering::functional::kernel

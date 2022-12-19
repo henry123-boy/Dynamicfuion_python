@@ -24,6 +24,7 @@
 
 // code being tested
 #include "rendering/RasterizeMesh.h"
+#include "rendering/functional/ExtractFaceVertices.h"
 
 namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;
@@ -39,7 +40,7 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 			0., 0., 1.,
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 
-	auto extracted_face_vertices = nnrt::rendering::GetMeshFaceVerticesNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
+	auto extracted_face_vertices = nnrt::rendering::functional::GetMeshFaceVerticesNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	REQUIRE(extracted_face_vertices.GetLength() == 334);
 

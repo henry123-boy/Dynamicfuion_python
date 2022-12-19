@@ -25,6 +25,7 @@
 #include "tests/test_main.hpp"
 #include "rendering/RasterizeMesh.h"
 #include "rendering/FlatEdgeShader.h"
+#include "rendering/functional/ExtractFaceVertices.h"
 
 
 namespace o3c = open3d::core;
@@ -68,7 +69,7 @@ void TestDrawTriangle(const o3c::Device& device) {
     o3c::SizeVector image_size = {480, 640};
 
     auto [ndc_face_vertices, face_mask] =
-            nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
+            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
             nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 1.0f, 1);
 

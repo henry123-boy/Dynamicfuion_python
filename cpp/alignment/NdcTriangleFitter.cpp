@@ -29,7 +29,9 @@
 #include "geometry/functional/MeshFrom2dTriangle.h"
 #include "core/functional/Masking.h"
 #include "core/kernel/MathTypedefs.h"
+#include "core/TensorRepresentationConversion.h"
 #include "rendering/FlatEdgeShader.h"
+#include "rendering/functional/ExtractFaceVertices.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -71,7 +73,7 @@ o3tg::Image RenderMeshLines(
         const open3d::core::SizeVector& image_size
 ) {
     auto [face_vertices, face_mask] =
-            nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(target_mesh, intrinsics, image_size);
+            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(target_mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
             nnrt::rendering::RasterizeMesh(face_vertices, face_mask, image_size, 0.f, 1);
     rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
@@ -87,8 +89,8 @@ std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
         const open3d::core::Tensor& target_triangle,
         const open3d::core::Device& device
 ) {
-    auto source_triangle_eigen = core::kernel::TensorToEigenMatrix<core::kernel::Matrix3x2f>(source_triangle);
-    auto target_triangle_eigen = core::kernel::TensorToEigenMatrix<core::kernel::Matrix3x2f>(target_triangle);
+    auto source_triangle_eigen = core::TensorToEigenMatrix<core::kernel::Matrix3x2f>(source_triangle);
+    auto target_triangle_eigen = core::TensorToEigenMatrix<core::kernel::Matrix3x2f>(target_triangle);
 
     CheckTriangleFitsNdc(source_triangle_eigen, this->ndc_bounds, "Start");
     CheckTriangleFitsNdc(target_triangle_eigen, this->ndc_bounds, "Reference");
@@ -104,9 +106,6 @@ std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
             geometry::functional::MeshFrom2dTriangle(target_triangle, device, depth, ndc_intrinsics);
 
 
-    const float background_factor = 2.0f;
-    const float background_depth = background_factor * depth;
-
 
 
 
@@ -118,7 +117,7 @@ std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
         o3tg::TriangleMesh mesh = geometry::functional::MeshFrom2dTriangle(current_triangle, device, depth,
                                                                            ndc_intrinsics);
         auto [ndc_face_vertices, face_mask] =
-                nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
+                nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
         auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
                 nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 0.f, 1);
 

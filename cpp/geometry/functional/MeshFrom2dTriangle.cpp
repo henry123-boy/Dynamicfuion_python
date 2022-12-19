@@ -24,6 +24,7 @@
 #include "MeshFrom2dTriangle.h"
 #include "core/kernel/MathTypedefs.h"
 #include "PerspectiveProjection.h"
+#include "core/TensorRepresentationConversion.h"
 
 
 namespace o3c = open3d::core;
@@ -40,7 +41,7 @@ o3tg::TriangleMesh MeshFrom2dTriangle(
 ) {
     o3tg::CheckIntrinsicTensor(ndc_intrinsics);
     o3tg::TriangleMesh mesh(device);
-    auto triangle_ndc_eigen = core::kernel::TensorToEigenMatrix<core::kernel::Matrix3x2f>(triangle_ndc);
+    auto triangle_ndc_eigen = core::TensorToEigenMatrix<core::kernel::Matrix3x2f>(triangle_ndc);
 
 
     std::vector<float> projected_vertex_data = {

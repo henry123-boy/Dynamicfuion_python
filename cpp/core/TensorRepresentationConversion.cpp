@@ -13,14 +13,21 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+// stdlib includes
+
+// third-party includes
+
 // local includes
-#include "core/kernel/MathTypedefs.h"
+#include "core/TensorRepresentationConversion.h"
 
-namespace nnrt::alignment::functional::kernel {
+namespace nnrt::core {
+template<>
+open3d::core::Dtype GetDType<float>() {
+    return open3d::core::Float32;
+}
 
-typedef core::kernel::Matrix3x2f Matrix3x2f;
-typedef core::kernel::Matrix3f Matrix3f;
-typedef core::kernel::Matrix3x9f Matrix3x9f;
-
-} // namespace nnrt::alignment::functional::kernel
+template<>
+open3d::core::Dtype GetDType<int64_t>() {
+    return open3d::core::Float64;
+}
+} // namespace nnrt::core

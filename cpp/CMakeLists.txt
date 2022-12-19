@@ -241,11 +241,11 @@ set(
     rendering/kernel/GridBitMask.cuh
     rendering/kernel/RasterizeMeshImplCPU.h
 
-    rendering/kernel/ExtractClippedFaceVertices.cpp
-    rendering/kernel/ExtractClippedFaceVertices.h
-    rendering/kernel/ExtractClippedFaceVerticesImpl.h
-    rendering/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
-    rendering/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
+    rendering/functional/kernel/ExtractClippedFaceVertices.cpp
+    rendering/functional/kernel/ExtractClippedFaceVertices.h
+    rendering/functional/kernel/ExtractClippedFaceVerticesImpl.h
+    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
+    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
 
     rendering/FlatEdgeShader.cpp
     rendering/FlatEdgeShader.h
@@ -284,7 +284,7 @@ set(
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h alignment/functional/kernel/MathTypedefs.h)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/TensorRepresentationConversion.cpp core/TensorRepresentationConversion.cpp)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

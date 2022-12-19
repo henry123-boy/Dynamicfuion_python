@@ -22,30 +22,6 @@
 
 namespace nnrt::rendering {
 
-open3d::core::Tensor GetMeshFaceVerticesNdc(
-		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::SizeVector& image_size,
-		float near_clipping_distance = 0.0,
-		float far_clipping_distance = INFINITY
-);
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> GetMeshNdcFaceVerticesAndClipMask(
-		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::SizeVector& image_size,
-		float near_clipping_distance = 0.0,
-		float far_clipping_distance = INFINITY
-);
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> GetMeshFaceVerticesNdcAndNormalsNdcAndClipMask(
-		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
-		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::SizeVector& image_size,
-		float near_clipping_distance = 0.0,
-		float far_clipping_distance = INFINITY
-);
-
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 RasterizeMesh(

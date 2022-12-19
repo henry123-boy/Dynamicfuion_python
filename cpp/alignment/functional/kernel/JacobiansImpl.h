@@ -174,18 +174,18 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 				Eigen::Map<const Eigen::Vector3f> face_vertex0(vertex_position_data + face_vertex_indices(0) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_vertex1(vertex_position_data + face_vertex_indices(1) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_vertex2(vertex_position_data + face_vertex_indices(2) * 3);
-				Matrix3f face_vertex_matrix;
+				core::kernel::Matrix3f face_vertex_matrix;
 				face_vertex_matrix << face_vertex0, face_vertex1, face_vertex2;
 
 
 				Eigen::Map<const Eigen::Vector3f> face_normal0(vertex_normal_data + face_vertex_indices(0) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_normal1(vertex_normal_data + face_vertex_indices(1) * 3);
 				Eigen::Map<const Eigen::Vector3f> face_normal2(vertex_normal_data + face_vertex_indices(2) * 3);
-				Matrix3f face_normal_matrix;
+				core::kernel::Matrix3f face_normal_matrix;
 				face_normal_matrix << face_normal0, face_normal1, face_normal2;
 
 
-				Matrix3x9f barycentric_coordinate_jacobian;
+				core::kernel::Matrix3x9f barycentric_coordinate_jacobian;
 
 				auto barycentric_coordinates_index = (v_image * image_width * faces_per_pixel * 3) + (u_image * faces_per_pixel * 3);
 				Eigen::Map<const Eigen::RowVector3f> barycentric_coordinates(barycentric_coordinate_data + barycentric_coordinates_index);
@@ -203,12 +203,16 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 							);
 				}
 
-				Eigen::Map<Matrix3x9f> pixel_rendered_vertex_jacobian_wrt_face_vertices(rendered_vertex_jacobian_data + workload_idx * (3*9));
-				Eigen::Map<Matrix3x9f> pixel_rendered_normal_jacobian_wrt_face_vertices(rendered_normal_jacobian_data + workload_idx * (3*10));
-				Eigen::Map<Eigen::RowVector3f> barycentric_coordinates_out(rendered_normal_jacobian_data + workload_idx * (3*10) + (3*9));
+				Eigen::Map<core::kernel::Matrix3x9f>
+				        pixel_rendered_vertex_jacobian_wrt_face_vertices(rendered_vertex_jacobian_data + workload_idx * (3*9));
+				Eigen::Map<core::kernel::Matrix3x9f>
+				        pixel_rendered_normal_jacobian_wrt_face_vertices(rendered_normal_jacobian_data + workload_idx * (3*10));
+				Eigen::Map<Eigen::RowVector3f>
+				        barycentric_coordinates_out(rendered_normal_jacobian_data + workload_idx * (3*10) + (3*9));
 
 				pixel_rendered_vertex_jacobian_wrt_face_vertices =
-						face_vertex_matrix * barycentric_coordinate_jacobian + Eigen::kroneckerProduct(barycentric_coordinates, Matrix3f::Identity());
+						face_vertex_matrix * barycentric_coordinate_jacobian +
+                        Eigen::kroneckerProduct(barycentric_coordinates, core::kernel::Matrix3f::Identity());
 
 				pixel_rendered_normal_jacobian_wrt_face_vertices =
 						face_normal_matrix * barycentric_coordinate_jacobian;

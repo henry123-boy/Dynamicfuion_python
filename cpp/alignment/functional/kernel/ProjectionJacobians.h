@@ -21,15 +21,15 @@
 
 // local includes
 #include "core/PlatformIndependentQualifiers.h"
-#include "alignment/functional/kernel/MathTypedefs.h"
+#include "core/kernel/MathTypedefs.h"
 
 namespace nnrt::alignment::functional::kernel {
 template<typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC
-inline Matrix2x3f CameraToNdcSpaceProjectionJacobian(float ndc_focal_coefficient_x,
+inline core::kernel::Matrix2x3f CameraToNdcSpaceProjectionJacobian(float ndc_focal_coefficient_x,
                                                      float ndc_focal_coefficient_y,
                                                      TVertex camera_space_vertex) {
-	Matrix2x3f jacobian;
+	core::kernel::Matrix2x3f jacobian;
 	//TODO: try optimizing by avoiding the comma initializer syntax,
 	// see https://stackoverflow.com/a/17704129/844728
 	jacobian <<

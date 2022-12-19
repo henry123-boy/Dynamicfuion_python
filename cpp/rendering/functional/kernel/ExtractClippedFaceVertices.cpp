@@ -13,13 +13,13 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "rendering/kernel/ExtractClippedFaceVertices.h"
+#include "ExtractClippedFaceVertices.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-namespace nnrt::rendering::kernel {
+namespace nnrt::rendering::functional::kernel {
 
 
 void MeshVerticesClippedToNdc(
@@ -83,4 +83,4 @@ void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normali
 			}
 	);
 }
-} // namespace nnrt::rendering::kernel
+} // namespace nnrt::rendering::functional::kernel
