@@ -14,13 +14,20 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// local includes
-#include "core/kernel/MathTypedefs.h"
+// stdlib includes
 
-namespace nnrt::alignment::functional::kernel {
+// third-party includes
+#include <open3d/t/geometry/TriangleMesh.h>
 
-typedef core::kernel::Matrix3x2f Matrix3x2f;
-typedef core::kernel::Matrix3f Matrix3f;
-typedef core::kernel::Matrix3x9f Matrix3x9f;
 
-} // namespace nnrt::alignment::functional::kernel
+namespace nnrt::geometry::functional {
+
+open3d::t::geometry::TriangleMesh MeshFrom2dTriangle(
+        const open3d::core::Tensor& triangle_ndc,
+        const open3d::core::Device& device,
+        float depth,
+        const open3d::core::Tensor& ndc_intrinsics
+);
+
+
+} // namespace nnrt::geometry::functional

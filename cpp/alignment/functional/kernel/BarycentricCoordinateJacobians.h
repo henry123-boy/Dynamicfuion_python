@@ -25,6 +25,7 @@
 #include "core/PlatformIndependentQualifiers.h"
 #include "core/PlatformIndependentTuple.h"
 #include "core/PlatformIndependentArray.h"
+#include "core/kernel/MathTypedefs.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"

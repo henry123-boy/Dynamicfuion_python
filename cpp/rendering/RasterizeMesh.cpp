@@ -54,7 +54,7 @@ static void CheckClippingRangeAndImageSize(const open3d::core::SizeVector& image
 	}
 }
 
-open3d::core::Tensor MeshFaceVerticesToNdc(
+open3d::core::Tensor GetMeshFaceVerticesNdc(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size, /* {height, width} */
@@ -81,7 +81,7 @@ open3d::core::Tensor MeshFaceVerticesToNdc(
 }
 
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMaskToNdc(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> GetMeshNdcFaceVerticesAndClipMask(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size, /* {height, width} */
@@ -106,7 +106,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndClipMa
 	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> MeshFaceVerticesAndNormalsAndClipMaskToNdc(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> GetMeshFaceVerticesNdcAndNormalsNdcAndClipMask(
 		const open3d::t::geometry::TriangleMesh& camera_space_mesh,
 		const open3d::core::Tensor& intrinsic_matrix,
 		const open3d::core::SizeVector& image_size,

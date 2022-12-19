@@ -68,11 +68,11 @@ void TestDrawTriangle(const o3c::Device& device) {
     o3c::SizeVector image_size = {480, 640};
 
     auto [ndc_face_vertices, face_mask] =
-            nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(mesh, intrinsics, image_size);
+            nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
             nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 1.0f, 1);
 
-    nnrt::rendering::FlatEdgeShader shader(2.0, nnrt::array<float, 3>({1.0, 1.0, 1.0}));
+    nnrt::rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
     auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
                                     pixel_face_distances, o3u::nullopt);
 

@@ -38,7 +38,7 @@ void ExtractClippedFaceVerticesInNormalizedCameraSpace_Generic(
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
 		const open3d::core::Tensor& ndc_intrinsic_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+		geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
 		float near_clipping_distance,
 		float far_clipping_distance,
 		TRunBeforeReturnInvalid&& run_before_return_invalid,
@@ -125,7 +125,7 @@ void MeshVerticesClippedToNdc(open3d::core::Tensor& vertex_positions_normalized_
                               const open3d::core::Tensor& vertex_positions_camera,
                               const open3d::core::Tensor& triangle_vertex_indices,
                               const open3d::core::Tensor& normalized_camera_space_matrix,
-                              kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+                              geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
                               float near_clipping_distance,
                               float far_clipping_distance) {
 	NNRT_DECLARE_ATOMIC_INT(unclipped_face_count);
@@ -151,7 +151,7 @@ void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normali
                                   open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
                                   const open3d::core::Tensor& triangle_vertex_indices,
                                   const open3d::core::Tensor& normalized_camera_space_matrix,
-                                  kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
+                                  geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
                                   float far_clipping_distance) {
 	auto face_count = triangle_vertex_indices.GetLength();
 	o3c::Device device = vertex_positions_camera.GetDevice();

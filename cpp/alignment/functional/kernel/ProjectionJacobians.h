@@ -21,6 +21,7 @@
 
 // local includes
 #include "core/PlatformIndependentQualifiers.h"
+#include "alignment/functional/kernel/MathTypedefs.h"
 
 namespace nnrt::alignment::functional::kernel {
 template<typename TVertex>

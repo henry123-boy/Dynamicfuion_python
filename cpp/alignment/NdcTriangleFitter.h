@@ -20,9 +20,6 @@
 #include <open3d/t/geometry/Image.h>
 #include <Eigen/Dense>
 
-// local
-#include "alignment/functional/kernel/MathTypedefs.h"
-
 namespace nnrt::alignment {
 
 // Exists mostly for testing purposes -- an optimization that tests various routines that are used for the
@@ -32,8 +29,8 @@ public:
     NdcTriangleFitter(const open3d::core::SizeVector& image_size_pixels);
 
     std::vector<open3d::t::geometry::Image> FitTriangles(
-            const Matrix3x2f& start_triangle,
-            const Matrix3x2f& reference_triangle,
+            const open3d::core::Tensor& source_triangle,
+            const open3d::core::Tensor& target_triangle,
             const open3d::core::Device& device
     );
 

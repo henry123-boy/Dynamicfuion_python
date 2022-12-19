@@ -278,13 +278,13 @@ set(
     alignment/functional/kernel/instantiations/JacobiansCPU.cpp
     alignment/functional/kernel/instantiations/JacobiansCUDA.cu
 
-    alignment/functional/kernel/MathTypedefs.h
+    core/kernel/MathTypedefs.h
     alignment/functional/kernel/ProjectionJacobians.h
 
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h alignment/functional/kernel/MathTypedefs.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

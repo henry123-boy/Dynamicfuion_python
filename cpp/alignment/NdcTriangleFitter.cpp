@@ -23,47 +23,19 @@
 #include "alignment/NdcTriangleFitter.h"
 #include "rendering/RasterizeMesh.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
+#include "rendering/kernel/CoordinateSystemConversions.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/Comparison.h"
+#include "geometry/functional/MeshFrom2dTriangle.h"
 #include "core/functional/Masking.h"
-#include "rendering/kernel/CoordinateSystemConversions.h"
+#include "core/kernel/MathTypedefs.h"
+#include "rendering/FlatEdgeShader.h"
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::alignment {
-
-inline o3tg::TriangleMesh MeshFrom2dTriangle(
-        const Matrix3x2f& triangle_ndc,
-        const o3c::Device& device,
-        float depth,
-        const o3c::Tensor& ndc_intrinsics
-) {
-    o3tg::CheckIntrinsicTensor(ndc_intrinsics);
-    o3tg::TriangleMesh mesh(device);
-    std::vector<float> projected_vertex_data = {
-            triangle_ndc(0, 0), triangle_ndc(0, 1),
-            triangle_ndc(1, 0), triangle_ndc(1, 1),
-            triangle_ndc(2, 0), triangle_ndc(2, 1),
-    };
-    o3c::Tensor projected_vertices(projected_vertex_data, {3, 2}, o3c::Float32, device);
-    o3c::Tensor projected_vertex_depth(std::vector<float>({depth}), {1}, o3c::Float32, device);
-
-    o3c::Tensor vertex_positions =
-            geometry::functional::UnprojectProjectedPoints(projected_vertices, projected_vertex_depth, ndc_intrinsics);
-
-    std::vector<float> triangle_normals = {
-            0.f, 0.f, -1.f,
-            0.f, 0.f, -1.f,
-            0.f, 0.f, -1.f
-    };
-
-    mesh.SetVertexPositions(vertex_positions);
-    mesh.SetTriangleIndices(o3c::Tensor(std::vector<int64_t>({0, 1, 2}), {1, 3}, o3c::Int64, device));
-    mesh.SetVertexNormals(o3c::Tensor(triangle_normals, {3, 3}, o3c::Float32, device));
-    return mesh;
-}
 
 inline
 o3c::Tensor ComputeJacobianTJacobian(
@@ -76,7 +48,11 @@ o3c::Tensor ComputeJacobianTJacobian(
     return o3c::Tensor();
 }
 
-void CheckTriangleFitsNdc(const Matrix3x2f& triangle, const Matrix2f& ndc_bounds, const std::string& triangle_prefix) {
+void CheckTriangleFitsNdc(
+        const core::kernel::Matrix3x2f& triangle,
+        const core::kernel::Matrix2f& ndc_bounds,
+        const std::string& triangle_prefix
+) {
     for (int i_vertex; i_vertex < 3; i_vertex++) {
         if (triangle(i_vertex, 0) < ndc_bounds(1, 0) || triangle(i_vertex, 0) > ndc_bounds(1, 1) ||
             triangle(i_vertex, 1) < ndc_bounds(0, 0) || triangle(i_vertex, 1) > ndc_bounds(0, 1)) {
@@ -89,70 +65,65 @@ void CheckTriangleFitsNdc(const Matrix3x2f& triangle, const Matrix2f& ndc_bounds
 }
 
 
+o3tg::Image RenderMeshLines(
+        const open3d::t::geometry::TriangleMesh& target_mesh,
+        const open3d::core::Tensor& intrinsics,
+        const open3d::core::SizeVector& image_size
+) {
+    auto [face_vertices, face_mask] =
+            nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(target_mesh, intrinsics, image_size);
+    auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
+            nnrt::rendering::RasterizeMesh(face_vertices, face_mask, image_size, 0.f, 1);
+    rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
+
+    auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
+                                    pixel_face_distances, o3u::nullopt);
+    return image;
+}
+
+
 std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
-        const Matrix3x2f& start_triangle,
-        const Matrix3x2f& reference_triangle,
+        const open3d::core::Tensor& source_triangle,
+        const open3d::core::Tensor& target_triangle,
         const open3d::core::Device& device
 ) {
-    CheckTriangleFitsNdc(start_triangle, this->ndc_bounds, "Start");
-    CheckTriangleFitsNdc(reference_triangle, this->ndc_bounds, "Reference");
+    auto source_triangle_eigen = core::kernel::TensorToEigenMatrix<core::kernel::Matrix3x2f>(source_triangle);
+    auto target_triangle_eigen = core::kernel::TensorToEigenMatrix<core::kernel::Matrix3x2f>(target_triangle);
+
+    CheckTriangleFitsNdc(source_triangle_eigen, this->ndc_bounds, "Start");
+    CheckTriangleFitsNdc(target_triangle_eigen, this->ndc_bounds, "Reference");
     const float depth = 5.0;
 
 
     std::vector<open3d::t::geometry::Image> iteration_shots;
 
-    o3tg::TriangleMesh reference_mesh = MeshFrom2dTriangle(reference_triangle, device, depth, ndc_intrinsics);
-    o3tg::TriangleMesh start_mesh = MeshFrom2dTriangle(start_triangle, device, depth, ndc_intrinsics);
 
+    o3tg::TriangleMesh source_mesh =
+            geometry::functional::MeshFrom2dTriangle(source_triangle, device, depth, ndc_intrinsics);
+    o3tg::TriangleMesh target_mesh =
+            geometry::functional::MeshFrom2dTriangle(target_triangle, device, depth, ndc_intrinsics);
 
-    auto [reference_ndc_face_vertices, reference_face_mask] =
-            nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(reference_mesh, intrinsics, image_size);
-    auto [reference_pixel_face_indices, reference_pixel_depths, reference_pixel_barycentric_coordinates, reference_pixel_face_distances] =
-            nnrt::rendering::RasterizeMesh(reference_ndc_face_vertices, reference_face_mask, image_size, 0.f, 1);
 
     const float background_factor = 2.0f;
     const float background_depth = background_factor * depth;
 
-    o3c::Tensor rendered_point_mask =
-            nnrt::core::functional::ReplaceValue(reference_pixel_depths, -1.f, background_depth);
 
-    iteration_shots.emplace_back(((reference_pixel_depths / (background_depth)) * 255).To(o3c::UInt8));
 
-    o3c::Tensor reference_3d_points, dummy;
-    geometry::functional::UnprojectDepthImageWithoutFiltering(
-            reference_3d_points, dummy, reference_pixel_depths, intrinsics,
-            o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.f, background_depth, true
-    );
-    o3tg::PointCloud reference_cloud(reference_3d_points.Reshape({-1, 3}));
 
     const int max_iteration_count = 10;
 
-    Matrix3x2f current_triangle = start_triangle;
+    o3c::Tensor current_triangle = source_triangle;
 
     for (int i_iteration; i_iteration < max_iteration_count; i_iteration++) {
-        o3tg::TriangleMesh mesh = MeshFrom2dTriangle(current_triangle, device, depth, ndc_intrinsics);
+        o3tg::TriangleMesh mesh = geometry::functional::MeshFrom2dTriangle(current_triangle, device, depth,
+                                                                           ndc_intrinsics);
         auto [ndc_face_vertices, face_mask] =
-                nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(mesh, intrinsics, image_size);
+                nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
         auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
                 nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 0.f, 1);
-        o3c::Tensor point_mask =
-                nnrt::core::functional::ReplaceValue(pixel_depths, -1.f, background_depth);
-        o3c::Tensor rendered_points;
-        geometry::functional::UnprojectDepthImageWithoutFiltering(
-                rendered_points, dummy, pixel_depths, intrinsics,
-                o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0")), 1.f, background_depth, true
-        );
-        o3c::Tensor rendered_normals =
-                nnrt::rendering::functional::InterpolateFaceAttributes(pixel_face_indices,
-                                                                       pixel_barycentric_coordinates,
-                                                                       mesh.GetVertexNormals());
-        o3tg::PointCloud rendered_cloud(rendered_points.Reshape({-1, 3}));
-        rendered_cloud.SetPointNormals(rendered_normals.Reshape({-1, 3}));
 
-        o3c::Tensor point_to_plane_distances =
-                geometry::functional::ComputePointToPlaneDistances(rendered_cloud, reference_cloud);
 
-//        o3c::Tensor jacobianT_jacobian = ComputeJacobianTJacobian();
+
 
     }
 

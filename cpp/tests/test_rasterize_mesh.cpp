@@ -63,7 +63,7 @@ void TestRasterizePlaneNaive_NoMaskExtraction(const o3c::Device& device) {
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 	o3c::SizeVector image_size{480, 640};
 
-	auto extracted_face_vertices = nnrt::rendering::MeshFaceVerticesToNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
+	auto extracted_face_vertices = nnrt::rendering::GetMeshFaceVerticesNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
 			nnrt::rendering::RasterizeMesh(extracted_face_vertices, utility::nullopt, image_size, 0.f, 1, 0, 0, false, false, true);
@@ -117,7 +117,7 @@ void TestRasterizePlane_MaskExtraction(const o3c::Device& device, bool naive = t
 	o3c::SizeVector image_size{480, 640};
 
 	auto [extracted_face_vertices, clipped_face_mask] =
-			nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
+            nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
 	int bin_size = -1;
 	int max_faces_per_bin = 4;
@@ -231,7 +231,7 @@ void TestRasterizeMesh(
 	o3c::Tensor extracted_face_vertices, clipped_face_mask;
 	for (int i_run = 0; i_run < run_count; i_run++){
 		auto [extracted_face_vertices_local, clipped_face_mask_local] =
-				nnrt::rendering::MeshFaceVerticesAndClipMaskToNdc(mesh, intrinsics, image_size, 0.0, 10.0);
+                nnrt::rendering::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size, 0.0, 10.0);
 		extracted_face_vertices = extracted_face_vertices_local;
 		clipped_face_mask = clipped_face_mask_local;
 	}

@@ -27,7 +27,7 @@ void MeshVerticesClippedToNdc(
 		const open3d::core::Tensor& vertex_positions_camera,
 		const open3d::core::Tensor& triangle_vertex_indices,
 		const open3d::core::Tensor& normalized_camera_space_matrix,
-		kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
+		geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
 		float near_clipping_distance,
 		float far_clipping_distance
 ) {
@@ -57,7 +57,7 @@ void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normali
                                   open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> normals_camera,
                                   const open3d::core::Tensor& triangle_vertex_indices,
                                   const open3d::core::Tensor& normalized_camera_space_matrix,
-                                  kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
+                                  geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
                                   float far_clipping_distance) {
 	core::ExecuteOnDevice(
 			vertex_positions_camera.GetDevice(),
