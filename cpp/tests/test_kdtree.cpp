@@ -21,6 +21,7 @@
 #include <open3d/core/Tensor.h>
 
 #include <Eigen/Dense>
+#include <numeric>
 
 using namespace nnrt;
 namespace o3c = open3d::core;
@@ -226,7 +227,7 @@ void SortFinalKNNHelper_Indices(std::vector<int32_t>& nn_i_sorted, std::vector<f
 	const int k = static_cast<int>(nearest_neighbor_indices.GetShape(1));
 	for (int i_query_point = 0; i_query_point < nearest_neighbor_indices.GetShape(0); i_query_point++) {
 		std::vector<int> idx(k);
-		iota(idx.begin(), idx.end(), 0);
+		std::iota(idx.begin(), idx.end(), 0);
 		const int offset = i_query_point * k;
 		stable_sort(idx.begin(), idx.end(),
 		            [&nn_d, &offset](int i1, int i2) {

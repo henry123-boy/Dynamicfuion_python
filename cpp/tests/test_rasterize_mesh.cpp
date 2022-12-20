@@ -134,6 +134,31 @@ TEST_CASE("Test Rasterize Plane Coarse-to-Fine - Mask Extraction  CUDA") {
 	TestRasterizePlane_MaskExtraction(device, false, false);
 }
 
+//__DEBUG
+void TestLoadMesh(const o3c::Device& device, const std::string& mesh_name, bool mesh_is_generated = true){
+    o3tg::TriangleMesh mesh;
+    std::string filename;
+
+	if (mesh_is_generated) {
+        filename = test::generated_mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply";
+	} else {
+		filename = test::mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply";
+	}
+    o3tio::ReadTriangleMesh(filename, mesh);
+    auto verts2 = mesh.GetVertexPositions().To(device);
+    mesh = mesh.To(device);
+}
+
+TEST_CASE("TestLoadMesh - Bunny Res 4 - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestLoadMesh(device, "mesh_bunny_res4", true);
+}
+
+TEST_CASE("TestLoadMesh - Bunny Res 4 - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestLoadMesh(device, "mesh_bunny_res4", true);
+}
+
 void TestRasterizeMesh(
 		const o3c::Device& device, const std::string& mesh_name,
 		const std::tuple<float, float, float>& offset = std::make_tuple(0.f, 0.f, 1.f),
@@ -145,6 +170,9 @@ void TestRasterizeMesh(
 
 	if (mesh_is_generated) {
 		o3tio::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply", mesh);
+        //__DEBUG
+        auto ti = mesh.GetTriangleIndices();
+        auto shape = ti.GetShape();
 		mesh = mesh.To(device);
 	} else {
 		o3tio::ReadTriangleMesh(test::mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply", mesh);
@@ -175,8 +203,9 @@ void TestRasterizeMesh(
 		run_count = 10;
 	}
 
-	auto start = std::chrono::high_resolution_clock::now();
+
 	o3c::Tensor extracted_face_vertices, clipped_face_mask;
+    auto start = std::chrono::high_resolution_clock::now();
 	for (int i_run = 0; i_run < run_count; i_run++){
 		auto [extracted_face_vertices_local, clipped_face_mask_local] =
                 nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size, 0.0, 10.0);
@@ -196,9 +225,9 @@ void TestRasterizeMesh(
 	if (naive) {
 		bin_size = max_faces_per_bin = 0;
 	}
-	start = std::chrono::high_resolution_clock::now();
 	o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
-	if (print_benchmark) {
+    start = std::chrono::high_resolution_clock::now();
+	for (int i_run = 0; i_run < run_count; i_run++){
 		auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
 				nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
 				                               bin_size, max_faces_per_bin, false, false, true);

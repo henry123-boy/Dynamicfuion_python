@@ -350,80 +350,80 @@ void VoxelBlockGrid::Integrate(const o3c::Tensor& block_coords,
 			voxel_size_ * trunc_voxel_multiplier, depth_scale, depth_max);
 }
 
-o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor& block_coords,
-                                        const o3c::Tensor& intrinsic,
-                                        const o3c::Tensor& extrinsic,
-                                        int width,
-                                        int height,
-                                        const std::vector<std::string> attrs,
-                                        float depth_scale,
-                                        float depth_min,
-                                        float depth_max,
-                                        float weight_threshold,
-                                        float trunc_voxel_multiplier,
-                                        int range_map_down_factor) {
-	AssertInitialized();
-	o3tg::CheckBlockCoorinates(block_coords);
-	o3tg::CheckIntrinsicTensor(intrinsic);
-	o3tg::CheckExtrinsicTensor(extrinsic);
+o3tg::TensorMap VoxelBlockGrid::RayCast(const o3c::Tensor &block_coords,
+                                  const o3c::Tensor &intrinsic,
+                                  const o3c::Tensor &extrinsic,
+                                  int width,
+                                  int height,
+                                  const std::vector<std::string> attrs,
+                                  float depth_scale,
+                                  float depth_min,
+                                  float depth_max,
+                                  float weight_threshold,
+                                  float trunc_voxel_multiplier,
+                                  int range_map_down_factor) {
+    AssertInitialized();
+    o3tg::CheckBlockCoorinates(block_coords);
+    o3tg::CheckIntrinsicTensor(intrinsic);
+    o3tg::CheckExtrinsicTensor(extrinsic);
 
-	// Extrinsic: world to camera -> pose: camera to world
-	o3c::Device device = block_hashmap_->GetDevice();
+    // Extrinsic: world to camera -> pose: camera to world
+    o3c::Device device = block_hashmap_->GetDevice();
 
-	o3c::Tensor range_minmax_map;
-	o3tg::kernel::voxel_grid::EstimateRange(block_coords, range_minmax_map, intrinsic,
-	                                        extrinsic, height, width,
-	                                        range_map_down_factor, block_resolution_,
-	                                        voxel_size_, depth_min, depth_max);
+    o3c::Tensor range_minmax_map;
+    o3tg::kernel::voxel_grid::EstimateRange(
+            block_coords, range_minmax_map, intrinsic, extrinsic, height, width,
+            range_map_down_factor, block_resolution_, voxel_size_, depth_min,
+            depth_max, fragment_buffer_);
 
-	static const std::unordered_map<std::string, int> kAttrChannelMap = {
-			// Conventional rendering
-			{"vertex",          3},
-			{"normal",          3},
-			{"depth",           1},
-			{"color",           3},
-			// Diff rendering
-			// Each pixel corresponds to info at 8 neighbor grid points
-			{"index",           8},
-			{"mask",            8},
-			{"interp_ratio",    8},
-			{"interp_ratio_dx", 8},
-			{"interp_ratio_dy", 8},
-			{"interp_ratio_dz", 8}};
+    static const std::unordered_map<std::string, int> kAttrChannelMap = {
+            // Conventional rendering
+            {"vertex", 3},
+            {"normal", 3},
+            {"depth", 1},
+            {"color", 3},
+            // Diff rendering
+            // Each pixel corresponds to info at 8 neighbor grid points
+            {"index", 8},
+            {"mask", 8},
+            {"interp_ratio", 8},
+            {"interp_ratio_dx", 8},
+            {"interp_ratio_dy", 8},
+            {"interp_ratio_dz", 8}};
 
-	auto get_dtype = [&](const std::string& attr_name) -> o3c::Dtype {
-		if (attr_name == "mask") {
-			return o3c::Dtype::Bool;
-		} else if (attr_name == "index") {
-			return o3c::Dtype::Int64;
-		} else {
-			return o3c::Dtype::Float32;
-		}
-	};
+    auto get_dtype = [&](const std::string &attr_name) -> o3c::Dtype {
+        if (attr_name == "mask") {
+            return o3c::Dtype::Bool;
+        } else if (attr_name == "index") {
+            return o3c::Dtype::Int64;
+        } else {
+            return o3c::Dtype::Float32;
+        }
+    };
 
-	o3tg::TensorMap renderings_map("range");
-	renderings_map["range"] = range_minmax_map;
-	for (const auto& attr: attrs) {
-		if (kAttrChannelMap.count(attr) == 0) {
-			utility::LogError(
-					"Unsupported attribute {}, please implement customized ray "
-					"casting.");
-		}
-		int channel = kAttrChannelMap.at(attr);
-		o3c::Dtype dtype = get_dtype(attr);
-		renderings_map[attr] =
-				o3c::Tensor({height, width, channel}, dtype, device);
-	}
+    o3tg::TensorMap renderings_map("range");
+    renderings_map["range"] = range_minmax_map;
+    for (const auto &attr : attrs) {
+        if (kAttrChannelMap.count(attr) == 0) {
+            utility::LogError(
+                    "Unsupported attribute {}, please implement customized ray "
+                    "casting.");
+        }
+        int channel = kAttrChannelMap.at(attr);
+        o3c::Dtype dtype = get_dtype(attr);
+        renderings_map[attr] =
+                o3c::Tensor({height, width, channel}, dtype, device);
+    }
 
-	o3tg::TensorMap block_value_map =
-			ConstructTensorMap(*block_hashmap_, name_attr_map_);
-	o3tg::kernel::voxel_grid::RayCast(
-			block_hashmap_, block_value_map, range_minmax_map, renderings_map,
-			intrinsic, extrinsic, height, width, block_resolution_, voxel_size_,
-			depth_scale, depth_min, depth_max, weight_threshold,
-			trunc_voxel_multiplier, range_map_down_factor);
+    o3tg::TensorMap block_value_map =
+            ConstructTensorMap(*block_hashmap_, name_attr_map_);
+    o3tg::kernel::voxel_grid::RayCast(
+            block_hashmap_, block_value_map, range_minmax_map, renderings_map,
+            intrinsic, extrinsic, height, width, block_resolution_, voxel_size_,
+            depth_scale, depth_min, depth_max, weight_threshold,
+            trunc_voxel_multiplier, range_map_down_factor);
 
-	return renderings_map;
+    return renderings_map;
 }
 
 o3tg::PointCloud VoxelBlockGrid::ExtractPointCloud(float weight_threshold,

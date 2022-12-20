@@ -278,6 +278,8 @@ protected:
 	// Map: attribute name -> index to access the attribute in SoA.
 	std::unordered_map<std::string, int> name_attr_map_;
 
+    // Allocated fragment buffer for reuse in depth estimation
+    open3d::core::Tensor fragment_buffer_;
 };
 }  // namespace nnrt::geometry
 

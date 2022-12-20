@@ -16,7 +16,7 @@
 #pragma once
 
 // 3rd party
-#include "../../../../../Open3D/Open3D0151/install/include/open3d/core/Device.h"
+#include <open3d/core/Device.h>
 
 // local
 #include "../../../core/PlatformIndependentQualifiers.h"

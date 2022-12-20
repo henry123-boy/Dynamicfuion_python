@@ -15,8 +15,8 @@
 //  ================================================================
 #pragma once
 
-#include "../../../../Open3D/Open3D0151/install/include/open3d/core/Tensor.h"
-#include "../../../../Open3D/Open3D0151/install/include/open3d/core/hashmap/HashMap.h"
+#include <open3d/core/Tensor.h>
+#include <open3d/core/hashmap/HashMap.h>
 
 namespace nnrt::geometry {
 

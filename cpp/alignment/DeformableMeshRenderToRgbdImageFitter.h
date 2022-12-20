@@ -17,9 +17,9 @@
 
 
 // 3rd party
-#include "../../../Open3D/Open3D0151/install/include/open3d/core/Tensor.h"
-#include "../../../Open3D/Open3D0151/install/include/open3d/t/geometry/TriangleMesh.h"
-#include "../../../Open3D/Open3D0151/install/include/open3d/t/geometry/RGBDImage.h"
+#include <open3d/core/Tensor.h>
+#include <open3d/t/geometry/TriangleMesh.h>
+#include <open3d/t/geometry/RGBDImage.h>
 
 // local
 #include "../geometry/GraphWarpField.h"

@@ -15,8 +15,8 @@
 //  ================================================================
 #pragma once
 
-#include "../../../../../Open3D/Open3D0151/install/include/open3d/t/geometry/kernel/GeometryIndexer.h"
-#include "../../../../3rd-party/Eigen/Eigen/Core"
+#include <open3d/t/geometry/kernel/GeometryIndexer.h>
+#include <Eigen/Core>
 
 namespace o3c = open3d::core;
 using namespace open3d::t::geometry::kernel;
