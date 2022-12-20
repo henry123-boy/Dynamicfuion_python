@@ -22,13 +22,12 @@
 #include <Eigen/Dense>
 
 // local includes
+#include "core/GetDType.h"
 
 namespace utility = open3d::utility;
 
 namespace nnrt::core {
 
-template<typename TCoefficientType>
-open3d::core::Dtype GetDType();
 
 
 

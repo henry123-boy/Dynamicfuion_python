@@ -13,8 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// 3rd-party
+#include <open3d/core/Dispatch.h>
+// local
 #include "core/TensorManipulationRoutines.h"
 #include "core/linalg/Matmul3D.h"
+#include "core/GetDType.h"
 
 namespace utility = open3d::utility;
 namespace o3c = open3d::core;
@@ -56,4 +60,22 @@ namespace nnrt::core{
 		return output;
 
 	}
+
+template<typename TElement>
+open3d::core::Tensor SingleValueTensor(TElement element, const open3d::core::Device& device) {
+    return o3c::Tensor(std::vector<TElement>({element}), {1}, GetDType<TElement>(), device);
+}
+
+template open3d::core::Tensor SingleValueTensor<double>(double element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<float>(float element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<int8_t>(int8_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<int16_t>(int16_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<int32_t>(int32_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<int64_t>(int64_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<uint8_t>(uint8_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<uint16_t>(uint16_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<uint32_t>(uint32_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<uint64_t>(uint64_t element, const open3d::core::Device& device);
+template open3d::core::Tensor SingleValueTensor<bool>(bool element, const open3d::core::Device& device);
+
 }
