@@ -14,50 +14,40 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+
 #include <open3d/core/Tensor.h>
 #include "geometry/kernel/AxisAlignedBoundingBox.h"
 
 namespace nnrt::rendering::functional::kernel {
 using t_image_index = int32_t;
 
-void MeshVerticesClippedToNdc(
-		open3d::core::Tensor& vertex_positions_normalized_camera,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
-		geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
+void MeshDataAndClippingMaskToNdc(
+        open3d::core::Tensor& vertex_positions_normalized_camera,
+        open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
+        open3d::core::Tensor& clipped_face_mask,
+        open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_counts,
+        const std::vector<open3d::core::Tensor>& vertex_positions_camera,
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::core::Tensor>>> vertex_normals_camera,
+        const std::vector<open3d::core::Tensor>& triangle_vertex_indices,
+        const open3d::core::Tensor& ndc_intrinsics,
+        geometry::kernel::AxisAligned2dBoundingBox ndc_xy_range,
+        float near_clipping_distance,
+        float far_clipping_distance
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void MeshVerticesClippedToNdc(
-		open3d::core::Tensor& vertex_positions_normalized_camera,
-		const open3d::core::Tensor& vertex_positions_camera,
-		const open3d::core::Tensor& triangle_vertex_indices,
-		const open3d::core::Tensor& normalized_camera_space_matrix,
-		geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range,
-		float near_clipping_distance,
-		float far_clipping_distance
+void MeshDataAndClippingMaskToNdc(
+        open3d::core::Tensor& vertex_positions_normalized_camera,
+        open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
+        open3d::core::Tensor& clipped_face_mask,
+        open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_counts,
+        const std::vector<open3d::core::Tensor>& vertex_positions_camera,
+        open3d::utility::optional<std::reference_wrapper<const std::vector<open3d::core::Tensor>>> vertex_normals_camera,
+        const std::vector<open3d::core::Tensor>& triangle_vertex_indices,
+        const open3d::core::Tensor& ndc_intrinsics,
+        geometry::kernel::AxisAligned2dBoundingBox ndc_xy_range,
+        float near_clipping_distance,
+        float far_clipping_distance
 );
-
-void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normalized_camera,
-                                  open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
-                                  open3d::core::Tensor& clipped_face_mask, const open3d::core::Tensor& vertex_positions_camera,
-                                  open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
-                                  const open3d::core::Tensor& triangle_vertex_indices,
-                                  const open3d::core::Tensor& normalized_camera_space_matrix,
-                                  geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
-                                  float far_clipping_distance);
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void MeshDataAndClippingMaskToNdc(open3d::core::Tensor& vertex_positions_normalized_camera,
-                                  open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> face_vertex_normals_camera,
-                                  open3d::core::Tensor& clipped_face_mask, const open3d::core::Tensor& vertex_positions_camera,
-                                  open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals_camera,
-                                  const open3d::core::Tensor& triangle_vertex_indices,
-                                  const open3d::core::Tensor& normalized_camera_space_matrix,
-                                  geometry::kernel::AxisAligned2dBoundingBox normalized_camera_space_xy_range, float near_clipping_distance,
-                                  float far_clipping_distance);
 
 } // namespace nnrt::rendering::functional::kernel

@@ -30,8 +30,6 @@ namespace o3c = open3d::core;
 namespace o3g = open3d::geometry;
 namespace o3tg = open3d::t::geometry;
 
-typedef Eigen::Matrix<float, 3, 3, Eigen::RowMajor> VertexMat;
-
 void TestExtractFaceVertices(const o3c::Device& device) {
 	auto plane = test::GenerateXyPlane(1.2615, std::make_tuple(0.f, 0.f, 1.f), 4, device);
 	o3c::Tensor intrinsics(std::vector<double>{
@@ -40,9 +38,14 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 			0., 0., 1.,
 	}, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
 
-	auto extracted_face_vertices = nnrt::rendering::functional::GetMeshFaceVerticesNdc(plane, intrinsics, {480, 640}, 0.0, 2.0);
+	auto [extracted_face_vertices, clipped_face_mask] =
+            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(plane, intrinsics, {480, 640}, 0.0, 2.0);
 
-	REQUIRE(extracted_face_vertices.GetLength() == 334);
+	REQUIRE(clipped_face_mask.NonZero().GetShape(1) == 334);
+
+    //__DEBUG
+    std::cout << extracted_face_vertices.ToString() << std::endl;
+    std::cout << clipped_face_mask.ToString() << std::endl;
 
 	auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
 			test::array_test_data_directory.ToString() + "/extracted_face_vertices.npy").To(device);
@@ -59,6 +62,10 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 			auto face_vertices_ground_truth = extracted_face_vertices_ground_truth[i_ground_truth_face];
 			found = face_vertices_normalized_camera.AllClose(face_vertices_ground_truth, 1e-5, 1e-7);
 		}
+        //__DEBUG
+        if(!found){
+            std::cout << face_vertices_normalized_camera.ToString() << std::endl << i_extracted_face << std::endl;
+        }
 		REQUIRE(found);
 	}
 }
