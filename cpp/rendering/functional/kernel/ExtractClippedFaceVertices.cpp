@@ -41,7 +41,8 @@ void MeshDataAndClippingMaskToNdc(
                 MeshDataAndClippingMaskToNdc<o3c::Device::DeviceType::CPU>(
                         vertex_positions_normalized_camera,
                         face_vertex_normals_camera,
-                        clipped_face_mask, face_counts,
+                        clipped_face_mask,
+                        face_counts,
                         vertex_positions_camera,
                         vertex_normals_camera,
                         triangle_vertex_indices,

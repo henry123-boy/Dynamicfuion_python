@@ -225,7 +225,7 @@ void MeshDataAndClippingMaskToNdc(
     o3c::Device device = vertex_positions_camera[0].GetDevice();
     auto [face_counts_, total_face_count] = GetFaceCountHeuristics(triangle_vertex_indices);
     if (face_counts.has_value()) {
-        face_counts.value() = face_counts_;
+        face_counts.value().get() = face_counts_;
     }
 
     if (face_vertex_normals_camera.has_value() != vertex_normals_camera.has_value()) {

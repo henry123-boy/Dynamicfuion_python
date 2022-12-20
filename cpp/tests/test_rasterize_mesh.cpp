@@ -377,7 +377,7 @@ void TestRasterizeMultipleMeshes(
         int maximum_close_face_mismatches_not_sharing_2_vertices = 0, bool naive = false,
         bool save_output_to_disk = false, bool print_benchmark = false
 ) {
-    o3tg::TriangleMesh mesh1, mesh2;
+    o3tg::TriangleMesh mesh1_bl, mesh2_br;
     std::string mesh1_path, mesh2_path;
 
     if (meshes_were_generated) {
@@ -388,41 +388,66 @@ void TestRasterizeMultipleMeshes(
         mesh2_path = test::mesh_test_data_directory.ToString() + "/" + mesh2_name + ".ply";
     }
 
-    o3tio::ReadTriangleMesh(mesh1_path, mesh1);
-    mesh1 = mesh1.To(device);
-    o3tio::ReadTriangleMesh(mesh2_path, mesh2);
-    mesh2 = mesh2.To(device);
+    o3tio::ReadTriangleMesh(mesh1_path, mesh1_bl);
+    mesh1_bl = mesh1_bl.To(device);
+    o3tio::ReadTriangleMesh(mesh2_path, mesh2_br);
+    mesh2_br = mesh2_br.To(device);
 
-    test::SetMeshColorGreyscaleValue(mesh1, color_value);
-    test::SetMeshColorGreyscaleValue(mesh2, color_value);
+    test::SetMeshColorGreyscaleValue(mesh1_bl, color_value);
+    test::SetMeshColorGreyscaleValue(mesh2_br, color_value);
 
-    auto mesh1_min_bound = mesh1.GetMinBound();
-    auto mesh1_max_bound = mesh1.GetMaxBound();
-    auto mesh2_min_bound = mesh2.GetMinBound();
-    auto mesh2_max_bound = mesh2.GetMaxBound();
+    auto mesh1_min_bound = mesh1_bl.GetMinBound();
+    auto mesh1_max_bound = mesh1_bl.GetMaxBound();
+    auto mesh2_min_bound = mesh2_br.GetMinBound();
+    auto mesh2_max_bound = mesh2_br.GetMaxBound();
     auto mesh1_extent = mesh1_max_bound - mesh1_min_bound;
     auto mesh2_extent = mesh2_max_bound - mesh2_min_bound;
     const float spacing_ratio = 0.2f;
     auto extent_maximums = (mesh1_extent.Reshape({1, -1}).Append(mesh2_extent.Reshape({1, -1}), 0)).Max({0});
     auto spacing = extent_maximums * spacing_ratio;
 
-    auto mesh1_center = mesh1_min_bound + mesh1_extent / 2.f;
-    auto mesh2_center = mesh2_min_bound + mesh2_extent / 2.f;
+//    auto mesh1_extent_center = mesh1_min_bound + mesh1_extent / 2.f;
+//    auto mesh2_extent_center = mesh2_min_bound + mesh2_extent / 2.f;
 
     auto total_extent = spacing + mesh1_extent + mesh2_extent;
     auto scene_min_bound = -1.f * (total_extent / 2.f);
     auto scene_max_bound = total_extent / 2.f;
 
-    std::cout << nnrt::core::At<float>(scene_max_bound, 0) << std::endl;
+    float x_min_bound = nnrt::core::At<float>(scene_min_bound, 0);
+    float y_min_bound = nnrt::core::At<float>(scene_min_bound, 1);
+    float mesh1_min_x = nnrt::core::At<float>(mesh1_min_bound, 0);
+    float mesh1_min_y = nnrt::core::At<float>(mesh1_min_bound, 1);
+    float mesh2_min_x = nnrt::core::At<float>(mesh2_min_bound, 0);
+    float mesh2_min_y = nnrt::core::At<float>(mesh2_min_bound, 1);
+    float mesh1_extent_x = nnrt::core::At<float>(mesh1_extent, 0);
+    float mesh1_extent_y = nnrt::core::At<float>(mesh1_extent, 1);
+    float mesh2_extent_x = nnrt::core::At<float>(mesh2_extent, 0);
+    float mesh2_extent_y = nnrt::core::At<float>(mesh2_extent, 1);
+    float mesh1_x_offset = x_min_bound - mesh1_min_x;
+    float mesh1_y_offset = y_min_bound - mesh1_min_y;
+    float mesh2_x_offset = x_min_bound - mesh2_min_x;
+    float mesh2_y_offset = y_min_bound - mesh2_min_y;
 
-    auto mesh1_copy = mesh1.Clone();
-    auto mesh2_copy = mesh2.Clone();
+    float spacing_x = nnrt::core::At<float>(spacing, 0);
+    float spacing_y = nnrt::core::At<float>(spacing, 1);
+
+    const float z_offset = 0.3f;
 
 
+    test::OffsetMesh(mesh1_bl, std::make_tuple(mesh1_x_offset, mesh1_y_offset, z_offset));
+    test::OffsetMesh(mesh2_br, std::make_tuple(mesh1_x_offset + mesh1_extent_x + spacing_x - mesh2_min_x,
+                                               mesh2_y_offset,
+                                               z_offset));
 
+    auto mesh1_ur = mesh1_bl.Clone();
+    auto mesh2_ul = mesh2_br.Clone();
 
-
-
+    test::OffsetMesh(mesh2_ul, std::make_tuple(mesh2_x_offset,
+                                               mesh1_y_offset + mesh1_extent_y + spacing_y - mesh2_min_y,
+                                               z_offset));
+    test::OffsetMesh(mesh2_ul, std::make_tuple(mesh2_x_offset + mesh2_extent_x + spacing_x - mesh1_min_x,
+                                               mesh2_y_offset + mesh2_extent_y + spacing_y - mesh1_min_x,
+                                               z_offset));
 
     o3c::Tensor intrinsics(std::vector<double>{
             580., 0., 320.,
@@ -430,6 +455,28 @@ void TestRasterizeMultipleMeshes(
             0., 0., 1.,
     }, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
     o3c::SizeVector image_size{480, 640};
+
+    int run_count = 1;
+    if (print_benchmark) {
+        run_count = 10;
+    }
+
+    o3c::Tensor extracted_face_vertices, clipped_face_mask, face_counts;
+    auto start = std::chrono::high_resolution_clock::now();
+    for (int i_run = 0; i_run < run_count; i_run++) {
+        auto [extracted_face_vertices_local, clipped_face_mask_local, face_counts_local] =
+                nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask({mesh1_bl, mesh2_br, mesh2_ul, mesh1_ur}, intrinsics, image_size, 0.0, 10.0);
+        extracted_face_vertices = extracted_face_vertices_local;
+        clipped_face_mask = clipped_face_mask_local;
+        face_counts = face_counts_local;
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    if (print_benchmark) {
+        std::cout << "Average runtime of face vertex extraction & clip mask generation: " << std::setprecision(4)
+                  << (elapsed.count() * 1e-9) / run_count
+                  << " seconds" << std::endl;
+    }
 }
 
 TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4 - CPU") {
