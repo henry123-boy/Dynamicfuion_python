@@ -93,4 +93,20 @@ open3d::t::geometry::TriangleMesh GenerateSphere(
     return mesh;
 }
 
+void SetMeshColorGreyscaleValue(open3d::t::geometry::TriangleMesh& mesh, float greyscale_value){
+    auto vertex_count = mesh.GetVertexPositions().GetLength();
+	mesh.SetVertexColors(o3c::Tensor::Full({vertex_count, 3}, greyscale_value, o3c::Float32, mesh.GetDevice()));
+}
+
+void OffsetMesh(open3d::t::geometry::TriangleMesh& mesh, const std::tuple<float, float, float>& offset){
+	mesh.SetVertexPositions(mesh.GetVertexPositions() +
+	                        o3c::Tensor(std::vector<float>{
+			                                    std::get<0>(offset),
+			                                    std::get<1>(offset),
+			                                    std::get<2>(offset),
+	                                    },
+	                                    {3}, o3c::Float32, mesh.GetDevice())
+	);
+}
+
 } // namespace test

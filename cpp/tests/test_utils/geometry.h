@@ -31,5 +31,9 @@ open3d::t::geometry::TriangleMesh GenerateSphere(
         const open3d::core::Device& device
 );
 
+void SetMeshColorGreyscaleValue(open3d::t::geometry::TriangleMesh& mesh, float greyscale_value);
+
+void OffsetMesh(open3d::t::geometry::TriangleMesh& mesh, const std::tuple<float, float, float>& offset);
+
 
 } // namespace test
