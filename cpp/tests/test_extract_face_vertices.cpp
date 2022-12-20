@@ -44,10 +44,11 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 
     REQUIRE(clipped_face_mask.NonZero().GetShape(1) == 334);
 
+    // test data generated via Python
     auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
             test::array_test_data_directory.ToString() + "/extracted_face_vertices.npy").To(device);
     auto clipped_face_mask_ground_truth = open3d::core::Tensor::Load(
-            test::array_test_data_directory.ToString() + "/extracted_face_vertex_mask.npy").To(device);
+            test::array_test_data_directory.ToString() + "/extracted_face_mask.npy").To(device);
 
 
     extracted_face_vertices.SetItem(o3c::TensorKey::IndexTensor(clipped_face_mask.LogicalNot()),
@@ -55,7 +56,6 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 
     REQUIRE(clipped_face_mask.AllClose(clipped_face_mask_ground_truth));
     REQUIRE(extracted_face_vertices.AllClose(extracted_face_vertices_ground_truth));
-
 }
 
 TEST_CASE("Test Extract Face Vertices - CPU") {
@@ -66,4 +66,43 @@ TEST_CASE("Test Extract Face Vertices - CPU") {
 TEST_CASE("Test Extract Face Vertices - CUDA") {
     auto device = o3c::Device("CUDA:0");
     TestExtractFaceVertices(device);
+}
+
+void TestExtractFaceVerticesMultipleMeshes(const o3c::Device& device) {
+    auto plane = test::GenerateXyPlane(1.2615, std::make_tuple(0.f, 0.f, 1.f), 4, device);
+    o3c::Tensor intrinsics(std::vector<double>{
+            580., 0., 320.,
+            0., 580., 240.,
+            0., 0., 1.,
+    }, {3, 3}, o3c::Float64, o3c::Device("CPU:0"));
+
+    auto sphere = test::GenerateSphere(0.4, std::make_tuple(0.f, 0.f, 0.5f), 32, device);
+
+    auto [extracted_face_vertices, clipped_face_mask, face_counts] =
+            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask({plane, sphere}, intrinsics, {480, 640}, 0.0, 2.0);
+
+    REQUIRE(clipped_face_mask.NonZero().GetShape(1) == 1994);
+
+    // test data generated via Python
+    auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
+            test::array_test_data_directory.ToString() + "/extracted_face_vertices_multiple_meshes.npy").To(device);
+    auto clipped_face_mask_ground_truth = open3d::core::Tensor::Load(
+            test::array_test_data_directory.ToString() + "/extracted_face_mask_multiple_meshes.npy").To(device);
+
+
+    extracted_face_vertices.SetItem(o3c::TensorKey::IndexTensor(clipped_face_mask.LogicalNot()),
+                                    nnrt::core::SingleValueTensor(0.f, device));
+
+    REQUIRE(clipped_face_mask.AllClose(clipped_face_mask_ground_truth));
+    REQUIRE(extracted_face_vertices.Slice(0, 0, 334).AllClose(extracted_face_vertices_ground_truth.Slice(0, 0, 334)));
+}
+
+TEST_CASE("Test Extract Face Vertices Multiple Meshes - CPU") {
+    auto device = o3c::Device("CPU:0");
+    TestExtractFaceVerticesMultipleMeshes(device);
+}
+
+TEST_CASE("Test Extract Face Vertices Multiple Meshes - CUDA") {
+    auto device = o3c::Device("CUDA:0");
+    TestExtractFaceVerticesMultipleMeshes(device);
 }

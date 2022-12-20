@@ -19,8 +19,17 @@
 
 namespace test {
 
-open3d::t::geometry::TriangleMesh GenerateXyPlane(float plane_side_length, const std::tuple<float, float, float>& plane_center_position,
-												  int subdivision_count, const open3d::core::Device& device);
+open3d::t::geometry::TriangleMesh GenerateXyPlane(
+        float plane_side_length, const std::tuple<float, float, float>& plane_center_position,
+        int subdivision_count, const open3d::core::Device& device
+);
+
+open3d::t::geometry::TriangleMesh GenerateSphere(
+        float radius,
+        const std::tuple<float, float, float>& center,
+        int resolution,
+        const open3d::core::Device& device
+);
 
 
 } // namespace test
