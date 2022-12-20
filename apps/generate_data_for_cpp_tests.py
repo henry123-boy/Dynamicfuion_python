@@ -337,7 +337,7 @@ def main():
     device_o3d = o3c.Device("CUDA:0")
 
     mesh_data_set = MeshDataPreset.M64_BUNNY_ARRAY
-    mode = Mode.GENERATE_NORMALS
+    mode = Mode.SHADE_LOADED
     naive_rasterization = False
 
     get_mesh_by_data_set = {

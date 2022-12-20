@@ -477,9 +477,46 @@ void TestRasterizeMultipleMeshes(
                   << (elapsed.count() * 1e-9) / run_count
                   << " seconds" << std::endl;
     }
+
+    int bin_size = -1;
+    int max_faces_per_bin = -1;
+    if (naive) {
+        bin_size = max_faces_per_bin = 0;
+    }
+    o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
+    start = std::chrono::high_resolution_clock::now();
+    for (int i_run = 0; i_run < run_count; i_run++) {
+        auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
+                nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+                                               bin_size, max_faces_per_bin, false, false, true);
+        pixel_face_indices = pixel_face_indices_local;
+        pixel_depths = pixel_depths_local;
+        pixel_barycentric_coordinates = pixel_barycentric_coordinates_local;
+        pixel_face_distances = pixel_face_distances_local;
+    }
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    if (print_benchmark) {
+        std::cout << "Average runtime of mesh rasterization: " << std::setprecision(4)
+                  << (elapsed.count() * 1e-9) / run_count << " seconds" << std::endl;
+    }
+
+    if (save_output_to_disk) {
+        pixel_face_indices.Save(
+                test::generated_array_test_data_directory.ToString()
+                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_indices.npy");
+        pixel_depths.Save(
+                test::generated_array_test_data_directory.ToString()
+                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_depths.npy");
+        pixel_barycentric_coordinates.Save(
+                test::generated_array_test_data_directory.ToString()
+                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_barycentric_coordinates.npy");
+        pixel_face_distances.Save(test::generated_array_test_data_directory.ToString()
+                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_distances.npy");
+    }
 }
 
 TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4 - CPU") {
     auto device = o3c::Device("CPU:0");
-    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4", 1.0, true, 40, 20, false, false, false);
+    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4", 1.0, true, 40, 20, false, true, false);
 }
