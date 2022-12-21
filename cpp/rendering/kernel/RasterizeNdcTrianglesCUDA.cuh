@@ -20,7 +20,7 @@
 #include <open3d/core/CUDAUtils.h>
 
 // local
-#include "rendering/kernel/RasterizeMeshImpl.h"
+#include "rendering/kernel/RasterizeNdcTrianglesImpl.h"
 #include "rendering/kernel/GridBitMask.cuh"
 
 namespace nnrt::rendering::kernel {

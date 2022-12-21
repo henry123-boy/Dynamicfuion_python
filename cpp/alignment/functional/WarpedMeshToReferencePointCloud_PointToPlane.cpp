@@ -23,7 +23,7 @@
 #include "core/functional/Masking.h"
 #include "geometry/GraphWarpField.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 #include "WarpedMeshToReferencePointCloud_PointToPlane.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 
@@ -48,7 +48,8 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 	auto [extracted_face_vertices, clipped_face_mask] =
             rendering::functional::GetMeshNdcFaceVerticesAndClipMask(warped_mesh, intrinsics, image_size);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-			rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true, false, true);
+            rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0, 1, -1, -1, true,
+                                             false, true);
 	auto vertex_normals = warped_mesh.GetVertexNormals();
 	auto triangle_indices = warped_mesh.GetTriangleIndices();
 	auto face_vertex_normals = vertex_normals.GetItem(o3c::TensorKey::IndexTensor(triangle_indices));

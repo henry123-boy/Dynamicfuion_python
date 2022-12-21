@@ -21,7 +21,7 @@
 
 // local
 #include "alignment/NdcTriangleFitter.h"
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/functional/InterpolateFaceAttributes.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "geometry/functional/PerspectiveProjection.h"
@@ -75,7 +75,7 @@ o3tg::Image RenderMeshLines(
     auto [face_vertices, face_mask] =
             nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(target_mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-            nnrt::rendering::RasterizeMesh(face_vertices, face_mask, image_size, 0.f, 1);
+            nnrt::rendering::RasterizeNdcTriangles(face_vertices, face_mask, image_size, 0.f, 1);
     rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
 
     auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
@@ -119,7 +119,7 @@ std::vector<open3d::t::geometry::Image> NdcTriangleFitter::FitTriangles(
         auto [ndc_face_vertices, face_mask] =
                 nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
         auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-                nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 0.f, 1);
+                nnrt::rendering::RasterizeNdcTriangles(ndc_face_vertices, face_mask, image_size, 0.f, 1);
 
 
 

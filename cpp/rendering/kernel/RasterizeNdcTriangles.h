@@ -32,7 +32,7 @@ struct Fragments {
 
 using t_image_index = int32_t;
 
-void RasterizeMeshNaive(
+void RasterizeNdcTriangles_BruteForce(
         Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int faces_per_pixel,
@@ -40,7 +40,7 @@ void RasterizeMeshNaive(
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshNaive(
+void RasterizeNdcTriangles_BruteForce(
         Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int faces_per_pixel,
@@ -48,27 +48,27 @@ void RasterizeMeshNaive(
 );
 
 
-void RasterizeMeshFine(
+void RasterizeNdcTriangles_GridBinned(
         Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc, const open3d::core::Tensor& bin_faces,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_side_length, int faces_per_pixel,
         bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizeMeshFine(
+void RasterizeNdcTriangles_GridBinned(
         Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc, const open3d::core::Tensor& bin_faces,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_side_length, int faces_per_pixel,
         bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
 );
 
-void GridBinFaces(
+void GridBinNdcTriangles(
         open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_size, int max_faces_per_bin
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GridBinFaces(
+void GridBinNdcTriangles(
         open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_size, int max_faces_per_bin

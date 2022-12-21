@@ -13,13 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "rendering/kernel/RasterizeMeshImpl.h"
-#include "rendering/kernel/RasterizeMeshImplCPU.h"
+#include "rendering/kernel/RasterizeNdcTrianglesImpl.h"
+#include "rendering/kernel/RasterizeNdcTrianglesCUDA.cuh"
 
 namespace nnrt::rendering::kernel {
 
-
-template void RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(
+template void RasterizeNdcTriangles_BruteForce<open3d::core::Device::DeviceType::CUDA>(
         Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size,
@@ -28,13 +27,17 @@ template void RasterizeMeshNaive<open3d::core::Device::DeviceType::CPU>(
         bool cull_back_faces
 );
 
-template void RasterizeMeshFine<open3d::core::Device::DeviceType::CPU>(
-        Fragments& fragments, const open3d::core::Tensor& face_vertices_ndc, const open3d::core::Tensor& bin_faces,
-        const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_side_length, int faces_per_pixel,
-        bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates, bool cull_back_faces
+template void RasterizeNdcTriangles_GridBinned<open3d::core::Device::DeviceType::CUDA>(
+        Fragments& fragments,
+        const open3d::core::Tensor& face_vertices_ndc,
+        const open3d::core::Tensor& bin_faces,
+        const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_side_length,
+        int faces_per_pixel,
+        bool perspective_correct_barycentric_coordinates, bool clip_barycentric_coordinates,
+        bool cull_back_faces
 );
 
-template void GridBinFaces<open3d::core::Device::DeviceType::CPU>(
+template void GridBinNdcTriangles<open3d::core::Device::DeviceType::CUDA>(
         open3d::core::Tensor& bin_faces,
         const open3d::core::Tensor& normalized_camera_space_face_vertices,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,

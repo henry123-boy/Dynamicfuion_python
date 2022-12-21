@@ -23,7 +23,7 @@
 // local includes
 #include "tests/test_utils/test_utils.hpp"
 #include "tests/test_main.hpp"
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/FlatEdgeShader.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 
@@ -71,7 +71,7 @@ void TestDrawTriangle(const o3c::Device& device) {
     auto [ndc_face_vertices, face_mask] =
             nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-            nnrt::rendering::RasterizeMesh(ndc_face_vertices, face_mask, image_size, 1.0f, 1);
+            nnrt::rendering::RasterizeNdcTriangles(ndc_face_vertices, face_mask, image_size, 1.0f, 1);
 
     nnrt::rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
     auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,

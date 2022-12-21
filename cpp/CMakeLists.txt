@@ -225,21 +225,21 @@ set(
     io/VoxelBlockGridIO.h
     io/FileStreamSelector.h
 
-    rendering/RasterizeMesh.h
-    rendering/RasterizeMesh.cpp
+        rendering/RasterizeNdcTriangles.h
+        rendering/RasterizeNdcTriangles.cpp
     rendering/functional/kernel/BarycentricCoordinates.h
-    rendering/kernel/RasterizeMesh.cpp
-    rendering/kernel/RasterizeMesh.h
-    rendering/kernel/RasterizeMeshImpl.h
-    rendering/kernel/instantiations/RasterizeMeshCPU.cpp
-    rendering/kernel/instantiations/RasterizeMeshCUDA.cu
+        rendering/kernel/RasterizeNdcTriangles.cpp
+        rendering/kernel/RasterizeNdcTriangles.h
+        rendering/kernel/RasterizeNdcTrianglesImpl.h
+        rendering/kernel/instantiations/RasterizeNdcTrianglesCPU.cpp
+        rendering/kernel/instantiations/RasterizeNdcTrianglesCUDA.cu
     rendering/kernel/RasterizationConstants.h
     rendering/kernel/CoordinateSystemConversions.h
     rendering/kernel/RayFaceIntersection.h
 
-    rendering/kernel/RasterizeMeshImplCUDA.cuh
+        rendering/kernel/RasterizeNdcTrianglesCUDA.cuh
     rendering/kernel/GridBitMask.cuh
-    rendering/kernel/RasterizeMeshImplCPU.h
+        rendering/kernel/RasterizeNdcTrianglesImplCPU.h
 
     rendering/functional/kernel/ExtractClippedFaceVertices.cpp
     rendering/functional/kernel/ExtractClippedFaceVertices.h

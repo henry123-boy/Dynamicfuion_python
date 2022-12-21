@@ -27,7 +27,7 @@
 #include <iomanip>
 
 // code being tested
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 #include "core/functional/Sorting.h"
 #include "core/functional/Comparisons.h"
 #include "rendering/functional/ExtractFaceVertices.h"
@@ -80,8 +80,8 @@ void TestRasterizePlane_MaskExtraction(const o3c::Device& device, bool naive = t
         bin_size = max_faces_per_bin = 0;
     }
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-            nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-                                           bin_size, max_faces_per_bin, false, false, true);
+            nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+                                                   bin_size, max_faces_per_bin, false, false, true);
 
     std::string mesh_name = "plane_0";
     if (save_output_to_disk) {
@@ -213,8 +213,8 @@ void TestRasterizeMesh(
     for (int i_run = 0; i_run < run_count; i_run++) {
         auto
                 [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
-                nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-                                               bin_size, max_faces_per_bin, false, false, true);
+                nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+                                                       bin_size, max_faces_per_bin, false, false, true);
         pixel_face_indices = pixel_face_indices_local;
         pixel_depths = pixel_depths_local;
         pixel_barycentric_coordinates = pixel_barycentric_coordinates_local;
@@ -500,8 +500,8 @@ void TestRasterizeMultipleMeshes(
     for (int i_run = 0; i_run < run_count; i_run++) {
         auto
                 [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
-                nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-                                               bin_size, max_faces_per_bin, false, false, true);
+                nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+                                                       bin_size, max_faces_per_bin, false, false, true);
         pixel_face_indices = pixel_face_indices_local;
         pixel_depths = pixel_depths_local;
         pixel_barycentric_coordinates = pixel_barycentric_coordinates_local;
@@ -537,11 +537,13 @@ void TestRasterizeMultipleMeshes(
                                   + "/" + associated_files_prefix + "_out_pixel_face_distances.npy");
     } else {
         auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
-                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix + "_pixel_face_indices.npy"
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix +
+                "_pixel_face_indices.npy"
         ).To(device);
 
         auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
-                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix + "_pixel_depths.npy").To(
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix +
+                "_pixel_depths.npy").To(
                 device);
 
         auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(

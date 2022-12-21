@@ -18,8 +18,8 @@
 #include <open3d/t/geometry/Utility.h>
 
 // local
-#include "rendering/RasterizeMesh.h"
-#include "rendering/kernel/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
+#include "rendering/kernel/RasterizeNdcTriangles.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 
@@ -30,7 +30,7 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::rendering {
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMesh(
+RasterizeNdcTriangles(
 		const open3d::core::Tensor& ndc_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
 		const open3d::core::SizeVector& image_size,
@@ -93,36 +93,36 @@ RasterizeMesh(
 	if (bin_size > 0 && max_faces_per_bin > 0) {
 		// Use coarse-to-fine rasterization
 		o3c::Tensor bin_faces;
-		kernel::GridBinFaces(bin_faces,
-                             ndc_face_vertices,
-                             clipped_faces_mask,
-                             image_size,
-                             blur_radius_ndc,
-                             bin_size,
-                             max_faces_per_bin);
+        kernel::GridBinNdcTriangles(bin_faces,
+                                    ndc_face_vertices,
+                                    clipped_faces_mask,
+                                    image_size,
+                                    blur_radius_ndc,
+                                    bin_size,
+                                    max_faces_per_bin);
 
-		kernel::RasterizeMeshFine(fragments,
-                                  ndc_face_vertices,
-                                  bin_faces,
-                                  image_size,
-                                  blur_radius_ndc,
-                                  bin_size,
-                                  faces_per_pixel,
-                                  perspective_correct_barycentric_coordinates,
-                                  clip_barycentric_coordinates,
-                                  cull_back_faces);
+        kernel::RasterizeNdcTriangles_GridBinned(fragments,
+                                                 ndc_face_vertices,
+                                                 bin_faces,
+                                                 image_size,
+                                                 blur_radius_ndc,
+                                                 bin_size,
+                                                 faces_per_pixel,
+                                                 perspective_correct_barycentric_coordinates,
+                                                 clip_barycentric_coordinates,
+                                                 cull_back_faces);
 	} else {
 
 		// Use the naive per-pixel implementation
-		kernel::RasterizeMeshNaive(fragments,
-                                   ndc_face_vertices,
-                                   clipped_faces_mask,
-                                   image_size,
-                                   blur_radius_ndc,
-                                   faces_per_pixel,
-                                   perspective_correct_barycentric_coordinates,
-                                   clip_barycentric_coordinates,
-                                   cull_back_faces);
+        kernel::RasterizeNdcTriangles_BruteForce(fragments,
+                                                 ndc_face_vertices,
+                                                 clipped_faces_mask,
+                                                 image_size,
+                                                 blur_radius_ndc,
+                                                 faces_per_pixel,
+                                                 perspective_correct_barycentric_coordinates,
+                                                 clip_barycentric_coordinates,
+                                                 cull_back_faces);
 
 	}
 	return fragments.ToTuple();

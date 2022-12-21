@@ -24,7 +24,7 @@ namespace nnrt::rendering {
 
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-RasterizeMesh(
+RasterizeNdcTriangles(
 		const open3d::core::Tensor& ndc_face_vertices,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
 		const open3d::core::SizeVector& image_size,

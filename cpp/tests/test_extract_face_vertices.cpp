@@ -23,7 +23,7 @@
 #include "tests/test_utils/test_utils.hpp"
 
 // code being tested
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "core/TensorManipulationRoutines.h"
 

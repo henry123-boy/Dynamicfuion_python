@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "rendering/kernel/RasterizeMesh.h"
+#include "rendering/kernel/RasterizeNdcTriangles.h"
 #include "core/DeviceSelection.h"
 #include "CoordinateSystemConversions.h"
 
@@ -23,7 +23,7 @@ namespace utility = open3d::utility;
 namespace nnrt::rendering::kernel {
 
 
-void RasterizeMeshNaive(
+void RasterizeNdcTriangles_BruteForce(
         Fragments& fragments,
         const open3d::core::Tensor& normalized_camera_space_face_vertices,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
@@ -38,7 +38,7 @@ void RasterizeMeshNaive(
     core::ExecuteOnDevice(
             device,
             [&] {
-                RasterizeMeshNaive<o3c::Device::DeviceType::CPU>(
+                RasterizeNdcTriangles_BruteForce<o3c::Device::DeviceType::CPU>(
                         fragments, normalized_camera_space_face_vertices,
                         clipped_faces_mask, image_size, blur_radius_ndc, faces_per_pixel,
                         perspective_correct_barycentric_coordinates, clip_barycentric_coordinates, cull_back_faces
@@ -46,7 +46,7 @@ void RasterizeMeshNaive(
             },
             [&] {
                 NNRT_IF_CUDA(
-                        RasterizeMeshNaive<o3c::Device::DeviceType::CUDA>(
+                        RasterizeNdcTriangles_BruteForce<o3c::Device::DeviceType::CUDA>(
                                 fragments, normalized_camera_space_face_vertices,
                                 clipped_faces_mask, image_size, blur_radius_ndc, faces_per_pixel,
                                 perspective_correct_barycentric_coordinates, clip_barycentric_coordinates,
@@ -58,7 +58,7 @@ void RasterizeMeshNaive(
 }
 
 void
-RasterizeMeshFine(
+RasterizeNdcTriangles_GridBinned(
         Fragments& fragments,
         const open3d::core::Tensor& normalized_camera_space_face_vertices,
         const open3d::core::Tensor& bin_faces,
@@ -74,7 +74,7 @@ RasterizeMeshFine(
     core::ExecuteOnDevice(
             device,
             [&] {
-                RasterizeMeshFine<o3c::Device::DeviceType::CPU>(
+                RasterizeNdcTriangles_GridBinned<o3c::Device::DeviceType::CPU>(
                         fragments, normalized_camera_space_face_vertices, bin_faces, image_size, blur_radius_ndc,
                         bin_size,
                         faces_per_pixel,
@@ -83,7 +83,7 @@ RasterizeMeshFine(
             },
             [&] {
                 NNRT_IF_CUDA(
-                        RasterizeMeshFine<o3c::Device::DeviceType::CUDA>(
+                        RasterizeNdcTriangles_GridBinned<o3c::Device::DeviceType::CUDA>(
                                 fragments, normalized_camera_space_face_vertices, bin_faces, image_size,
                                 blur_radius_ndc,
                                 bin_size, faces_per_pixel,
@@ -95,7 +95,7 @@ RasterizeMeshFine(
     );
 }
 
-void GridBinFaces(
+void GridBinNdcTriangles(
         open3d::core::Tensor& bin_faces, const open3d::core::Tensor& normalized_camera_space_face_vertices,
         open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> clipped_faces_mask,
         const open3d::core::SizeVector& image_size, float blur_radius_ndc, int bin_size, int max_faces_per_bin
@@ -104,14 +104,14 @@ void GridBinFaces(
     core::ExecuteOnDevice(
             device,
             [&] {
-                GridBinFaces<o3c::Device::DeviceType::CPU>
-                        (bin_faces, normalized_camera_space_face_vertices,
+                GridBinNdcTriangles<o3c::Device::DeviceType::CPU >
+                (bin_faces, normalized_camera_space_face_vertices,
                          clipped_faces_mask, image_size, blur_radius_ndc, bin_size,
                          max_faces_per_bin);
             },
             [&] {
-                NNRT_IF_CUDA(GridBinFaces<o3c::Device::DeviceType::CUDA>
-                                     (bin_faces, normalized_camera_space_face_vertices,
+                NNRT_IF_CUDA(GridBinNdcTriangles<o3c::Device::DeviceType::CUDA >
+                             (bin_faces, normalized_camera_space_face_vertices,
                                       clipped_faces_mask, image_size, blur_radius_ndc,
                                       bin_size, max_faces_per_bin););
             }

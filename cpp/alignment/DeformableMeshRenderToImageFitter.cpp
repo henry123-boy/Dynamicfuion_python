@@ -21,7 +21,7 @@
 // local
 #include "core/functional/Masking.h"
 #include "DeformableMeshRenderToRgbdImageFitter.h"
-#include "rendering/RasterizeMesh.h"
+#include "rendering/RasterizeNdcTriangles.h"
 
 
 namespace o3c = open3d::core;
