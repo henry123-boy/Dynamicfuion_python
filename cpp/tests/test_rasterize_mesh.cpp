@@ -32,6 +32,7 @@
 #include "core/functional/Comparisons.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "core/TensorManipulationRoutines.h"
+#include "geometry/functional/JoinTriangleMeshes.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -375,7 +376,7 @@ void TestRasterizeMultipleMeshes(
         const o3c::Device& device, const std::string& mesh1_name, const std::string& mesh2_name,
         float color_value = 1.0f, bool meshes_were_generated = true, int maximum_close_face_mismatches = 20,
         int maximum_close_face_mismatches_not_sharing_2_vertices = 0, bool naive = false,
-        bool save_output_to_disk = false, bool print_benchmark = false
+        bool save_output_to_disk = false, bool save_combined_mesh_to_disk = false, bool print_benchmark = false
 ) {
     o3tg::TriangleMesh mesh1_bl, mesh2_br;
     std::string mesh1_path, mesh2_path;
@@ -393,6 +394,19 @@ void TestRasterizeMultipleMeshes(
     o3tio::ReadTriangleMesh(mesh2_path, mesh2_br);
     mesh2_br = mesh2_br.To(device);
 
+    if (!mesh1_bl.HasTriangleNormals()) {
+        mesh1_bl = mesh1_bl.ComputeTriangleNormals();
+    }
+    if (!mesh1_bl.HasVertexNormals()) {
+        mesh1_bl = mesh1_bl.ComputeVertexNormals();
+    }
+    if (!mesh2_br.HasTriangleNormals()) {
+        mesh2_br = mesh2_br.ComputeTriangleNormals();
+    }
+    if (!mesh2_br.HasVertexNormals()) {
+        mesh2_br = mesh2_br.ComputeVertexNormals();
+    }
+
     test::SetMeshColorGreyscaleValue(mesh1_bl, color_value);
     test::SetMeshColorGreyscaleValue(mesh2_br, color_value);
 
@@ -402,9 +416,8 @@ void TestRasterizeMultipleMeshes(
     auto mesh2_max_bound = mesh2_br.GetMaxBound();
     auto mesh1_extent = mesh1_max_bound - mesh1_min_bound;
     auto mesh2_extent = mesh2_max_bound - mesh2_min_bound;
-    const float spacing_ratio = 0.2f;
-    auto extent_maximums = (mesh1_extent.Reshape({1, -1}).Append(mesh2_extent.Reshape({1, -1}), 0)).Max({0});
-    auto spacing = extent_maximums * spacing_ratio;
+    const float spacing_ratio = 0.1f;
+    auto spacing = (mesh1_extent + mesh2_extent) * spacing_ratio;
 
 //    auto mesh1_extent_center = mesh1_min_bound + mesh1_extent / 2.f;
 //    auto mesh2_extent_center = mesh2_min_bound + mesh2_extent / 2.f;
@@ -434,19 +447,19 @@ void TestRasterizeMultipleMeshes(
     const float z_offset = 0.3f;
 
 
-    test::OffsetMesh(mesh1_bl, std::make_tuple(mesh1_x_offset, mesh1_y_offset, z_offset));
-    test::OffsetMesh(mesh2_br, std::make_tuple(mesh1_x_offset + mesh1_extent_x + spacing_x - mesh2_min_x,
-                                               mesh2_y_offset,
-                                               z_offset));
-
     auto mesh1_ur = mesh1_bl.Clone();
     auto mesh2_ul = mesh2_br.Clone();
 
-    test::OffsetMesh(mesh2_ul, std::make_tuple(mesh2_x_offset,
-                                               mesh1_y_offset + mesh1_extent_y + spacing_y - mesh2_min_y,
+    test::OffsetMesh(mesh1_bl, std::make_tuple(mesh1_x_offset, mesh1_y_offset, z_offset));
+    test::OffsetMesh(mesh2_br, std::make_tuple(x_min_bound + mesh1_extent_x + spacing_x - mesh2_min_x,
+                                               mesh2_y_offset,
                                                z_offset));
-    test::OffsetMesh(mesh2_ul, std::make_tuple(mesh2_x_offset + mesh2_extent_x + spacing_x - mesh1_min_x,
-                                               mesh2_y_offset + mesh2_extent_y + spacing_y - mesh1_min_x,
+
+    test::OffsetMesh(mesh2_ul, std::make_tuple(mesh2_x_offset,
+                                               y_min_bound + mesh1_extent_y + spacing_y - mesh2_min_y,
+                                               z_offset));
+    test::OffsetMesh(mesh1_ur, std::make_tuple(x_min_bound + mesh2_extent_x + spacing_x - mesh1_min_x,
+                                               y_min_bound + mesh2_extent_y + spacing_y - mesh1_min_y,
                                                z_offset));
 
     o3c::Tensor intrinsics(std::vector<double>{
@@ -465,7 +478,8 @@ void TestRasterizeMultipleMeshes(
     auto start = std::chrono::high_resolution_clock::now();
     for (int i_run = 0; i_run < run_count; i_run++) {
         auto [extracted_face_vertices_local, clipped_face_mask_local, face_counts_local] =
-                nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask({mesh1_bl, mesh2_br, mesh2_ul, mesh1_ur}, intrinsics, image_size, 0.0, 10.0);
+                nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask({mesh1_bl, mesh2_br, mesh2_ul, mesh1_ur},
+                                                                               intrinsics, image_size, 0.0, 10.0);
         extracted_face_vertices = extracted_face_vertices_local;
         clipped_face_mask = clipped_face_mask_local;
         face_counts = face_counts_local;
@@ -501,6 +515,13 @@ void TestRasterizeMultipleMeshes(
                   << (elapsed.count() * 1e-9) / run_count << " seconds" << std::endl;
     }
 
+    if (save_combined_mesh_to_disk) {
+
+        auto combined_mesh = nnrt::geometry::functional::JoinTriangleMeshes({mesh1_bl, mesh2_br, mesh2_ul, mesh1_ur});
+        o3tio::WriteTriangleMesh(test::generated_mesh_test_data_directory.ToString()
+                                 + "/" + mesh1_name + "_and_" + mesh2_name + ".ply", combined_mesh);
+    }
+
     if (save_output_to_disk) {
         pixel_face_indices.Save(
                 test::generated_array_test_data_directory.ToString()
@@ -512,11 +533,11 @@ void TestRasterizeMultipleMeshes(
                 test::generated_array_test_data_directory.ToString()
                 + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_barycentric_coordinates.npy");
         pixel_face_distances.Save(test::generated_array_test_data_directory.ToString()
-                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_distances.npy");
+                                  + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_distances.npy");
     }
 }
 
 TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4 - CPU") {
     auto device = o3c::Device("CPU:0");
-    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4", 1.0, true, 40, 20, false, true, false);
+    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4", 1.0, true, 40, 20, false, true, true, false);
 }

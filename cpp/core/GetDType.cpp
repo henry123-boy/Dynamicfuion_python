@@ -34,7 +34,7 @@ open3d::core::Dtype GetDType<float>() {
 
 template<>
 open3d::core::Dtype GetDType<int64_t>() {
-    return open3d::core::Float64;
+    return open3d::core::Int64;
 }
 
 template<>

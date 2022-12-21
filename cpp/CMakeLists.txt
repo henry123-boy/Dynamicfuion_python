@@ -284,7 +284,7 @@ set(
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
