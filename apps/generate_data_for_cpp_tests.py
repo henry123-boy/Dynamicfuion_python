@@ -33,7 +33,7 @@ import numpy as np
 
 import rendering.converters
 
-GENERATED_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/csrc/tests/test_data"
+GENERATED_TEST_DATA_DIR = "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data"
 STATIC_TEST_DATA_DIR = "/cpp/tests/test_data"
 
 
@@ -325,6 +325,7 @@ class MeshDataPreset(Enum):
     BUNNY_RES4 = MeshDataSet("mesh_bunny_res4", False, False, (1.0, 1.0, 3.0))
     BUNNY_RES2 = MeshDataSet("mesh_bunny_res2", False, False, (1.0, 1.0, 3.0))
     M64_BUNNY_ARRAY = MeshDataSet("mesh_64_bunny_array", False, False, (1.0, 1.0, -3.0))
+    SUZANNE_AND_BUNNY_RES4_2 = MeshDataSet("suzanne_and_mesh_bunny_res4_2", False, False, (1.0, 1.0, -3.0))
 
 
 class Mode(Enum):
@@ -336,7 +337,7 @@ class Mode(Enum):
 def main():
     device_o3d = o3c.Device("CUDA:0")
 
-    mesh_data_set = MeshDataPreset.M64_BUNNY_ARRAY
+    mesh_data_set = MeshDataPreset.SUZANNE_AND_BUNNY_RES4_2
     mode = Mode.SHADE_LOADED
     naive_rasterization = False
 
@@ -348,19 +349,24 @@ def main():
             o3c.Tensor(rotation_around_y_axis(45.0), device=device_o3d).to(o3c.float32)
         ),
         MeshDataPreset.BUNNY_RES4: lambda: load_mesh_paint_and_offset(
-            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_bunny_res4.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/{MeshDataPreset.BUNNY_RES4.value.prefix}.ply",
             offset=(0.0, -0.1, 0.3),
             device=device_o3d
         ),
         MeshDataPreset.BUNNY_RES2: lambda: load_mesh_paint_and_offset(
-            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_bunny_res2.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/{MeshDataPreset.BUNNY_RES2.value.prefix}.ply",
             offset=(0.0, -0.1, 0.3),
             device=device_o3d
         ),
         MeshDataPreset.M64_BUNNY_ARRAY: lambda: load_mesh_paint_and_offset(
-            f"{GENERATED_TEST_DATA_DIR}/meshes/mesh_64_bunny_array.ply",
+            f"{GENERATED_TEST_DATA_DIR}/meshes/{MeshDataPreset.M64_BUNNY_ARRAY.value.prefix}.ply",
             device=device_o3d
-        )
+        ),
+        MeshDataPreset.SUZANNE_AND_BUNNY_RES4_2: lambda: load_mesh_paint_and_offset(
+            f"{GENERATED_TEST_DATA_DIR}/meshes/{MeshDataPreset.SUZANNE_AND_BUNNY_RES4_2.value.prefix}.ply",
+            offset=(0.0, 0.0, 0.0),
+            device=device_o3d
+        ),
     }
 
     mesh = get_mesh_by_data_set[mesh_data_set]()

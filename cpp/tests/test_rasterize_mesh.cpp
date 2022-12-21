@@ -211,7 +211,8 @@ void TestRasterizeMesh(
     o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
     start = std::chrono::high_resolution_clock::now();
     for (int i_run = 0; i_run < run_count; i_run++) {
-        auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
+        auto
+                [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
                 nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
                                                bin_size, max_faces_per_bin, false, false, true);
         pixel_face_indices = pixel_face_indices_local;
@@ -419,9 +420,6 @@ void TestRasterizeMultipleMeshes(
     const float spacing_ratio = 0.1f;
     auto spacing = (mesh1_extent + mesh2_extent) * spacing_ratio;
 
-//    auto mesh1_extent_center = mesh1_min_bound + mesh1_extent / 2.f;
-//    auto mesh2_extent_center = mesh2_min_bound + mesh2_extent / 2.f;
-
     auto total_extent = spacing + mesh1_extent + mesh2_extent;
     auto scene_min_bound = -1.f * (total_extent / 2.f);
     auto scene_max_bound = total_extent / 2.f;
@@ -500,7 +498,8 @@ void TestRasterizeMultipleMeshes(
     o3c::Tensor pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances;
     start = std::chrono::high_resolution_clock::now();
     for (int i_run = 0; i_run < run_count; i_run++) {
-        auto [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
+        auto
+                [pixel_face_indices_local, pixel_depths_local, pixel_barycentric_coordinates_local, pixel_face_distances_local] =
                 nnrt::rendering::RasterizeMesh(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
                                                bin_size, max_faces_per_bin, false, false, true);
         pixel_face_indices = pixel_face_indices_local;
@@ -515,29 +514,56 @@ void TestRasterizeMultipleMeshes(
                   << (elapsed.count() * 1e-9) / run_count << " seconds" << std::endl;
     }
 
+    std::string associated_files_prefix = mesh1_name + "_and_" + mesh2_name;
+
     if (save_combined_mesh_to_disk) {
 
         auto combined_mesh = nnrt::geometry::functional::JoinTriangleMeshes({mesh1_bl, mesh2_br, mesh2_ul, mesh1_ur});
         o3tio::WriteTriangleMesh(test::generated_mesh_test_data_directory.ToString()
-                                 + "/" + mesh1_name + "_and_" + mesh2_name + ".ply", combined_mesh);
+                                 + "/" + associated_files_prefix + ".ply", combined_mesh);
     }
 
     if (save_output_to_disk) {
         pixel_face_indices.Save(
                 test::generated_array_test_data_directory.ToString()
-                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_indices.npy");
+                + "/" + associated_files_prefix + "_out_pixel_face_indices.npy");
         pixel_depths.Save(
                 test::generated_array_test_data_directory.ToString()
-                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_depths.npy");
+                + "/" + associated_files_prefix + "_out_pixel_depths.npy");
         pixel_barycentric_coordinates.Save(
                 test::generated_array_test_data_directory.ToString()
-                + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_barycentric_coordinates.npy");
+                + "/" + associated_files_prefix + "_out_pixel_barycentric_coordinates.npy");
         pixel_face_distances.Save(test::generated_array_test_data_directory.ToString()
-                                  + "/" + mesh1_name + "_and_" + mesh2_name + "_out_pixel_face_distances.npy");
+                                  + "/" + associated_files_prefix + "_out_pixel_face_distances.npy");
+    } else {
+        auto pixel_face_indices_ground_truth = open3d::core::Tensor::Load(
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix + "_pixel_face_indices.npy"
+        ).To(device);
+
+        auto pixel_depths_ground_truth = open3d::core::Tensor::Load(
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix + "_pixel_depths.npy").To(
+                device);
+
+        auto pixel_barycentric_coordinates_ground_truth = open3d::core::Tensor::Load(
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix +
+                "_pixel_barycentric_coordinates.npy").To(device);
+
+        auto pixel_face_distances_ground_truth = open3d::core::Tensor::Load(
+                test::generated_array_test_data_directory.ToString() + "/" + associated_files_prefix +
+                "_pixel_face_distances.npy").To(device);
+        REQUIRE(pixel_face_indices_ground_truth.AllClose(pixel_face_indices_ground_truth));
+        REQUIRE(pixel_depths_ground_truth.AllClose(pixel_depths_ground_truth));
+        REQUIRE(pixel_barycentric_coordinates_ground_truth.AllClose(pixel_barycentric_coordinates_ground_truth));
+        REQUIRE(pixel_face_distances_ground_truth.AllClose(pixel_face_distances_ground_truth));
     }
 }
 
-TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4 - CPU") {
+TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4_2 - CPU") {
     auto device = o3c::Device("CPU:0");
-    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4", 1.0, true, 40, 20, false, true, true, false);
+    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4_2", 1.0, true, 40, 20, false, false, false, false);
+}
+
+TEST_CASE("Test Rasterize Coarse-to-Fine - Suzanne & Bunny Res 4_2 - CUDA") {
+    auto device = o3c::Device("CUDA:0");
+    TestRasterizeMultipleMeshes(device, "suzanne", "mesh_bunny_res4_2", 1.0, true, 40, 20, false, false, false, false);
 }

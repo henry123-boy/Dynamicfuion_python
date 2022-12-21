@@ -209,6 +209,18 @@ if (BUILD_CPP_TESTS)
     )
 
     nnrt_add_test_data_download_target(
+        suzanne_and_bunny_res_4_2_rasterization_test
+        URL https://algomorph.com/storage/reco/suzanne_and_bunny_res_4_2_rasterization_test.7z
+        SHA256 9de26bbc3ad92e004671582c661ab854cca4df05192c68b3352bd014f55e248d
+        DESTINATION suzanne_and_bunny_res_4_2_rasterization_test.7z
+        EXTRACTED_NAMES
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_indices.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_distances.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_depths.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_barycentric_coordinates.npy
+    )
+
+    nnrt_add_test_data_download_target(
         test_data_rendered_normals
         URL https://algomorph.com/storage/reco/interpolate_face_attribute_test_data.7z
         SHA256 4247cef37c9f4fe8bda3ec1d628b169618b891602e648bdc64807c12fe9eddde
@@ -219,8 +231,8 @@ if (BUILD_CPP_TESTS)
         arrays/mesh_bunny_res4_rendered_normals.npy
     )
 
-    nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
+    nnrt_add_test(test_rasterize_mesh DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array suzanne_and_bunny_res_4_2_rasterization_test)
     nnrt_add_test(test_interpolate_face_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
 endif ()
