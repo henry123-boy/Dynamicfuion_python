@@ -22,7 +22,7 @@
 // local
 #include "alignment/NdcTriangleFitter.h"
 #include "rendering/RasterizeNdcTriangles.h"
-#include "rendering/functional/InterpolateFaceAttributes.h"
+#include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/Comparison.h"

@@ -149,6 +149,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_deformable_mesh_fitter)
     nnrt_add_test(test_flat_edge_shader)
     nnrt_add_test(test_triangle_fitter)
+    nnrt_add_test(test_vertex_color_shader)
 
     nnrt_add_test_data_download_target(
         test_data_plane_and_cube_rendering
@@ -233,6 +234,6 @@ if (BUILD_CPP_TESTS)
 
 
     nnrt_add_test(test_rasterize DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array suzanne_and_bunny_res_4_2_rasterization_test)
-    nnrt_add_test(test_interpolate_face_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
+    nnrt_add_test(test_interpolate_vertex_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 
 endif ()

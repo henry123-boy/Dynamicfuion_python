@@ -20,22 +20,23 @@
 
 namespace nnrt::rendering::functional::kernel {
 
-void InterpolateFaceAttributes(
+void InterpolateVertexAttributes(
 		open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes
 ) {
 	core::ExecuteOnDevice(
 			face_attributes.GetDevice(),
 			[&] {
-				InterpolateFaceAttributes<open3d::core::Device::DeviceType::CPU>(
-						interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates, face_attributes
-				);
+                InterpolateVertexAttributes<open3d::core::Device::DeviceType::CPU>(
+                        interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates, face_attributes
+                );
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						InterpolateFaceAttributes<open3d::core::Device::DeviceType::CUDA>(
-								interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates, face_attributes
-						);
+                        InterpolateVertexAttributes<open3d::core::Device::DeviceType::CUDA>(
+                                interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates,
+                                face_attributes
+                        );
 				);
 			}
 	);

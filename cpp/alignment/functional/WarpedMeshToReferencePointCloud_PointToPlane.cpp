@@ -22,7 +22,7 @@
 // local includes
 #include "core/functional/Masking.h"
 #include "geometry/GraphWarpField.h"
-#include "rendering/functional/InterpolateFaceAttributes.h"
+#include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "WarpedMeshToReferencePointCloud_PointToPlane.h"
 #include "rendering/functional/ExtractFaceVertices.h"
@@ -53,7 +53,9 @@ ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpFie
 	auto vertex_normals = warped_mesh.GetVertexNormals();
 	auto triangle_indices = warped_mesh.GetTriangleIndices();
 	auto face_vertex_normals = vertex_normals.GetItem(o3c::TensorKey::IndexTensor(triangle_indices));
-	auto rendered_normals = rendering::functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
+	auto rendered_normals =
+            rendering::functional::InterpolateVertexAttributes(pixel_face_indices, pixel_barycentric_coordinates,
+                                                               face_vertex_normals);
 	differentiation_state.rendered_normals = rendered_normals;
 	int64_t pixel_attribute_count = rendered_normals.GetShape(3);
 	// both statements below assume 1x faces per pixel, neet to get first slice along pixel-face axis otherwise

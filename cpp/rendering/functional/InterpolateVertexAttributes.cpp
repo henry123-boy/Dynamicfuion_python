@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 // local
-#include "rendering/functional/InterpolateFaceAttributes.h"
+#include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/functional/kernel/InterpolateFaceAttributes.h"
 
 namespace o3c = open3d::core;
@@ -22,7 +22,7 @@ namespace utility = open3d::utility;
 
 namespace nnrt::rendering::functional {
 
-open3d::core::Tensor InterpolateFaceAttributes(
+open3d::core::Tensor InterpolateVertexAttributes(
 		const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& pixel_barycentric_coordinates,
 		const open3d::core::Tensor& face_attributes
@@ -43,7 +43,8 @@ open3d::core::Tensor InterpolateFaceAttributes(
 	o3c::AssertTensorShape(pixel_barycentric_coordinates, {image_height, image_width, per_pixel_face_count, 3});
 
 	o3c::Tensor interpolated_attributes;
-	kernel::InterpolateFaceAttributes(interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates, face_attributes);
+    kernel::InterpolateVertexAttributes(interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates,
+                                        face_attributes);
 
 	return interpolated_attributes;
 }

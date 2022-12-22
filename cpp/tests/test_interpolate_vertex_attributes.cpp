@@ -22,7 +22,7 @@
 
 // code being tested
 #include "geometry/functional/NormalsOperations.h"
-#include "rendering/functional/InterpolateFaceAttributes.h"
+#include "rendering/functional/InterpolateVertexAttributes.h"
 
 namespace o3c = open3d::core;
 namespace o3tg = open3d::t::geometry;
@@ -54,7 +54,9 @@ void TestInterpolateFaceAttributes(const o3c::Device& device, const std::string&
 	auto pixel_barycentric_coordinates = open3d::core::Tensor::Load(
 			test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_pixel_barycentric_coordinates.npy").To(device);
 
-	auto interpolated_normals = nnrt::rendering::functional::InterpolateFaceAttributes(pixel_face_indices, pixel_barycentric_coordinates, face_vertex_normals);
+	auto interpolated_normals =
+            nnrt::rendering::functional::InterpolateVertexAttributes(pixel_face_indices, pixel_barycentric_coordinates,
+                                                                     face_vertex_normals);
 	auto ground_truth_normals = open3d::core::Tensor::Load(
 			test::generated_array_test_data_directory.ToString() + "/" + mesh_name + "_rendered_normals.npy"
 	).To(device);

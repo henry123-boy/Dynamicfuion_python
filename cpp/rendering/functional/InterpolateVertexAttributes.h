@@ -19,7 +19,7 @@
 
 namespace nnrt::rendering::functional {
 
-open3d::core::Tensor InterpolateFaceAttributes(
+open3d::core::Tensor InterpolateVertexAttributes(
 		const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& barycentric_coordinates,
 		const open3d::core::Tensor& face_attributes

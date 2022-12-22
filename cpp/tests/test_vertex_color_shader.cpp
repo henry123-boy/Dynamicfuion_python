@@ -24,7 +24,7 @@
 #include "tests/test_utils/test_utils.hpp"
 #include "tests/test_main.hpp"
 #include "rendering/RasterizeNdcTriangles.h"
-#include "rendering/FlatEdgeShader.h"
+#include "rendering/VertexColorShader.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 
 
@@ -57,6 +57,20 @@ void TestShadeTriangle_VertexColors(const o3c::Device& device) {
                     device
             )
     );
+    mesh.SetVertexColors(
+            o3c::Tensor(
+                    std::vector<float>(
+                            {
+                                    0.f, 0.f, 1.f,
+                                    0.f, 1.f, 0.f,
+                                    1.f, 0.f, 0.f,
+                            }
+                    ),
+                    {3, 3},
+                    o3c::Float32,
+                    device
+            )
+    );
     o3c::Tensor intrinsics(
             std::vector<double>(
                     {
@@ -71,25 +85,27 @@ void TestShadeTriangle_VertexColors(const o3c::Device& device) {
     auto [ndc_face_vertices, face_mask] =
             nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(mesh, intrinsics, image_size);
     auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-            nnrt::rendering::RasterizeNdcTriangles(ndc_face_vertices, face_mask, image_size, 1.0f, 1);
+            nnrt::rendering::RasterizeNdcTriangles(ndc_face_vertices, face_mask, image_size, 0.f, 1);
 
-    nnrt::rendering::FlatEdgeShader shader(2.0, std::array<float, 3>({1.0, 1.0, 1.0}));
+    std::vector<o3tg::TriangleMesh> meshes = {mesh};
+    nnrt::rendering::VertexColorShader shader;
     auto image = shader.ShadeMeshes(pixel_face_indices, pixel_depths, pixel_barycentric_coordinates,
-                                    pixel_face_distances, o3u::nullopt);
+                                    pixel_face_distances, meshes);
 
     o3tg::Image ground_truth_image;
-    o3tio::ReadImage(test::image_test_data_directory.ToString() + "/triangle.png", ground_truth_image);
+//    o3tio::WriteImage(test::image_test_data_directory.ToString() + "/triangle_vertex_colors.png", image);
+    o3tio::ReadImage(test::image_test_data_directory.ToString() + "/triangle_vertex_colors.png", ground_truth_image);
     ground_truth_image = ground_truth_image.To(device);
 
     REQUIRE(image.AsTensor().AllClose(ground_truth_image.AsTensor()));
 }
 
-TEST_CASE("Test Flat Edge Shader - CPU") {
+TEST_CASE("Test Vertex Color Shader - CPU") {
     auto device = o3c::Device("CPU:0");
     TestShadeTriangle_VertexColors(device);
 }
 
-TEST_CASE("Test Flat Edge Shader - CUDA") {
+TEST_CASE("Test Vertex Color Shader - CUDA") {
     auto device = o3c::Device("CUDA:0");
     TestShadeTriangle_VertexColors(device);
 }

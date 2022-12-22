@@ -19,10 +19,10 @@
 
 namespace nnrt::rendering::functional::kernel {
 
-void InterpolateFaceAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
-                               const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes);
+void InterpolateVertexAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
+                                 const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes);
 template<open3d::core::Device::DeviceType TDeviceType>
-void InterpolateFaceAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
-                               const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes);
+void InterpolateVertexAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
+                                 const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes);
 
 } // namespace nnrt::rendering::functional::kernel

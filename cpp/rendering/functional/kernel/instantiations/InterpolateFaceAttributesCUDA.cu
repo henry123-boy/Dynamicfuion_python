@@ -15,7 +15,7 @@
 //  ================================================================
 #include "rendering/functional/kernel/InterpolateFaceAttributesImpl.h"
 namespace nnrt::rendering::functional::kernel {
-template void InterpolateFaceAttributes<open3d::core::Device::DeviceType::CUDA>(
+template void InterpolateVertexAttributes<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes
 );

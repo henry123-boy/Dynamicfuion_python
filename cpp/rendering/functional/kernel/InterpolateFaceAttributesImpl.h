@@ -29,8 +29,8 @@ namespace utility = open3d::utility;
 namespace nnrt::rendering::functional::kernel {
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TAttribute>
-void InterpolateFaceAttributes_Dispatched(open3d::core::Tensor& pixel_attributes, const open3d::core::Tensor& pixel_face_indices,
-                                          const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes) {
+void InterpolateVertexAttributes_Dispatched(open3d::core::Tensor& pixel_attributes, const open3d::core::Tensor& pixel_face_indices,
+                                            const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes) {
 	o3c::Device device = face_attributes.GetDevice();
 	o3c::Dtype attribute_dtype = face_attributes.GetDtype();
 	int64_t attribute_element_count = face_attributes.GetShape(2);
@@ -73,14 +73,14 @@ void InterpolateFaceAttributes_Dispatched(open3d::core::Tensor& pixel_attributes
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void InterpolateFaceAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
-                               const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes) {
+void InterpolateVertexAttributes(open3d::core::Tensor& interpolated_attributes, const open3d::core::Tensor& pixel_face_indices,
+                                 const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& face_attributes) {
 
 	DISPATCH_DTYPE_TO_TEMPLATE(face_attributes.GetDtype(), [&]() {
-		InterpolateFaceAttributes_Dispatched<TDeviceType, scalar_t>(
-				interpolated_attributes, pixel_face_indices,
-				pixel_barycentric_coordinates, face_attributes
-		);
+        InterpolateVertexAttributes_Dispatched<TDeviceType, scalar_t>(
+                interpolated_attributes, pixel_face_indices,
+                pixel_barycentric_coordinates, face_attributes
+        );
 	});
 }
 
