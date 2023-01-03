@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/21/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/3/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -18,34 +18,10 @@
 // third-party includes
 
 // local includes
+#include "alignment/functional/kernel/RenderedVertexAndNormalJacobians.h"
 #include "core/DeviceSelection.h"
-#include "Jacobians.h"
 
 namespace nnrt::alignment::functional::kernel {
-
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open3d::core::Tensor& normal_jacobians,
-                                    const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
-                                    const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
-                                    const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights) {
-	core::ExecuteOnDevice(
-			vertex_positions.GetDevice(),
-			[&] {
-				WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
-						vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
-						warp_anchor_weights
-				);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-						WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA>(
-								vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
-								warp_anchor_weights
-						);
-				);
-			}
-	);
-
-}
 
 void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
                                       const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
@@ -72,4 +48,5 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 			}
 	);
 }
+
 } // namespace nnrt::alignment::functional::kernel

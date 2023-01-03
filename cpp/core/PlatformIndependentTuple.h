@@ -15,6 +15,8 @@
 //  ================================================================
 #pragma once
 
+// ============== Kernel code usage ONLY ==============
+
 #ifdef __CUDACC__
 #include <cuda/std/tuple>
 namespace nnrt {
@@ -22,14 +24,17 @@ template<typename... Ts>
 using tuple = cuda::std::tuple<Ts...>;
 
 template<typename... Ts>
+__device__
 inline cuda::std::tuple<Ts...> make_tuple(Ts... args){
 	return cuda::std::make_tuple(args...);
 }
 
-template<int IItem, typename TTuple, typename TItem>
-inline TItem get(TTuple& tuple) {
+template<int IItem, typename TTuple>
+__device__
+inline auto get(TTuple& tuple) {
 	return cuda::std::get<IItem>(tuple);
 }
+
 } // namespace nnrt
 #else
 #include <tuple>
@@ -42,10 +47,12 @@ inline std::tuple<Ts...> make_tuple(Ts... args){
 	return std::make_tuple(args...);
 }
 
-template<int IItem, typename TTuple, typename TItem>
-inline TItem get(TTuple& tuple) {
+
+template<int IItem, typename TTuple>
+inline auto get(TTuple& tuple) {
 	return std::get<IItem>(tuple);
 }
+
 } // namespace nnrt
 #endif
 

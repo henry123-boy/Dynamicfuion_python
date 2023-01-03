@@ -18,11 +18,11 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/JacobiansImpl.h"
+#include "alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h"
 
 namespace nnrt::alignment::functional::kernel {
 template
-void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA>(
+void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
 		const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
 		const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,

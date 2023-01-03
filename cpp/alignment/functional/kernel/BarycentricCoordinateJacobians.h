@@ -48,14 +48,14 @@ inline tuple<Eigen::Vector2f, Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedF
         const T2dVertex& vertex2
 ) {
     if (TVertexOrder == rendering::functional::kernel::ClockWise) {
-        const Eigen::Vector2f dArea_dVertex0(vertex1.y() - vertex2.y(), vertex2.x - vertex1.x);
-        const Eigen::Vector2f dArea_dVertex1(vertex2.y() - vertex0.y(), vertex0.x - vertex2.x);
-        const Eigen::Vector2f dArea_dVertex2(vertex0.y() - vertex1.y(), vertex1.x - vertex0.x);
+        const Eigen::Vector2f dArea_dVertex0(vertex1.y() - vertex2.y(), vertex2.x() - vertex1.x());
+        const Eigen::Vector2f dArea_dVertex1(vertex2.y() - vertex0.y(), vertex0.x() - vertex2.x());
+        const Eigen::Vector2f dArea_dVertex2(vertex0.y() - vertex1.y(), vertex1.x() - vertex0.x());
         return make_tuple(dArea_dVertex0, dArea_dVertex1, dArea_dVertex2);
     } else {
-        const Eigen::Vector2f dArea_dVertex0(vertex2.y() - vertex1.y(), vertex1.x - vertex2.x);
-        const Eigen::Vector2f dArea_dVertex1(vertex0.y() - vertex2.y(), vertex2.x - vertex0.x);
-        const Eigen::Vector2f dArea_dVertex2(vertex1.y() - vertex0.y(), vertex0.x - vertex1.x);
+        const Eigen::Vector2f dArea_dVertex0(vertex2.y() - vertex1.y(), vertex1.x() - vertex2.x());
+        const Eigen::Vector2f dArea_dVertex1(vertex0.y() - vertex2.y(), vertex2.x() - vertex0.x());
+        const Eigen::Vector2f dArea_dVertex2(vertex1.y() - vertex0.y(), vertex0.x() - vertex1.x());
         return make_tuple(dArea_dVertex0, dArea_dVertex1, dArea_dVertex2);
     }
 }
@@ -68,17 +68,17 @@ inline tuple<Eigen::Vector2f, Eigen::Vector2f> Jacobian_SignedSubFaceParallelogr
         const TNdcVertex& vertex1
 ) {
     if (TVertexOrder == rendering::functional::kernel::ClockWise) {
-        const Eigen::Vector2f dArea_dVertex1(vertex1.y() - point.y(), point.x - vertex1.x);
-        const Eigen::Vector2f dArea_dVertex2(point.y() - vertex0.y(), vertex0.x - point.x);
+        const Eigen::Vector2f dArea_dVertex1(vertex1.y() - point.y(), point.x() - vertex1.x());
+        const Eigen::Vector2f dArea_dVertex2(point.y() - vertex0.y(), vertex0.x() - point.x());
         return make_tuple(dArea_dVertex1, dArea_dVertex2);
     } else {
-        const Eigen::Vector2f dArea_dVertex1(point.y() - vertex1.y(), vertex1.x - point.x);
-        const Eigen::Vector2f dArea_dVertex2(vertex0.y() - point.y(), point.x - vertex0.x);
+        const Eigen::Vector2f dArea_dVertex1(point.y() - vertex1.y(), vertex1.x() - point.x());
+        const Eigen::Vector2f dArea_dVertex2(vertex0.y() - point.y(), point.x() - vertex0.x());
         return make_tuple(dArea_dVertex1, dArea_dVertex2);
     }
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcRayPoint, typename TNdcVertex, typename TBarycentricCoordinateVector,
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TNdcRayPoint, typename TNdcVertex,
         typename TGetFaceSubArea, typename TGetFaceParallelogramArea>
 NNRT_DEVICE_WHEN_CUDACC
 inline array<core::kernel::Matrix3x2f, 3>
@@ -107,7 +107,8 @@ Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
     tuple<Eigen::Vector2f, Eigen::Vector2f> d_sub_face2_p_area_wrt_vertices_0_1 =
             Jacobian_SignedSubFaceParallelogramAreaWrtIntersectionPointAndNdcVertices(ray_point, vertex0, vertex1);
 
-    core::kernel::Matrix3x2f d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1, d_distorted_coords_wrt_vertex2;
+    core::kernel::Matrix3x2f d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1,
+            d_distorted_coords_wrt_vertex2;
     //Note: = Matrix3x2f::Zero(); -- how to initialize zero matrix for Eigen
 
     // For the below jacobian, in code comments, we use ρ ("rho") for barycentric coordinates, and p for
@@ -183,7 +184,7 @@ Jacobian_BarycentricCoordinateWrtNdcVertices(
             },
             [&vertex0, &vertex1, &vertex2]() {
                 return rendering::functional::kernel::
-                       SignedParallelogramArea<TNdcVertex, TNdcVertex, rendering::functional::kernel::ClockWise>(
+                       SignedParallelogramArea<rendering::functional::kernel::ClockWise>(
                         vertex0, vertex1, vertex2)
                        + K_EPSILON;
             }
@@ -334,8 +335,7 @@ inline core::kernel::Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVer
     return d_barycentric_coordinates_d_vertices;
 }
 
-template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TVertex, typename TPoint,
-        typename TBarycentricCoordinateVector>
+template<VertexOrder TVertexOrder = VertexOrder::ClockWise, typename TVertex, typename TPoint>
 NNRT_DEVICE_WHEN_CUDACC
 inline core::kernel::Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVertices_WithPerspectiveCorrection(
         const TPoint& ray_point,
@@ -354,20 +354,25 @@ inline core::kernel::Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVer
             ) {
                 float face_parallelogram_area;
                 Eigen::Vector3f sub_face_parallelogram_areas;
-                distorted_barycentric_coordinates = rendering::functional::kernel::BarycentricCoordinates_PreserveAreas<TVertexOrder>(
-                        face_parallelogram_area, sub_face_parallelogram_areas,
-                        ray_point, ndc_vertex0, ndc_vertex1, ndc_vertex2
-                );
+                distorted_barycentric_coordinates =
+                        rendering::functional::kernel::BarycentricCoordinates_PreserveAreas<TVertexOrder>(
+                                face_parallelogram_area, sub_face_parallelogram_areas,
+                                ray_point, ndc_vertex0, ndc_vertex1, ndc_vertex2
+                        );
                 return Jacobian_BarycentricCoordinateWrtNdcVertices<TVertexOrder>(
                         ray_point, ndc_vertex0, ndc_vertex1, ndc_vertex2,
                         face_parallelogram_area, sub_face_parallelogram_areas
-                        );
+                );
             },
-            [&distorted_barycentric_coordinates, &vertex0, &vertex1, &vertex2](core::kernel::Matrix3x9f& d_barycentric_coordinates_d_vertices) {
-                auto [d_perspective_corrected_d_distorted, d_perspective_corrected_d_z] =
+            [&distorted_barycentric_coordinates, &vertex0, &vertex1, &vertex2]
+                    (core::kernel::Matrix3x9f& d_barycentric_coordinates_d_vertices) {
+                tuple<core::kernel::Matrix3f, core::kernel::Matrix3f> j_perspective_correct_combined =
                         Jacobian_PerspectiveCorrectBarycentricCoordinateWrtDistortedAndZ(
                                 distorted_barycentric_coordinates, vertex0.z(), vertex1.z(),
                                 vertex2.z());
+                core::kernel::Matrix3f
+                        d_perspective_corrected_d_distorted = nnrt::get<0>(j_perspective_correct_combined);
+                core::kernel::Matrix3f d_perspective_corrected_d_z = nnrt::get<1>(j_perspective_correct_combined);
                 d_barycentric_coordinates_d_vertices =
                         d_perspective_corrected_d_distorted * d_barycentric_coordinates_d_vertices;
                 for (int i_coordinate = 0; i_coordinate < 3; i_coordinate++) {

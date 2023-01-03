@@ -269,14 +269,14 @@ set(
 
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.h
-    alignment/functional/Jacobians.cpp
-    alignment/functional/Jacobians.h
-    alignment/functional/kernel/Jacobians.cpp
-    alignment/functional/kernel/Jacobians.h
-    alignment/functional/kernel/JacobiansImpl.h
+        alignment/functional/RenderedVertexAndNormalJacobians.cpp
+        alignment/functional/RenderedVertexAndNormalJacobians.h
+        alignment/functional/kernel/WarpedVertexAndNormalJacobians.cpp
+        alignment/functional/kernel/WarpedVertexAndNormalJacobians.h
+        alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
-    alignment/functional/kernel/instantiations/JacobiansCPU.cpp
-    alignment/functional/kernel/instantiations/JacobiansCUDA.cu
+        alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCPU.cpp
+        alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCUDA.cu
 
     core/kernel/MathTypedefs.h
     alignment/functional/kernel/ProjectionJacobians.h
@@ -284,7 +284,7 @@ set(
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RenderedVertexAndNormalJacobians.cpp alignment/functional/kernel/RenderedVertexAndNormalJacobians.h alignment/functional/kernel/RenderedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RenderedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RenderedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

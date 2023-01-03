@@ -30,6 +30,12 @@ namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::alignment {
 
+DeformableMeshRenderToRgbdImageFitter::DeformableMeshRenderToRgbdImageFitter(
+        int maximal_iteration_count,
+        float minimal_update_threshold
+) : max_iteration_count(maximal_iteration_count),
+    min_update_threshold(minimal_update_threshold) {}
+
 void DeformableMeshRenderToRgbdImageFitter::FitToImage(
         nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
         const open3d::t::geometry::Image& reference_color_image,
@@ -39,8 +45,7 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 ) const {
     auto [anchors, weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
                                                                      nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
-    //TODO finish impl
-    utility::LogError("Not Implemented");
+
 }
 
 void
@@ -86,6 +91,13 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
     FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, reference_image_mask,
                intrinsic_matrix, extrinsic_matrix,
                depth_scale, depth_max);
+
+    int iteration = 0;
+    float maximum_update = std::numeric_limits<float>::max();
+    while(iteration < max_iteration_count && maximum_update > min_update_threshold){
+
+        iteration++;
+    }
 }
 
 

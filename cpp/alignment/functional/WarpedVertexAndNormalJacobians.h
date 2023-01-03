@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/21/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/3/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -15,15 +15,15 @@
 //  ================================================================
 #pragma once
 // stdlib includes
+#include <tuple>
 
 // third-party includes
-#include <open3d/core/Tensor.h>
-#include <open3d/t/geometry/TriangleMesh.h>
 
 // local includes
 #include "geometry/GraphWarpField.h"
 
 namespace nnrt::alignment::functional {
+
 /**
  * \brief Compute non-zero, non-trivial entries of warped mesh vertices and normals w.r.t. to node rotations & translations
  * \details Note, the function doesn't compute all the jacobians explicitly.
@@ -41,12 +41,5 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJaco
 	const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
 	const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 );
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> RenderedVertexAndNormalJacobians(
-	const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
-	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
-	bool perspective_corrected_barycentric_coordinates
-);
-
 
 } // namespace nnrt::alignment::functional

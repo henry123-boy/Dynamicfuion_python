@@ -18,14 +18,15 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/JacobiansImpl.h"
+#include "alignment/functional/kernel/RenderedVertexAndNormalJacobiansImpl.h"
 
 namespace nnrt::alignment::functional::kernel {
 template
-void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
-		const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
-		const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
-		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
+void RenderedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
+        open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+        const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+        const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+        const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
+        bool perspective_corrected_barycentric_coordinates
 );
 } // namespace nnrt::alignment::functional::kernel

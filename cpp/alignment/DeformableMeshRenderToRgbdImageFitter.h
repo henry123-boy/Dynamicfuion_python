@@ -28,6 +28,8 @@ namespace nnrt::alignment {
 
 class DeformableMeshRenderToRgbdImageFitter {
 public:
+    DeformableMeshRenderToRgbdImageFitter(int maximal_iteration_count, float minimal_update_threshold);
+
 	/**
 	 * \brief
 	 * \param warp_field
@@ -64,6 +66,10 @@ public:
 	                                      const open3d::core::Tensor& anchors,
 	                                      const open3d::core::Tensor& weights)
 	const;
+
+private:
+    int max_iteration_count;
+    float min_update_threshold;
 };
 
 
