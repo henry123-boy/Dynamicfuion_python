@@ -78,6 +78,9 @@ public:
 	const;
 	open3d::core::Tensor ComputeResiduals(
             const open3d::t::geometry::TriangleMesh& warped_mesh,
+            const open3d::core::Tensor& pixel_face_indices,
+            const open3d::core::Tensor& pixel_barycentric_coordinates,
+            const open3d::core::Tensor& pixel_depths,
             const open3d::t::geometry::Image& reference_color_image,
             const open3d::t::geometry::PointCloud& reference_point_cloud,
             const open3d::core::Tensor& reference_point_mask,

@@ -24,7 +24,7 @@
 //#include <unsupported/Eigen/KroneckerProduct>
 
 // local includes
-#include "alignment/functional/kernel/RenderedVertexAndNormalJacobians.h"
+#include "alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h"
 #include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
 #include "alignment/functional/kernel/ProjectionJacobians.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
@@ -41,10 +41,10 @@ namespace utility = open3d::utility;
 namespace nnrt::alignment::functional::kernel {
 template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection,
 		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::ClockWise>
-void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
-                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics) {
+void RasterizedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                        const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                        const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                        const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics) {
 	auto device = warped_vertex_positions.GetDevice();
 	o3c::AssertTensorDevice(warped_triangle_indices, device);
 	o3c::AssertTensorDevice(warped_vertex_normals, device);
@@ -159,21 +159,21 @@ void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jaco
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RenderedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
-                                      const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-                                      const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-                                      const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
-                                      bool perspective_corrected_barycentric_coordinates) {
+void RasterizedVertexAndNormalJacobians(open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+                                        const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
+                                        const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+                                        const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
+                                        bool perspective_corrected_barycentric_coordinates) {
 	if (perspective_corrected_barycentric_coordinates) {
-		RenderedVertexAndNormalJacobians<TDeviceType, true>(
-				rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
-				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
-		);
+        RasterizedVertexAndNormalJacobians<TDeviceType, true>(
+                rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+                warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
+        );
 	} else {
-		RenderedVertexAndNormalJacobians<TDeviceType, false>(
-				rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
-				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
-		);
+        RasterizedVertexAndNormalJacobians<TDeviceType, false>(
+                rendered_normal_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+                warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
+        );
 	}
 }
 

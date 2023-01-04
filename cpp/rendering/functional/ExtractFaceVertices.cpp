@@ -67,7 +67,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> GetMeshNdcFaceVerticesAnd
 	o3c::AssertTensorDtype(triangle_vertex_indices, o3c::Int64);
 	o3tg::CheckIntrinsicTensor(intrinsic_matrix);
 
-	auto [normalized_intrinsic_matrix, normalized_xy_range] =
+	auto [ndc_intrinsic_matrix, ndc_xy_range] =
             rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, image_size);
 	o3c::Tensor vertex_positions_normalized_camera, clipped_face_mask;
 
@@ -78,7 +78,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> GetMeshNdcFaceVerticesAnd
                                          {vertex_positions_camera},
                                          open3d::utility::nullopt,
                                          {triangle_vertex_indices},
-                                         normalized_intrinsic_matrix, normalized_xy_range,
+                                         ndc_intrinsic_matrix, ndc_xy_range,
                                          near_clipping_distance, far_clipping_distance);
 
 	return std::make_tuple(vertex_positions_normalized_camera, clipped_face_mask);
@@ -105,7 +105,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Get
         triangle_vertex_index_sets.push_back(triangle_vertex_indices);
     }
 
-    auto [normalized_intrinsic_matrix, normalized_xy_range] =
+    auto [ndc_intrinsic_matrix, ndc_xy_range] =
             rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, image_size);
 	o3c::Tensor vertex_positions_normalized_camera, clipped_face_mask, face_counts;
 
@@ -116,8 +116,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Get
                                          vertex_position_sets,
                                          open3d::utility::nullopt,
                                          triangle_vertex_index_sets,
-                                         normalized_intrinsic_matrix,
-                                         normalized_xy_range,
+                                         ndc_intrinsic_matrix,
+                                         ndc_xy_range,
                                          near_clipping_distance,
                                          far_clipping_distance);
 
@@ -143,7 +143,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Get
 	o3c::AssertTensorDtype(triangle_vertex_indices, o3c::Int64);
 	o3tg::CheckIntrinsicTensor(intrinsic_matrix);
 
-	auto [normalized_intrinsic_matrix, normalized_xy_range] =
+	auto [ndc_intrinsic_matrix, ndc_xy_range] =
             rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, image_size);
 	o3c::Tensor vertex_positions_normalized_camera, face_vertex_normals, clipped_face_mask;
     const std::vector<open3d::core::Tensor> vnc_vector = {vertex_normals_camera};
@@ -155,8 +155,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> Get
                                          {vertex_positions_camera},
                                          vnc_vector,
                                          {triangle_vertex_indices},
-                                         normalized_intrinsic_matrix,
-                                         normalized_xy_range,
+                                         ndc_intrinsic_matrix,
+                                         ndc_xy_range,
                                          near_clipping_distance,
                                          far_clipping_distance);
 

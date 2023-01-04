@@ -26,6 +26,9 @@
 #include "rendering/functional/InterpolateVertexAttributes.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/Comparison.h"
+#include "alignment/functional/WarpedVertexAndNormalJacobians.h"
+#include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
+#include "rendering/kernel/CoordinateSystemConversions.h"
 
 
 namespace o3c = open3d::core;
@@ -52,28 +55,50 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
         const open3d::core::Tensor& intrinsic_matrix,
         const open3d::core::Tensor& extrinsic_matrix
 ) const {
-    auto [anchors, weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
-                                                                     nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
+    auto [warp_anchors, warp_weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
+                                                                               nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
     o3c::SizeVector image_size = {reference_color_image.GetRows(), reference_color_image.GetCols()};
 
     int iteration = 0;
     float maximum_update = std::numeric_limits<float>::max();
 
+    auto [ndc_intrinsic_matrix, ndc_xy_range] =
+            rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, image_size);
+
 
     while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
-        o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(warped_mesh, anchors, weights, true, extrinsic_matrix);
+        o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(warped_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
+
+
+        auto [extracted_face_vertices, clipped_face_mask] =
+            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
+                    warped_mesh, intrinsic_matrix, image_size, 0.0, 10.0
+            );
+
+        //TODO: add an obvious optional optimization in the case perspective-correct barycentrics are used: output the
+        // distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
+        auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
+                nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
+                                                       -1, -1, this->use_perspective_correction, false, true);
 
         // compute residuals r
         o3c::Tensor residuals =
-                this->ComputeResiduals(warped_mesh, reference_color_image, reference_point_cloud, reference_point_mask,
+                this->ComputeResiduals(warped_mesh, pixel_face_indices, pixel_barycentric_coordinates, pixel_depths,
+                                       reference_color_image, reference_point_cloud, reference_point_mask,
                                        intrinsic_matrix);
 
         // compute warped vertex and normal jacobians wrt. delta rotations and jacobians
+        auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
+                functional::WarpedVertexAndNormalJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
 
-        // compute rendered vertex and normal jacobians (?)
 
+        // compute rasterized vertex and normal jacobians
+        auto [rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians] =
+                functional::RasterizedVertexAndNormalJacobians(warped_mesh, pixel_face_indices,
+                                                               pixel_barycentric_coordinates,
+                                                               ndc_intrinsic_matrix, this->use_perspective_correction);
         // compute (J^T)J
-
+        rendred_
         // compute -Jr
 
         // solve system of linear equations for the delta rotations and translations
@@ -134,23 +159,16 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
 
 open3d::core::Tensor DeformableMeshRenderToRgbdImageFitter::ComputeResiduals(
         const open3d::t::geometry::TriangleMesh& warped_mesh,
+        const open3d::core::Tensor& pixel_face_indices,
+        const open3d::core::Tensor& pixel_barycentric_coordinates,
+        const open3d::core::Tensor& pixel_depths,
         const open3d::t::geometry::Image& reference_color_image,
         const open3d::t::geometry::PointCloud& reference_point_cloud,
         const open3d::core::Tensor& reference_point_mask,
         const open3d::core::Tensor& intrinsics
 ) const {
 
-
     o3c::SizeVector image_size = {reference_color_image.GetRows(), reference_color_image.GetCols()};
-
-    auto [extracted_face_vertices, clipped_face_mask] =
-            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
-                    warped_mesh, intrinsics, image_size, 0.0, 10.0
-            );
-
-    auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-            nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-                                                   -1, -1, this->use_perspective_correction, false, true);
 
     auto vertex_normals = warped_mesh.GetVertexNormals();
     auto triangle_indices = warped_mesh.GetTriangleIndices();

@@ -90,8 +90,7 @@ void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobi
 				*stored_node_weight = -node_weight;
 				Eigen::Map<Eigen::Vector3f> normal_rotation_jacobian(normal_jacobian_data + (i_vertex * anchors_per_vertex * 3) + (i_anchor * 3));
 
-				vertex_rotation_jacobian =
-						-node_weight * (node_rotation * (vertex_position - node_position));
+				vertex_rotation_jacobian = -node_weight * (node_rotation * (vertex_position - node_position));
 				normal_rotation_jacobian = -node_weight * (node_rotation * vertex_normal);
 			}
 	);

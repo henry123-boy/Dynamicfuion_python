@@ -100,6 +100,8 @@ inline float ImageSpaceDistanceToNdc(float distance_pixels, int dimension1, int 
 	return distance_pixels / half_min_dim;
 }
 
+//TODO: move host-level code somewhere it makes more sense. Perhaps reorganize -- things having to do with projections
+// need to go to the geometry namespace (or, perhaps, a geometry::projection sub-space).
 
 // ==== HOST-LEVEL FUNCTIONS =====
 inline

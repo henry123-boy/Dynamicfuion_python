@@ -18,8 +18,8 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/RenderedVertexAndNormalJacobians.h"
-#include "alignment/functional/RenderedVertexAndNormalJacobians.h"
+#include "alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h"
+#include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
 
 
 namespace utility = open3d::utility;
@@ -28,11 +28,11 @@ namespace o3c = open3d::core;
 // local includes
 namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh,
-                                 const open3d::core::Tensor& pixel_faces,
-                                 const open3d::core::Tensor& barycentric_coordinates,
-                                 const open3d::core::Tensor& ndc_intrinsics,
-                                 bool perspective_corrected_barycentric_coordinates) {
+RasterizedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh,
+                                   const open3d::core::Tensor& pixel_faces,
+                                   const open3d::core::Tensor& barycentric_coordinates,
+                                   const open3d::core::Tensor& ndc_intrinsic_matrix,
+                                   bool use_perspective_corrected_barycentric_coordinates) {
 	if (!warped_mesh.HasVertexNormals() || !warped_mesh.HasVertexPositions() || !warped_mesh.HasTriangleIndices()) {
 		utility::LogError("warped_mesh needs to have vertex positions, triangle indices, and vertex normals defined. "
 		                  "In argument, vertex positions are {} defined, triangle indices are {} defined, and vertex normals are {} defined.",
@@ -42,9 +42,11 @@ RenderedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warped
 	}
 
 	o3c::Tensor rendered_vertex_jacobians, rendered_normal_jacobians;
-	kernel::RenderedVertexAndNormalJacobians(rendered_vertex_jacobians, rendered_normal_jacobians, warped_mesh.GetVertexPositions(),
-	                                         warped_mesh.GetTriangleIndices(), warped_mesh.GetVertexNormals(), pixel_faces, barycentric_coordinates,
-	                                         ndc_intrinsics, false);
+    kernel::RasterizedVertexAndNormalJacobians(rendered_vertex_jacobians, rendered_normal_jacobians,
+                                               warped_mesh.GetVertexPositions(),
+                                               warped_mesh.GetTriangleIndices(), warped_mesh.GetVertexNormals(),
+                                               pixel_faces, barycentric_coordinates,
+                                               ndc_intrinsic_matrix, false);
 
 	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }
