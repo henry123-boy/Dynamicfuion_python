@@ -73,7 +73,7 @@ open3d::core::Tensor ComputePointToPlaneDistances(const PointCloud& point_cloud1
 		                  point_cloud1.GetDevice().ToString(), point_cloud2.GetDevice().ToString());
 	}
 	if (!point_cloud1.HasPointNormals()) {
-		utility::LogError("Mesh needs to have vertex normals defined.");
+		utility::LogError("Point cloud 1 needs to have vertex normals defined.");
 	}
 	const core::Tensor& point_normals1 = point_cloud1.GetPointNormals();
 	const core::Tensor& point_positions1 = point_cloud1.GetPointPositions();

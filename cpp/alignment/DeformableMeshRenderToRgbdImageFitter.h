@@ -28,7 +28,12 @@ namespace nnrt::alignment {
 
 class DeformableMeshRenderToRgbdImageFitter {
 public:
-    DeformableMeshRenderToRgbdImageFitter(int maximal_iteration_count, float minimal_update_threshold);
+    DeformableMeshRenderToRgbdImageFitter(
+            int maximal_iteration_count = 100,
+            float minimal_update_threshold = 1e-6,
+            bool use_perspective_correction = false,
+            float max_depth = 10.f
+    );
 
 	/**
 	 * \brief
@@ -40,36 +45,51 @@ public:
 	 * \param depth_scale
 	 * \param depth_max
 	 */
-	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                const open3d::t::geometry::RGBDImage& reference_image,
-	                const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
-	                float depth_scale, float depth_max)
+    void FitToImage(
+            nnrt::geometry::GraphWarpField& warp_field,
+            const open3d::t::geometry::TriangleMesh& canonical_mesh,
+            const open3d::t::geometry::RGBDImage& reference_image,
+            const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+            const open3d::core::Tensor& intrinsic_matrix,
+            const open3d::core::Tensor& extrinsic_matrix,
+            float depth_scale
+    )
 	const;
-	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                const open3d::t::geometry::Image& reference_color_image,
-	                const open3d::t::geometry::Image& reference_depth_image,
-	                const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix,
-	                float depth_scale, float depth_max)
+	void FitToImage(
+            nnrt::geometry::GraphWarpField& warp_field,
+            const open3d::t::geometry::TriangleMesh& canonical_mesh,
+            const open3d::t::geometry::Image& reference_color_image,
+            const open3d::t::geometry::Image& reference_depth_image,
+            const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+            const open3d::core::Tensor& intrinsic_matrix,
+            const open3d::core::Tensor& extrinsic_matrix,
+            float depth_scale
+    )
 	const;
-	void FitToImage(nnrt::geometry::GraphWarpField& warp_field, const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                const open3d::t::geometry::Image& reference_color_image, const open3d::t::geometry::PointCloud& reference_point_cloud,
-	                const open3d::core::Tensor& intrinsic_matrix, const open3d::core::Tensor& extrinsic_matrix)
+	void FitToImage(
+            nnrt::geometry::GraphWarpField& warp_field,
+            const open3d::t::geometry::TriangleMesh& canonical_mesh,
+            const open3d::t::geometry::Image& reference_color_image,
+            const open3d::t::geometry::PointCloud& reference_point_cloud,
+            const open3d::core::Tensor& reference_point_mask,
+            const open3d::core::Tensor& intrinsic_matrix,
+            const open3d::core::Tensor& extrinsic_matrix
+    )
 	const;
-	open3d::core::Tensor ComputeResiduals(nnrt::geometry::GraphWarpField& warp_field,
-	                                      const open3d::t::geometry::TriangleMesh& canonical_mesh,
-	                                      const open3d::t::geometry::Image& reference_color_image,
-	                                      const open3d::t::geometry::PointCloud& reference_point_cloud,
-	                                      const open3d::core::Tensor& intrinsics,
-	                                      const open3d::core::Tensor& extrinsics,
-	                                      const open3d::core::Tensor& anchors,
-	                                      const open3d::core::Tensor& weights)
+	open3d::core::Tensor ComputeResiduals(
+            const open3d::t::geometry::TriangleMesh& warped_mesh,
+            const open3d::t::geometry::Image& reference_color_image,
+            const open3d::t::geometry::PointCloud& reference_point_cloud,
+            const open3d::core::Tensor& reference_point_mask,
+            const open3d::core::Tensor& intrinsics
+    )
 	const;
 
 private:
     int max_iteration_count;
     float min_update_threshold;
+    float max_depth;
+    bool use_perspective_correction;
 };
 
 

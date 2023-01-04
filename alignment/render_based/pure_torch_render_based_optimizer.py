@@ -175,8 +175,8 @@ class PureTorchRenderBasedOptimizer:
         rendered_point_outside_depth_range_mask = torch.where(point_depths.view(-1) == -1, zeros, ones)
 
         residuals = \
-            torch.square(self.point_to_plane_distances(rendered_points, rendered_normals,
-                                                       rendered_point_outside_depth_range_mask))
+            self.point_to_plane_distances(rendered_points, rendered_normals,
+                                          rendered_point_outside_depth_range_mask)
         return residuals
 
     def optimize(self):
