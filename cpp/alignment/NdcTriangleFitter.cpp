@@ -25,7 +25,7 @@
 #include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "geometry/functional/PerspectiveProjection.h"
-#include "geometry/functional/Comparison.h"
+#include "geometry/functional/PointToPlaneDistances.h"
 #include "geometry/functional/MeshFrom2dTriangle.h"
 #include "core/functional/Masking.h"
 #include "core/kernel/MathTypedefs.h"

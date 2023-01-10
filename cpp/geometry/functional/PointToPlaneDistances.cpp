@@ -13,8 +13,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "Comparison.h"
-#include "geometry/functional/kernel/Comparison.h"
+#include "PointToPlaneDistances.h"
+#include "geometry/functional/kernel/PointToPlaneDistances.h"
 
 using namespace open3d;
 using namespace open3d::t::geometry;

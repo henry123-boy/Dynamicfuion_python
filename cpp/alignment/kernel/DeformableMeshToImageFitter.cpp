@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/5/21.
-//  Copyright (c) 2021 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/5/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -13,16 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/functional/kernel/Comparison.h"
-#include "open3d/core/ParallelFor.h"
-#include "geometry/functional/kernel/ComparisonImpl.h"
+// stdlib includes
 
-namespace nnrt::geometry::functional::kernel::comparison {
-template
-void ComputePointToPlaneDistances<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& distances,
-		const open3d::core::Tensor& normals1,
-		const open3d::core::Tensor& vertices1,
-		const open3d::core::Tensor& vertices2);
+// third-party includes
 
-} // namespace nnrt::geometry::functional::kernel::comparison
+// local includes
+#include "DeformableMeshToImageFitter.h"
+namespace nnrt::alignment::kernel {
+
+} // namespace nnrt::alignment::kernel

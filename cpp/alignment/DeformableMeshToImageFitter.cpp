@@ -20,12 +20,12 @@
 
 // local
 #include "core/functional/Masking.h"
-#include "DeformableMeshRenderToRgbdImageFitter.h"
+#include "DeformableMeshToImageFitter.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/functional/InterpolateVertexAttributes.h"
 #include "geometry/functional/PerspectiveProjection.h"
-#include "geometry/functional/Comparison.h"
+#include "geometry/functional/PointToPlaneDistances.h"
 #include "alignment/functional/WarpedVertexAndNormalJacobians.h"
 #include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
@@ -37,7 +37,7 @@ namespace o3tg = open3d::t::geometry;
 
 namespace nnrt::alignment {
 
-DeformableMeshRenderToRgbdImageFitter::DeformableMeshRenderToRgbdImageFitter(
+DeformableMeshToImageFitter::DeformableMeshToImageFitter(
         int maximal_iteration_count,
         float minimal_update_threshold,
         bool use_perspective_correction,
@@ -46,7 +46,7 @@ DeformableMeshRenderToRgbdImageFitter::DeformableMeshRenderToRgbdImageFitter(
     min_update_threshold(minimal_update_threshold),
     use_perspective_correction(use_perspective_correction) {}
 
-void DeformableMeshRenderToRgbdImageFitter::FitToImage(
+void DeformableMeshToImageFitter::FitToImage(
         nnrt::geometry::GraphWarpField& warp_field,
         const open3d::t::geometry::TriangleMesh& canonical_mesh,
         const open3d::t::geometry::Image& reference_color_image,
@@ -67,13 +67,14 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 
 
     while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
-        o3tg::TriangleMesh warped_mesh = warp_field.WarpMesh(warped_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
+        o3tg::TriangleMesh
+                warped_mesh = warp_field.WarpMesh(warped_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
 
 
         auto [extracted_face_vertices, clipped_face_mask] =
-            nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
-                    warped_mesh, intrinsic_matrix, image_size, 0.0, 10.0
-            );
+                nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
+                        warped_mesh, intrinsic_matrix, image_size, 0.0, 10.0
+                );
 
         //TODO: add an obvious optional optimization in the case perspective-correct barycentrics are used: output the
         // distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
@@ -81,9 +82,12 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
                 nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
                                                        -1, -1, this->use_perspective_correction, false, true);
 
-        // compute residuals r
+        // compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
+        o3tg::PointCloud rasterized_point_cloud;
+        o3c::Tensor global_point_mask;
         o3c::Tensor residuals =
-                this->ComputeResiduals(warped_mesh, pixel_face_indices, pixel_barycentric_coordinates, pixel_depths,
+                this->ComputeResiduals(rasterized_point_cloud, global_point_mask, warped_mesh, pixel_face_indices,
+                                       pixel_barycentric_coordinates, pixel_depths,
                                        reference_color_image, reference_point_cloud, reference_point_mask,
                                        intrinsic_matrix);
 
@@ -97,8 +101,10 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
                 functional::RasterizedVertexAndNormalJacobians(warped_mesh, pixel_face_indices,
                                                                pixel_barycentric_coordinates,
                                                                ndc_intrinsic_matrix, this->use_perspective_correction);
-        // compute (J^T)J
-        rendred_
+
+
+        // compute (J^T)J, i.e. hessian approximation
+
         // compute -Jr
 
         // solve system of linear equations for the delta rotations and translations
@@ -108,7 +114,7 @@ void DeformableMeshRenderToRgbdImageFitter::FitToImage(
 }
 
 void
-DeformableMeshRenderToRgbdImageFitter::FitToImage(
+DeformableMeshToImageFitter::FitToImage(
         nnrt::geometry::GraphWarpField& warp_field,
         const open3d::t::geometry::TriangleMesh& canonical_mesh,
         const open3d::t::geometry::Image& reference_color_image,
@@ -142,7 +148,7 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
 }
 
 void
-DeformableMeshRenderToRgbdImageFitter::FitToImage(
+DeformableMeshToImageFitter::FitToImage(
         nnrt::geometry::GraphWarpField& warp_field,
         const open3d::t::geometry::TriangleMesh& canonical_mesh,
         const open3d::t::geometry::RGBDImage& reference_image,
@@ -157,7 +163,9 @@ DeformableMeshRenderToRgbdImageFitter::FitToImage(
 
 }
 
-open3d::core::Tensor DeformableMeshRenderToRgbdImageFitter::ComputeResiduals(
+open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
+        open3d::t::geometry::PointCloud& rasterized_point_cloud,
+        open3d::core::Tensor& residual_mask,
         const open3d::t::geometry::TriangleMesh& warped_mesh,
         const open3d::core::Tensor& pixel_face_indices,
         const open3d::core::Tensor& pixel_barycentric_coordinates,
@@ -181,22 +189,44 @@ open3d::core::Tensor DeformableMeshRenderToRgbdImageFitter::ComputeResiduals(
 
     o3c::Tensor identity_extrinsics = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
 
-    o3c::Tensor rendered_points, rendered_point_mask;
+    o3c::Tensor rasterized_points;
     nnrt::geometry::functional::UnprojectDepthImageWithoutFiltering(
-            rendered_points, rendered_point_mask, pixel_depths, intrinsics, identity_extrinsics,
+            rasterized_points, residual_mask, pixel_depths, intrinsics, identity_extrinsics,
             1.0f, this->max_depth, false);
 
-    o3tg::PointCloud rendered_point_cloud(rendered_points);
-    rendered_point_cloud.SetPointNormals(rendered_normals);
+    rasterized_point_cloud = o3tg::PointCloud(rasterized_points);
+    rasterized_point_cloud.SetPointNormals(rendered_normals);
 
     o3c::Tensor distances =
-            geometry::functional::ComputePointToPlaneDistances(rendered_point_cloud, reference_point_cloud);
+            geometry::functional::ComputePointToPlaneDistances(rasterized_point_cloud, reference_point_cloud);
 
-    o3c::Tensor global_point_mask = reference_point_mask.LogicalAnd(rendered_point_mask);
+    o3c::Tensor global_point_mask = reference_point_mask.LogicalAnd(global_point_mask);
 
-    core::functional::SetMaskedToValue(distances, global_point_mask, 0.0f);
+    core::functional::SetMaskedToValue(distances, residual_mask, 0.0f);
 
     return distances;
+}
+
+open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_BlockDiagonal(
+        const open3d::t::geometry::PointCloud& rasterized_point_cloud,
+        const open3d::t::geometry::PointCloud& reference_point_cloud,
+        const open3d::core::Tensor& residual_mask,
+        const open3d::core::Tensor& rasterized_vertex_position_jacobians,
+        const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
+        const open3d::core::Tensor& warped_vertex_position_jacobians,
+        const open3d::core::Tensor& warped_vertex_normal_jacobians,
+        int64_t node_count
+) {
+    o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
+    o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
+
+
+    
+
+
+
+    utility::LogError("Not implemented");
+    return open3d::core::Tensor();
 }
 
 

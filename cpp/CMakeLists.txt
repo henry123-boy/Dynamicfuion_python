@@ -157,11 +157,11 @@ set(
     geometry/functional/kernel/instantiations/Warp3dPointsAndNormalsCUDA.cu
     geometry/functional/kernel/Warp3dPointsAndNormalsImpl.h
 
-    geometry/functional/kernel/Comparison.h
-    geometry/functional/kernel/Comparison.cpp
-    geometry/functional/kernel/instantiations/ComparisonCPU.cpp
-    geometry/functional/kernel/instantiations/ComparisonCUDA.cu
-    geometry/functional/kernel/ComparisonImpl.h
+        geometry/functional/kernel/PointToPlaneDistances.h
+        geometry/functional/kernel/PointToPlaneDistances.cpp
+        geometry/functional/kernel/instantiations/PointToPlaneDistancesCPU.cpp
+        geometry/functional/kernel/instantiations/PointToPlaneDistancesCUDA.cu
+        geometry/functional/kernel/PointToPlaneDistancesImpl.h
 
     geometry/kernel/Segment.h
 
@@ -180,8 +180,8 @@ set(
 
     geometry/functional/AnchorComputationMethod.h
     geometry/TransformationMode.h
-    geometry/functional/Comparison.h
-    geometry/functional/Comparison.cpp
+        geometry/functional/PointToPlaneDistances.h
+        geometry/functional/PointToPlaneDistances.cpp
 
     geometry/functional/FindKNearestNeighbors.cpp
     geometry/functional/FindKNearestNeighbors.h
@@ -264,8 +264,8 @@ set(
     rendering/functional/kernel/instantiations/InterpolateFaceAttributesCUDA.cu
     rendering/functional/kernel/FrontFaceVertexOrder.h
 
-    alignment/DeformableMeshRenderToImageFitter.cpp
-    alignment/DeformableMeshRenderToRgbdImageFitter.h
+        alignment/DeformableMeshToImageFitter.cpp
+        alignment/DeformableMeshToImageFitter.h
 
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.h
@@ -284,7 +284,7 @@ set(
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h alignment/kernel/DeformableMeshToImageFitter.cpp alignment/kernel/DeformableMeshToImageFitter.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

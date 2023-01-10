@@ -26,25 +26,25 @@
 
 namespace nnrt::alignment {
 
-class DeformableMeshRenderToRgbdImageFitter {
+class DeformableMeshToImageFitter {
 public:
-    DeformableMeshRenderToRgbdImageFitter(
+    DeformableMeshToImageFitter(
             int maximal_iteration_count = 100,
             float minimal_update_threshold = 1e-6,
             bool use_perspective_correction = false,
             float max_depth = 10.f
     );
 
-	/**
-	 * \brief
-	 * \param warp_field
-	 * \param canonical_mesh
-	 * \param reference_image
-	 * \param intrinsic_matrix
-	 * \param extrinsic_matrix -- Note: has nothing to do with the reference RGBD image, which is assumed to have identity extrinsics (rel. to camera)
-	 * \param depth_scale
-	 * \param depth_max
-	 */
+    /**
+     * \brief
+     * \param warp_field
+     * \param canonical_mesh
+     * \param reference_image
+     * \param intrinsic_matrix
+     * \param extrinsic_matrix -- Note: has nothing to do with the reference RGBD image, which is assumed to have identity extrinsics (rel. to camera)
+     * \param depth_scale
+     * \param depth_max
+     */
     void FitToImage(
             nnrt::geometry::GraphWarpField& warp_field,
             const open3d::t::geometry::TriangleMesh& canonical_mesh,
@@ -54,8 +54,9 @@ public:
             const open3d::core::Tensor& extrinsic_matrix,
             float depth_scale
     )
-	const;
-	void FitToImage(
+    const;
+
+    void FitToImage(
             nnrt::geometry::GraphWarpField& warp_field,
             const open3d::t::geometry::TriangleMesh& canonical_mesh,
             const open3d::t::geometry::Image& reference_color_image,
@@ -65,8 +66,9 @@ public:
             const open3d::core::Tensor& extrinsic_matrix,
             float depth_scale
     )
-	const;
-	void FitToImage(
+    const;
+
+    void FitToImage(
             nnrt::geometry::GraphWarpField& warp_field,
             const open3d::t::geometry::TriangleMesh& canonical_mesh,
             const open3d::t::geometry::Image& reference_color_image,
@@ -75,8 +77,18 @@ public:
             const open3d::core::Tensor& intrinsic_matrix,
             const open3d::core::Tensor& extrinsic_matrix
     )
-	const;
-	open3d::core::Tensor ComputeResiduals(
+    const;
+
+
+private:
+    int max_iteration_count;
+    float min_update_threshold;
+    float max_depth;
+    bool use_perspective_correction;
+
+    open3d::core::Tensor ComputeResiduals(
+            open3d::t::geometry::PointCloud& rasterized_point_cloud,
+            open3d::core::Tensor& residual_mask,
             const open3d::t::geometry::TriangleMesh& warped_mesh,
             const open3d::core::Tensor& pixel_face_indices,
             const open3d::core::Tensor& pixel_barycentric_coordinates,
@@ -86,13 +98,18 @@ public:
             const open3d::core::Tensor& reference_point_mask,
             const open3d::core::Tensor& intrinsics
     )
-	const;
+    const;
 
-private:
-    int max_iteration_count;
-    float min_update_threshold;
-    float max_depth;
-    bool use_perspective_correction;
+    open3d::core::Tensor ComputeHessianApproximation_BlockDiagonal(
+            const open3d::t::geometry::PointCloud& rasterized_point_cloud,
+            const open3d::t::geometry::PointCloud& reference_point_cloud,
+            const open3d::core::Tensor& residual_mask,
+            const open3d::core::Tensor& rasterized_vertex_position_jacobians,
+            const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
+            const open3d::core::Tensor& warped_vertex_position_jacobians,
+            const open3d::core::Tensor& warped_vertex_normal_jacobians,
+            int64_t node_count
+    )
 };
 
 

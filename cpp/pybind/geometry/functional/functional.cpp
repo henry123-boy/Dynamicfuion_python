@@ -17,7 +17,7 @@
 #include "geometry/functional/WarpAnchorComputation.h"
 #include "geometry/functional/Warping.h"
 #include "geometry/functional/NormalsOperations.h"
-#include "geometry/functional/Comparison.h"
+#include "geometry/functional/PointToPlaneDistances.h"
 #include "geometry/functional/PerspectiveProjection.h"
 
 // local
