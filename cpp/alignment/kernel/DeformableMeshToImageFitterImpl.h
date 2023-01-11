@@ -20,17 +20,20 @@
 #include <open3d/core/ParallelFor.h>
 #include <Eigen/Dense>
 
+
 // local includes
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/platform_independence/Qualifiers.h"
 #include "core/kernel/MathTypedefs.h"
 #include "core/linalg/KroneckerTensorProduct.h"
 #include "core/platform_independence/AtomicCounterArray.h"
+#include "core/ParallelFor.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
 #define MAX_PIXELS_PER_NODE 1500
+
 
 
 namespace nnrt::alignment::kernel {
@@ -53,7 +56,6 @@ void ComputeHessianApproximation_BlockDiagonal(
         int64_t node_count
 ) {
     // === dimension checks ===
-
     int64_t image_height = rasterized_vertex_position_jacobians.GetShape(0);
     int64_t image_width = rasterized_vertex_position_jacobians.GetShape(1);
     int64_t pixel_count = image_width * image_height;
@@ -130,10 +132,10 @@ void ComputeHessianApproximation_BlockDiagonal(
     auto triangle_index_data = face_vertices.GetDataPtr<int64_t>();
     auto vertex_anchor_data = vertex_anchors.GetDataPtr<int32_t>();
 
-
-
     // === loop over all pixels & compute
-    o3c::ParallelFor(
+    //__DEBUG
+    //o3c::ParallelFor(
+    core::ParallelForMutable(
             device, pixel_count,
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t pixel_index) mutable {
                 if (!residual_mask_data[pixel_index]) {
