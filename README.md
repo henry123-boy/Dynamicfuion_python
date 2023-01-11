@@ -156,7 +156,7 @@ Within the [Open3D](http://www.open3d.org/) viewer, you can view the following b
 * `A`: (after having pressed `B`) **align** source to target
 * `,`: rotate the camera once around the scene
 * `;`: move the camera around while visualizing the correspondences from different angles
-* `Z`: reset source object after having aligned with `A`
+* `Z`: Reset source object after having aligned with `A`
 
 
 ## Train

@@ -24,7 +24,7 @@
 
 // local
 #include "core/functional/kernel/BubbleSort.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Atomics.h"
 #include "rendering/kernel/RasterizeNdcTriangles.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "rendering/kernel/RasterizationConstants.h"

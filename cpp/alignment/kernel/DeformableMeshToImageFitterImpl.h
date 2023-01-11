@@ -22,14 +22,15 @@
 
 // local includes
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "core/kernel/MathTypedefs.h"
 #include "core/linalg/KroneckerTensorProduct.h"
+#include "core/platform_independence/AtomicCounterArray.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-#define MAX_PIXELS_PER_NODE 1200
+#define MAX_PIXELS_PER_NODE 1500
 
 
 namespace nnrt::alignment::kernel {
@@ -37,6 +38,7 @@ namespace nnrt::alignment::kernel {
 template<open3d::core::Device::DeviceType TDevice>
 void ComputeHessianApproximation_BlockDiagonal(
         open3d::core::Tensor& pixel_jacobians,
+        open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_jacobian_lists,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
@@ -101,18 +103,16 @@ void ComputeHessianApproximation_BlockDiagonal(
     o3c::AssertTensorDevice(vertex_anchors, device);
     o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
 
-
-
     // === initialize output matrices ===
-    node_jacobian_lists = o3c::Tensor::Zeros({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32);
+    node_jacobian_lists = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32);
     node_jacobian_lists.Fill(-1);
     auto node_pixel_list_data = node_jacobian_lists.GetDataPtr<int32_t>();
 
-    //TODO: make node_jacobian_counts atomics array
+    core::AtomicCounterArray node_jacobian_counts(node_count);
+
 
     // pixel count x 3 vertices per face x 4 anchors per vertex x 6 values per node (3 rotation angles, 3 translation coordinates)
-    //TODO: review and revise sizes and indexing here if need be
-    pixel_jacobians = o3c::Tensor::Zeros({pixel_count, 3, 4, 6}, o3c::Float32);
+    pixel_jacobians = o3c::Tensor({pixel_count, 3, 4, 6}, o3c::Float32);
     auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 
     // === get access to raw input data
@@ -135,21 +135,21 @@ void ComputeHessianApproximation_BlockDiagonal(
     // === loop over all pixels & compute
     o3c::ParallelFor(
             device, pixel_count,
-            NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-                if (!residual_mask_data[workload_idx]) {
+            NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t pixel_index) mutable {
+                if (!residual_mask_data[pixel_index]) {
                     return;
                 }
-                auto v_image = static_cast<int>(workload_idx / image_width);
-                auto u_image = static_cast<int>(workload_idx % image_width);
-                Eigen::Map<const Eigen::RowVector3f> pixel_point_map_vector(point_map_vector_data + workload_idx);
-                Eigen::Map<const Eigen::RowVector3f> pixel_rasterized_normal(rasterized_normal_data + workload_idx);
+                auto v_image = static_cast<int>(pixel_index / image_width);
+                auto u_image = static_cast<int>(pixel_index % image_width);
+                Eigen::Map<const Eigen::RowVector3f> pixel_point_map_vector(point_map_vector_data + pixel_index);
+                Eigen::Map<const Eigen::RowVector3f> pixel_rasterized_normal(rasterized_normal_data + pixel_index);
 
                 Eigen::Map<const core::kernel::Matrix3x9f> pixel_vertex_position_jacobian
-                        (rasterized_vertex_position_jacobian_data + workload_idx * (3 * 9));
+                        (rasterized_vertex_position_jacobian_data + pixel_index * (3 * 9));
                 Eigen::Map<const core::kernel::Matrix3x9f> pixel_rasterized_normal_jacobian
-                        (rasterized_vertex_normal_jacobian_data + workload_idx * (3 * 10));
+                        (rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10));
                 Eigen::Map<const Eigen::RowVector3f> pixel_barycentric_coordinates
-                        (rasterized_vertex_normal_jacobian_data + workload_idx * (3 * 10) + (3 * 9));
+                        (rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10) + (3 * 9));
                 // r stands for "residuals"
                 // wl and nl stand for rasterized vertex positions and normals, respectively
                 // V and N stand for warped vertex positions and normals, respectively
@@ -167,19 +167,25 @@ void ComputeHessianApproximation_BlockDiagonal(
 
                 auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
                 Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-                auto current_pixel_jacobian_data = pixel_jacobian_data + workload_idx * (3 * 4 * 6);
+                int pixel_jacobian_address = pixel_index * (3 * 4 * 6);
+                auto current_pixel_jacobian_data = pixel_jacobian_data + pixel_jacobian_address;
                 //TODO: try to optimize in CUDA-only version using 3 x anchors_per_vertex blocks and block "shared"
                 // memory... Or, at the very least, try increasing thread count to pixel_count x 3 x anchors_per_vertex
                 // instead of just pixel_count.
                 for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
-                    int64_t i_vertex = vertex_indices(i_vertex);
-                    auto pixel_vertex_jacobian_data = current_pixel_jacobian_data + i_face_vertex * (4 * 6);
+                    int64_t i_vertex = vertex_indices(i_face_vertex);
+                    int vertex_jacobian_address = i_face_vertex * (4 * 6);
+                    auto pixel_vertex_jacobian_data = current_pixel_jacobian_data + vertex_jacobian_address;
                     for (int i_anchor = 0; i_anchor < anchor_count_per_vertex; i_anchor++) {
                         auto i_node = vertex_anchor_data[i_vertex * anchor_count_per_vertex + i_anchor];
                         if (i_node == -1) {
                             // -1 is sentinel value for anchors
                             continue;
                         }
+                        int anchor_jacobian_address = i_anchor * 6;
+                        int i_node_jacobian = node_jacobian_counts.FetchAdd(i_node, 1);
+                        node_pixel_list_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
+                                pixel_jacobian_address + vertex_jacobian_address + anchor_jacobian_address;
 
                         // [3x3] warped vertex position Jacobian w.r.t. node rotation
                         const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
@@ -208,17 +214,15 @@ void ComputeHessianApproximation_BlockDiagonal(
                         auto dr_dn = dr_dN.block<1,3>(0, i_vertex * 3);
 
                         Eigen::Map<Eigen::RowVector3<float>>
-                                pixel_vertex_anchor_rotation_jacobian(pixel_vertex_jacobian_data + (i_anchor * 6));
+                                pixel_vertex_anchor_rotation_jacobian(pixel_vertex_jacobian_data + anchor_jacobian_address);
                         Eigen::Map<Eigen::RowVector3<float>>
-                                pixel_vertex_anchor_translation_jacobian(pixel_vertex_jacobian_data + (i_anchor * 6) + 3);
+                                pixel_vertex_anchor_translation_jacobian(pixel_vertex_jacobian_data + anchor_jacobian_address + 3);
 
                         // [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
-                        pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
-                        pixel_vertex_anchor_translation_jacobian += dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
-                        //TODO: log jacobian coordinate for node
+                        pixel_vertex_anchor_rotation_jacobian = (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
+                        pixel_vertex_anchor_translation_jacobian = dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
                     }
                 }
-
             }
     );
 

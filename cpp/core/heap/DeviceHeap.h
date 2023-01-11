@@ -17,7 +17,7 @@
 #include <open3d/core/Device.h>
 #include <open3d/core/Dtype.h>
 #include "core/KeyValuePair.h"
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 
 
 namespace nnrt::core{

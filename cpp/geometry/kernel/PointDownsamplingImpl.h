@@ -26,8 +26,8 @@
 
 // local
 #include "geometry/kernel/PointDownsampling.h"
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Atomics.h"
 #include "core/kernel/HashTableUtilities.h"
 #include "geometry/functional/kernel/PointAggregationBin.h"
 

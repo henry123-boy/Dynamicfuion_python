@@ -113,6 +113,7 @@ private:
             const open3d::core::Tensor& warped_vertex_normal_jacobians,
             int64_t node_count
     )
+    const;
 };
 
 

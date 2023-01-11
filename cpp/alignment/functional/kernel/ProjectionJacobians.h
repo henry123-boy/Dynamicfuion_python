@@ -20,7 +20,7 @@
 #include <Eigen/Dense>
 
 // local includes
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "core/kernel/MathTypedefs.h"
 
 namespace nnrt::alignment::functional::kernel {

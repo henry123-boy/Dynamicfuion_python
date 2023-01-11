@@ -23,8 +23,8 @@
 
 
 // local
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Atomics.h"
 
 
 namespace nnrt::geometry::kernel {

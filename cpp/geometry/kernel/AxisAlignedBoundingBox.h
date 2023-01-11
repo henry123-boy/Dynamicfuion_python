@@ -17,7 +17,7 @@
 
 #include <Eigen/Dense>
 
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 
 namespace nnrt::geometry::kernel{
 

@@ -25,6 +25,7 @@ namespace nnrt::alignment::kernel {
 
 void ComputeHessianApproximation_BlockDiagonal(
         open3d::core::Tensor& pixel_jacobians,
+        open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_pixel_lists,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
@@ -42,7 +43,7 @@ void ComputeHessianApproximation_BlockDiagonal(
 			residual_mask.GetDevice(),
 			[&] {
                 ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CPU>(
-                        pixel_jacobians, node_pixel_lists,
+                        pixel_jacobians, node_jacobians, node_pixel_lists,
                         rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                         warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                         point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
@@ -52,7 +53,7 @@ void ComputeHessianApproximation_BlockDiagonal(
 			[&] {
 				NNRT_IF_CUDA(
                         ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CUDA>(
-                                pixel_jacobians, node_pixel_lists,
+                                pixel_jacobians, node_jacobians, node_pixel_lists,
                                 rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                                 warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                                 point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,

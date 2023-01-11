@@ -39,11 +39,11 @@ set(
 
     debugging/debugging.hpp
 
-    core/PlatformIndependentQualifiers.h
-    core/PlatformIndependentAtomics.h
-    core/PlatformIndependentAlgorithm.h
-    core/PlatformIndependentArray.h
-    core/PlatformIndependentTuple.h
+        core/platform_independence/Qualifiers.h
+        core/platform_independence/Atomics.h
+        core/platform_independence/Algorithm.h
+        core/platform_independence/Array.h
+        core/platform_independence/Tuple.h
 
     core/kernel/KnnUtilities.h
     core/kernel/KnnUtilities_PriorityQueue.h
@@ -284,7 +284,7 @@ set(
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h alignment/kernel/DeformableMeshToImageFitter.cpp alignment/kernel/DeformableMeshToImageFitter.h alignment/kernel/DeformableMeshToImageFitterImpl.h alignment/kernel/instantiations/DeformableMeshToImageFitterCPU.cpp alignment/kernel/instantiations/DeformableMeshToImageFitterCUDA.cu)
+    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h alignment/kernel/DeformableMeshToImageFitter.cpp alignment/kernel/DeformableMeshToImageFitter.h alignment/kernel/DeformableMeshToImageFitterImpl.h alignment/kernel/instantiations/DeformableMeshToImageFitterCPU.cpp alignment/kernel/instantiations/DeformableMeshToImageFitterCUDA.cu core/platform_independence/AtomicCounterArray.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

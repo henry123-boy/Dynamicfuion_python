@@ -22,8 +22,8 @@
 #include <open3d/core/MemoryManager.h>
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Atomics.h"
 #include "geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/kernel/VoxelGridDtypeDispatch.h"
 #include "geometry/functional/kernel/Defines.h"

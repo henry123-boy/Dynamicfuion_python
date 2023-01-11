@@ -220,14 +220,14 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_Bl
         const open3d::core::Tensor& warped_vertex_position_jacobians,
         const open3d::core::Tensor& warped_vertex_normal_jacobians,
         int64_t node_count
-) {
+) const {
     o3c::Tensor
             point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
     o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
-    o3c::Tensor pixel_jacobians, node_pixel_lists, node_pixel_counts;
+    o3c::Tensor pixel_vertex_anchor_jacobians, node_jacobians, node_pixel_lists;
     kernel::ComputeHessianApproximation_BlockDiagonal(
-            pixel_jacobians, node_pixel_lists,
+            pixel_vertex_anchor_jacobians, node_jacobians, node_pixel_lists,
             rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
             warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
             point_map_vectors, rasterized_normals, residual_mask, pixel_faces,

@@ -22,7 +22,7 @@
 // local
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "rendering/functional/kernel/BarycentricCoordinates.h"
-#include "core/PlatformIndependentAlgorithm.h"
+#include "core/platform_independence/Algorithm.h"
 
 
 namespace o3tgk = open3d::t::geometry::kernel;

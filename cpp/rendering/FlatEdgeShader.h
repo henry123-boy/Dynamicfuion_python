@@ -20,7 +20,7 @@
 #include <open3d/t/geometry/TriangleMesh.h>
 
 // local
-#include <core/PlatformIndependentArray.h>
+#include "core/platform_independence/Array.h"
 
 namespace nnrt::rendering {
 

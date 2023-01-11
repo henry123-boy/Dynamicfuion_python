@@ -21,8 +21,8 @@
 
 // local includes
 #include "rendering/kernel/FlatEdgeShader.h"
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentArray.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Array.h"
 
 namespace utility = open3d::utility;
 namespace o3c = open3d::core;

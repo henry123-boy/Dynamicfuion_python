@@ -24,7 +24,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 #include <open3d/utility/Console.h>
 
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "WarpUtilities.h"
 #include "geometry/functional/kernel/WarpAnchorComputation.h"
 

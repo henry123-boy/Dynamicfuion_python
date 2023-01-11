@@ -23,7 +23,7 @@
 
 // local includes
 #include "alignment/functional/kernel/WarpedVertexAndNormalJacobians.h"
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;

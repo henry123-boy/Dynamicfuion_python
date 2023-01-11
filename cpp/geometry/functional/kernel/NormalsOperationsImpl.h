@@ -27,7 +27,7 @@
 
 // local
 #include "geometry/functional/kernel/NormalsOperations.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Atomics.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;

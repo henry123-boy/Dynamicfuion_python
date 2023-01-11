@@ -19,7 +19,7 @@
 #include <Eigen/Dense>
 
 // local includes
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "rendering/kernel/RasterizationConstants.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 

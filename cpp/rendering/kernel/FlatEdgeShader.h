@@ -20,7 +20,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/utility/Optional.h>
 #include <open3d/t/geometry/TriangleMesh.h>
-#include <core/PlatformIndependentArray.h>
+#include "core/platform_independence/Array.h"
 
 // local includes
 namespace nnrt::rendering::kernel {

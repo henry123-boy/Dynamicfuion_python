@@ -21,7 +21,7 @@
 
 //local
 #include "ExtractClippedFaceVertices.h"
-#include "core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Atomics.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;

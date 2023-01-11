@@ -18,7 +18,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/TensorList.h>
 #include <open3d/core/Blob.h>
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "core/kernel/KdTreeNodeTypes.h"
 
 namespace nnrt::core {

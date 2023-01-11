@@ -23,7 +23,8 @@ namespace nnrt::alignment::kernel {
 
 template
 void ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CPU>(
-        open3d::core::Tensor& pixel_jacobians,
+        open3d::core::Tensor& pixel_index,
+        open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_jacobian_lists,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,

@@ -24,8 +24,8 @@
 
 //local
 #include "geometry/functional/kernel/PerspectiveProjection.h"
-#include "core/PlatformIndependentAtomics.h"
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Atomics.h"
+#include "core/platform_independence/Qualifiers.h"
 
 #ifdef __CUDACC__
 #include <cuda/atomic>

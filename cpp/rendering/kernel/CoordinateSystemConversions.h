@@ -23,8 +23,8 @@
 #include <open3d/t/geometry/Utility.h>
 
 // local
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentAlgorithm.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Algorithm.h"
 #include "geometry/kernel/AxisAlignedBoundingBox.h"
 
 namespace nnrt::rendering::kernel {

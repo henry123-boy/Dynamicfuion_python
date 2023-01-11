@@ -29,7 +29,7 @@
 #include "alignment/functional/kernel/ProjectionJacobians.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "core/PlatformIndependentQualifiers.h"
+#include "core/platform_independence/Qualifiers.h"
 #include "core/kernel/MathTypedefs.h"
 #include "core/linalg/KroneckerTensorProduct.h"
 

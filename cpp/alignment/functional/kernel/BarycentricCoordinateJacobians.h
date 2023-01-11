@@ -22,9 +22,9 @@
 
 
 // local includes
-#include "core/PlatformIndependentQualifiers.h"
-#include "core/PlatformIndependentTuple.h"
-#include "core/PlatformIndependentArray.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Tuple.h"
+#include "core/platform_independence/Array.h"
 #include "core/kernel/MathTypedefs.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
 #include "rendering/kernel/RasterizationConstants.h"

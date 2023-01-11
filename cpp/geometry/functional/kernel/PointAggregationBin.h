@@ -19,8 +19,8 @@
 #include <open3d/core/Device.h>
 
 // local
-#include "../../../core/PlatformIndependentQualifiers.h"
-#include "../../../core/PlatformIndependentAtomics.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Atomics.h"
 #include "../../../../3rd-party/Eigen/Eigen/Dense"
 
 
