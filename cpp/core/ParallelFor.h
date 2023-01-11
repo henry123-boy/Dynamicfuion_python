@@ -17,8 +17,15 @@
 // stdlib includes
 
 // third-party includes
+#ifdef __CUDACC__
+#ifndef BUILD_CUDA_MODULE
+#define BUILD_CUDA_MODULE
+#endif
 #include <open3d/core/CUDAUtils.h>
+#endif
 #include <open3d/utility/Parallel.h>
+#include <open3d/utility/Logging.h>
+#include <open3d/core/ParallelFor.h>
 
 // local includes
 
@@ -33,7 +40,7 @@ static constexpr int64_t NNRT_PARFOR_THREAD = 4;
 template <typename TFunction>
 void ParallelForMutableCUDA_(const open3d::core::Device& device, int64_t work_unit_count, TFunction&& func) {
     if (device.GetType() != open3d::core::Device::DeviceType::CUDA) {
-        utility::LogError("ParallelFor for CUDA cannot run on device {}.",
+        open3d::utility::LogError("ParallelFor for CUDA cannot run on device {}.",
                           device.ToString());
     }
     if (work_unit_count == 0) {
@@ -56,7 +63,7 @@ void ParallelForMutableCUDA_(const open3d::core::Device& device, int64_t work_un
 template <typename TFunction>
 void ParallelForMutableCPU_(const open3d::core::Device& device, int64_t work_unit_count, TFunction&& func) {
     if (!device.IsCPU()) {
-        open3d::utility::LogError("ParallelFor for CPU cannot run on device {}.",
+        open3d::utility::LogError("ParallelForMutable for CPU cannot run on device {}.",
                           device.ToString());
     }
     if (work_unit_count == 0) {

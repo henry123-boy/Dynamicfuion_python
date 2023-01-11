@@ -35,7 +35,7 @@ namespace nnrt::core {
 #ifdef __CUDACC__
 struct AtomicCounterArray {
 //public:
-    __host__ __device__
+    __host__
     AtomicCounterArray(uint32_t size_): size(size_) {
         cudaMalloc(&counters, sizeof(int) * size_);
         Reset();
@@ -44,7 +44,7 @@ struct AtomicCounterArray {
     ~AtomicCounterArray() {
         cudaFree(counters);
     }
-    __host__ __device__
+    __host__
     void Reset() {
         cudaMemset(counters, 0, sizeof(int) * size);
     }
@@ -59,7 +59,7 @@ struct AtomicCounterArray {
         return atomicSub(counters + counter_index, amount);
     }
 
-    open3d::core::Tensor ToTensor(bool clone = false) {
+    open3d::core::Tensor AsTensor(bool clone = false) {
         open3d::core::Tensor wrapper(counters, open3d::core::Int32, {size}, {}, open3d::core::Device("CUDA:0"));
         return clone ? wrapper.Clone() : wrapper;
     }

@@ -229,6 +229,8 @@ void ComputeHessianApproximation_BlockDiagonal(
     );
 
 
+
+
 }
 
 } // namespace nnrt::alignment::kernel
