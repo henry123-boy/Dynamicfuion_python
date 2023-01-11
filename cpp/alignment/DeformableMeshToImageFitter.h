@@ -103,6 +103,9 @@ private:
     open3d::core::Tensor ComputeHessianApproximation_BlockDiagonal(
             const open3d::t::geometry::PointCloud& rasterized_point_cloud,
             const open3d::t::geometry::PointCloud& reference_point_cloud,
+            const open3d::t::geometry::TriangleMesh& warped_mesh,
+            const open3d::core::Tensor& pixel_faces,
+            const open3d::core::Tensor& vertex_anchors,
             const open3d::core::Tensor& residual_mask,
             const open3d::core::Tensor& rasterized_vertex_position_jacobians,
             const open3d::core::Tensor& rasterized_vertex_normal_jacobians,

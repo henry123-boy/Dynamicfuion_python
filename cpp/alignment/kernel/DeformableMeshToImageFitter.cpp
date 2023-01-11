@@ -18,7 +18,48 @@
 // third-party includes
 
 // local includes
-#include "DeformableMeshToImageFitter.h"
+#include "alignment/kernel/DeformableMeshToImageFitter.h"
+#include "core/DeviceSelection.h"
+
 namespace nnrt::alignment::kernel {
 
+void ComputeHessianApproximation_BlockDiagonal(
+        open3d::core::Tensor& pixel_jacobians,
+        open3d::core::Tensor& node_pixel_lists,
+        const open3d::core::Tensor& rasterized_vertex_position_jacobians,
+        const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
+        const open3d::core::Tensor& warped_vertex_position_jacobians,
+        const open3d::core::Tensor& warped_vertex_normal_jacobians,
+        const open3d::core::Tensor& point_map_vectors,
+        const open3d::core::Tensor& rasterized_normals,
+        const open3d::core::Tensor& residual_mask,
+        const open3d::core::Tensor& pixel_faces,
+        const open3d::core::Tensor& face_vertices,
+        const open3d::core::Tensor& vertex_anchors,
+        int64_t node_count
+) {
+    core::ExecuteOnDevice(
+			residual_mask.GetDevice(),
+			[&] {
+                ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CPU>(
+                        pixel_jacobians, node_pixel_lists,
+                        rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+                        warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+                        point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+                        vertex_anchors,
+                        node_count);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+                        ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CUDA>(
+                                pixel_jacobians, node_pixel_lists,
+                                rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+                                warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+                                point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+                                vertex_anchors,
+                                node_count);
+				);
+			}
+	);
+}
 } // namespace nnrt::alignment::kernel

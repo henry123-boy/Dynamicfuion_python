@@ -21,14 +21,15 @@
 // local
 #include "core/functional/Masking.h"
 #include "DeformableMeshToImageFitter.h"
+#include "geometry/functional/PerspectiveProjection.h"
+#include "geometry/functional/PointToPlaneDistances.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/functional/InterpolateVertexAttributes.h"
-#include "geometry/functional/PerspectiveProjection.h"
-#include "geometry/functional/PointToPlaneDistances.h"
+#include "rendering/kernel/CoordinateSystemConversions.h"
 #include "alignment/functional/WarpedVertexAndNormalJacobians.h"
 #include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
-#include "rendering/kernel/CoordinateSystemConversions.h"
+#include "alignment/kernel/DeformableMeshToImageFitter.h"
 
 
 namespace o3c = open3d::core;
@@ -210,6 +211,9 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
 open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_BlockDiagonal(
         const open3d::t::geometry::PointCloud& rasterized_point_cloud,
         const open3d::t::geometry::PointCloud& reference_point_cloud,
+        const open3d::t::geometry::TriangleMesh& warped_mesh,
+        const open3d::core::Tensor& pixel_faces,
+        const open3d::core::Tensor& vertex_anchors,
         const open3d::core::Tensor& residual_mask,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
@@ -217,12 +221,18 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_Bl
         const open3d::core::Tensor& warped_vertex_normal_jacobians,
         int64_t node_count
 ) {
-    o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
+    o3c::Tensor
+            point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
     o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
-
-    
-
+    o3c::Tensor pixel_jacobians, node_pixel_lists, node_pixel_counts;
+    kernel::ComputeHessianApproximation_BlockDiagonal(
+            pixel_jacobians, node_pixel_lists,
+            rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+            warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+            point_map_vectors, rasterized_normals, residual_mask, pixel_faces,
+            warped_mesh.GetTriangleIndices(), vertex_anchors, node_count
+    );
 
 
     utility::LogError("Not implemented");

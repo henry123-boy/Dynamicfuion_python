@@ -46,7 +46,7 @@ RasterizedVertexAndNormalJacobians(const open3d::t::geometry::TriangleMesh& warp
                                                warped_mesh.GetVertexPositions(),
                                                warped_mesh.GetTriangleIndices(), warped_mesh.GetVertexNormals(),
                                                pixel_faces, barycentric_coordinates,
-                                               ndc_intrinsic_matrix, false);
+                                               ndc_intrinsic_matrix, use_perspective_corrected_barycentric_coordinates);
 
 	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }

@@ -41,11 +41,15 @@ namespace nnrt::alignment::functional {
  * respect to vertex positions. The entire normals' jacobian is then output as a tensor with the following dimensions:
  * image_height x image_width x 3 x 10.
  *
- * \param warped_mesh
- * \param pixel_faces
- * \param barycentric_coordinates
- * \param ndc_intrinsic_matrix
- * \param use_perspective_corrected_barycentric_coordinates
+ * \param warped_mesh mesh (assumed warped if this is used for warped mesh fitting)
+ * \param pixel_faces list of faces associated with each pixel (usually, association is determined by ray intersection).
+ * Dimensions: height X width X face_count_per_pixel.
+ * Note: only the first face in each list will be utilized for Jacobian computation.
+ * \param barycentric_coordinates barycentric coordinates associated with each face and pixel ray
+ * Dimensions: height X width X face_count_per_pixel x 3.
+ * * Note: only the first set of coordinates in each list will be utilized for Jacobian computation.
+ * \param ndc_intrinsic_matrix intrinsic matrix that projects from 3D camera space to normalized device coordinates
+ * \param use_perspective_corrected_barycentric_coordinates whether or not to assume & use perspective correction during computations
  * \return non-zero, non-trivial entries of the Jacobians of rendered vertices and normals with respect to
  * (warped) geometry (see details). Rendered vertex jacobians are stored in the first output tensor, rendered
  * normal jacobians are stored in the second one.

@@ -121,47 +121,47 @@ Jacobian_BarycentricCoordinateWrtNdcVertices_Generic(
     // ∂ρ0/∂p0 , uses sub_face0 & vertex0
     d_distorted_coords_wrt_vertex0.row(0) =
             (-sub_face0_p_area * get<0>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ1/∂p0 , uses sub_face1 & vertex0
     d_distorted_coords_wrt_vertex0.row(1) =
             (face_parallelogram_area * get<1>(d_sub_face1_p_area_wrt_vertices_2_0) -
              sub_face1_p_area * get<0>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ2/∂p0 , uses sub_face2 & vertex0
     d_distorted_coords_wrt_vertex0.row(2) =
             (face_parallelogram_area * get<0>(d_sub_face2_p_area_wrt_vertices_0_1) -
              sub_face2_p_area * get<0>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
 
     // ∂ρ0/∂p1 , uses sub_face0 & vertex1
     d_distorted_coords_wrt_vertex1.row(0) =
             (face_parallelogram_area * get<0>(d_sub_face0_p_area_wrt_vertices_1_2) -
              sub_face0_p_area * get<1>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ1/∂p1 , uses sub_face1 & vertex1
     d_distorted_coords_wrt_vertex1.row(1) =
             (-sub_face1_p_area * get<1>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ2/∂p1 , uses sub_face2 & vertex1
     d_distorted_coords_wrt_vertex1.row(2) =
             (face_parallelogram_area * get<1>(d_sub_face2_p_area_wrt_vertices_0_1) -
              sub_face2_p_area * get<1>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
 
     // ∂ρ0/∂p2 , uses sub_face0 & vertex2
     d_distorted_coords_wrt_vertex2.row(0) =
             (face_parallelogram_area * get<1>(d_sub_face0_p_area_wrt_vertices_1_2) -
              sub_face0_p_area * get<2>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ1/∂p2 , uses sub_face1 & vertex2
     d_distorted_coords_wrt_vertex2.row(1) =
             (face_parallelogram_area * get<0>(d_sub_face1_p_area_wrt_vertices_2_0) -
              sub_face1_p_area * get<2>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
     // ∂ρ2/∂p2 , uses sub_face2 & vertex2
     d_distorted_coords_wrt_vertex2.row(2) =
             (-sub_face2_p_area * get<2>(d_face_area_wrt_vertices))
-            / face_parallelogram_area_squared;
+            / (face_parallelogram_area_squared + K_EPSILON);
 
     return array<core::kernel::Matrix3x2f, 3>(
             {d_distorted_coords_wrt_vertex0, d_distorted_coords_wrt_vertex1, d_distorted_coords_wrt_vertex2});
@@ -279,7 +279,7 @@ inline tuple<core::kernel::Matrix3f, core::kernel::Matrix3f> Jacobian_Perspectiv
             coord2_numerator * partial_denominator_wrt_z1,
             -coord2_numerator * partial_denominator_wrt_z2;
     //@formatter:on
-    partial_coords_wrt_z /= denominator_squared;
+    partial_coords_wrt_z /= (denominator_squared + K_EPSILON);
 
     return make_tuple(partial_coords_wrt_distorted, partial_coords_wrt_z);
 }

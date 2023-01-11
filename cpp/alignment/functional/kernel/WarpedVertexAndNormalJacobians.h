@@ -22,13 +22,13 @@
 // local includes
 
 namespace nnrt::alignment::functional::kernel {
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
+void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_position_jacobians, open3d::core::Tensor& vertex_normal_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
                                     const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
                                     const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_rotation_jacobians, open3d::core::Tensor& normal_rotation_jacobians,
+void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_position_jacobians, open3d::core::Tensor& vertex_normal_jacobians,
                                     const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
                                     const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
                                     const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights);

@@ -23,6 +23,7 @@ namespace nnrt::rendering::kernel {
 
 #define MIN_NEAR_CLIPPING_DISTANCE 0.0
 
+// TODO: move to core
 #define K_EPSILON 1e-8f
 
 #define MAX_BINS_ALONG_IMAGE_DIMENSION 22
