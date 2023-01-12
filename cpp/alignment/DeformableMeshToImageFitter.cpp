@@ -225,13 +225,19 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_Bl
             point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
     o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
-    o3c::Tensor pixel_vertex_anchor_jacobians, node_jacobians, node_pixel_lists;
-    kernel::ComputeHessianApproximation_BlockDiagonal(
-            pixel_vertex_anchor_jacobians, node_jacobians, node_pixel_lists,
+    o3c::Tensor pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts;
+    kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+            pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts,
             rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
             warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
             point_map_vectors, rasterized_normals, residual_mask, pixel_faces,
             warped_mesh.GetTriangleIndices(), vertex_anchors, node_count
+    );
+
+    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixels;
+    kernel::ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+            node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
+            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
     );
 
 

@@ -73,10 +73,10 @@ NNRT_DEVICE_WHEN_CUDACC void HeapSort(TScalar* array, int length) {
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ComputeHessianApproximation_BlockDiagonal(
-        open3d::core::Tensor& pixel_jacobians,
-        open3d::core::Tensor& node_jacobians,
-        open3d::core::Tensor& node_jacobian_lists,
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -89,7 +89,7 @@ void ComputeHessianApproximation_BlockDiagonal(
         const open3d::core::Tensor& vertex_anchors,
         int64_t node_count
 ) {
-    // === dimension checks ===
+    // === dimension, type, and device tensor checks ===
     int64_t image_height = rasterized_vertex_position_jacobians.GetShape(0);
     int64_t image_width = rasterized_vertex_position_jacobians.GetShape(1);
     int64_t pixel_count = image_width * image_height;
@@ -140,16 +140,15 @@ void ComputeHessianApproximation_BlockDiagonal(
     o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
 
     // === initialize output matrices ===
-    node_jacobian_lists = o3c::Tensor({node_count, MAX_JACOBIANS_PER_NODE}, o3c::Int32);
-    node_jacobian_lists.Fill(-1);
-    auto node_jacobian_list_data = node_jacobian_lists.GetDataPtr<int32_t>();
+    node_pixel_vertex_jacobians = o3c::Tensor({node_count, MAX_JACOBIANS_PER_NODE}, o3c::Int32);
+    node_pixel_vertex_jacobians.Fill(-1);
+    auto node_pixel_vertex_jacobian_data = node_pixel_vertex_jacobians.GetDataPtr<int32_t>();
 
-    core::AtomicCounterArray<TDeviceType> node_jacobian_counts(node_count);
-
+    core::AtomicCounterArray<TDeviceType> node_pixel_vertex_jacobian_counters(node_count);
 
     // pixel count x 3 vertices per face x 4 anchors per vertex x 6 values per node (3 rotation angles, 3 translation coordinates)
-    pixel_jacobians = o3c::Tensor({pixel_count, 3, 4, 6}, o3c::Float32);
-    auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
+    pixel_vertex_anchor_jacobians = o3c::Tensor({pixel_count, 3, 4, 6}, o3c::Float32);
+    auto pixel_vertex_anchor_jacobian_data = pixel_vertex_anchor_jacobians.GetDataPtr<float>();
 
     // === get access to raw input data
     auto residual_mask_data = residual_mask.GetDataPtr<bool>();
@@ -202,7 +201,7 @@ void ComputeHessianApproximation_BlockDiagonal(
                 auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
                 Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
                 int pixel_jacobian_address = pixel_index * (3 * 4 * 6);
-                auto current_pixel_jacobian_data = pixel_jacobian_data + pixel_jacobian_address;
+                auto current_pixel_jacobian_data = pixel_vertex_anchor_jacobian_data + pixel_jacobian_address;
                 //TODO: try to optimize in CUDA-only version using 3 x anchors_per_vertex blocks and block "shared"
                 // memory... Or, at the very least, try increasing thread count to pixel_count x 3 x anchors_per_vertex
                 // instead of just pixel_count.
@@ -217,8 +216,8 @@ void ComputeHessianApproximation_BlockDiagonal(
                             continue;
                         }
                         int anchor_jacobian_address = i_anchor * 6;
-                        int i_node_jacobian = node_jacobian_counts.FetchAdd(i_node, 1);
-                        node_jacobian_list_data[i_node * MAX_JACOBIANS_PER_NODE + i_node_jacobian] =
+                        int i_node_jacobian = node_pixel_vertex_jacobian_counters.FetchAdd(i_node, 1);
+                        node_pixel_vertex_jacobian_data[i_node * MAX_JACOBIANS_PER_NODE + i_node_jacobian] =
                                 pixel_jacobian_address + vertex_jacobian_address + anchor_jacobian_address;
 
                         // [3x3] warped vertex position Jacobian w.r.t. node rotation
@@ -262,37 +261,66 @@ void ComputeHessianApproximation_BlockDiagonal(
                 }
             }
     );
+    node_pixel_vertex_jacobian_counts = node_pixel_vertex_jacobian_counters.AsTensor(true);
+}
 
-    //TODO ========================= break up into multiple kernel functions here ======================
+template <open3d::core::Device::DeviceType TDevice>
+void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+        open3d::core::Tensor& node_jacobians,
+        open3d::core::Tensor& node_jacobian_ranges,
+        open3d::core::Tensor& node_jacobian_pixel_indices,
+        open3d::core::Tensor& node_pixel_vertex_jacobians, // in: unsorted; out: sorted
+        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
+){
+    // === dimension, type, and device tensor checks ===
+    int64_t node_count = node_pixel_vertex_jacobian_counts.GetShape(0);
 
-    // === loop over all nodes and sort all entries by pixel
+    o3c::AssertTensorShape(node_pixel_vertex_jacobian_counts, {node_count});
+    o3c::Device device = node_pixel_vertex_jacobian_counts.GetDevice();
+    o3c::AssertTensorDtype(node_pixel_vertex_jacobian_counts, o3c::Int32);
 
+    o3c::AssertTensorShape(node_pixel_vertex_jacobians, {node_count, MAX_JACOBIANS_PER_NODE});
+    o3c::AssertTensorDtype(node_pixel_vertex_jacobians, o3c::Int32);
+    o3c::AssertTensorDevice(node_pixel_vertex_jacobians, device);
+
+    o3c::AssertTensorShape(pixel_vertex_anchor_jacobians, {utility::nullopt, 3, 4, 6});
+    o3c::AssertTensorDtype(pixel_vertex_anchor_jacobians, o3c::Float32);
+    o3c::AssertTensorDevice(pixel_vertex_anchor_jacobians, device);
+
+    // === get access to input arrays ===
+    auto node_pixel_vertex_jacobian_data = node_pixel_vertex_jacobians.GetDataPtr<int32_t>();
+    auto node_pixel_vertex_jacobian_count_data = node_pixel_vertex_jacobian_counts.GetDataPtr<int32_t>();
+    auto pixel_vertex_anchor_jacobian_data = pixel_vertex_anchor_jacobians.GetDataPtr<float>();
+
+    // === set up atomic counter ===
     NNRT_DECLARE_ATOMIC(int64_t, total_jacobian_count);
     NNRT_INITIALIZE_ATOMIC(int64_t, total_jacobian_count, 0L);
 
-    o3c::Tensor final_node_jacobian_counts({node_count}, o3c::Int32, device);
-    auto final_node_jacobian_count_data = final_node_jacobian_counts.GetDataPtr<int32_t>();
-
+    // === set up output tensor to store ranges ===
+    node_jacobian_ranges = o3c::Tensor ({node_count, 2}, o3c::Int64, device);
+    auto node_jacobian_range_data = node_jacobian_ranges.GetDataPtr<int64_t>();
+    // === loop over all nodes and sort all entries by jacobian address
     o3c::ParallelFor(
             device, node_count,
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
-                int* node_list_start = node_jacobian_list_data + (node_index * MAX_JACOBIANS_PER_NODE);
-                int node_list_length = node_jacobian_counts.GetCount(node_index);
+                const int* node_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_JACOBIANS_PER_NODE);
+                int node_list_length = node_pixel_vertex_jacobian_count_data[node_index];
                 // sort the anchor jacobian addresses
                 HeapSort(node_list_start, node_list_length);
 
                 int node_jacobian_count = 0;
-                int previous_pixel_address = -1;
-                // count up
+                int previous_pixel_index = -1;
+                // count up the sorted addresses sans those with repeating pixel index
                 for(int i_jacobian = 0; i_jacobian < node_list_length; i_jacobian++){
                     // -1 is the sentinel value
                     int jacobian_address = node_list_start[i_jacobian];
-                    int pixel_address = jacobian_address / (3 * 4 * 6);
-                    if (pixel_address != previous_pixel_address) {
+                    int pixel_index = jacobian_address / (3 * 4 * 6);
+                    if (pixel_index != previous_pixel_index) {
                         node_jacobian_count++;
                     }
                 }
-                final_node_jacobian_count_data[node_index] = node_jacobian_count;
+                node_jacobian_range_data[node_index * 2 + 1] = node_jacobian_count;
                 NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<int64_t>(node_jacobian_count));
             }
     );
@@ -300,29 +328,25 @@ void ComputeHessianApproximation_BlockDiagonal(
     node_jacobians = o3c::Tensor({NNRT_GET_ATOMIC_VALUE_HOST(total_jacobian_count), 6}, o3c::Float32, device);
     auto node_jacobian_data = node_jacobians.GetDataPtr<float>();
 
-    o3c::Tensor node_jacobian_pixel_indices({node_jacobians.GetShape(0)}, o3c::Int32, device);
+    node_jacobian_pixel_indices = o3c::Tensor({node_jacobians.GetShape(0)}, o3c::Int32, device);
     auto node_jacobian_pixel_index_data = node_jacobian_pixel_indices.GetDataPtr<int32_t>();
-
-    o3c::Tensor node_jacobian_pixels_and_ranges({node_count, 2}, o3c::Int64, device);
-    auto node_jacobian_range_data = node_jacobian_pixels_and_ranges.GetDataPtr<int64_t>();
 
     NNRT_CLEAN_UP_ATOMIC(total_jacobian_count);
 
     o3c::ParallelFor(
             device, node_count,
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
-                // figure out where to start filling in the pixel jacobians for the current node
+                // figure out where to start filling in the jacobians for the current node
                 int node_jacobian_start_index = 0;
                 for (int i_node = 0; i_node < node_index-1; i_node++){
-                    node_jacobian_start_index += final_node_jacobian_count_data[i_node];
+                    node_jacobian_start_index += node_jacobian_range_data[i_node * 2 + 1];
                 }
                 node_jacobian_range_data[node_index * 2] = node_jacobian_start_index;
-                int node_jacobian_count = final_node_jacobian_count_data[node_index];
-                node_jacobian_range_data[node_index * 2 + 1] = node_jacobian_count;
+                int node_jacobian_count = node_jacobian_range_data[node_index * 2 + 1];
 
                 // source data to get anchor jacobians from
-                int* node_list_start = node_jacobian_list_data + (node_index * MAX_JACOBIANS_PER_NODE);
-                int node_list_length = node_jacobian_counts.GetCount(node_index);
+                int* node_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_JACOBIANS_PER_NODE);
+                int node_list_length = node_pixel_vertex_jacobian_count_data[node_index];
 
                 // loop over source data and fill in node jacobians & corresponding pixel indices
                 int i_node_jacobian = 0;
@@ -331,7 +355,7 @@ void ComputeHessianApproximation_BlockDiagonal(
                     int pixel_jacobian_address = node_list_start[i_anchor_jacobian];
                     int pixel_index = pixel_jacobian_address / (3 * 4 * 6);
                     // source anchor jacobian
-                    Eigen::Map<const Eigen::Matrix<float, 1, 6>> pixel_anchor_jacobian(pixel_jacobian_data + pixel_jacobian_address);
+                    Eigen::Map<const Eigen::Matrix<float, 1, 6>> pixel_anchor_jacobian(pixel_vertex_anchor_jacobian_data + pixel_jacobian_address);
                     Eigen::Map<const Eigen::Matrix<float, 1, 6>> node_jacobian(node_jacobian_data + i_node_jacobian * 6);
 
                     if (pixel_index != previous_pixel_address) {
@@ -344,14 +368,8 @@ void ComputeHessianApproximation_BlockDiagonal(
                         node_jacobian += pixel_anchor_jacobian;
                     }
                 }
-                final_node_jacobian_count_data[node_index] = node_jacobian_count;
-                NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<int64_t>(node_jacobian_count));
             }
     );
-
-    node_jacobian_counts.Reset();
-
-
 }
 
 } // namespace nnrt::alignment::kernel

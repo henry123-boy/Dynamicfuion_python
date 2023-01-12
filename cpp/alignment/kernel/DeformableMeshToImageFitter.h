@@ -23,10 +23,10 @@
 
 namespace nnrt::alignment::kernel {
 
-void ComputeHessianApproximation_BlockDiagonal(
-        open3d::core::Tensor& pixel_index,
-        open3d::core::Tensor& node_jacobians,
-        open3d::core::Tensor& node_jacobian_lists,
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -41,10 +41,10 @@ void ComputeHessianApproximation_BlockDiagonal(
 );
 
 template <open3d::core::Device::DeviceType TDevice>
-void ComputeHessianApproximation_BlockDiagonal(
-        open3d::core::Tensor& pixel_index,
-        open3d::core::Tensor& node_jacobians,
-        open3d::core::Tensor& node_jacobian_lists,
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -56,6 +56,25 @@ void ComputeHessianApproximation_BlockDiagonal(
         const open3d::core::Tensor& face_vertices,
         const open3d::core::Tensor& vertex_anchors,
         int64_t node_count
+);
+
+void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+        open3d::core::Tensor& node_jacobians,
+        open3d::core::Tensor& node_jacobian_ranges,
+        open3d::core::Tensor& node_jacobian_pixel_indices,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
+);
+
+template <open3d::core::Device::DeviceType TDevice>
+void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+        open3d::core::Tensor& node_jacobians,
+        open3d::core::Tensor& node_jacobian_ranges,
+        open3d::core::Tensor& node_jacobian_pixel_indices,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
 );
 
 } // namespace nnrt::alignment::kernel

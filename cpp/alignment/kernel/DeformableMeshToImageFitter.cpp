@@ -23,10 +23,10 @@
 
 namespace nnrt::alignment::kernel {
 
-void ComputeHessianApproximation_BlockDiagonal(
-        open3d::core::Tensor& pixel_jacobians,
-        open3d::core::Tensor& node_jacobians,
-        open3d::core::Tensor& node_pixel_lists,
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -40,27 +40,56 @@ void ComputeHessianApproximation_BlockDiagonal(
         int64_t node_count
 ) {
     core::ExecuteOnDevice(
-			residual_mask.GetDevice(),
-			[&] {
-                ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CPU>(
-                        pixel_jacobians, node_jacobians, node_pixel_lists,
+            residual_mask.GetDevice(),
+            [&] {
+                ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
+                        pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts,
                         rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                         warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                         point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
                         vertex_anchors,
                         node_count);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-                        ComputeHessianApproximation_BlockDiagonal<open3d::core::Device::DeviceType::CUDA>(
-                                pixel_jacobians, node_jacobians, node_pixel_lists,
+            },
+            [&] {
+                NNRT_IF_CUDA(
+                        ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
+                                pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians,
+                                node_pixel_vertex_jacobian_counts,
                                 rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                                 warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                                 point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
                                 vertex_anchors,
                                 node_count);
-				);
-			}
-	);
+                );
+            }
+    );
 }
+
+void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+        open3d::core::Tensor& node_jacobians,
+        open3d::core::Tensor& node_jacobian_ranges,
+        open3d::core::Tensor& node_jacobian_pixels,
+        open3d::core::Tensor& node_pixel_vertex_jacobians,
+        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
+) {
+    core::ExecuteOnDevice(
+            node_pixel_vertex_jacobians.GetDevice(),
+            [&] {
+                ConvertPixelVertexAnchorJacobiansToNodeJacobians < open3d::core::Device::DeviceType::CPU > (
+                        node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
+                                node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
+                );
+            },
+            [&] {
+                NNRT_IF_CUDA(
+                        ConvertPixelVertexAnchorJacobiansToNodeJacobians < open3d::core::Device::DeviceType::CUDA > (
+                                node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
+                                        node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
+                        );
+                );
+            }
+    );
+}
+
 } // namespace nnrt::alignment::kernel
