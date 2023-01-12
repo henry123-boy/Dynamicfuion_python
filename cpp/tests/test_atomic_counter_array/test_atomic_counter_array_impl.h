@@ -17,12 +17,16 @@
 // stdlib includes
 
 // third-party includes
-#include "catch2/catch_test_macros.hpp"
+#include <catch2/catch_test_macros.hpp>
+#ifndef BUILD_CUDA_MODULE
+#define BUILD_CUDA_MODULE
+#endif
+#include <open3d/core/ParallelFor.h>
 
 // local includes
 #include "tests/test_atomic_counter_array/test_atomic_counter_array.h"
 #include "core/platform_independence/AtomicCounterArray.h"
-#include "core/ParallelFor.h"
+//#include "core/ParallelFor.h"
 #include "core/platform_independence/Qualifiers.h"
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -34,11 +38,12 @@ void TestAtomicCounterArray(const open3d::core::Device& device) {
     REQUIRE(work_unit_count % counters_count == 0);
 
 
-    nnrt::core::AtomicCounterArray counters(counters_count);
+    nnrt::core::AtomicCounterArray<TDeviceType> counters(counters_count);
 
-    nnrt::core::ParallelForMutable(
+    //nnrt::core::ParallelForMutable
+    open3d::core::ParallelFor(
             device, work_unit_count,
-            NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t work_unit_index) mutable {
+            NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t work_unit_index) {
                 int counter_index = work_unit_index % counters_count;
                 counters.FetchAdd(counter_index, increment);
             }

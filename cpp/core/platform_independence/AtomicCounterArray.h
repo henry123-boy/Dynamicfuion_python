@@ -29,48 +29,52 @@
 // third-party includes
 #include <open3d/core/Tensor.h>
 
-// local includes
-
 namespace nnrt::core {
+
+template<open3d::core::Device::DeviceType TDeviceType>
+class AtomicCounterArray;
+
 #ifdef __CUDACC__
-struct AtomicCounterArray {
-//public:
-    __host__
-    AtomicCounterArray(uint32_t size_): size(size_) {
-        cudaMalloc(&counters, sizeof(int) * size_);
-        Reset();
+template<>
+class AtomicCounterArray<open3d::core::Device::DeviceType::CUDA> {
+public:
+    AtomicCounterArray(uint32_t size):
+        counters(open3d::core::Tensor::Zeros({static_cast<int64_t>(size)}, open3d::core::Int32, open3d::core::Device("CUDA:0"))),
+        counters_data(counters.GetDataPtr<int32_t>()){
     }
-    __host__ __device__
-    ~AtomicCounterArray() {
-        cudaFree(counters);
-    }
-    __host__
-    void Reset() {
-        cudaMemset(counters, 0, sizeof(int) * size);
+
+    void Reset(){
+        counters.Fill(0);
     }
 
     __device__
-    int FetchAdd(int counter_index, int amount) {
-        return atomicAdd(counters + counter_index, amount);
+    int GetCount(int counter_index) const {
+        return counters_data[counter_index];
+    }
+
+    //FIXME note: making this (and next method) const is kind of a hack, since the function does modify the object's data,
+    // but this is the only way to get around Open3D's ParallelFor not being able to accept mutable lambdas right now.
+    __device__
+    int FetchAdd(int counter_index, int amount) const {
+        return atomicAdd(counters_data + counter_index, amount);
     }
 
     __device__
-    int FetchSub(int counter_index, int amount) {
-        return atomicSub(counters + counter_index, amount);
+    int FetchSub(int counter_index, int amount) const {
+        return atomicSub(counters_data + counter_index, amount);
     }
 
     open3d::core::Tensor AsTensor(bool clone = false) {
-        open3d::core::Tensor wrapper(counters, open3d::core::Int32, {size}, {}, open3d::core::Device("CUDA:0"));
-        return clone ? wrapper.Clone() : wrapper;
+        return clone ? counters.Clone() : counters;
     }
 
-//private:
-    uint32_t size;
-    int* counters;
+private:
+    open3d::core::Tensor counters;
+    int* counters_data;
 };
 #else
-
-class AtomicCounterArray {
+template<>
+class AtomicCounterArray<open3d::core::Device::DeviceType::CPU> {
 public:
     AtomicCounterArray(std::size_t size) : counters(size) {
         Reset();
@@ -78,6 +82,10 @@ public:
 
     int FetchAdd(int counter_index, int amount) {
         return counters[counter_index].fetch_add(amount);
+    }
+
+    int GetCount(int counter_index) const {
+        return counters[counter_index].load();
     }
 
     int FetchSub(int counter_index, int amount) {
