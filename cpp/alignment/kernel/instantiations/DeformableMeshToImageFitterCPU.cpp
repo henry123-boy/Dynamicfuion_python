@@ -24,8 +24,8 @@ namespace nnrt::alignment::kernel {
 template
 void ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
         open3d::core::Tensor& pixel_jacobians,
-        open3d::core::Tensor& node_pixel_indices,
-        open3d::core::Tensor& node_pixel_counts,
+        open3d::core::Tensor& node_pixel_jacobian_indices,
+        open3d::core::Tensor& node_pixel_jacobian_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -43,17 +43,17 @@ template
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CPU>(
         open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_jacobian_ranges,
-        open3d::core::Tensor& node_pixel_indices_compact,
-        open3d::core::Tensor& node_pixel_indices_jagged,
+        open3d::core::Tensor& node_pixel_indices,
+        open3d::core::Tensor& node_pixel_jacobian_indices,
         const open3d::core::Tensor& node_pixel_counts,
         const open3d::core::Tensor& pixel_jacobians
 );
 
 template
 void ComputeHessianApproximationBlocks<open3d::core::Device::DeviceType::CPU>(
-        open3d::core::Tensor& hessian_approximation_blocks,
+        open3d::core::Tensor& workload_index,
         const open3d::core::Tensor& pixel_jacobians,
-        const open3d::core::Tensor& node_pixel_indices,
+        const open3d::core::Tensor& node_pixel_jacobian_indices,
         const open3d::core::Tensor& node_pixel_counts
 );
 

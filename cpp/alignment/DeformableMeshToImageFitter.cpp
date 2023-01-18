@@ -105,10 +105,12 @@ void DeformableMeshToImageFitter::FitToImage(
 
 
         // compute (J^T)J, i.e. hessian approximation
+        //TODO
 
         // compute -Jr
-
+        // TODO
         // solve system of linear equations for the delta rotations and translations
+        // TODO
 
         iteration++;
     }
@@ -225,22 +227,22 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_Bl
             point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
     o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
-    o3c::Tensor pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts;
+    o3c::Tensor pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts;
     kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-            pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts,
+            pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts,
             rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
             warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
             point_map_vectors, rasterized_normals, residual_mask, pixel_faces,
             warped_mesh.GetTriangleIndices(), vertex_anchors, node_count
     );
 
-    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices;
-    kernel::ConvertPixelVertexAnchorJacobiansToNodeJacobians(
-            node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
-            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians);
+//    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices;
+//    kernel::ConvertPixelVertexAnchorJacobiansToNodeJacobians(
+//            node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
+//            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians);
     open3d::core::Tensor hessian_approximation_blocks;
-    kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, node_jacobians, node_jacobian_ranges,
-                                              node_jacobian_pixel_indices);
+    kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, pixel_jacobians,
+                                              node_pixel_indices_jagged, node_pixel_index_counts);
 
     return hessian_approximation_blocks;
 }
