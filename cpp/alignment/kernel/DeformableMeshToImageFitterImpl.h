@@ -32,7 +32,7 @@
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-#define MAX_JACOBIANS_PER_NODE 1500
+#define MAX_PIXELS_PER_NODE 1500
 
 
 namespace nnrt::alignment::kernel {
@@ -74,9 +74,9 @@ NNRT_DEVICE_WHEN_CUDACC void HeapSort(TScalar* array, int length) {
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
-        open3d::core::Tensor& node_pixel_vertex_jacobians,
-        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        open3d::core::Tensor& pixel_node_jacobians,
+        open3d::core::Tensor& node_pixel_indices,
+        open3d::core::Tensor& node_pixel_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -140,15 +140,22 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
     o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
 
     // === initialize output matrices ===
-    node_pixel_vertex_jacobians = o3c::Tensor({node_count, MAX_JACOBIANS_PER_NODE}, o3c::Int32);
-    node_pixel_vertex_jacobians.Fill(-1);
-    auto node_pixel_vertex_jacobian_data = node_pixel_vertex_jacobians.GetDataPtr<int32_t>();
+    node_pixel_indices = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32);
+    node_pixel_indices.Fill(-1);
+    auto node_pixel_index_data = node_pixel_indices.GetDataPtr<int32_t>();
 
-    core::AtomicCounterArray<TDeviceType> node_pixel_vertex_jacobian_counters(node_count);
+    core::AtomicCounterArray<TDeviceType> node_pixel_counters(node_count);
 
-    // pixel count x 3 vertices per face x 4 anchors per vertex x 6 values per node (3 rotation angles, 3 translation coordinates)
-    pixel_vertex_anchor_jacobians = o3c::Tensor({pixel_count, 3, 4, 6}, o3c::Float32);
-    auto pixel_vertex_anchor_jacobian_data = pixel_vertex_anchor_jacobians.GetDataPtr<float>();
+    // each anchor node controls from 1 to 3 vertices per face intersecting with the pixel ray:
+    // these jacobians are aggregated on a per-node basis
+    // thus, count of jacobians per vertex <= [count of anchor nodes per vertex] * 3
+    // [pixel count] x ([count of anchor nodes per vertex] * 3) x [6 values per node , i.e. 3 rotation angles, 3 translation coordinates]
+    pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, 6}, o3c::Float32);
+    auto pixel_node_jacobians_data = pixel_node_jacobians.GetDataPtr<float>();
+    //TODO: perhaps this is unnecessary after all? Not used currently beyond this function
+    o3c::Tensor pixel_node_jacobian_counts = o3c::Tensor::Zeros({pixel_count}, o3c::Int32);
+    auto pixel_node_jacobian_counts_data = pixel_node_jacobian_counts.GetDataPtr<int32_t>();
+
 
     // === get access to raw input data
     auto residual_mask_data = residual_mask.GetDataPtr<bool>();
@@ -168,6 +175,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
     // === loop over all pixels & compute
     o3c::ParallelFor(
             device, pixel_count,
+            //TODO first do this on a per-face level (remove the pixel_point_map_vector and pixel_rasterized_normal), precompute per-face jacobians first
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t pixel_index) {
                 if (!residual_mask_data[pixel_index]) {
                     return;
@@ -200,26 +208,59 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
                 auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
                 Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-                int pixel_jacobian_address = pixel_index * (3 * 4 * 6);
-                auto current_pixel_jacobian_data = pixel_vertex_anchor_jacobian_data + pixel_jacobian_address;
-                //TODO: try to optimize in CUDA-only version using 3 x anchors_per_vertex blocks and block "shared"
-                // memory... Or, at the very least, try increasing thread count to pixel_count x 3 x anchors_per_vertex
-                // instead of just pixel_count.
+                int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (4 * 6);
+                auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
+
+                const int max_face_anchor_count = 3 * static_cast<int>(anchor_count_per_vertex);
+                struct {
+                    int node_index = -1;
+                    int64_t vertices[3] = {-1, -1, -1};
+                    int vertex_anchor_indices[3] = {-1, -1, -1};
+                } face_anchor_data[max_face_anchor_count];
+
+                // group vertices by anchor node
+                //TODO: this simple per-face reindexing operation needs only to be done on a per-face basis. It is
+                // probably much more efficient to outsource it to a separate kernel instead of rearranging things here
+                // for every pixel.
+                int32_t pixel_node_jacobian_count = 0;
                 for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
                     int64_t i_vertex = vertex_indices(i_face_vertex);
-                    int vertex_jacobian_address = i_face_vertex * (4 * 6);
-                    auto pixel_vertex_jacobian_data = current_pixel_jacobian_data + vertex_jacobian_address;
                     for (int i_anchor = 0; i_anchor < anchor_count_per_vertex; i_anchor++) {
                         auto i_node = vertex_anchor_data[i_vertex * anchor_count_per_vertex + i_anchor];
                         if (i_node == -1) {
-                            // -1 is sentinel value for anchors
+                            // -1 is the sentinel value for anchors
                             continue;
                         }
-                        int anchor_jacobian_address = i_anchor * 6;
-                        int i_node_jacobian = node_pixel_vertex_jacobian_counters.FetchAdd(i_node, 1);
-                        node_pixel_vertex_jacobian_data[i_node * MAX_JACOBIANS_PER_NODE + i_node_jacobian] =
-                                pixel_jacobian_address + vertex_jacobian_address + anchor_jacobian_address;
+                        int i_face_anchor;
+                        int inspected_anchor_node_index = -2;
+                        // find (if any) matching node among anchors of previous vertices
+                        for (i_face_anchor = 0;
+                             inspected_anchor_node_index != i_node && // found
+                             inspected_anchor_node_index != -1 &&
+                             i_face_anchor < max_face_anchor_count;
+                             i_face_anchor++) {
+                            inspected_anchor_node_index = face_anchor_data[i_face_anchor].node_index;
+                        }
+                        auto& face_anchor = face_anchor_data[i_face_anchor];
+                        if (inspected_anchor_node_index != i_node) {
+                            pixel_node_jacobian_count++; // tally per pixel
+                            face_anchor.node_index = i_node;
+                        }
+                        face_anchor.vertices[i_vertex] = i_vertex;
+                        face_anchor.vertex_anchor_indices[i_vertex] = i_face_anchor;
+                    }
+                }
+                pixel_node_jacobian_counts_data[pixel_index] = pixel_node_jacobian_count;
 
+                // traverse all anchors associated with current face, compute their jacobians for current pixel
+                for (int i_face_anchor = 0; i_face_anchor < pixel_node_jacobian_count; i_face_anchor++) {
+                    auto& face_anchor = face_anchor_data[i_face_anchor];
+                    int i_node = face_anchor.node_index;
+                    int jacobian_address = i_face_anchor * 6;
+                    for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
+                        int i_vertex = face_anchor.vertices[i_face_vertex];
+                        if (i_vertex == -1) continue;
+                        int i_anchor = face_anchor.vertex_anchor_indices[i_face_vertex];
                         // [3x3] warped vertex position Jacobian w.r.t. node rotation
                         const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
                                 Eigen::Map<const Eigen::Vector3f>(
@@ -248,128 +289,167 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
                         Eigen::Map<Eigen::RowVector3<float>>
                                 pixel_vertex_anchor_rotation_jacobian
-                                (pixel_vertex_jacobian_data + anchor_jacobian_address);
+                                (pixel_node_jacobian_data + jacobian_address);
                         Eigen::Map<Eigen::RowVector3<float>>
                                 pixel_vertex_anchor_translation_jacobian
-                                (pixel_vertex_jacobian_data + anchor_jacobian_address + 3);
+                                (pixel_node_jacobian_data + jacobian_address + 3);
 
                         // [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
-                        pixel_vertex_anchor_rotation_jacobian = (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
-                        pixel_vertex_anchor_translation_jacobian =
+                        pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
+                        pixel_vertex_anchor_translation_jacobian +=
                                 dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
+
+                        // accumulate addresses of jacobians for each node
+                        int i_node_jacobian = node_pixel_counters.FetchAdd(i_node, 1);
+                        // safety check
+                        if(i_node_jacobian > MAX_PIXELS_PER_NODE){
+                            printf("Warning: number of pixels affected by node %i exceeds allowed maximum, %i. "
+                                   "Result may be incomplete. Either the voxel size (or triangle size) is simply too "
+                                   "large, or the surface is too close to the camera.\n", i_node, MAX_PIXELS_PER_NODE);
+                            node_pixel_counters.FetchSub(i_node, 1);
+                        }
+                        node_pixel_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
+                                pixel_jacobian_list_address + jacobian_address;
                     }
+                    face_anchor = face_anchor_data[i_face_anchor];
                 }
             }
+
     );
-    node_pixel_vertex_jacobian_counts = node_pixel_vertex_jacobian_counters.AsTensor(true);
+    node_pixel_counts = node_pixel_counters.AsTensor(true);
 }
 
-template <open3d::core::Device::DeviceType TDevice>
+template<open3d::core::Device::DeviceType TDevice>
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
         open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_jacobian_ranges,
-        open3d::core::Tensor& node_jacobian_pixel_indices,
-        open3d::core::Tensor& node_pixel_vertex_jacobians, // in: unsorted; out: sorted
-        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
-        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
-){
+        open3d::core::Tensor& node_pixel_indices_compact,
+        open3d::core::Tensor& node_pixel_indices_jagged,
+        const open3d::core::Tensor& node_pixel_counts,
+        const open3d::core::Tensor& pixel_jacobians
+) {
     // === dimension, type, and device tensor checks ===
-    int64_t node_count = node_pixel_vertex_jacobian_counts.GetShape(0);
+    int64_t node_count = node_pixel_counts.GetShape(0);
+    o3c::Device device = node_pixel_counts.GetDevice();
+    o3c::AssertTensorShape(node_pixel_counts, { node_count });
+    o3c::AssertTensorDtype(node_pixel_counts, o3c::Int32);
 
-    o3c::AssertTensorShape(node_pixel_vertex_jacobian_counts, {node_count});
-    o3c::Device device = node_pixel_vertex_jacobian_counts.GetDevice();
-    o3c::AssertTensorDtype(node_pixel_vertex_jacobian_counts, o3c::Int32);
+    o3c::AssertTensorShape(node_pixel_indices_jagged, { node_count, MAX_PIXELS_PER_NODE });
+    o3c::AssertTensorDtype(node_pixel_indices_jagged, o3c::Int32);
+    o3c::AssertTensorDevice(node_pixel_indices_jagged, device);
 
-    o3c::AssertTensorShape(node_pixel_vertex_jacobians, {node_count, MAX_JACOBIANS_PER_NODE});
-    o3c::AssertTensorDtype(node_pixel_vertex_jacobians, o3c::Int32);
-    o3c::AssertTensorDevice(node_pixel_vertex_jacobians, device);
-
-    o3c::AssertTensorShape(pixel_vertex_anchor_jacobians, {utility::nullopt, 3, 4, 6});
-    o3c::AssertTensorDtype(pixel_vertex_anchor_jacobians, o3c::Float32);
-    o3c::AssertTensorDevice(pixel_vertex_anchor_jacobians, device);
+    o3c::AssertTensorShape(pixel_jacobians, { utility::nullopt, utility::nullopt, 6});
+    o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
+    o3c::AssertTensorDevice(pixel_jacobians, device);
 
     // === get access to input arrays ===
-    auto node_pixel_vertex_jacobian_data = node_pixel_vertex_jacobians.GetDataPtr<int32_t>();
-    auto node_pixel_vertex_jacobian_count_data = node_pixel_vertex_jacobian_counts.GetDataPtr<int32_t>();
-    auto pixel_vertex_anchor_jacobian_data = pixel_vertex_anchor_jacobians.GetDataPtr<float>();
+    auto node_pixel_vertex_jacobian_data = node_pixel_indices_jagged.GetDataPtr<int32_t>();
+    auto node_pixel_vertex_jacobian_count_data = node_pixel_counts.GetDataPtr<int32_t>();
+    auto pixel_vertex_anchor_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 
     // === set up atomic counter ===
     NNRT_DECLARE_ATOMIC(int64_t, total_jacobian_count);
     NNRT_INITIALIZE_ATOMIC(int64_t, total_jacobian_count, 0L);
 
     // === set up output tensor to store ranges ===
-    node_jacobian_ranges = o3c::Tensor ({node_count, 2}, o3c::Int64, device);
+    node_jacobian_ranges = o3c::Tensor({node_count, 2}, o3c::Int64, device);
     auto node_jacobian_range_data = node_jacobian_ranges.GetDataPtr<int64_t>();
     // === loop over all nodes and sort all entries by jacobian address
     o3c::ParallelFor(
             device, node_count,
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
-                const int* node_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_JACOBIANS_PER_NODE);
-                int node_list_length = node_pixel_vertex_jacobian_count_data[node_index];
+                const int* node_jacobian_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_PIXELS_PER_NODE);
+                int node_jacobian_list_length = node_pixel_vertex_jacobian_count_data[node_index];
                 // sort the anchor jacobian addresses
-                HeapSort(node_list_start, node_list_length);
+                HeapSort(node_jacobian_list_start, node_jacobian_list_length);
 
-                int node_jacobian_count = 0;
-                int previous_pixel_index = -1;
-                // count up the sorted addresses sans those with repeating pixel index
-                for(int i_jacobian = 0; i_jacobian < node_list_length; i_jacobian++){
-                    // -1 is the sentinel value
-                    int jacobian_address = node_list_start[i_jacobian];
-                    int pixel_index = jacobian_address / (3 * 4 * 6);
-                    if (pixel_index != previous_pixel_index) {
-                        node_jacobian_count++;
-                    }
-                }
-                node_jacobian_range_data[node_index * 2 + 1] = node_jacobian_count;
-                NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<int64_t>(node_jacobian_count));
+                node_jacobian_range_data[node_index * 2 + 1] = node_jacobian_list_length;
+                NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<int64_t>(node_jacobian_list_length));
             }
     );
 
     node_jacobians = o3c::Tensor({NNRT_GET_ATOMIC_VALUE_HOST(total_jacobian_count), 6}, o3c::Float32, device);
+    NNRT_CLEAN_UP_ATOMIC(total_jacobian_count);
     auto node_jacobian_data = node_jacobians.GetDataPtr<float>();
 
-    node_jacobian_pixel_indices = o3c::Tensor({node_jacobians.GetShape(0)}, o3c::Int32, device);
-    auto node_jacobian_pixel_index_data = node_jacobian_pixel_indices.GetDataPtr<int32_t>();
+    node_pixel_indices_compact = o3c::Tensor({node_jacobians.GetShape(0)}, o3c::Int32, device);
+    auto node_jacobian_pixel_index_data = node_pixel_indices_compact.GetDataPtr<int32_t>();
 
-    NNRT_CLEAN_UP_ATOMIC(total_jacobian_count);
-
+    // === loop over all nodes again, this time aggregating their jacobians for each pixel they affect
     o3c::ParallelFor(
             device, node_count,
             NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
                 // figure out where to start filling in the jacobians for the current node
                 int node_jacobian_start_index = 0;
-                for (int i_node = 0; i_node < node_index-1; i_node++){
+                for (int i_node = 0; i_node < node_index - 1; i_node++) {
                     node_jacobian_start_index += node_jacobian_range_data[i_node * 2 + 1];
                 }
                 node_jacobian_range_data[node_index * 2] = node_jacobian_start_index;
-                int node_jacobian_count = node_jacobian_range_data[node_index * 2 + 1];
 
                 // source data to get anchor jacobians from
-                int* node_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_JACOBIANS_PER_NODE);
+                int* node_list_start = node_pixel_vertex_jacobian_data + (node_index * MAX_PIXELS_PER_NODE);
                 int node_list_length = node_pixel_vertex_jacobian_count_data[node_index];
 
                 // loop over source data and fill in node jacobians & corresponding pixel indices
                 int i_node_jacobian = 0;
-                int previous_pixel_address = -1;
-                for (int i_anchor_jacobian = 0; i_anchor_jacobian < node_list_length; i_anchor_jacobian++){
+                for (int i_anchor_jacobian = 0; i_anchor_jacobian < node_list_length; i_anchor_jacobian++) {
                     int pixel_jacobian_address = node_list_start[i_anchor_jacobian];
-                    int pixel_index = pixel_jacobian_address / (3 * 4 * 6);
-                    // source anchor jacobian
-                    Eigen::Map<const Eigen::Matrix<float, 1, 6>> pixel_anchor_jacobian(pixel_vertex_anchor_jacobian_data + pixel_jacobian_address);
-                    Eigen::Map<const Eigen::Matrix<float, 1, 6>> node_jacobian(node_jacobian_data + i_node_jacobian * 6);
-
-                    if (pixel_index != previous_pixel_address) {
-                        node_jacobian_pixel_index_data[i_node_jacobian] = pixel_index;
-                        node_jacobian = pixel_anchor_jacobian;
-                        i_node_jacobian++;
-                    } else {
-                        // if the jacobian corresponds to the same pixel (but different vertex), add it to the
-                        // aggregate jacobian for the same node.
-                        node_jacobian += pixel_anchor_jacobian;
-                    }
+                    Eigen::Map<const Eigen::Matrix<float, 1, 6>>
+                            pixel_jacobian(pixel_vertex_anchor_jacobian_data + pixel_jacobian_address);
+                    Eigen::Map<const Eigen::Matrix<float, 1, 6>>
+                            node_jacobian(node_jacobian_data + i_node_jacobian * 6);
+                    node_jacobian = pixel_jacobian;
                 }
             }
     );
+}
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeHessianApproximationBlocks(
+        open3d::core::Tensor& hessian_approximation_blocks,
+        const open3d::core::Tensor& pixel_jacobians,
+        const open3d::core::Tensor& node_pixel_indices,
+        const open3d::core::Tensor& node_pixel_counts
+) {
+    // === dimension, type, and device tensor checks ===
+    int64_t node_count = node_pixel_counts.GetShape(0);
+    o3c::Device device = node_pixel_counts.GetDevice();
+
+    o3c::AssertTensorShape(node_pixel_counts, { node_count });
+    o3c::AssertTensorDtype(node_pixel_counts, o3c::Int32);
+
+    o3c::AssertTensorShape(node_pixel_indices, { node_count, MAX_PIXELS_PER_NODE });
+    o3c::AssertTensorDtype(node_pixel_indices, o3c::Int32);
+    o3c::AssertTensorDevice(node_pixel_indices, device);
+
+    o3c::AssertTensorShape(pixel_jacobians, { utility::nullopt, utility::nullopt, 6});
+    o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
+    o3c::AssertTensorDevice(pixel_jacobians, device);
+
+    /*
+     * Each node has 6 delta components (3 rotational and 3 translational).
+     * These would be represented in a dense jacobian as rows within the same 6 columns, with each row
+     * corresponding to a separate pixel.
+     * Block-diagonal optimization assumes that nodes have no influence on each
+     * other, so we can imagine separate J_node matrices for each node, of size [pixel count x 6]
+     * Each block can then be found via (J_node^T)*J_node, and will have size 6x6.
+     * Each entry in a single 6x6 block is a dot product of one of the six columns with another, hence:
+     *    1. The number of unique column combinations is (2 + 6 - 1)! / (2!*(6-1)!), or 21,
+     *       so there are only 21 unique entries per block
+     *    2. Due to commutativity of addition, it doesn't matter what order the addends of each dot product are
+     *       retrieved from memory, as long as we always sample their factors from the same row
+     */
+    int64_t unique_entry_count_per_block = 21;
+
+
+    o3c::ParallelFor(
+            device, unique_entry_count_per_block * node_count,
+            NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
+                //TODO
+            }
+
+    );
+    utility::LogError("Not implemented");
 }
 
 } // namespace nnrt::alignment::kernel

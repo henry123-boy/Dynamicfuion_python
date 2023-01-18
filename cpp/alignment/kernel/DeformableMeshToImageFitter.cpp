@@ -24,9 +24,9 @@
 namespace nnrt::alignment::kernel {
 
 void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-        open3d::core::Tensor& pixel_vertex_anchor_jacobians,
-        open3d::core::Tensor& node_pixel_vertex_jacobians,
-        open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
+        open3d::core::Tensor& pixel_jacobians,
+        open3d::core::Tensor& node_pixel_indices,
+        open3d::core::Tensor& node_pixel_counts,
         const open3d::core::Tensor& rasterized_vertex_position_jacobians,
         const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
         const open3d::core::Tensor& warped_vertex_position_jacobians,
@@ -43,7 +43,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
             residual_mask.GetDevice(),
             [&] {
                 ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
-                        pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts,
+                        pixel_jacobians, node_pixel_indices, node_pixel_counts,
                         rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                         warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                         point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
@@ -53,8 +53,8 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
             [&] {
                 NNRT_IF_CUDA(
                         ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
-                                pixel_vertex_anchor_jacobians, node_pixel_vertex_jacobians,
-                                node_pixel_vertex_jacobian_counts,
+                                pixel_jacobians, node_pixel_indices,
+                                node_pixel_counts,
                                 rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
                                 warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
                                 point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
@@ -68,24 +68,45 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
         open3d::core::Tensor& node_jacobians,
         open3d::core::Tensor& node_jacobian_ranges,
-        open3d::core::Tensor& node_jacobian_pixels,
-        open3d::core::Tensor& node_pixel_vertex_jacobians,
-        const open3d::core::Tensor& node_pixel_vertex_jacobian_counts,
-        const open3d::core::Tensor& pixel_vertex_anchor_jacobians
+        open3d::core::Tensor& node_pixel_indices_compact,
+        open3d::core::Tensor& node_pixel_indices,
+        const open3d::core::Tensor& node_pixel_jacobian_counts,
+        const open3d::core::Tensor& pixel_node_jacobians
 ) {
     core::ExecuteOnDevice(
-            node_pixel_vertex_jacobians.GetDevice(),
+            node_pixel_indices.GetDevice(),
             [&] {
-                ConvertPixelVertexAnchorJacobiansToNodeJacobians < open3d::core::Device::DeviceType::CPU > (
-                        node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
-                                node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
+                ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CPU>(
+                        node_jacobians, node_jacobian_ranges, node_pixel_indices_compact,
+                        node_pixel_indices, node_pixel_jacobian_counts, pixel_node_jacobians);
+            },
+            [&] {
+                NNRT_IF_CUDA(
+                        ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CUDA>(
+                                node_jacobians, node_jacobian_ranges, node_pixel_indices_compact,
+                                node_pixel_indices, node_pixel_jacobian_counts, pixel_node_jacobians);
+                );
+            }
+    );
+}
+
+void ComputeHessianApproximationBlocks(
+        open3d::core::Tensor& hessian_approximation_blocks,
+        const open3d::core::Tensor& pixel_jacobians,
+        const open3d::core::Tensor& node_pixel_indices,
+        const open3d::core::Tensor& node_pixel_counts
+) {
+    core::ExecuteOnDevice(
+            pixel_jacobians.GetDevice(),
+            [&] {
+                ComputeHessianApproximationBlocks < open3d::core::Device::DeviceType::CPU > (
+                        hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
                 );
             },
             [&] {
                 NNRT_IF_CUDA(
-                        ConvertPixelVertexAnchorJacobiansToNodeJacobians < open3d::core::Device::DeviceType::CUDA > (
-                                node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
-                                        node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
+                        ComputeHessianApproximationBlocks < open3d::core::Device::DeviceType::CUDA > (
+                                hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
                         );
                 );
             }

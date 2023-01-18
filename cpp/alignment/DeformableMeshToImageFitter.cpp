@@ -234,15 +234,15 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_Bl
             warped_mesh.GetTriangleIndices(), vertex_anchors, node_count
     );
 
-    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixels;
+    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices;
     kernel::ConvertPixelVertexAnchorJacobiansToNodeJacobians(
-            node_jacobians, node_jacobian_ranges, node_jacobian_pixels,
-            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians
-    );
+            node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
+            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians);
+    open3d::core::Tensor hessian_approximation_blocks;
+    kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, node_jacobians, node_jacobian_ranges,
+                                              node_jacobian_pixel_indices);
 
-
-    utility::LogError("Not implemented");
-    return open3d::core::Tensor();
+    return hessian_approximation_blocks;
 }
 
 
