@@ -85,9 +85,9 @@ void DeformableMeshToImageFitter::FitToImage(
 
         // compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
         o3tg::PointCloud rasterized_point_cloud;
-        o3c::Tensor global_point_mask;
+        o3c::Tensor residual_mask;
         o3c::Tensor residuals =
-                this->ComputeResiduals(rasterized_point_cloud, global_point_mask, warped_mesh, pixel_face_indices,
+                this->ComputeResiduals(rasterized_point_cloud, residual_mask, warped_mesh, pixel_face_indices,
                                        pixel_barycentric_coordinates, pixel_depths,
                                        reference_color_image, reference_point_cloud, reference_point_mask,
                                        intrinsic_matrix);
@@ -104,11 +104,28 @@ void DeformableMeshToImageFitter::FitToImage(
                                                                ndc_intrinsic_matrix, this->use_perspective_correction);
 
 
-        // compute (J^T)J, i.e. hessian approximation
-        //TODO
+        // compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
+        o3c::Tensor
+                point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
+        o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
+
+        o3c::Tensor pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts;
+	    kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
+			    pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices_jagged, node_pixel_index_counts,
+			    rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+			    warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+			    point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
+			    warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength()
+	    );
+
+        // compute (J^T)J, i.e. hessian approximation, in block-diagonal form
+        open3d::core::Tensor hessian_approximation_blocks;
+        kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, pixel_jacobians,
+                                                  node_pixel_indices_jagged, node_pixel_index_counts);
 
         // compute -Jr
         // TODO
+
         // solve system of linear equations for the delta rotations and translations
         // TODO
 
@@ -210,42 +227,6 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
     return distances;
 }
 
-open3d::core::Tensor DeformableMeshToImageFitter::ComputeHessianApproximation_BlockDiagonal(
-        const open3d::t::geometry::PointCloud& rasterized_point_cloud,
-        const open3d::t::geometry::PointCloud& reference_point_cloud,
-        const open3d::t::geometry::TriangleMesh& warped_mesh,
-        const open3d::core::Tensor& pixel_faces,
-        const open3d::core::Tensor& vertex_anchors,
-        const open3d::core::Tensor& residual_mask,
-        const open3d::core::Tensor& rasterized_vertex_position_jacobians,
-        const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
-        const open3d::core::Tensor& warped_vertex_position_jacobians,
-        const open3d::core::Tensor& warped_vertex_normal_jacobians,
-        int64_t node_count
-) const {
-    o3c::Tensor
-            point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
-    o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
-
-    o3c::Tensor pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts;
-    kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-            pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts,
-            rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-            warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-            point_map_vectors, rasterized_normals, residual_mask, pixel_faces,
-            warped_mesh.GetTriangleIndices(), vertex_anchors, node_count
-    );
-
-//    open3d::core::Tensor node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices;
-//    kernel::ConvertPixelVertexAnchorJacobiansToNodeJacobians(
-//            node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
-//            node_pixel_vertex_jacobians, node_pixel_vertex_jacobian_counts, pixel_vertex_anchor_jacobians);
-    open3d::core::Tensor hessian_approximation_blocks;
-    kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, pixel_jacobians,
-                                              node_pixel_indices_jagged, node_pixel_index_counts);
-
-    return hessian_approximation_blocks;
-}
 
 
 } // namespace nnrt::alignment

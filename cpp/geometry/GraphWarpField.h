@@ -41,6 +41,7 @@ public:
 
 	virtual ~GraphWarpField() = default;
 
+
 	open3d::core::Tensor GetWarpedNodes() const;
 	open3d::core::Tensor GetNodeExtent() const;
 	open3d::t::geometry::TriangleMesh WarpMesh(
