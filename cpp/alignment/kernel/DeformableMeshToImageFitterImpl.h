@@ -28,6 +28,7 @@
 #include "core/linalg/KroneckerTensorProduct.h"
 #include "core/platform_independence/AtomicCounterArray.h"
 #include "core/platform_independence/Atomics.h"
+#include "geometry/functional/kernel/Defines.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -106,6 +107,10 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
     int64_t vertex_count = warped_vertex_position_jacobians.GetShape(0);
     int64_t anchor_count_per_vertex = warped_vertex_position_jacobians.GetShape(1);
+    if(anchor_count_per_vertex > MAX_ANCHOR_COUNT){
+        utility::LogError("Supplied anchor count per vertex, {}, is greater than the allowed maximum, {}.",
+                          anchor_count_per_vertex, MAX_ANCHOR_COUNT);
+    }
 
     o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex, 4 });
     o3c::AssertTensorDevice(warped_vertex_position_jacobians, device);
@@ -142,7 +147,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
     // === initialize output matrices ===
     node_pixel_jacobian_indices = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32);
     node_pixel_jacobian_indices.Fill(-1);
-    auto node_pixel_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
+    auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
 
     core::AtomicCounterArray<TDeviceType> node_pixel_counters(node_count);
 
@@ -216,7 +221,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
                     int node_index = -1;
                     int64_t vertices[3] = {-1, -1, -1};
                     int vertex_anchor_indices[3] = {-1, -1, -1};
-                } face_anchor_data[max_face_anchor_count];
+                } face_anchor_data[3 * MAX_ANCHOR_COUNT];
 
                 // group vertices by anchor node
                 //TODO: this simple per-face reindexing operation needs only to be done on a per-face basis. It is
@@ -308,7 +313,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
                                    "large, or the surface is too close to the camera.\n", i_node, MAX_PIXELS_PER_NODE);
                             node_pixel_counters.FetchSub(i_node, 1);
                         }
-                        node_pixel_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
+                        node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
                                 pixel_jacobian_list_address + jacobian_address;
                     }
                     face_anchor = face_anchor_data[i_face_anchor];
@@ -348,8 +353,8 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
     auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 
     // === set up atomic counter ===
-    NNRT_DECLARE_ATOMIC(int64_t, total_jacobian_count);
-    NNRT_INITIALIZE_ATOMIC(int64_t, total_jacobian_count, 0L);
+    NNRT_DECLARE_ATOMIC(uint32_t, total_jacobian_count);
+    NNRT_INITIALIZE_ATOMIC(uint32_t, total_jacobian_count, 0L);
 
     // === set up output tensor to store ranges ===
     node_jacobian_ranges = o3c::Tensor({node_count, 2}, o3c::Int64, device);
@@ -365,11 +370,11 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
                 HeapSort(node_jacobian_list_start, node_jacobian_list_length);
 
                 node_jacobian_range_data[node_index * 2 + 1] = node_jacobian_list_length;
-                NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<int64_t>(node_jacobian_list_length));
+                NNRT_ATOMIC_ADD(total_jacobian_count, static_cast<uint32_t>(node_jacobian_list_length));
             }
     );
 
-    node_jacobians = o3c::Tensor({NNRT_GET_ATOMIC_VALUE_HOST(total_jacobian_count), 6}, o3c::Float32,
+    node_jacobians = o3c::Tensor({NNRT_GET_ATOMIC_VALUE_HOST(total_jacobian_count), 6L}, o3c::Float32,
                                  device);
 
     NNRT_CLEAN_UP_ATOMIC(total_jacobian_count);
