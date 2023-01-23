@@ -121,20 +121,21 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
-		const open3d::core::Tensor& node_pixel_jacobian_counts
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		int max_vertex_anchor_count
 ) {
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
 				ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 						gradient, residuals, residual_mask, pixel_jacobians, <#initializer#>, node_pixel_jacobian_indices,
-						node_pixel_jacobian_counts);
+						node_pixel_jacobian_counts, max_vertex_anchor_count);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 								gradient, residuals, residual_mask, pixel_jacobians, <#initializer#>, node_pixel_jacobian_indices,
-								node_pixel_jacobian_counts);
+								node_pixel_jacobian_counts, max_vertex_anchor_count);
 				);
 			}
 	);

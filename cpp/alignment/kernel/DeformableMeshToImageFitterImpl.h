@@ -402,9 +402,9 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 				int i_node_jacobian = 0;
 				for (int i_node_pixel = 0; i_node_pixel < node_pixel_count; i_node_pixel++) {
 					int pixel_jacobian_address = node_pixel_index_jagged_start[i_node_pixel];
-					Eigen::Map<const Eigen::Matrix<float, 1, 6>>
+					Eigen::Map<const Eigen::RowVector<float, 6>>
 							pixel_jacobian(pixel_jacobian_data + pixel_jacobian_address);
-					Eigen::Map<Eigen::Matrix<float, 1, 6>>
+					Eigen::Map<Eigen::RowVector<float, 6>>
 							node_jacobian(node_jacobian_data + node_jacobian_start_index + i_node_jacobian * 6);
 					node_pixel_index_compact_data[node_jacobian_start_index + i_node_jacobian]
 							= pixel_jacobian_address / 6;
@@ -487,9 +487,9 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				int i_unique_element_in_block = static_cast<int>(workload_index % unique_entry_count_per_block);
 				int i_column_0 = column_0_lookup_table[i_unique_element_in_block];
 				int i_column_1 = column_1_lookup_table[i_unique_element_in_block];
-				int node_pixel_count = node_pixel_count_data[i_node];
+				int node_pixel_jacobian_list_length = node_pixel_count_data[i_node];
 				float column_product = 0.0;
-				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_count; i_node_pixel_jacobian++) {
+				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
 					int i_pixel_node_jacobian = node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
 					const float* jacobian = pixel_jacobian_data + i_pixel_node_jacobian * 6;
 					float addend = jacobian[i_column_0] * jacobian[i_column_1];
@@ -504,13 +504,14 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 
 template<open3d::core::Device::DeviceType TDevice>
 void ComputeNegativeGradient_UnorderedNodePixels(
-		open3d::core::Tensor& gradient,
+		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
-		const open3d::core::Tensor& node_pixel_jacobian_counts
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		int max_anchor_count_per_vertex
 ) {
 	// === dimension, type, and device tensor checks ===
 	o3c::Device device = pixel_jacobians.GetDevice();
@@ -521,15 +522,15 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
 	o3c::AssertTensorDevice(pixel_jacobians, device);
 
-	o3c::AssertTensorShape(pixel_jacobian_counts, {pixel_count});
+	o3c::AssertTensorShape(pixel_jacobian_counts, { pixel_count });
 	o3c::AssertTensorDtype(pixel_jacobian_counts, o3c::Int32);
 	o3c::AssertTensorDevice(pixel_jacobian_counts, device);
 
-	o3c::AssertTensorShape(residuals, {pixel_count});
+	o3c::AssertTensorShape(residuals, { pixel_count });
 	o3c::AssertTensorDtype(residuals, o3c::Float32);
 	o3c::AssertTensorDevice(residuals, device);
 
-	o3c::AssertTensorShape(residual_mask, {pixel_count});
+	o3c::AssertTensorShape(residual_mask, { pixel_count });
 	o3c::AssertTensorDtype(residual_mask, o3c::Bool);
 	o3c::AssertTensorDevice(residual_mask, device);
 
@@ -552,25 +553,28 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 
 	// === initialize output structures ===
-	gradient = o3c::Tensor({node_count}, o3c::Float32, device);
-	auto gradient_data = gradient.GetDataPtr<float>();
+	negative_gradient = o3c::Tensor({node_count}, o3c::Float32, device);
+	auto negative_gradient_data = negative_gradient.GetDataPtr<float>();
 
 	//TODO: this is extremely inefficient. There must be some parallel reduction we can apply here, but everything is difficult.
-	// The current code does a variable number of essentially random (global) memory accesses (as many as there are jacobians)
-	// for each node (these are ordered, potentially not cachable), and as many random accesses from the residual array.
+	// The current code does a variable number of essentially random (global) memory accesses for each node (as many as there are jacobians,
+	// i.e. pixels controlled by each node.  These are ordered, potentially not at all cache-able. In addition, it makes as many random accesses
+	// to the residual array in order to perform the actual multiplication. These results are summed together to produce entries of the gradient.
 	o3c::ParallelFor(
 			device, node_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
-				int node_pixel_count = node_pixel_count_data[node_index];
-				Eigen::RowVector<float, 6> node_motion_gradient;
-				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_count; i_node_pixel_jacobian++) {
-					int i_pixel_node_jacobian = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
-					int i_pixel = i_pixel_node_jacobian /
-					Eigen::Map<const Eigen::RowVector<float,6>> jacobian(pixel_jacobian_data + i_pixel_node_jacobian * 6);
-
-					node_motion_gradient
+				int node_pixel_jacobian_list_length = node_pixel_count_data[node_index];
+				Eigen::Vector<float, 6> node_pixel_gradient;
+				node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
+				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
+					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
+					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
+					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * 6);
+					float residual = residual_data[i_pixel];
+					node_pixel_gradient -= node_pixel_jacobian * residual;
 				}
-
+				Eigen::Map<Eigen::Vector<float, 6>> negative_node_gradient(negative_gradient_data + node_index * 6);
+				negative_node_gradient -= node_pixel_gradient;
 			}
 	);
 }
