@@ -69,29 +69,29 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 		open3d::core::Tensor& node_jacobians,
 		open3d::core::Tensor& node_jacobian_ranges,
-		open3d::core::Tensor& node_pixel_indices_compact,
-		open3d::core::Tensor& node_pixel_indices,
+		open3d::core::Tensor& node_jacobian_pixel_indices,
+		open3d::core::Tensor& node_pixel_jacobian_indices_jagged,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
 		const open3d::core::Tensor& pixel_node_jacobians
 ) {
 	core::ExecuteOnDevice(
-			node_pixel_indices.GetDevice(),
+			node_pixel_jacobian_indices_jagged.GetDevice(),
 			[&] {
 				ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CPU>(
-						node_jacobians, node_jacobian_ranges, node_pixel_indices_compact,
-						node_pixel_indices, node_pixel_jacobian_counts, pixel_node_jacobians);
+						node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
+						node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CUDA>(
-								node_jacobians, node_jacobian_ranges, node_pixel_indices_compact,
-								node_pixel_indices, node_pixel_jacobian_counts, pixel_node_jacobians);
+								node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
+								node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians);
 				);
 			}
 	);
 }
 
-void ComputeHessianApproximationBlocks(
+void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_indices,
@@ -100,13 +100,13 @@ void ComputeHessianApproximationBlocks(
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
-				ComputeHessianApproximationBlocks<open3d::core::Device::DeviceType::CPU>(
+				ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 						hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ComputeHessianApproximationBlocks<open3d::core::Device::DeviceType::CUDA>(
+						ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 								hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
 						);
 				);
@@ -114,23 +114,27 @@ void ComputeHessianApproximationBlocks(
 	);
 }
 
-void ComputeNegativeGradient(
+void ComputeNegativeGradient_UnorderedNodePixels(
 		open3d::core::Tensor& gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& pixel_jacobian_counts
+		const open3d::core::Tensor& pixel_jacobian_counts,
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts
 ) {
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
-				ComputeNegativeGradient < open3d::core::Device::DeviceType::CPU>(
-						gradient, residuals, residual_mask, pixel_jacobians);
+				ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
+						gradient, residuals, residual_mask, pixel_jacobians, <#initializer#>, node_pixel_jacobian_indices,
+						node_pixel_jacobian_counts);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ComputeNegativeGradient < open3d::core::Device::DeviceType::CUDA > (
-								gradient, residuals, residual_mask, pixel_jacobians, <#initializer#>);
+						ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
+								gradient, residuals, residual_mask, pixel_jacobians, <#initializer#>, node_pixel_jacobian_indices,
+								node_pixel_jacobian_counts);
 				);
 			}
 	);

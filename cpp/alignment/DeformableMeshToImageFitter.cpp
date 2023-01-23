@@ -109,9 +109,9 @@ void DeformableMeshToImageFitter::FitToImage(
                 point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
         o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
-        o3c::Tensor pixel_jacobians, node_pixel_indices_jagged, node_pixel_index_counts;
+        o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
 	    kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-			    pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices_jagged, node_pixel_index_counts,
+			    pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts,
 			    rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 			    warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 			    point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
@@ -120,8 +120,8 @@ void DeformableMeshToImageFitter::FitToImage(
 
         // compute (J^T)J, i.e. hessian approximation, in block-diagonal form
         open3d::core::Tensor hessian_approximation_blocks;
-        kernel::ComputeHessianApproximationBlocks(hessian_approximation_blocks, pixel_jacobians,
-                                                  node_pixel_indices_jagged, node_pixel_index_counts);
+	    kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(hessian_approximation_blocks, pixel_jacobians,
+	                                                                  node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts);
 
         // compute -Jr
         // TODO

@@ -436,18 +436,18 @@ NNRT_CONSTANT_WHEN_CUDACC const int column_1_lookup_table[21] = {
 
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeHessianApproximationBlocks(
+void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
-		const open3d::core::Tensor& node_pixel_counts
+		const open3d::core::Tensor& node_pixel_jacobian_counts
 ) {
 	// === dimension, type, and device tensor checks ===
-	int64_t node_count = node_pixel_counts.GetShape(0);
-	o3c::Device device = node_pixel_counts.GetDevice();
+	int64_t node_count = node_pixel_jacobian_counts.GetShape(0);
+	o3c::Device device = node_pixel_jacobian_counts.GetDevice();
 
-	o3c::AssertTensorShape(node_pixel_counts, { node_count });
-	o3c::AssertTensorDtype(node_pixel_counts, o3c::Int32);
+	o3c::AssertTensorShape(node_pixel_jacobian_counts, { node_count });
+	o3c::AssertTensorDtype(node_pixel_jacobian_counts, o3c::Int32);
 
 	o3c::AssertTensorShape(node_pixel_jacobian_indices, { node_count, MAX_PIXELS_PER_NODE });
 	o3c::AssertTensorDtype(node_pixel_jacobian_indices, o3c::Int32);
@@ -459,7 +459,7 @@ void ComputeHessianApproximationBlocks(
 
 	// === get access to input arrays ===
 	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
-	auto node_pixel_count_data = node_pixel_counts.GetDataPtr<int32_t>();
+	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 
 	/*
@@ -489,9 +489,9 @@ void ComputeHessianApproximationBlocks(
 				int i_column_1 = column_1_lookup_table[i_unique_element_in_block];
 				int node_pixel_count = node_pixel_count_data[i_node];
 				float column_product = 0.0;
-				for (int i_node_pixel = 0; i_node_pixel < node_pixel_count; i_node_pixel++) {
-					int i_pixel_jacobian = node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_pixel];
-					const float* jacobian = pixel_jacobian_data + i_pixel_jacobian * 6;
+				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_count; i_node_pixel_jacobian++) {
+					int i_pixel_node_jacobian = node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
+					const float* jacobian = pixel_jacobian_data + i_pixel_node_jacobian * 6;
 					float addend = jacobian[i_column_0] * jacobian[i_column_1];
 					column_product += addend;
 				}
@@ -503,12 +503,14 @@ void ComputeHessianApproximationBlocks(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeNegativeGradient(
+void ComputeNegativeGradient_UnorderedNodePixels(
 		open3d::core::Tensor& gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& pixel_jacobian_counts
+		const open3d::core::Tensor& pixel_jacobian_counts,
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts
 ) {
 	// === dimension, type, and device tensor checks ===
 	o3c::Device device = pixel_jacobians.GetDevice();
@@ -531,28 +533,42 @@ void ComputeNegativeGradient(
 	o3c::AssertTensorDtype(residual_mask, o3c::Bool);
 	o3c::AssertTensorDevice(residual_mask, device);
 
+	int64_t node_count = node_pixel_jacobian_counts.GetShape(0);
+	o3c::AssertTensorShape(node_pixel_jacobian_counts, { node_count });
+	o3c::AssertTensorDtype(node_pixel_jacobian_counts, o3c::Int32);
+	o3c::AssertTensorDevice(node_pixel_jacobian_counts, device);
+
+	o3c::AssertTensorShape(node_pixel_jacobian_indices, { node_count, MAX_PIXELS_PER_NODE });
+	o3c::AssertTensorDtype(node_pixel_jacobian_indices, o3c::Int32);
+	o3c::AssertTensorDevice(node_pixel_jacobian_indices, device);
+
 
 	// === get access to input arrays ===
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 	auto pixel_jacobian_count_data = pixel_jacobian_counts.GetDataPtr<int32_t>();
 	auto residual_data = residuals.GetDataPtr<float>();
 	auto residual_mask_data = residual_mask.GetDataPtr<bool>();
+	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
+	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 
 	// === initialize output structures ===
-	gradient = o3c::Tensor({pixel_count}, o3c::Float32, device);
+	gradient = o3c::Tensor({node_count}, o3c::Float32, device);
 	auto gradient_data = gradient.GetDataPtr<float>();
 
+	//TODO: this is extremely inefficient. There must be some parallel reduction we can apply here, but everything is difficult.
+	// The current code does a variable number of essentially random (global) memory accesses (as many as there are jacobians)
+	// for each node (these are ordered, potentially not cachable), and as many random accesses from the residual array.
 	o3c::ParallelFor(
-			device, pixel_count,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t pixel_index) {
-				if(!residual_mask_data[pixel_index]) return;
-				float residual = residual_data[pixel_index];
-				int pixel_jacobian_list_length = pixel_jacobian_count_data[pixel_index];
-				const float* pixel_jacobian_list_start = pixel_jacobian_data + pixel_index * (max_jacobian_count * 6);
-				float pixel_gradient;
-				for(int i_pixel_jacobian = 0; i_pixel_jacobian < pixel_jacobian_list_length; i_pixel_jacobian++){
-					Eigen::Map<const Eigen::Matrix<float, 1, 6>> jacobian(pixel_jacobian_list_start + i_pixel_jacobian * 6);
-					pixel_gradient +=
+			device, node_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
+				int node_pixel_count = node_pixel_count_data[node_index];
+				Eigen::RowVector<float, 6> node_motion_gradient;
+				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_count; i_node_pixel_jacobian++) {
+					int i_pixel_node_jacobian = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
+					int i_pixel = i_pixel_node_jacobian /
+					Eigen::Map<const Eigen::RowVector<float,6>> jacobian(pixel_jacobian_data + i_pixel_node_jacobian * 6);
+
+					node_motion_gradient
 				}
 
 			}

@@ -45,27 +45,29 @@ template
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& node_jacobians,
 		open3d::core::Tensor& node_jacobian_ranges,
-		open3d::core::Tensor& node_pixel_indices,
-		open3d::core::Tensor& node_pixel_jacobian_indices,
+		open3d::core::Tensor& node_jacobian_pixel_indices,
+		open3d::core::Tensor& node_pixel_jacobian_indices_jagged,
 		const open3d::core::Tensor& node_pixel_counts,
 		const open3d::core::Tensor& pixel_jacobians
 );
 
 template
-void ComputeHessianApproximationBlocks<open3d::core::Device::DeviceType::CPU>(
+void ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& workload_index,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
-		const open3d::core::Tensor& node_pixel_counts
+		const open3d::core::Tensor& node_pixel_jacobian_counts
 );
 
 template
-void ComputeNegativeGradient<open3d::core::Device::DeviceType::CPU>(
+void ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& pixel_index,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& pixel_jacobian_counts
+		const open3d::core::Tensor& pixel_jacobian_counts,
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts
 );
 
 } // namespace nnrt::alignment::kernel
