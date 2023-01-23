@@ -508,6 +508,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
+		//TODO: pixel_jacobian_counts seems completely unneeded here.
 		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
@@ -546,7 +547,8 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 
 	// === get access to input arrays ===
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
-	auto pixel_jacobian_count_data = pixel_jacobian_counts.GetDataPtr<int32_t>();
+	// TODO: use or remove commented dead code
+	// auto pixel_jacobian_count_data = pixel_jacobian_counts.GetDataPtr<int32_t>();
 	auto residual_data = residuals.GetDataPtr<float>();
 	auto residual_mask_data = residual_mask.GetDataPtr<bool>();
 	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
@@ -568,8 +570,10 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 				node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
 					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
-					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
 					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * 6);
+					//TODO: NOT sure mask filtering helps with anything here -- seems like it would only contribute to thread divergence
+					if(!residual_mask_data[i_pixel]) continue;
+					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
 					float residual = residual_data[i_pixel];
 					node_pixel_gradient -= node_pixel_jacobian * residual;
 				}
