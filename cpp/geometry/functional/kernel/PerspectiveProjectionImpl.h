@@ -31,8 +31,6 @@
 #include <cuda/atomic>
 #endif
 
-//__DEBUG
-#include <cuda/atomic>
 
 
 namespace o3c = open3d::core;

@@ -50,23 +50,26 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 				"but got a tensor with {} dimensions.",
 				B_shape.size());
 	}
-	if (B_shape[0] != A_blocks_shape[1]) {
-		utility::LogError("Tensor B's row count (dimension 0) should match that of every block "
-		                  "in A, i.e. it's dimension at index 1. Got {} rows for B and {} rows for A blocks.",
-		                  B_shape[0], A_blocks_shape[1]);
+	int64_t result_row_count = B_shape[0];
+	if (result_row_count != A_blocks_shape[1] * A_blocks_shape[0]) {
+		utility::LogError("Tensor B's row count (dimension 0) should match [block count x block rows] of A "
+						  "(dimension 0 x dimension 1). Got {} rows for B and {} rows for each of the {} blocks in A.",
+		                  B_shape[0], A_blocks_shape[1], A_blocks_shape[0]);
 	}
 	int64_t block_row_count = A_blocks_shape[1];
 	int64_t block_count = A_blocks_shape[0];
 	int64_t result_column_count = B_shape.size() == 2 ? B_shape[1] : 1;
 
-	if (block_row_count == 0 || block_count || result_column_count == 0) {
+	if (block_row_count == 0 || block_count == 0 || result_column_count == 0) {
 		utility::LogError("Input tensors should have no zero dimensions.");
 	}
 
-	//A and B data will get manipulated in-place by LAPACK routines, make clones
+	// A and B data will get manipulated in-place by LAPACK routines, make clones
 	o3c::Tensor A_blocks_transposed = A_blocks.Clone().Transpose(1, 2);
 	void* A_blocks_data = A_blocks_transposed.GetDataPtr();
-	X = B.T().Clone();
+	// take apart B array into block-sized portions, swap axesp to convert to column-major reordering
+	X = B.Reshape({block_count, block_row_count, result_column_count}).Transpose(1, 2).Clone();
+	std::cout << X.Slice(0, 0, 1).ToString() << std::endl;
 	void* B_data = X.GetDataPtr();
 
 	if (device.IsCUDA()) {
@@ -74,9 +77,10 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 		utility::LogError("Operation not yet supported on CUDA devices.");
 	} else {
 		SolveCholeskyBlockDiagonalCPU(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
-		// Perform column- to row-major reordering using a transpose
-		X = X.T();
+		// Perform column- to row-major reordering using axis swap, re-stack
+		X = X.Transpose(1,2).Reshape({result_row_count, result_column_count});
 	}
+
 
 }
 

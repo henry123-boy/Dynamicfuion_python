@@ -36,9 +36,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 		void* B_data,
 		const int64_t A_and_B_block_row_count,
 		const int64_t B_column_count,
-		const int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
+		const int64_t block_count
 ) {
 	auto* A_blocks_data_typed = static_cast<scalar_t*>(A_blocks_data);
 	auto* B_data_typed = static_cast<scalar_t*>(B_data);
@@ -54,11 +52,11 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 		auto* B_block_data = B_data_typed + B_block_stride * i_block;
 		// use Cholesky factorization to compute lower-triangular L, where L(L^T) = A
 		potrf_cpu<scalar_t>(
-				LAPACK_COL_MAJOR, 'L', A_and_B_block_row_count, A_and_B_block_row_count, A_block_data
+				LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_and_B_block_row_count, A_block_data
 		);
 		//solve LY = B
 		trsm<scalar_t>(
-				CblasColMajor, CblasLeft, CblasLower, CblasNoTrans, CblasNonUnit,
+				CblasColMajor, CblasLeft, CblasUpper, CblasTrans, CblasNonUnit,
 				A_and_B_block_row_count,
 				B_column_count,
 				static_cast<scalar_t>(1),
@@ -69,7 +67,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 		);
 		//solve LX = B
 		trsm<scalar_t>(
-				CblasColMajor, CblasLeft, CblasLower, CblasNoTrans, CblasNonUnit,
+				CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit,
 				A_and_B_block_row_count,
 				B_column_count,
 				static_cast<scalar_t>(1),
@@ -93,7 +91,7 @@ void SolveCholeskyBlockDiagonalCPU(
 ) {
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
 		SolveCholeskyBlockDiagonalCPU_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
-		                                                B_column_count, block_count, data_type, device);
+		                                                B_column_count, block_count);
 	});
 }
 
