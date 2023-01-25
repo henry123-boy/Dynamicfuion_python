@@ -21,19 +21,33 @@
 
 // local includes
 
-namespace nnrt::core{
+namespace nnrt::core {
 
 void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B);
 void SolveCholeskyBlockDiagonalCPU(
 		void* A_blocks_data,
 		void* B_data,
-		const int64_t A_and_B_block_row_count,
-		const int64_t B_column_count,
-		const int64_t block_count,
+		int64_t A_and_B_block_row_count,
+		int64_t B_column_count,
+		int64_t block_count,
 		open3d::core::Dtype data_type,
 		const open3d::core::Device& device
 );
 
+void SolveCholeskyBlockDiagonalCUDA(
+		void* A_blocks_data,
+		void* B_data,
+		int64_t A_and_B_block_row_count,
+		int64_t B_column_count,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
+);
+
+#ifdef BUILD_CUDA_MODULE
+
+
+#endif
 
 
 } // namespace nnrt::core

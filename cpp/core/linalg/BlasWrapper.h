@@ -30,28 +30,6 @@ namespace nnrt::core {
 
 // region ============================= Batched gemm ==================================================================
 template<typename scalar_t>
-inline void get_matrix_pointers_from_contiguous_array_of_matrices(
-		const scalar_t* A_array[], const scalar_t* B_array[], scalar_t* C_array[],
-		const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
-		int64_t batch_size
-) {
-	auto A_data = static_cast<const scalar_t*>(A);
-	auto B_data = static_cast<const scalar_t*>(B);
-	auto C_data = static_cast<scalar_t*>(C);
-
-	auto matrix_A_coefficient_count = m * k;
-	auto matrix_B_coefficient_count = k * n;
-	auto matrix_C_coefficient_count = m * n;
-
-	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
-		A_array[i_matrix] = A_data + i_matrix * matrix_A_coefficient_count;
-		B_array[i_matrix] = B_data + i_matrix * matrix_B_coefficient_count;
-		C_array[i_matrix] = C_data + i_matrix * matrix_C_coefficient_count;
-	}
-}
-
-
-template<typename scalar_t>
 inline void gemm_batched_cpu(
 		const CBLAS_LAYOUT layout,
 		const CBLAS_TRANSPOSE transpose_A,

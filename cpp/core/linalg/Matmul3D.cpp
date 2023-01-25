@@ -13,13 +13,18 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// local
 #include "Matmul3D.h"
 #include "core/DeviceSelection.h"
+
 namespace o3c = open3d::core;
 
 namespace nnrt::core::linalg {
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
+
+
+
 
 void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of_matrices_A, const open3d::core::Tensor& array_of_matrices_B){
 	o3c::Device device = array_of_matrices_A.GetDevice();

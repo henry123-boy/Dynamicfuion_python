@@ -73,8 +73,8 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 	void* B_data = X.GetDataPtr();
 
 	if (device.IsCUDA()) {
-		//TODO:
-		utility::LogError("Operation not yet supported on CUDA devices.");
+
+
 	} else {
 		SolveCholeskyBlockDiagonalCPU(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
 		// Perform column- to row-major reordering using axis swap, re-stack
