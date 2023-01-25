@@ -65,4 +65,48 @@ inline NNRT_CPU_LINALG_INT potrf_cpu<double>(
 	return LAPACKE_dpotrf(layout, upper_or_lower, A_other_dimension, A_data, A_leading_dimension);
 }
 
+#ifdef BUILD_CUDA_MODULE
+
+template<typename scalar_t>
+inline cusolverStatus_t potrf_batched_cuda(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		scalar_t* A_array[],
+		int A_leading_dimension,
+		int* out_factorization_result_array,
+		int batch_size
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUSOLVER_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cusolverStatus_t potrf_batched_cuda<float>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		float* A_array[],
+		int A_leading_dimension,
+		int* out_factorization_result_array,
+		int batch_size
+) {
+	return cusolverDnSpotrfBatched(handle, upper_or_lower_triangle, n, A_array, A_leading_dimension, out_factorization_result_array, batch_size);
+}
+
+template<>
+inline cusolverStatus_t potrf_batched_cuda<double>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		double* A_array[],
+		int A_leading_dimension,
+		int* out_factorization_result_array,
+		int batch_size
+) {
+	return cusolverDnDpotrfBatched(handle, upper_or_lower_triangle, n, A_array, A_leading_dimension, out_factorization_result_array, batch_size);
+}
+#endif
+
+
 } // nnrt::core

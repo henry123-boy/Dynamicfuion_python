@@ -132,69 +132,76 @@ inline void gemm_batched_cpu<double>(
 
 template<typename scalar_t>
 inline cublasStatus_t gemm_batched_cuda(
+		cublasHandle_t
+handle,
+cublasOperation_t transpose_A,
+		cublasOperation_t
+transpose_B,
+int m,
+int n,
+int k,
+const scalar_t* alpha,
+const scalar_t* A_array[],
+int A_leading_dimension,
+const scalar_t* B_array[],
+int B_leading_dimension,
+const scalar_t* beta,
+		scalar_t
+* C_array[],
+int C_leading_dimension,
+int batch_count
+) {
+open3d::utility::LogError("Unsupported data type.");
+return
+CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cublasStatus_t gemm_batched_cuda<float>(
 		cublasHandle_t handle,
 		cublasOperation_t transpose_A,
 		cublasOperation_t transpose_B,
 		int m,
 		int n,
 		int k,
-		const scalar_t* alpha,
-		const scalar_t* A_array[], int A_leading_dimension,
-		const scalar_t* B_array[], int B_leading_dimension,
-		const scalar_t* beta,
-		scalar_t* C_array[], int C_leading_dimension,
-		int batchCount
-) {
-	open3d::utility::LogError("Unsupported data type.");
-	return CUBLAS_STATUS_NOT_SUPPORTED;
-}
-
-template<>
-inline cublasStatus_t gemm_batched_cuda<float>(
-		cublasHandle_t handle,
-		cublasOperation_t transa,
-		cublasOperation_t transb,
-		int m,
-		int n,
-		int k,
 		const float* alpha,
-		const float* Aarray[], int A_leading_dimension,
-		const float* Barray[], int B_leading_dimension,
+		const float* A_array[], int A_leading_dimension,
+		const float* B_array[], int B_leading_dimension,
 		const float* beta,
 		float* Carray[], int C_leading_dimension,
-		int batchCount
+		int batch_count
 ) {
-	return cublasSgemmBatched(handle, transa, transb,
+	return cublasSgemmBatched(handle, transpose_A, transpose_B,
 	                          m, n, k,
 	                          alpha,
-	                          Aarray, A_leading_dimension,
-	                          Barray, B_leading_dimension,
+	                          A_array, A_leading_dimension,
+	                          B_array, B_leading_dimension,
 	                          beta,
-	                          Carray, C_leading_dimension, batchCount);
+	                          Carray, C_leading_dimension, batch_count);
 }
 
 template<>
 inline cublasStatus_t gemm_batched_cuda<double>(
 		cublasHandle_t handle,
-		cublasOperation_t transa,
-		cublasOperation_t transb,
+		cublasOperation_t transpose_A,
+		cublasOperation_t transpose_B,
 		int m,
 		int n,
 		int k,
 		const double* alpha,
-		const double* Aarray[], int A_leading_dimension,
-		const double* Barray[], int B_leading_dimension,
+		const double* A_array[], int A_leading_dimension,
+		const double* B_array[], int B_leading_dimension,
 		const double* beta,
 		double* Carray[], int C_leading_dimension,
-		int batchCount
+		int batch_count
 ) {
-	return cublasDgemmBatched(handle, transa, transb,
+	return cublasDgemmBatched(handle, transpose_A, transpose_B,
 	                          m, n, k,
 	                          alpha,
-	                          Aarray, A_leading_dimension,
-	                          Barray, B_leading_dimension,
+	                          A_array, A_leading_dimension,
+	                          B_array, B_leading_dimension,
 	                          beta,
-	                          Carray, C_leading_dimension, batchCount);
+	                          Carray, C_leading_dimension, batch_count);
 }
 
 #endif
@@ -203,7 +210,7 @@ inline cublasStatus_t gemm_batched_cuda<double>(
 
 // region ============================= ?trsm =========================================================================
 template<typename scalar_t>
-inline void trsm(
+inline void trsm_cpu(
 		const CBLAS_LAYOUT layout, const CBLAS_SIDE A_equation_side,
 		const CBLAS_UPLO upper_or_lower_triangle, const CBLAS_TRANSPOSE transpose_A,
 		const CBLAS_DIAG diagonal,
@@ -221,7 +228,7 @@ inline void trsm(
 }
 
 template<>
-inline void trsm<float>(
+inline void trsm_cpu<float>(
 		const CBLAS_LAYOUT layout, const CBLAS_SIDE A_equation_side,
 		const CBLAS_UPLO upper_or_lower_triangle, const CBLAS_TRANSPOSE transpose_A,
 		const CBLAS_DIAG diagonal,
@@ -233,12 +240,16 @@ inline void trsm<float>(
 		float* B,
 		const NNRT_CPU_LINALG_INT B_leading_dimension
 ) {
+#ifdef USE_BLAS
+	open3d::utility::LogError("Not currently supported with usage of USE_BLAS (OpenBLAS + LAPACKE).");
+#else
 	cblas_strsm(layout, A_equation_side, upper_or_lower_triangle, transpose_A, diagonal,
 	            m, n, alpha, A, A_leading_dimension, B, B_leading_dimension);
+#endif
 }
 
 template<>
-inline void trsm<double>(
+inline void trsm_cpu<double>(
 		const CBLAS_LAYOUT layout, const CBLAS_SIDE A_equation_side,
 		const CBLAS_UPLO upper_or_lower_triangle, const CBLAS_TRANSPOSE transpose_A,
 		const CBLAS_DIAG diagonal,
@@ -250,8 +261,86 @@ inline void trsm<double>(
 		double* B,
 		const NNRT_CPU_LINALG_INT B_leading_dimension
 ) {
+#ifdef USE_BLAS
+	open3d::utility::LogError("Not currently supported with usage of USE_BLAS (OpenBLAS + LAPACKE).");
+#else
 	cblas_dtrsm(layout, A_equation_side, upper_or_lower_triangle, transpose_A, diagonal,
 	            m, n, alpha, A, A_leading_dimension, B, B_leading_dimension);
+#endif
 }
+
+#ifdef BUILD_CUDA_MODULE
+
+// TODO: implement CUDA batched trsm, see https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-trsmbatched
+template<typename scalar_t>
+inline cublasStatus_t trsm_batched_cuda(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int B_row_count,
+		int B_column_count,
+		const scalar_t* alpha,
+		const scalar_t* const A_array[],
+		int A_leading_dimension, // column count
+		scalar_t* const B_array[],
+		int B_leading_dimension,
+		int batch_count
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cublasStatus_t trsm_batched_cuda<float>(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int B_row_count,
+		int B_column_count,
+		const float* alpha,
+		const float* const A_array[],
+		int A_leading_dimension, // column count
+		float* const B_array[],
+		int B_leading_dimension,
+		int batch_count
+) {
+	return cublasStrsmBatched(handle, side, upper_or_lower_triangle,
+	                          transpose_A, A_diagonal_type,
+	                          B_row_count, B_column_count,
+	                          alpha, A_array, A_leading_dimension,
+	                          B_array, B_leading_dimension,
+	                          batch_count);
+}
+
+template<>
+inline cublasStatus_t trsm_batched_cuda<double>(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int B_row_count,
+		int B_column_count,
+		const double* alpha,
+		const double* const A_array[],
+		int A_leading_dimension, // column count
+		double* const B_array[],
+		int B_leading_dimension,
+		int batch_count
+) {
+	return cublasDtrsmBatched(handle, side, upper_or_lower_triangle,
+	                          transpose_A, A_diagonal_type,
+	                          B_row_count, B_column_count,
+	                          alpha, A_array, A_leading_dimension,
+	                          B_array, B_leading_dimension,
+	                          batch_count);
+}
+
+#endif
+
 // endregion
 } // nnrt::core

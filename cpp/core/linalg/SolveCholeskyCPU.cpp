@@ -55,7 +55,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 				LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_and_B_block_row_count, A_block_data
 		);
 		//solve LY = B
-		trsm<scalar_t>(
+		trsm_cpu<scalar_t>(
 				CblasColMajor, CblasLeft, CblasUpper, CblasTrans, CblasNonUnit,
 				A_and_B_block_row_count,
 				B_column_count,
@@ -66,7 +66,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 				A_and_B_block_row_count
 		);
 		//solve LX = B
-		trsm<scalar_t>(
+		trsm_cpu<scalar_t>(
 				CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit,
 				A_and_B_block_row_count,
 				B_column_count,
