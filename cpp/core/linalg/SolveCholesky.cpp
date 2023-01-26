@@ -24,7 +24,7 @@
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-namespace nnrt::core {
+namespace nnrt::core::linalg {
 
 void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B) {
 	o3c::AssertTensorDtypes(A_blocks, { o3c::Float32, o3c::Float64 });
@@ -72,9 +72,9 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 	void* B_data = X.GetDataPtr();
 
 	if (device.IsCUDA()) {
-		SolveCholeskyBlockDiagonalCUDA(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
+		internal::SolveCholeskyBlockDiagonalCUDA(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
 	} else {
-		SolveCholeskyBlockDiagonalCPU(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
+		internal::SolveCholeskyBlockDiagonalCPU(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
 	}
 
 	// Perform column- to row-major reordering using axis swap, re-stack
@@ -82,4 +82,4 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 }
 
 
-} // namespace nnrt::core
+} // namespace nnrt::core::linalg

@@ -20,7 +20,8 @@
 
 // local
 #include "core/functional/Masking.h"
-#include "DeformableMeshToImageFitter.h"
+#include "core/linalg/SolveCholesky.h"
+#include "alignment/DeformableMeshToImageFitter.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/PointToPlaneDistances.h"
 #include "rendering/RasterizeNdcTriangles.h"
@@ -131,8 +132,13 @@ void DeformableMeshToImageFitter::FitToImage(
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex
 		);
 
-		// solve system of linear equations for the delta rotations and translations
-		// TODO
+		open3d::core::Tensor motion_updates;
+		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+
+
+		// apply motion updates
+		//TODO: rotation
+		warp_field.TranslateNodes(motion_updates.Slice(1, 3,6));
 
 		iteration++;
 	}

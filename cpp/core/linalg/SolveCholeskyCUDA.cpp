@@ -30,7 +30,7 @@
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-namespace nnrt::core {
+namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t>
 inline void SolveCholeskyBlockDiagonalCUDA_Generic(
@@ -101,4 +101,4 @@ void SolveCholeskyBlockDiagonalCUDA(
 }
 
 
-} // nnrt::core
+} // nnrt::core::linalg::internal

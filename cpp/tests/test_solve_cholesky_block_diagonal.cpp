@@ -95,7 +95,7 @@ void TestSolveCholeskyBlockDiagonal(const o3c::Device& device) {
 	}, {18, 2}, o3c::Float32, device);
 
 	o3c::Tensor X;
-	nnrt::core::SolveCholeskyBlockDiagonal(X, A_blocks, B);
+	nnrt::core::linalg::SolveCholeskyBlockDiagonal(X, A_blocks, B);
 	std::cout << "X1:" << std::endl;
 	std::cout << X.Slice(0, 0, 6).ToString() << std::endl;
 	std::cout << "X2:" << std::endl;

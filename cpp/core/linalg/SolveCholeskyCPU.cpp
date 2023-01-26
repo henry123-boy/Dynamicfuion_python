@@ -28,7 +28,7 @@
 
 namespace utility = open3d::utility;
 
-namespace nnrt::core {
+namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t>
 inline void SolveCholeskyBlockDiagonalCPU_Generic(
@@ -96,4 +96,4 @@ void SolveCholeskyBlockDiagonalCPU(
 	});
 }
 
-} // nnrt::core
+} // nnrt::core::linalg::internal

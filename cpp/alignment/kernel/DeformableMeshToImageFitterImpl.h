@@ -508,7 +508,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		//TODO: pixel_jacobian_counts seems completely unneeded here.
+		//TODO: pixel_jacobian_counts seems completely unneeded here unless reordered / dense node pixel jacobians are used.
 		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
