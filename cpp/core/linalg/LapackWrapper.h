@@ -29,14 +29,8 @@
 namespace nnrt::core {
 
 template<typename scalar_t>
-inline NNRT_CPU_LINALG_INT potrf_cpu(
-		int layout,
-		char upper_or_lower,
-		//NOTE: number of columns, NOT number of rows, IFF layout == LAPACK_ROW_MAJOR
-		NNRT_CPU_LINALG_INT A_leading_dimension,
-		NNRT_CPU_LINALG_INT A_other_dimension,
-		scalar_t* A_data
-) {
+inline NNRT_CPU_LINALG_INT
+potrf_cpu(int layout, char upper_or_lower, NNRT_CPU_LINALG_INT A_leading_dimension, scalar_t* A_data, NNRT_CPU_LINALG_INT A_other_dimension) {
 	open3d::utility::LogError("Unsupported data type.");
 	return -1;
 }
@@ -45,10 +39,9 @@ template<>
 inline NNRT_CPU_LINALG_INT potrf_cpu<float>(
 		int layout,
 		char upper_or_lower,
-		//NOTE: number of columns, NOT number of rows, IFF layout == LAPACK_ROW_MAJOR
 		NNRT_CPU_LINALG_INT A_leading_dimension,
-		NNRT_CPU_LINALG_INT A_other_dimension,
-		float* A_data
+		float* A_data,
+		NNRT_CPU_LINALG_INT A_other_dimension
 ) {
 	return LAPACKE_spotrf(layout, upper_or_lower, A_other_dimension, A_data, A_leading_dimension);
 }
@@ -57,16 +50,15 @@ template<>
 inline NNRT_CPU_LINALG_INT potrf_cpu<double>(
 		int layout,
 		char upper_or_lower,
-		//NOTE: number of columns, NOT number of rows, IFF layout == LAPACK_ROW_MAJOR
 		NNRT_CPU_LINALG_INT A_leading_dimension,
-		NNRT_CPU_LINALG_INT A_other_dimension,
-		double* A_data
+		double* A_data,
+		NNRT_CPU_LINALG_INT A_other_dimension
 ) {
 	return LAPACKE_dpotrf(layout, upper_or_lower, A_other_dimension, A_data, A_leading_dimension);
 }
 
 #ifdef BUILD_CUDA_MODULE
-
+// See https://docs.nvidia.com/cuda/cusolver/#cusolverdn-t-potrfbatched
 template<typename scalar_t>
 inline cusolverStatus_t potrf_batched_cuda(
 		cusolverDnHandle_t handle,

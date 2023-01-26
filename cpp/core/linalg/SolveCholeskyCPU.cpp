@@ -52,9 +52,8 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 		auto* B_block_data = B_data_typed + B_block_stride * i_block;
 		// use Cholesky factorization to compute lower-triangular L, where L(L^T) = A
 		NNRT_LAPACK_CHECK(
-		potrf_cpu<scalar_t>(
-				LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_and_B_block_row_count, A_block_data
-		), "potrf failed in SolveCholeskyBlockDiagonalCPU"
+				potrf_cpu<scalar_t>(
+						LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_block_data, A_and_B_block_row_count), "potrf failed in SolveCholeskyBlockDiagonalCPU"
 		);
 		//solve LY = B
 		trsm_cpu<scalar_t>(

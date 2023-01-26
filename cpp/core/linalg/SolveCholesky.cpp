@@ -69,19 +69,16 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 	void* A_blocks_data = A_blocks_transposed.GetDataPtr();
 	// take apart B array into block-sized portions, swap axesp to convert to column-major reordering
 	X = B.Reshape({block_count, block_row_count, result_column_count}).Transpose(1, 2).Clone();
-	std::cout << X.Slice(0, 0, 1).ToString() << std::endl;
 	void* B_data = X.GetDataPtr();
 
 	if (device.IsCUDA()) {
-
-
+		SolveCholeskyBlockDiagonalCUDA(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
 	} else {
 		SolveCholeskyBlockDiagonalCPU(A_blocks_data, B_data, block_row_count, result_column_count, block_count, data_type, device);
-		// Perform column- to row-major reordering using axis swap, re-stack
-		X = X.Transpose(1,2).Reshape({result_row_count, result_column_count});
 	}
 
-
+	// Perform column- to row-major reordering using axis swap, re-stack
+	X = X.Transpose(1,2).Reshape({result_row_count, result_column_count});
 }
 
 

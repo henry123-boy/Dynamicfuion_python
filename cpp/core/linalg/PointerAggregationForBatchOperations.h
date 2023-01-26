@@ -32,18 +32,18 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC(
 	auto B_data = static_cast<const scalar_t*>(B);
 	auto C_data = static_cast<scalar_t*>(C);
 
-	auto matrix_A_coefficient_count = m * k;
-	auto matrix_B_coefficient_count = k * n;
-	auto matrix_C_coefficient_count = m * n;
+	auto A_block_stride = m * k;
+	auto B_block_stride = k * n;
+	auto C_block_stride = m * n;
 
 #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
     default(none) \
-	firstprivate(batch_size, matrix_A_coefficient_count, matrix_B_coefficient_count, matrix_C_coefficient_count) \
+	firstprivate(batch_size, A_block_stride, B_block_stride, C_block_stride) \
 	shared(A_data, B_data, C_data, A_array, B_array, C_array)
 	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
-		A_array[i_matrix] = A_data + i_matrix * matrix_A_coefficient_count;
-		B_array[i_matrix] = B_data + i_matrix * matrix_B_coefficient_count;
-		C_array[i_matrix] = C_data + i_matrix * matrix_C_coefficient_count;
+		A_array[i_matrix] = A_data + i_matrix * A_block_stride;
+		B_array[i_matrix] = B_data + i_matrix * B_block_stride;
+		C_array[i_matrix] = C_data + i_matrix * C_block_stride;
 	}
 }
 
@@ -58,15 +58,15 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB(
 	auto A_data = static_cast<scalar_t*>(A);
 	auto B_data = static_cast<scalar_t*>(B);
 
-	auto matrix_A_coefficient_count = A_and_B_row_count * A_and_B_row_count;
-	auto matrix_B_coefficient_count = A_and_B_row_count * B_column_count;
+	auto A_block_stride = A_and_B_row_count * A_and_B_row_count;
+	auto B_block_stride = A_and_B_row_count * B_column_count;
 
 #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
     default(none) \
-	firstprivate(batch_size, matrix_A_coefficient_count, matrix_B_coefficient_count) \
+	firstprivate(batch_size, A_block_stride, B_block_stride) \
 	shared(A_data, B_data, A_array, B_array)
 	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
-		A_array[i_matrix] = A_data + i_matrix * matrix_A_coefficient_count;
-		B_array[i_matrix] = B_data + i_matrix * matrix_B_coefficient_count;
+		A_array[i_matrix] = A_data + i_matrix * A_block_stride;
+		B_array[i_matrix] = B_data + i_matrix * B_block_stride;
 	}
 }
