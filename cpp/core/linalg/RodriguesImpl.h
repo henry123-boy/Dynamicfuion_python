@@ -77,8 +77,20 @@ inline void AxisAngleVectorsToMatricesRodrigues_TypeDispatched(open3d::core::Ten
 				Eigen::Vector3<TElement> axis = axis_angle / angle;
 				Eigen::SkewSymmetricMatrix3<TElement> axis_skew(axis);
 				Eigen::Matrix3<TElement> axis_skew_dense = axis_skew.toDenseMatrix();
+				if(1 == 1){
+					printf("%f %f %f\n"
+					       "%f %f %f\n"
+					       "%f %f %f\n\n",
+						   axis_skew_dense(0,0), axis_skew_dense(0,1), axis_skew_dense(0,2),
+						   axis_skew_dense(1,0), axis_skew_dense(1,1), axis_skew_dense(1,2),
+						   axis_skew_dense(2,0), axis_skew_dense(2,1), axis_skew_dense(2,2));
+				}
+
 				Eigen::Map<Eigen::Matrix<TElement, 3, 3, Eigen::RowMajor>> matrix(matrix_data + i_rotation * 9);
-				matrix = Eigen::Matrix<TElement, 3, 3, Eigen::RowMajor>::Identity() + Sin(angle) * axis_skew_dense + (1-Cos(angle)) * (axis_skew_dense * axis_skew_dense);
+				//__DEBUG
+				matrix = Eigen::Matrix<TElement, 3, 3, Eigen::RowMajor>::Zero();
+				matrix.row(0) = axis_skew.toDenseMatrix();
+				// matrix = Eigen::Matrix<TElement, 3, 3, Eigen::RowMajor>::Identity() + Sin(angle) * axis_skew_dense + (1-Cos(angle)) * (axis_skew_dense * axis_skew_dense);
 			}
 	);
 }

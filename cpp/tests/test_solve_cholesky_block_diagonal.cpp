@@ -26,7 +26,7 @@
 
 namespace o3c = open3d::core;
 
-void TestSolveCholeskyBlockDiagonal(const o3c::Device& device) {
+void TestRodrigues(const o3c::Device& device) {
 	o3c::Tensor A_blocks(std::vector<float>{
 			7.66466999, 7.42160096, 7.96971846, 5.41618416, 5.48901906, 6.29302529,
 			7.42160096, 11.28136639, 10.02191478, 7.6142696, 6.11965727, 8.29031205,
@@ -96,22 +96,16 @@ void TestSolveCholeskyBlockDiagonal(const o3c::Device& device) {
 
 	o3c::Tensor X;
 	nnrt::core::linalg::SolveCholeskyBlockDiagonal(X, A_blocks, B);
-	std::cout << "X1:" << std::endl;
-	std::cout << X.Slice(0, 0, 6).ToString() << std::endl;
-	std::cout << "X2:" << std::endl;
-	std::cout << X.Slice(0, 6, 12).ToString() << std::endl;
-	std::cout << "X3:" << std::endl;
-	std::cout << X.Slice(0, 12, 18).ToString() << std::endl;
 
-	REQUIRE(X.AllClose(expected_X));
+	REQUIRE(expected_X.AllClose(X));
 }
 
 TEST_CASE("Test Solve Cholesky Block Diagonal - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestSolveCholeskyBlockDiagonal(device);
+	TestRodrigues(device);
 }
 
 TEST_CASE("Test Solve Cholesky Block Diagonal - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestSolveCholeskyBlockDiagonal(device);
+	TestRodrigues(device);
 }
