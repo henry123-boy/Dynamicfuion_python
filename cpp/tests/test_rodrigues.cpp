@@ -49,8 +49,7 @@ void TestRodrigues(const o3c::Device& device) {
 	}, {3, 3, 3}, o3c::Float32, device);
 
 	o3c::Tensor matrices = nnrt::core::linalg::AxisAngleVectorsToMatricesRodrigues(axis_angle_vectors);
-	//__DEBUG
-	std::cout << matrices.ToString() << std::endl;
+
 	REQUIRE(expected_matrices.AllClose(matrices,1e-3,1e-7));
 }
 
