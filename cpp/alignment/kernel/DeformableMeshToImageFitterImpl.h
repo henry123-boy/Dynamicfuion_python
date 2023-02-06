@@ -508,8 +508,6 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		//TODO: pixel_jacobian_counts seems completely unneeded here unless reordered / dense node pixel jacobians are used.
-		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
 		int max_anchor_count_per_vertex
@@ -522,10 +520,6 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	o3c::AssertTensorShape(pixel_jacobians, { pixel_count, max_jacobian_count, 6 });
 	o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
 	o3c::AssertTensorDevice(pixel_jacobians, device);
-
-	o3c::AssertTensorShape(pixel_jacobian_counts, { pixel_count });
-	o3c::AssertTensorDtype(pixel_jacobian_counts, o3c::Int32);
-	o3c::AssertTensorDevice(pixel_jacobian_counts, device);
 
 	o3c::AssertTensorShape(residuals, { pixel_count });
 	o3c::AssertTensorDtype(residuals, o3c::Float32);
@@ -547,8 +541,6 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 
 	// === get access to input arrays ===
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
-	// TODO: use or remove commented dead code
-	// auto pixel_jacobian_count_data = pixel_jacobian_counts.GetDataPtr<int32_t>();
 	auto residual_data = residuals.GetDataPtr<float>();
 	auto residual_mask_data = residual_mask.GetDataPtr<bool>();
 	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();

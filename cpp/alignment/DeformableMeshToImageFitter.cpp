@@ -129,7 +129,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		o3c::Tensor negative_gradient;
 		int max_anchor_count_per_vertex = warp_anchors.GetShape(1);
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
-				negative_gradient, residuals, residual_mask, pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged,
+				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex
 		);
 

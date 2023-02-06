@@ -114,7 +114,6 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
 		int max_anchor_count_per_vertex
@@ -126,7 +125,6 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& pixel_jacobian_counts,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
 		int max_anchor_count_per_vertex
