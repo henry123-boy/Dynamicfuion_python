@@ -31,6 +31,7 @@
 #include "alignment/functional/WarpedVertexAndNormalJacobians.h"
 #include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
+#include "core/linalg/Rodrigues.h"
 
 
 namespace o3c = open3d::core;
@@ -135,10 +136,12 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor motion_updates;
 		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
+		// convert rotation axis-angle vectors to matrices
+		auto rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
 
 		// apply motion updates
-		//TODO: rotation
-		warp_field.TranslateNodes(motion_updates.Slice(1, 3,6));
+		warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
+		warp_field.RotateNodes(rotation_matrix_updates);
 
 		iteration++;
 	}
