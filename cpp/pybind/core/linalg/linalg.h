@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 11/25/21.
-//  Copyright (c) 2021 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 2/8/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,14 +14,14 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+// stdlib includes
 
-#include <open3d/core/Tensor.h>
+// third-party includes
 
-namespace nnrt::core{
-	open3d::core::Tensor VStack(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
-	open3d::core::Tensor Matmul3D(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
-    template<typename TElement>
-    open3d::core::Tensor SingleValueTensor(TElement element, const open3d::core::Device& device);
-    template<typename TElement>
-    TElement At(const open3d::core::Tensor& tensor, int64_t first_coord...);
-} // nnrt::core
+// local includes
+#include "pybind/nnrt_pybind.h"
+
+namespace nnrt::core::linalg {
+void pybind_core_linalg(py::module& m);
+
+} //  nnrt::core::linalg

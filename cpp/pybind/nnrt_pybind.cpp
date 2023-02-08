@@ -7,7 +7,7 @@
 
 #include "pybind/nnrt_pybind.h"
 #include "pybind/geometry/geometry.h"
-#include "pybind/core.h"
+#include "pybind/core/core.h"
 #include "pybind/io.h"
 
 #define XSTRINGIFY(s) STRINGIFY(s)

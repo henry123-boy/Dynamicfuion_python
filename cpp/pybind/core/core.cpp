@@ -13,13 +13,15 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "pybind/core.h"
+#include "pybind/core/core.h"
 #include "core/TensorManipulationRoutines.h"
+#include "pybind/core/linalg/linalg.h"
+
 namespace nnrt::core{
 void pybind_core(py::module& m) {
 	py::module m_submodule = m.def_submodule(
 			"core", "Open3D-tensor-based core module.");
-
+	linalg::pybind_core_linalg(m_submodule);
 	pybind_tensor_routines(m_submodule);
 }
 

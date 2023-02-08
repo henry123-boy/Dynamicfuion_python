@@ -15,40 +15,37 @@ def get_camera_internal_matrix_from_current_scene(mode='simple'):
     width = scene.render.resolution_x * scale  # px
     height = scene.render.resolution_y * scale  # px
 
-    camdata = scene.camera.data
+    camera_data = scene.camera.data
 
     if mode == 'simple':
         aspect_ratio = width / height
         internal_matrix = np.zeros((3, 3), dtype=np.float32)
-        internal_matrix[0][0] = width / 2 / np.tan(camdata.angle / 2)
-        internal_matrix[1][1] = height / 2. / np.tan(camdata.angle / 2) * aspect_ratio
+        internal_matrix[0][0] = width / 2 / np.tan(camera_data.angle / 2)
+        internal_matrix[1][1] = height / 2. / np.tan(camera_data.angle / 2) * aspect_ratio
         internal_matrix[0][2] = width / 2.
         internal_matrix[1][2] = height / 2.
         internal_matrix[2][2] = 1.
         internal_matrix.transpose()
     elif mode == 'complete':
-
-        focal = camdata.lens  # mm
-        sensor_width = camdata.sensor_width  # mm
-        sensor_height = camdata.sensor_height  # mm
+        focal_length = camera_data.lens  # mm
+        sensor_width = camera_data.sensor_width  # mm
+        sensor_height = camera_data.sensor_height  # mm
         pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
-        print(sensor_height, sensor_width)
 
-        if camdata.sensor_fit == 'VERTICAL':
+        if camera_data.sensor_fit == 'VERTICAL':
             # the sensor height is fixed (sensor fit is horizontal),
             # the sensor width is effectively changed with the pixel aspect ratio
-            s_u = width * pixel_aspect_ratio / sensor_width
-            s_v = height / sensor_height
+            scale_u = width * pixel_aspect_ratio / sensor_width
+            scale_v = height / sensor_height
         else:  # 'HORIZONTAL' and 'AUTO'
             # the sensor width is fixed (sensor fit is horizontal),
             # the sensor height is effectively changed with the pixel aspect ratio
-            pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
-            s_u = width / sensor_width
-            s_v = height * pixel_aspect_ratio / sensor_height
+            scale_u = width / sensor_width
+            scale_v = height * pixel_aspect_ratio / sensor_height
 
         # parameters of intrinsic calibration matrix K
-        alpha_u = focal * s_u
-        alpha_v = focal * s_v
+        alpha_u = focal_length * scale_u
+        alpha_v = focal_length * scale_v
         u_0 = width / 2
         v_0 = height / 2
         skew = 0  # only use rectangular pixels
