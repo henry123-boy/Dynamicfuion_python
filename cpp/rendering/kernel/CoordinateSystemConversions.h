@@ -130,8 +130,9 @@ ImageSpaceIntrinsicsToNdc(const open3d::core::Tensor& intrinsics, const open3d::
 	double fx_ndc = 2.0 * fx / smaller_dimension;
 	// important: fy is negated to flip the y-axis from going up to going down, as in an image (or on screen)
 	double fy_ndc = -2.0 * fy / smaller_dimension;
+	//TODO: inspect and confirm that we're abiding the left-hand rule (or at least one of the conventions), both rotationally and directionally
 	double cx_ndc = -(2.0 * cx - width) / smaller_dimension;
-	// likewise, we (don't) negate cy_normalized here in order to flip top<->bottom and transition to screen space convention
+	// likewise, we (don't) negate cy_ndc here in order to flip top<->bottom and transition to screen space convention
 	double cy_ndc = (2.0 * cy - height) / smaller_dimension;
 	open3d::core::Tensor normalized_camera_intrinsic_matrix(std::vector<double>{fx_ndc, 0.0, cx_ndc,
                                                                                 0.0, fy_ndc, cy_ndc,

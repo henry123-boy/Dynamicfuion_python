@@ -298,16 +298,18 @@ inline core::kernel::Matrix3x9f Jacobian_BarycentricCoordinatesWrtCameraSpaceVer
         TComputeJacobianBarycentricCoordinatesWrtNdcVertices&& compute_jacobian_barycentric_coordinates_wrt_ndc_vertices,
         TApplyPerspectiveCorrectionJacobian&& apply_corrections
 ) {
-    TVertex vertices_camera_space[] = {vertex0, vertex1, vertex2};
-    Eigen::Vector2f ndc_vertex0, ndc_vertex1, ndc_vertex2;
-    Eigen::Vector2f vertices_ndc[] = {ndc_vertex0, ndc_vertex1, ndc_vertex2};
+    const TVertex vertices_camera_space[] = {vertex0, vertex1, vertex2};
+	Eigen::Vector2f vertices_ndc[3];
+	Eigen::Vector2f& ndc_vertex0 = vertices_ndc[0];
+	Eigen::Vector2f& ndc_vertex1 = vertices_ndc[1];
+	Eigen::Vector2f& ndc_vertex2 = vertices_ndc[2];
+
     //TODO: test whether it makes sense to run this in multiple kernels, i.e. precompute per-pixel per-vertex operations in separate kernels in
     // order to utilize 3X number of threads.
-    for (int i_vertex = 0; i_vertex < 3; i_vertex++) {
-        perspective_projection.Project(
+    for (int i_vertex = 0; i_vertex < 3; i_vertex++) {perspective_projection.Project(
                 vertices_camera_space[i_vertex].x(), vertices_camera_space[i_vertex].y(),
                 vertices_camera_space[i_vertex].z(),
-                &vertices_ndc[i_vertex].x(), &vertices_ndc[i_vertex].y());
+                &(vertices_ndc[i_vertex]).x(), &(vertices_ndc[i_vertex]).y());
     }
 
     array<core::kernel::Matrix3x2f, 3> d_barycentric_coordinates_d_ndc =

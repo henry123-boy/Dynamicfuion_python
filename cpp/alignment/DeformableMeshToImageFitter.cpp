@@ -17,6 +17,7 @@
 // open3d
 #include <open3d/t/geometry/PointCloud.h>
 #include <open3d/core/Dispatch.h>
+#include <open3d/t/io/ImageIO.h>
 
 // local
 #include "core/functional/Masking.h"
@@ -33,10 +34,14 @@
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/linalg/Rodrigues.h"
 
+//__DEBUG
+#include <open3d/t/io/ImageIO.h>
+namespace o3tio = open3d::t::io;
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
+
 
 namespace nnrt::alignment {
 
@@ -47,7 +52,8 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 		float max_depth
 ) : max_iteration_count(maximal_iteration_count),
     min_update_threshold(minimal_update_threshold),
-    use_perspective_correction(use_perspective_correction) {}
+    max_depth(max_depth),
+    use_perspective_correction(use_perspective_correction){}
 
 void DeformableMeshToImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field,
@@ -56,54 +62,74 @@ void DeformableMeshToImageFitter::FitToImage(
 		const open3d::t::geometry::PointCloud& reference_point_cloud,
 		const open3d::core::Tensor& reference_point_mask,
 		const open3d::core::Tensor& intrinsic_matrix,
-		const open3d::core::Tensor& extrinsic_matrix
+		const open3d::core::Tensor& extrinsic_matrix,
+		const open3d::core::SizeVector& rendering_image_size
 ) const {
+	//TODO: make parameter EUCLIDEAN/SHORTEST_PATH, optionally set in constructor
 	auto [warp_anchors, warp_weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
-	                                                                           nnrt::geometry::AnchorComputationMethod::SHORTEST_PATH);
-	o3c::SizeVector image_size = {reference_color_image.GetRows(), reference_color_image.GetCols()};
+	                                                                           nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
 
 	int iteration = 0;
 	float maximum_update = std::numeric_limits<float>::max();
 
 	auto [ndc_intrinsic_matrix, ndc_xy_range] =
-			rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, image_size);
+			rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, rendering_image_size);
 
 
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
 		o3tg::TriangleMesh
-				warped_mesh = warp_field.WarpMesh(warped_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
-
+				warped_mesh = warp_field.WarpMesh(canonical_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
 
 		auto [extracted_face_vertices, clipped_face_mask] =
 				nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
-						warped_mesh, intrinsic_matrix, image_size, 0.0, 10.0
+						warped_mesh, intrinsic_matrix, rendering_image_size, 0.0, 10.0
 				);
 
 		//TODO: add an obvious optional optimization in the case perspective-correct barycentrics are used: output the
 		// distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
-		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] =
-				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_size, 0.f, 1,
-				                                       -1, -1, this->use_perspective_correction, false, true);
+		std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
+				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.f, 1, -1, -1, this->use_perspective_correction, false, true);
+		                                                                                                                                          ;
+		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
+
+		//__DEBUG
+		// bool draw_depth = false;
+		// if (draw_depth) {
+		// 	auto pd_to_write = pixel_depths.Clone();
+		// 	pd_to_write = pd_to_write.Reshape(rendering_image_size);
+		// 	nnrt::core::functional::ReplaceValue(pd_to_write, -1.0f, 10.0f);
+		// 	float minimum_depth = pd_to_write.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		// 	float maximum_depth = pixel_depths.Max({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		// 	nnrt::core::functional::ReplaceValue(pd_to_write, 10.0f, minimum_depth);
+		// 	pd_to_write = 255.f - ((pd_to_write - minimum_depth) * 255.f / (maximum_depth - minimum_depth));
+		// 	o3tg::Image stretched_depth_image(pd_to_write.To(o3c::UInt8));
+		// 	o3tio::WriteImage("/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data/images/__debug_depth.png", stretched_depth_image);
+		// }
+		//__END DEBUG
+
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
 		o3tg::PointCloud rasterized_point_cloud;
 		o3c::Tensor residual_mask;
 		o3c::Tensor residuals =
-				this->ComputeResiduals(rasterized_point_cloud, residual_mask, warped_mesh, pixel_face_indices,
-				                       pixel_barycentric_coordinates, pixel_depths,
-				                       reference_color_image, reference_point_cloud, reference_point_mask,
-				                       intrinsic_matrix);
+				this->ComputeResiduals(
+						rasterized_point_cloud, residual_mask, warped_mesh, pixel_face_indices,
+						pixel_barycentric_coordinates, pixel_depths,
+						reference_color_image, reference_point_cloud, reference_point_mask,
+						intrinsic_matrix
+				);
 
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
 				functional::WarpedVertexAndNormalJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
 
-
 		// compute rasterized vertex and normal jacobians
 		auto [rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians] =
-				functional::RasterizedVertexAndNormalJacobians(warped_mesh, pixel_face_indices,
-				                                               pixel_barycentric_coordinates,
-				                                               ndc_intrinsic_matrix, this->use_perspective_correction);
+				functional::RasterizedVertexAndNormalJacobians(
+						warped_mesh, pixel_face_indices,
+						pixel_barycentric_coordinates,
+						ndc_intrinsic_matrix, this->use_perspective_correction
+				);
 
 
 		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
@@ -112,6 +138,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
 		o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
+
 		kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts,
 				rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
@@ -122,8 +149,10 @@ void DeformableMeshToImageFitter::FitToImage(
 
 		// compute (J^T)J, i.e. hessian approximation, in block-diagonal form
 		open3d::core::Tensor hessian_approximation_blocks;
-		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(hessian_approximation_blocks, pixel_jacobians,
-		                                                              node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts);
+		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
+				hessian_approximation_blocks, pixel_jacobians,
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts
+		);
 
 		// compute -(J^T)r
 		o3c::Tensor negative_gradient;
@@ -160,25 +189,32 @@ DeformableMeshToImageFitter::FitToImage(
 ) const {
 	o3c::Tensor identity_extrinsics = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
 
+
 	o3c::Tensor points, reference_point_depth_mask;
 	nnrt::geometry::functional::UnprojectDepthImageWithoutFiltering(
 			points, reference_point_depth_mask, reference_depth_image.AsTensor(), intrinsic_matrix, identity_extrinsics,
 			depth_scale, this->max_depth, false
 	);
 
+
+
 	open3d::t::geometry::PointCloud point_cloud(points);
 
 	o3c::Tensor final_reference_point_mask;
 	if (reference_image_mask.has_value()) {
-		final_reference_point_mask = reference_point_depth_mask.LogicalOr(
+		final_reference_point_mask = reference_point_depth_mask.LogicalAnd(
 				reference_image_mask.value().get().Reshape(reference_point_depth_mask.GetShape())
 		);
 	} else {
 		final_reference_point_mask = reference_point_depth_mask;
 	}
 
-	FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
-	           intrinsic_matrix, extrinsic_matrix);
+	o3c::SizeVector rendering_image_size{reference_depth_image.GetRows(), reference_depth_image.GetCols()};
+	//TODO: employ the min_update_threshold termination condition as well
+	for(int i_iteration = 0; i_iteration < this->max_iteration_count; i_iteration++){
+		FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
+		           intrinsic_matrix, extrinsic_matrix, rendering_image_size);
+	}
 }
 
 void
@@ -223,18 +259,18 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
 
 	o3c::Tensor identity_extrinsics = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
 
-	o3c::Tensor rasterized_points;
+	o3c::Tensor rasterized_points, rendered_point_mask;
 	nnrt::geometry::functional::UnprojectDepthImageWithoutFiltering(
-			rasterized_points, residual_mask, pixel_depths, intrinsics, identity_extrinsics,
+			rasterized_points, rendered_point_mask, pixel_depths, intrinsics, identity_extrinsics,
 			1.0f, this->max_depth, false);
 
 	rasterized_point_cloud = o3tg::PointCloud(rasterized_points);
-	rasterized_point_cloud.SetPointNormals(rendered_normals);
+	rasterized_point_cloud.SetPointNormals(rendered_normals.Reshape({-1, 3}));
 
 	o3c::Tensor distances =
 			geometry::functional::ComputePointToPlaneDistances(rasterized_point_cloud, reference_point_cloud);
 
-	o3c::Tensor global_point_mask = reference_point_mask.LogicalAnd(global_point_mask);
+	residual_mask = reference_point_mask.LogicalAnd(rendered_point_mask);
 
 	core::functional::SetMaskedToValue(distances, residual_mask, 0.0f);
 

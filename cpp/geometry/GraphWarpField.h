@@ -33,9 +33,16 @@ namespace nnrt::geometry {
 class GraphWarpField {
 
 public:
-	GraphWarpField(open3d::core::Tensor nodes, open3d::core::Tensor edges, open3d::core::Tensor edge_weights, open3d::core::Tensor clusters,
-	               float node_coverage = 0.05, bool threshold_nodes_by_distance_by_default = false, int anchor_count = 4,
-	               int minimum_valid_anchor_count = 0);
+	GraphWarpField(
+			open3d::core::Tensor nodes,
+			open3d::core::Tensor edges,
+			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
+			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
+			float node_coverage = 0.05,
+			bool threshold_nodes_by_distance_by_default = false,
+			int anchor_count = 4,
+			int minimum_valid_anchor_count = 0
+	);
 	GraphWarpField(const GraphWarpField& original) = default;
 	GraphWarpField(GraphWarpField&& other) = default;
 
@@ -52,8 +59,10 @@ public:
 			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
 			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(const open3d::t::geometry::TriangleMesh& input_mesh,
-	                                                                                   AnchorComputationMethod anchor_computation_method) const;
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
+			const open3d::t::geometry::TriangleMesh& input_mesh,
+			AnchorComputationMethod anchor_computation_method
+	) const;
 
 	void ResetRotations();
 	GraphWarpField ApplyTransformations() const;
@@ -69,8 +78,10 @@ public:
 	}
 
 	template<open3d::core::Device::DeviceType TDeviceType, bool UseNodeDistanceThreshold>
-	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(int32_t* anchor_indices, float* anchor_weights,
-	                                                    const Eigen::Vector3f& point) const {
+	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(
+			int32_t* anchor_indices, float* anchor_weights,
+			const Eigen::Vector3f& point
+	) const {
 		if (UseNodeDistanceThreshold) {
 			return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
@@ -118,8 +129,8 @@ public:
 	//TODO: store nodes, edges, and edge weights inside a open3d::t::geometry::TensorMap instead of separate fields
 	const open3d::core::Tensor nodes;
 	const open3d::core::Tensor edges;
-	const open3d::core::Tensor edge_weights;
-	const open3d::core::Tensor clusters;
+	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights;
+	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters;
 
 
 	const float node_coverage;

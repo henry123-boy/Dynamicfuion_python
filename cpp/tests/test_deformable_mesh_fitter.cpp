@@ -16,66 +16,110 @@
 // stdlib includes
 // third-party includes
 #include <open3d/core/Tensor.h>
-#include <Eigen/Dense>
+#include <open3d/t/io/TriangleMeshIO.h>
+#include <open3d/t/io/ImageIO.h>
 // local includes
 // test utils
+#include "test_utils/test_utils.hpp"
 #include "test_main.hpp"
+#include "rendering/functional/ExtractFaceVertices.h"
+#include "rendering/RasterizeNdcTriangles.h"
+#include "core/functional/Masking.h"
+#include "alignment/DeformableMeshToImageFitter.h"
 // code being tested
 
 namespace o3c = open3d::core;
+namespace o3u = open3d::utility;
+namespace o3tio = open3d::t::io;
+namespace o3tg = open3d::t::geometry;
 
-TEST_CASE("experiment") {
-	// auto device = o3c::Device("CUDA:0");
-	// auto tensor = o3c::Tensor::Zeros({4}, o3c::Float32, device);
-	// auto mask = o3c::Tensor(std::vector<bool>({true, false, true, false}), {4}, o3c::Bool, device);
-	// auto value = o3c::Tensor::Ones({1}, o3c::Float32, device);
-	// tensor.SetItem(o3c::TensorKey::IndexTensor(mask), value);
-	// auto gt = o3c::Tensor(std::vector<float>({1.0, 0.0, 1.0, 0.0}), {4}, o3c::Float32, device);
-	// std::cout << tensor.ToString() << std::endl;
-	// std::cout << gt.ToString() << std::endl;
-	// REQUIRE(tensor.AllClose(gt));
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> x;
-	Eigen::Matrix<float, 3, 3, Eigen::ColMajor> y;
-	Eigen::Matrix<float, 3, 9, Eigen::RowMajor> z = Eigen::Matrix<float, 3, 9, Eigen::RowMajor>::Random();
+void TestDeformableImageFitter(const o3c::Device& device, bool draw_depth = false) {
+	o3tg::TriangleMesh source_mesh, target_mesh;
+	//TODO: add file to test data pack
+	o3tio::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/plane_skin_source.ply", source_mesh);
+	//TODO: add file to test data pack
+	o3tio::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/plane_skin_target.ply", target_mesh);
+	float max_depth = 10.0f;
+	float node_coverage = 0.25;
+
+	o3c::SizeVector image_resolution{100, 100};
+	o3c::Tensor projection_matrix(
+			std::vector<double>{100.0, 0.0, 50.0,
+			                    0.0, 100.0, 50.0,
+			                    0.0, 0.0, 1.0}, {3, 3},
+			o3c::Float64, o3c::Device("CPU:0")
+	);
+
+	// flip 180 degrees around the Y-axis, move 1.2 units away from camera
+	o3c::Tensor mesh_transform(
+			std::vector<double>{-1.0, 0.0, 0.0, 0.0f,
+			                   0.0, 1.0, 0.0, 0.0f,
+			                   0.0, 0.0, -1.0, 1.2f,
+			                   0.0, 0.0, 0.0, 1.0f}, {4, 4},
+			o3c::Float64, o3c::Device("CPU:0")
+	);
+
+	o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
+
+	// move 1.2 units away from the camera
+	target_mesh = target_mesh.Transform(mesh_transform);
+	source_mesh = source_mesh.Transform(mesh_transform);
+
+	auto [extracted_face_vertices, clipped_face_mask] =
+			nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(target_mesh, projection_matrix, image_resolution, 0.0, max_depth);
+
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
+			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.f, 1,
+			                                       -1, -1, true, false, true);
+	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
+
+	pixel_depths = pixel_depths.Reshape(image_resolution);
+	auto zero_bg_pixel_depths = pixel_depths.Clone();
+	nnrt::core::functional::ReplaceValue(zero_bg_pixel_depths, -1.0f, 0.0f);
+	o3tg::Image depth_image(zero_bg_pixel_depths);
+	o3c::Tensor depth_mask =
+
+			(zero_bg_pixel_depths == o3c::Tensor::Zeros(zero_bg_pixel_depths.GetShape(), zero_bg_pixel_depths.GetDtype(), device)).LogicalNot();
 
 
-	Eigen::Vector3f a(1.f, 2.f, 3.f);
-	Eigen::Vector3f b(4.f, 5.f, 6.f);
-	Eigen::Vector3f c(7.f, 8.f, 9.f);
 
-
-	int repetition_count = 1000000;
-
-	auto begin = std::chrono::high_resolution_clock::now();
-	for(int i = 0; i< repetition_count; i++){
-		x << a, b, c;
+	if (draw_depth) {
+		auto pd_tmp = pixel_depths.Clone();
+		nnrt::core::functional::ReplaceValue(pd_tmp, -1.0f, 10.0f);
+		float minimum_depth = pd_tmp.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		float maximum_depth = pixel_depths.Max({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		nnrt::core::functional::ReplaceValue(pd_tmp, 10.0f, minimum_depth);
+		pd_tmp = 255.f - ((pd_tmp - minimum_depth) * 255.f / (maximum_depth - minimum_depth));
+		o3tg::Image stretched_depth_image(pd_tmp.To(o3c::UInt8));
+		o3tio::WriteImage(test::generated_image_test_data_directory.ToString() + "/target_depth.png", stretched_depth_image);
 	}
-	auto end = std::chrono::high_resolution_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-	std::cout << "Total time elapsed for all x (row-major) << a, b, c; repetitions: " << elapsed.count() << " ms" << std::endl;
 
-	begin = std::chrono::high_resolution_clock::now();
-	for(int i = 0; i< repetition_count; i++){
-		y << a, b, c;
-	}
-	end = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-	std::cout << "Total time elapsed for all y (column-major) << a, b, c; repetitions: " << elapsed.count() << " ms" << std::endl;
+	//TODO: add file to test data pack
+	o3c::Tensor node_positions = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/nodes.npy");
+	//TODO: add file to test data pack
+	o3c::Tensor expected_node_translations = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/node_translations.npy");
+	//TODO: add file to test data pack
+	o3c::Tensor expected_node_rotations = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/node_rotations.npy");
+	//TODO: add file to test data pack
+	o3c::Tensor edges = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/edges.npy");
 
-	begin = std::chrono::high_resolution_clock::now();
-	for(int i = 0; i< repetition_count; i++){
-		auto e = x * z;
-	}
-	end = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-	std::cout << "Total time elapsed for all e = x * z; repetitions: " << elapsed.count() << " ms" << std::endl;
+	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-	begin = std::chrono::high_resolution_clock::now();
-	for(int i = 0; i< repetition_count; i++){
-		auto e = y * z;
-	}
-	end = std::chrono::high_resolution_clock::now();
-	elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-	std::cout << "Total time elapsed for all e = y * z; repetitions: " << elapsed.count() << " ms" << std::endl;
+	nnrt::alignment::DeformableMeshToImageFitter fitter(5, 1e-6, true, 10.f);
+	o3tg::Image dummy_color_image;
 
+
+	fitter.FitToImage(warp_field, source_mesh, dummy_color_image, depth_image, depth_mask, projection_matrix, extrinsic_matrix, 1.0f);
+	//__DEBUG
+	REQUIRE(true);
+}
+
+TEST_CASE("Test Deformable Mesh to Image Fitter - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter(device);
+}
+
+TEST_CASE("Test Deformable Mesh to Image Fitter - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter(device);
 }

@@ -48,8 +48,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-						vertex_anchors,
-						node_count);
+						vertex_anchors, node_count);
 			},
 			[&] {
 				NNRT_IF_CUDA(
@@ -59,8 +58,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 								rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 								warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 								point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-								vertex_anchors,
-								node_count);
+								vertex_anchors, node_count);
 				);
 			}
 	);
@@ -79,13 +77,15 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 			[&] {
 				ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CPU>(
 						node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
-						node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians);
+						node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians
+				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::DeviceType::CUDA>(
 								node_jacobians, node_jacobian_ranges, node_jacobian_pixel_indices,
-								node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians);
+								node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, pixel_node_jacobians
+						);
 				);
 			}
 	);

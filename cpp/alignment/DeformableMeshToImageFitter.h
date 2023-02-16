@@ -28,6 +28,8 @@ namespace nnrt::alignment {
 
 class DeformableMeshToImageFitter {
 public:
+	//TODO: we need here to have various terminations conditions that can work together or be turned on and off, i.e. probably
+	// use a separate struct holding data that dictates to the DeformableMeshToImageFitter how to facilitate this behavior (and is stored locally)
     DeformableMeshToImageFitter(
             int maximal_iteration_count = 100,
             float minimal_update_threshold = 1e-6,
@@ -69,13 +71,14 @@ public:
     const;
 
     void FitToImage(
-            nnrt::geometry::GraphWarpField& warp_field,
-            const open3d::t::geometry::TriangleMesh& canonical_mesh,
-            const open3d::t::geometry::Image& reference_color_image,
-            const open3d::t::geometry::PointCloud& reference_point_cloud,
-            const open3d::core::Tensor& reference_point_mask,
-            const open3d::core::Tensor& intrinsic_matrix,
-            const open3d::core::Tensor& extrinsic_matrix
+		    nnrt::geometry::GraphWarpField& warp_field,
+		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
+		    const open3d::t::geometry::Image& reference_color_image,
+		    const open3d::t::geometry::PointCloud& reference_point_cloud,
+		    const open3d::core::Tensor& reference_point_mask,
+		    const open3d::core::Tensor& intrinsic_matrix,
+		    const open3d::core::Tensor& extrinsic_matrix,
+		    const open3d::core::SizeVector& rendering_image_size
     )
     const;
 

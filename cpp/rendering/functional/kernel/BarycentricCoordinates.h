@@ -58,7 +58,7 @@ inline Eigen::Vector3f BarycentricCoordinates(
 ) {
 	const float face_parallelogram_area = SignedParallelogramArea<ClockWise>(vertex0, vertex1, vertex2) + K_EPSILON;
 	return {
-            SignedParallelogramArea<ClockWise>(point, vertex1, vertex2) / face_parallelogram_area, // A_0 / A_f
+			SignedParallelogramArea<ClockWise>(point, vertex1, vertex2) / face_parallelogram_area, // A_0 / A_f
 			SignedParallelogramArea<ClockWise>(point, vertex2, vertex0) / face_parallelogram_area, // A_1 / A_f
 			SignedParallelogramArea<ClockWise>(point, vertex0, vertex1) / face_parallelogram_area  // A_2 / A_f
 	};

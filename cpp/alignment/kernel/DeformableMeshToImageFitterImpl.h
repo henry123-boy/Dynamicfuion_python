@@ -163,7 +163,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
 
 	// === get access to raw input data
-	auto residual_mask_data = residual_mask.GetDataPtr<bool>();
+	auto residual_mask_data = static_cast<const unsigned char*>(residual_mask.GetDataPtr());
 	auto point_map_vector_data = point_map_vectors.GetDataPtr<float>();
 	auto rasterized_normal_data = rasterized_normals.GetDataPtr<float>();
 
@@ -547,7 +547,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 
 	// === initialize output structures ===
-	negative_gradient = o3c::Tensor({node_count}, o3c::Float32, device);
+	negative_gradient = o3c::Tensor({node_count * 6}, o3c::Float32, device);
 	auto negative_gradient_data = negative_gradient.GetDataPtr<float>();
 
 	//TODO: this is extremely inefficient. There must be some parallel reduction we can apply here, but everything is difficult.

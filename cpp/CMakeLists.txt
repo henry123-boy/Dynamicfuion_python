@@ -389,6 +389,8 @@ add_custom_target(install-python-stubs
     COMMAND ${CMAKE_COMMAND} -E cat ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi >> ${STUBS_PACKAGE_DST_DIR}/nnrt/__init__.pyi
     COMMAND ${CMAKE_COMMAND} -E rm -f ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi
 
+    #TODO: import structure here needs to be fixed to work hierarchically, i.e. when you go one level deep to nnrt.geometry.functional,
+    # IDEs are unable to parse .functional (since it's not inside the geometry.pyi file)
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry.functional -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.core.linalg -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}

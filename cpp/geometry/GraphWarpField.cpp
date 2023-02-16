@@ -29,9 +29,16 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::geometry {
 
 
-GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor edge_weights,
-                               o3c::Tensor clusters, float node_coverage, bool threshold_nodes_by_distance_by_default, int anchor_count,
-                               int minimum_valid_anchor_count) :
+GraphWarpField::GraphWarpField(
+		o3c::Tensor nodes,
+		o3c::Tensor edges,
+		utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
+		utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
+		float node_coverage,
+		bool threshold_nodes_by_distance_by_default,
+		int anchor_count,
+		int minimum_valid_anchor_count
+) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
 		node_coverage(node_coverage), anchor_count(anchor_count), threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(minimum_valid_anchor_count),
@@ -45,16 +52,14 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
 	auto device = this->nodes.GetDevice();
 	o3c::AssertTensorDevice(this->edges, device);
-	o3c::AssertTensorDevice(this->edge_weights, device);
-	o3c::AssertTensorDevice(this->clusters, device);
+
 	auto nodes_shape = this->nodes.GetShape();
 	auto edges_shape = this->edges.GetShape();
-	auto edge_weights_shape = this->edge_weights.GetShape();
-	auto clusters_shape = this->clusters.GetShape();
-	if (nodes_shape.size() != 2 || edges_shape.size() != 2 || edge_weights_shape.size() != 2 || clusters_shape.size() != 1) {
-		utility::LogError("Arguments `nodes`, `edges`, and `edge_weights` all need to have two dimensions,"
-		                  " while `clusters` needs to have one dimension. Got dimension counts {}, {}, {}, and {}, respectively.",
-		                  nodes_shape.size(), edges_shape.size(), edge_weights_shape.size(), clusters_shape.size());
+
+
+	if (nodes_shape.size() != 2 || edges_shape.size() != 2) {
+		utility::LogError("Arguments `nodes` and `edges` need to have two dimensions. Got dimension counts {} and {}, respectively.",
+		                  nodes_shape.size(), edges_shape.size());
 	}
 	const int64_t node_count = nodes_shape[0];
 	if (nodes_shape[1] != 3) {
@@ -64,18 +69,39 @@ GraphWarpField::GraphWarpField(o3c::Tensor nodes, o3c::Tensor edges, o3c::Tensor
 		utility::LogError("Argument `edges_shape` needs to have shape ({}, X), where first dimension is the node count N"
 		                  " and the second is the edge degree X, but has shape {}", node_count, edges_shape);
 	}
-	if (edge_weights_shape != edges_shape) {
-		utility::LogError("arguments `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
-		                  edge_weights_shape);
+
+	if (this->edge_weights.has_value()) {
+		o3c::AssertTensorDevice(this->edge_weights.value().get(), device);
+		auto edge_weights_shape = this->edge_weights.value().get().GetShape();
+		if (edge_weights_shape.size() != 2) {
+			utility::LogError("If a tensor is provided in `edge_weights`, it needs to have two dimensions. Got dimension count {}.",
+			                  edge_weights_shape.size());
+		}
+		if (edge_weights_shape != edges_shape) {
+			utility::LogError("Tensors `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
+			                  edge_weights_shape);
+		}
 	}
-	if (clusters_shape[0] != node_count) {
-		utility::LogError("argument `clusters` needs to be a vector of the size {} (node count), got size {}.", node_count, clusters_shape[0]);
+
+	if (this->clusters.has_value()) {
+		o3c::AssertTensorDevice(this->clusters.value().get(), device);
+		auto clusters_shape = this->clusters.value().get().GetShape();
+		if (clusters_shape.size() != 1) {
+			utility::LogError("If a tensor is provided in `clusters`, it needs to have one dimension. Got dimension count {}.",
+			                  clusters_shape.size());
+		}
+		if (clusters_shape[0] != node_count) {
+			utility::LogError("If a tensor is provided in `clusters`, `clusters` needs to be a vector of the size {} (node count); got size {}.",
+			                  node_count, clusters_shape[0]);
+		}
 	}
+
+
 	this->ResetRotations();
 }
 
 GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTree& index) :
-		nodes(index.GetPoints()), edges(original.edges.Clone()), edge_weights(original.edge_weights.Clone()), clusters(original.clusters.Clone()),
+		nodes(index.GetPoints()), edges(original.edges.Clone()),
 		node_coverage(original.node_coverage), anchor_count(original.anchor_count),
 		threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(original.minimum_valid_anchor_count),
@@ -87,7 +113,18 @@ GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTre
 
 		rotations(original.rotations.Clone()),
 		translations(original.translations.Clone()),
-		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {}
+		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
+	if (original.edge_weights.has_value()) {
+		//TODO: not sure this actually works on memory level, verify
+		auto cloned_edge_weights = original.edge_weights.value().get().Clone();
+		this->edge_weights = cloned_edge_weights;
+	}
+	if (original.clusters.has_value()) {
+		//TODO: not sure this actually works on memory level, verify
+		auto cloned_clusters = original.clusters.value().get().Clone();
+		this->clusters = cloned_clusters;
+	}
+}
 
 o3c::Tensor GraphWarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
@@ -196,7 +233,8 @@ const open3d::core::Tensor& GraphWarpField::GetNodePositions() const {
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::PrecomputeAnchorsAndWeights(
 		const open3d::t::geometry::TriangleMesh& input_mesh,
-		AnchorComputationMethod anchor_computation_method)
+		AnchorComputationMethod anchor_computation_method
+)
 const {
 	o3c::Tensor anchors, weights;
 
@@ -213,16 +251,11 @@ const {
 			functional::ComputeAnchorsAndWeightsShortestPath(anchors, weights, vertex_positions, this->nodes, this->edges,
 			                                                 this->anchor_count, this->node_coverage);
 			break;
-		default:
-			utility::LogError("Unsupported AnchorComputationMethod value: {}", anchor_computation_method);
+		default: utility::LogError("Unsupported AnchorComputationMethod value: {}", anchor_computation_method);
 	}
 
 	return std::make_tuple(anchors, weights);
 }
-
-
-
-
 
 
 } // namespace nnrt::geometry
