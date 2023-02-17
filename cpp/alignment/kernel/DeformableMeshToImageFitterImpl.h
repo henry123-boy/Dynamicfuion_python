@@ -213,7 +213,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (4 * 6);
+				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 6);
 				auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
 
 				const int max_face_anchor_count = 3 * static_cast<int>(anchor_count_per_vertex);
@@ -222,6 +222,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 					int64_t vertices[3] = {-1, -1, -1};
 					int vertex_anchor_indices[3] = {-1, -1, -1};
 				} face_anchor_data[3 * MAX_ANCHOR_COUNT];
+
 
 				// group vertices by anchor node
 				//TODO: this simple per-face reindexing operation needs only to be done on a per-face basis. It is
@@ -236,18 +237,20 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 							// -1 is the sentinel value for anchors
 							continue;
 						}
-						int i_face_anchor;
-						int inspected_anchor_node_index = -2;
+						int i_face_anchor = 0;
+						int inspected_anchor_node_index = face_anchor_data[i_face_anchor].node_index;
 						// find (if any) matching node among anchors of previous vertices
-						for (i_face_anchor = 0;
-						     inspected_anchor_node_index != i_node && // found
-						     inspected_anchor_node_index != -1 &&
-						     i_face_anchor < max_face_anchor_count;
-						     i_face_anchor++) {
+						while (
+								inspected_anchor_node_index != i_node && // found match in previous matches
+								inspected_anchor_node_index != -1 && // end of filled list reached
+								i_face_anchor + 1 < max_face_anchor_count// end of list reached)
+								) {
+							i_face_anchor++;
 							inspected_anchor_node_index = face_anchor_data[i_face_anchor].node_index;
 						}
+
 						auto& face_anchor = face_anchor_data[i_face_anchor];
-						if (inspected_anchor_node_index != i_node) {
+						if (inspected_anchor_node_index != i_node) { // unique node found
 							pixel_node_jacobian_count++; // tally per pixel
 							face_anchor.node_index = i_node;
 						}
@@ -261,6 +264,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				for (int i_face_anchor = 0; i_face_anchor < pixel_node_jacobian_count; i_face_anchor++) {
 					auto& face_anchor = face_anchor_data[i_face_anchor];
 					int i_node = face_anchor.node_index;
+
 					int jacobian_address = i_face_anchor * 6;
 					for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 						int i_vertex = face_anchor.vertices[i_face_vertex];
@@ -288,9 +292,9 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 								)
 						);
 						// [1x3]
-						auto dr_dv = dr_dV.block<1, 3>(0, i_vertex * 3);
+						auto dr_dv = dr_dV.block<1, 3>(0, i_face_vertex * 3);
 						// [1x3]
-						auto dr_dn = dr_dN.block<1, 3>(0, i_vertex * 3);
+						auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
 
 						Eigen::Map<Eigen::RowVector3<float>>
 								pixel_vertex_anchor_rotation_jacobian
@@ -312,9 +316,10 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 							       "Result may be incomplete. Either the voxel size (or triangle size) is simply too "
 							       "large, or the surface is too close to the camera.\n", i_node, MAX_PIXELS_PER_NODE);
 							node_pixel_counters.FetchSub(i_node, 1);
+						} else {
+							node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
+									pixel_jacobian_list_address + jacobian_address;
 						}
-						node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
-								pixel_jacobian_list_address + jacobian_address;
 					}
 					face_anchor = face_anchor_data[i_face_anchor];
 				}
@@ -564,7 +569,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
 					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * 6);
 					//TODO: NOT sure mask filtering helps with anything here -- seems like it would only contribute to thread divergence
-					if(!residual_mask_data[i_pixel]) continue;
+					if (!residual_mask_data[i_pixel]) continue;
 					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
 					float residual = residual_data[i_pixel];
 					node_pixel_gradient -= node_pixel_jacobian * residual;

@@ -34,8 +34,6 @@
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/linalg/Rodrigues.h"
 
-//__DEBUG
-#include <open3d/t/io/ImageIO.h>
 namespace o3tio = open3d::t::io;
 
 namespace o3c = open3d::core;
@@ -91,21 +89,6 @@ void DeformableMeshToImageFitter::FitToImage(
 				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.f, 1, -1, -1, this->use_perspective_correction, false, true);
 		                                                                                                                                          ;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
-
-		//__DEBUG
-		// bool draw_depth = false;
-		// if (draw_depth) {
-		// 	auto pd_to_write = pixel_depths.Clone();
-		// 	pd_to_write = pd_to_write.Reshape(rendering_image_size);
-		// 	nnrt::core::functional::ReplaceValue(pd_to_write, -1.0f, 10.0f);
-		// 	float minimum_depth = pd_to_write.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
-		// 	float maximum_depth = pixel_depths.Max({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
-		// 	nnrt::core::functional::ReplaceValue(pd_to_write, 10.0f, minimum_depth);
-		// 	pd_to_write = 255.f - ((pd_to_write - minimum_depth) * 255.f / (maximum_depth - minimum_depth));
-		// 	o3tg::Image stretched_depth_image(pd_to_write.To(o3c::UInt8));
-		// 	o3tio::WriteImage("/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data/images/__debug_depth.png", stretched_depth_image);
-		// }
-		//__END DEBUG
 
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
