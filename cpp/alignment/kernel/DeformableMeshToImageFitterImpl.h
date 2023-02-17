@@ -33,7 +33,7 @@
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-#define MAX_PIXELS_PER_NODE 1500
+#define MAX_PIXELS_PER_NODE 4000
 
 
 namespace nnrt::alignment::kernel {
@@ -213,7 +213,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 6);
+				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 3 * 6);
 				auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
 
 				const int max_face_anchor_count = 3 * static_cast<int>(anchor_count_per_vertex);
@@ -222,7 +222,6 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 					int64_t vertices[3] = {-1, -1, -1};
 					int vertex_anchor_indices[3] = {-1, -1, -1};
 				} face_anchor_data[3 * MAX_ANCHOR_COUNT];
-
 
 				// group vertices by anchor node
 				//TODO: this simple per-face reindexing operation needs only to be done on a per-face basis. It is
@@ -254,8 +253,8 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 							pixel_node_jacobian_count++; // tally per pixel
 							face_anchor.node_index = i_node;
 						}
-						face_anchor.vertices[i_vertex] = i_vertex;
-						face_anchor.vertex_anchor_indices[i_vertex] = i_face_anchor;
+						face_anchor.vertices[i_face_vertex] = i_vertex;
+						face_anchor.vertex_anchor_indices[i_face_vertex] = i_face_anchor;
 					}
 				}
 				pixel_node_jacobian_counts_data[pixel_index] = pixel_node_jacobian_count;
@@ -266,6 +265,14 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 					int i_node = face_anchor.node_index;
 
 					int jacobian_address = i_face_anchor * 6;
+
+					Eigen::Map<Eigen::RowVector3<float>>
+							pixel_vertex_anchor_rotation_jacobian
+							(pixel_node_jacobian_data + jacobian_address);
+					Eigen::Map<Eigen::RowVector3<float>>
+							pixel_vertex_anchor_translation_jacobian
+							(pixel_node_jacobian_data + jacobian_address + 3);
+
 					for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 						int i_vertex = face_anchor.vertices[i_face_vertex];
 						if (i_vertex == -1) continue;
@@ -296,30 +303,23 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						// [1x3]
 						auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
 
-						Eigen::Map<Eigen::RowVector3<float>>
-								pixel_vertex_anchor_rotation_jacobian
-								(pixel_node_jacobian_data + jacobian_address);
-						Eigen::Map<Eigen::RowVector3<float>>
-								pixel_vertex_anchor_translation_jacobian
-								(pixel_node_jacobian_data + jacobian_address + 3);
-
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
 						pixel_vertex_anchor_translation_jacobian +=
 								dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
+					}
 
-						// accumulate addresses of jacobians for each node
-						int i_node_jacobian = node_pixel_counters.FetchAdd(i_node, 1);
-						// safety check
-						if (i_node_jacobian > MAX_PIXELS_PER_NODE) {
-							printf("Warning: number of pixels affected by node %i exceeds allowed maximum, %i. "
-							       "Result may be incomplete. Either the voxel size (or triangle size) is simply too "
-							       "large, or the surface is too close to the camera.\n", i_node, MAX_PIXELS_PER_NODE);
-							node_pixel_counters.FetchSub(i_node, 1);
-						} else {
-							node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
-									pixel_jacobian_list_address + jacobian_address;
-						}
+					// accumulate addresses of jacobians for each node
+					int i_node_jacobian = node_pixel_counters.FetchAdd(i_node, 1);
+					// safety check
+					if (i_node_jacobian > MAX_PIXELS_PER_NODE) {
+						printf("Warning: number of pixels affected by node %i exceeds allowed maximum, %i. "
+						       "Result may be incomplete. Either the voxel size (or triangle size) is simply too "
+						       "large, or the surface is too close to the camera.\n", i_node, MAX_PIXELS_PER_NODE);
+						node_pixel_counters.FetchSub(i_node, 1);
+					} else {
+						node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
+								pixel_jacobian_list_address + jacobian_address;
 					}
 					face_anchor = face_anchor_data[i_face_anchor];
 				}
@@ -495,8 +495,8 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				int node_pixel_jacobian_list_length = node_pixel_count_data[i_node];
 				float column_product = 0.0;
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
-					int i_pixel_node_jacobian = node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
-					const float* jacobian = pixel_jacobian_data + i_pixel_node_jacobian * 6;
+					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
+					const float* jacobian = pixel_jacobian_data + pixel_node_jacobian_address;
 					float addend = jacobian[i_column_0] * jacobian[i_column_1];
 					column_product += addend;
 				}
@@ -547,12 +547,12 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	// === get access to input arrays ===
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 	auto residual_data = residuals.GetDataPtr<float>();
-	auto residual_mask_data = residual_mask.GetDataPtr<bool>();
+	auto residual_mask_data = static_cast<const unsigned char*>(residual_mask.GetDataPtr());
 	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
 	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 
 	// === initialize output structures ===
-	negative_gradient = o3c::Tensor({node_count * 6}, o3c::Float32, device);
+	negative_gradient = o3c::Tensor::Zeros({node_count * 6}, o3c::Float32, device);
 	auto negative_gradient_data = negative_gradient.GetDataPtr<float>();
 
 	//TODO: this is extremely inefficient. There must be some parallel reduction we can apply here, but everything is difficult.

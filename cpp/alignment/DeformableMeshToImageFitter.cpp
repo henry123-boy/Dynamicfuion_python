@@ -51,7 +51,7 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 ) : max_iteration_count(maximal_iteration_count),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
-    use_perspective_correction(use_perspective_correction){}
+    use_perspective_correction(use_perspective_correction) {}
 
 void DeformableMeshToImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field,
@@ -86,8 +86,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		//TODO: add an obvious optional optimization in the case perspective-correct barycentrics are used: output the
 		// distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
 		std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
-				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.f, 1, -1, -1, this->use_perspective_correction, false, true);
-		                                                                                                                                          ;
+				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.f, 1, -1, -1,
+				                                       this->use_perspective_correction, false, true);;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
 
@@ -101,6 +101,7 @@ void DeformableMeshToImageFitter::FitToImage(
 						reference_color_image, reference_point_cloud, reference_point_mask,
 						intrinsic_matrix
 				);
+
 
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
@@ -148,6 +149,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor motion_updates;
 		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
+		motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
+
 		// convert rotation axis-angle vectors to matrices
 		auto rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
 
@@ -180,7 +183,6 @@ DeformableMeshToImageFitter::FitToImage(
 	);
 
 
-
 	open3d::t::geometry::PointCloud point_cloud(points);
 
 	o3c::Tensor final_reference_point_mask;
@@ -194,7 +196,7 @@ DeformableMeshToImageFitter::FitToImage(
 
 	o3c::SizeVector rendering_image_size{reference_depth_image.GetRows(), reference_depth_image.GetCols()};
 	//TODO: employ the min_update_threshold termination condition as well
-	for(int i_iteration = 0; i_iteration < this->max_iteration_count; i_iteration++){
+	for (int i_iteration = 0; i_iteration < this->max_iteration_count; i_iteration++) {
 		FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
 		           intrinsic_matrix, extrinsic_matrix, rendering_image_size);
 	}
@@ -255,7 +257,7 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
 
 	residual_mask = reference_point_mask.LogicalAnd(rendered_point_mask);
 
-	core::functional::SetMaskedToValue(distances, residual_mask, 0.0f);
+	core::functional::SetMaskedToValue(distances, residual_mask.LogicalNot(), 0.0f);
 
 	return distances;
 }

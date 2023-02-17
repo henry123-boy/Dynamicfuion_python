@@ -53,7 +53,7 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 	int64_t result_row_count = B_shape[0];
 	if (result_row_count != A_blocks_shape[1] * A_blocks_shape[0]) {
 		utility::LogError("Tensor B's row count (dimension 0) should match [block count x block rows] of A "
-						  "(dimension 0 x dimension 1). Got {} rows for B and {} rows for each of the {} blocks in A.",
+		                  "(dimension 0 x dimension 1). Got {} rows for B and {} rows for each of the {} blocks in A.",
 		                  B_shape[0], A_blocks_shape[1], A_blocks_shape[0]);
 	}
 	int64_t block_row_count = A_blocks_shape[1];
@@ -78,7 +78,12 @@ void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Ten
 	}
 
 	// Perform column- to row-major reordering using axis swap, re-stack
-	X = X.Transpose(1,2).Reshape({result_row_count, result_column_count});
+	if (result_column_count == 1) {
+		X = X.Transpose(1, 2).Reshape({result_row_count});
+	} else {
+		X = X.Transpose(1, 2).Reshape({result_row_count, result_column_count});
+	}
+
 }
 
 
