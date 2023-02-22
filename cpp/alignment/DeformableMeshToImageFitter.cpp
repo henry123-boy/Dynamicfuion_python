@@ -90,10 +90,27 @@ void DeformableMeshToImageFitter::FitToImage(
 				                                       this->use_perspective_correction, false, true);;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
+		//__DEBUG
+		// bool draw_depth = true;
+		// if (draw_depth) {
+		// 	auto pd_tmp = pixel_depths.Clone();
+		// 	nnrt::core::functional::ReplaceValue(pd_tmp, -1.0f, 10.0f);
+		// 	float minimum_depth = pd_tmp.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		// 	float maximum_depth = pixel_depths.Max({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
+		// 	nnrt::core::functional::ReplaceValue(pd_tmp, 10.0f, minimum_depth);
+		// 	pd_tmp = 255.f - ((pd_tmp - minimum_depth) * 255.f / (maximum_depth - minimum_depth));
+		// 	o3tg::Image stretched_depth_image(pd_tmp.To(o3c::UInt8));
+		// 	o3tio::WriteImage("/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data/images/__debug_depth_1-node.png", stretched_depth_image);
+		// }
+
+		// __DEBUG
+		// auto center_faces = pixel_face_indices.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
 		o3tg::PointCloud rasterized_point_cloud;
 		o3c::Tensor residual_mask;
+		// [PX]; PX = W * H
 		o3c::Tensor residuals =
 				this->ComputeResiduals(
 						rasterized_point_cloud, residual_mask, warped_mesh, pixel_face_indices,
@@ -102,12 +119,24 @@ void DeformableMeshToImageFitter::FitToImage(
 						intrinsic_matrix
 				);
 
+		//__DEBUG
+		// auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_reference_point_cloud = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_residuals = residuals.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_masks = residual_mask.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+
+
 
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
+		// [V X A/V X 4], [V X A/V X 3]
 		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
 				functional::WarpedVertexAndNormalJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
 
 		// compute rasterized vertex and normal jacobians
+		// [W x H x 3 x 9], [W x H x 30]; 30 = 3x9, 1x3
+		//TODO: probably better to explicitly separate the rasterized_vertex_normal_jacobians ([W x H x 3x9]) from the barycentrics ([W x H x 1x3])
+		// for clarity's sake. Also, it makes sense to be explicit that it's not the full "rasterized_vertex_normal_jacobians"
+		// (missing the barycentrics part), or at least insert some comments about this
 		auto [rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians] =
 				functional::RasterizedVertexAndNormalJacobians(
 						warped_mesh, pixel_face_indices,
@@ -115,11 +144,15 @@ void DeformableMeshToImageFitter::FitToImage(
 						ndc_intrinsic_matrix, this->use_perspective_correction
 				);
 
+		//__DEBUG
+		// auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+
 
 		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
-		o3c::Tensor
-				point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
+		o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
 		o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
+		//__DEBUG
+		// auto center_point_map_vectors = point_map_vectors.Reshape({100, 100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 
 		o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
 
@@ -158,6 +191,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
 		warp_field.RotateNodes(rotation_matrix_updates);
 
+		//TODO: update maximum update vector
 		iteration++;
 	}
 }

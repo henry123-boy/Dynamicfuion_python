@@ -187,8 +187,8 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				}
 				auto v_image = static_cast<int>(pixel_index / image_width);
 				auto u_image = static_cast<int>(pixel_index % image_width);
-				Eigen::Map<const Eigen::RowVector3f> pixel_point_map_vector(point_map_vector_data + pixel_index);
-				Eigen::Map<const Eigen::RowVector3f> pixel_rasterized_normal(rasterized_normal_data + pixel_index);
+				Eigen::Map<const Eigen::RowVector3f> pixel_point_map_vector(point_map_vector_data + pixel_index * 3);
+				Eigen::Map<const Eigen::RowVector3f> pixel_rasterized_normal(rasterized_normal_data + pixel_index * 3);
 
 				Eigen::Map<const core::kernel::Matrix3x9f> pixel_vertex_position_jacobian
 						(rasterized_vertex_position_jacobian_data + pixel_index * (3 * 9));
@@ -211,6 +211,12 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						pixel_point_map_vector *
 						Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
 
+				//__DEBUG
+				// auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
+				// auto dr_dnl_x_dnl_dV_c = dr_dnl_x_dnl_dV.eval();
+				// auto dr_dV_c = dr_dV.eval();
+				// auto dr_dN_c = dr_dN.eval();
+
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
 				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 3 * 6);
@@ -230,8 +236,8 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				int32_t pixel_node_jacobian_count = 0;
 				for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 					int64_t i_vertex = vertex_indices(i_face_vertex);
-					for (int i_anchor = 0; i_anchor < anchor_count_per_vertex; i_anchor++) {
-						auto i_node = vertex_anchor_data[i_vertex * anchor_count_per_vertex + i_anchor];
+					for (int i_vertex_anchor = 0; i_vertex_anchor < anchor_count_per_vertex; i_vertex_anchor++) {
+						auto i_node = vertex_anchor_data[i_vertex * anchor_count_per_vertex + i_vertex_anchor];
 						if (i_node == -1) {
 							// -1 is the sentinel value for anchors
 							continue;
@@ -254,7 +260,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 							face_anchor.node_index = i_node;
 						}
 						face_anchor.vertices[i_face_vertex] = i_vertex;
-						face_anchor.vertex_anchor_indices[i_face_vertex] = i_face_anchor;
+						face_anchor.vertex_anchor_indices[i_face_vertex] = i_vertex_anchor;
 					}
 				}
 				pixel_node_jacobian_counts_data[pixel_index] = pixel_node_jacobian_count;
@@ -264,44 +270,50 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 					auto& face_anchor = face_anchor_data[i_face_anchor];
 					int i_node = face_anchor.node_index;
 
-					int jacobian_address = i_face_anchor * 6;
+					int jacobian_local_address = i_face_anchor * 6;
 
 					Eigen::Map<Eigen::RowVector3<float>>
 							pixel_vertex_anchor_rotation_jacobian
-							(pixel_node_jacobian_data + jacobian_address);
+							(pixel_node_jacobian_data + jacobian_local_address);
 					Eigen::Map<Eigen::RowVector3<float>>
 							pixel_vertex_anchor_translation_jacobian
-							(pixel_node_jacobian_data + jacobian_address + 3);
+							(pixel_node_jacobian_data + jacobian_local_address + 3);
 
 					for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 						int i_vertex = face_anchor.vertices[i_face_vertex];
 						if (i_vertex == -1) continue;
-						int i_anchor = face_anchor.vertex_anchor_indices[i_face_vertex];
+						int i_vertex_anchor = face_anchor.vertex_anchor_indices[i_face_vertex];
 						// [3x3] warped vertex position Jacobian w.r.t. node rotation
 						const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
 								Eigen::Map<const Eigen::Vector3f>(
 										warped_vertex_position_jacobian_data +
-										(i_vertex * anchor_count_per_vertex * 4) +
-										(i_anchor * 4)
+										(i_vertex * anchor_count_per_vertex * 4) + // vertex index * stride
+										(i_vertex_anchor * 4) // index of the anchor for this vertex * stride
 								)
 						);
 						// used to compute warped vertex position Jacobian w.r.t. node translation, weight * I_3x3
 						float stored_node_weight =
 								warped_vertex_position_jacobian_data[
 										(i_vertex * anchor_count_per_vertex * 4) +
-										(i_anchor * 4) + 3];
+										(i_vertex_anchor * 4) + 3];
 						// [3x3] warped vertex normal Jacobian w.r.t. node rotation
 						const Eigen::SkewSymmetricMatrix3<float> dn_drotation(
 								Eigen::Map<const Eigen::Vector3f>(
 										warped_vertex_normal_jacobian_data +
 										(i_vertex * anchor_count_per_vertex * 3) +
-										(i_anchor * 3)
+										(i_vertex_anchor * 3)
 								)
 						);
 						// [1x3]
 						auto dr_dv = dr_dV.block<1, 3>(0, i_face_vertex * 3);
 						// [1x3]
 						auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
+
+						//__DEBUG
+						// auto dr_dv_c = dr_dv.eval();
+						// auto dr_dn_c = dr_dn.eval();
+						// auto dv_drotation_c = dv_drotation.toDenseMatrix();
+						// auto dn_drotation_c = dn_drotation.toDenseMatrix();
 
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
@@ -319,7 +331,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						node_pixel_counters.FetchSub(i_node, 1);
 					} else {
 						node_pixel_jacobian_index_data[i_node * MAX_PIXELS_PER_NODE + i_node_jacobian] =
-								pixel_jacobian_list_address + jacobian_address;
+								pixel_jacobian_list_address + jacobian_local_address;
 					}
 					face_anchor = face_anchor_data[i_face_anchor];
 				}
@@ -440,6 +452,7 @@ NNRT_CONSTANT_WHEN_CUDACC const int column_1_lookup_table[21] = {
 
 
 
+//TODO: can optimize: don't fill in lower triangle at all, use a batched triangular solver instead of Cholesky?
 template<open3d::core::Device::DeviceType TDevice>
 void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,

@@ -163,6 +163,7 @@ if (BUILD_CPP_TESTS)
     )
     nnrt_add_test(test_solve_cholesky_block_diagonal)
     nnrt_add_test(test_rodrigues)
+    nnrt_add_test(test_warped_vertex_jacobians)
 
     nnrt_add_test_data_download_target(
             test_data_plane_and_cube_rendering

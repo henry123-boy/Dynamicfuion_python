@@ -39,7 +39,9 @@ namespace nnrt::alignment::functional {
  * with respect to the three normals can be expressed as the Kronecker product of the barycentric coordinates with a
  * 3x3 identity matrix. Hence, we store the barycentric coordinates as a 1 x 3 vector appended to the 3 x 9 Jacobian with
  * respect to vertex positions. The entire normals' jacobian is then output as a tensor with the following dimensions:
- * image_height x image_width x 3 x 10.
+ * image_height x image_width x 3 x 10. Caveat: storage order is such that the 3x9 Jacobian occupies the first 27 entries
+ * of each 3x10 block, and the remaining 3 entries contain the barycentric coordinates, i.e. the 3 entries at the end of
+ * the last row, not the last 3-entry column.
  *
  * \param warped_mesh mesh (assumed warped if this is used for warped mesh fitting)
  * \param pixel_faces list of faces associated with each pixel (usually, association is determined by ray intersection).
