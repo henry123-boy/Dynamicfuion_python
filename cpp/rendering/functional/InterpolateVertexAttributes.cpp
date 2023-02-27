@@ -25,11 +25,11 @@ namespace nnrt::rendering::functional {
 open3d::core::Tensor InterpolateVertexAttributes(
 		const open3d::core::Tensor& pixel_face_indices,
 		const open3d::core::Tensor& pixel_barycentric_coordinates,
-		const open3d::core::Tensor& face_attributes
+		const open3d::core::Tensor& face_vertex_attributes
 ) {
-	o3c::AssertTensorShape(face_attributes, { utility::nullopt, 3 , utility::nullopt});
-	o3c::AssertTensorDtypes(face_attributes, { o3c::Float32, o3c::Float64 });
-	auto device = face_attributes.GetDevice();
+	o3c::AssertTensorShape(face_vertex_attributes, { utility::nullopt, 3 , utility::nullopt});
+	o3c::AssertTensorDtypes(face_vertex_attributes, { o3c::Float32, o3c::Float64 });
+	auto device = face_vertex_attributes.GetDevice();
 
 	o3c::AssertTensorDevice(pixel_face_indices, device);
 	o3c::AssertTensorDtype(pixel_face_indices, o3c::Int64);
@@ -44,7 +44,7 @@ open3d::core::Tensor InterpolateVertexAttributes(
 
 	o3c::Tensor interpolated_attributes;
     kernel::InterpolateVertexAttributes(interpolated_attributes, pixel_face_indices, pixel_barycentric_coordinates,
-                                        face_attributes);
+                                        face_vertex_attributes);
 
 	return interpolated_attributes;
 }

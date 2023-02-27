@@ -39,11 +39,12 @@ set(
 
     debugging/debugging.hpp
 
-        core/platform_independence/Qualifiers.h
-        core/platform_independence/Atomics.h
-        core/platform_independence/Algorithm.h
-        core/platform_independence/Array.h
-        core/platform_independence/Tuple.h
+    core/platform_independence/Qualifiers.h
+    core/platform_independence/Atomics.h
+    core/platform_independence/AtomicCounterArray.h
+    core/platform_independence/Algorithm.h
+    core/platform_independence/Array.h
+    core/platform_independence/Tuple.h
 
     core/kernel/KnnUtilities.h
     core/kernel/KnnUtilities_PriorityQueue.h
@@ -89,6 +90,7 @@ set(
     core/kernel/instantiations/LinearIndexCUDA.cu
 
     core/DeviceSelection.h
+    core/ParallelFor.h
 
     core/TensorManipulationRoutines.h
     core/TensorManipulationRoutines.cpp
@@ -105,6 +107,18 @@ set(
     core/linalg/LinalgHeadersCPU.h
     core/linalg/LinalgUtils.h
     core/linalg/LinalgUtils.cpp
+    core/linalg/LapackWrapper.h
+    core/linalg/SolveCholeskyCPU.cpp
+    core/linalg/SolveCholesky.h
+    core/linalg/SolveCholesky.cpp
+    core/linalg/SolveCholeskyCUDA.cpp
+    core/linalg/PointerAggregationForBatchOperations.h
+    core/linalg/Rodrigues.cpp
+    core/linalg/Rodrigues.h
+    core/linalg/RodriguesImpl.h
+    core/linalg/instantiations/RodriguesCPU.cpp
+    core/linalg/instantiations/RodriguesCUDA.cu
+    core/linalg/KroneckerTensorProduct.h
 
     core/PreprocessorStrings.h
 
@@ -125,6 +139,10 @@ set(
     core/functional/kernel/instantiations/ComparisonsCPU.cpp
     core/functional/kernel/instantiations/ComparisonsCUDA.cu
 
+    core/kernel/MathTypedefs.h
+    core/TensorRepresentationConversion.h
+    core/GetDType.cpp
+    core/GetDType.h
 
     string/split_string.h
     string/split_string.cpp
@@ -157,13 +175,14 @@ set(
     geometry/functional/kernel/instantiations/Warp3dPointsAndNormalsCUDA.cu
     geometry/functional/kernel/Warp3dPointsAndNormalsImpl.h
 
-        geometry/functional/kernel/PointToPlaneDistances.h
-        geometry/functional/kernel/PointToPlaneDistances.cpp
-        geometry/functional/kernel/instantiations/PointToPlaneDistancesCPU.cpp
-        geometry/functional/kernel/instantiations/PointToPlaneDistancesCUDA.cu
-        geometry/functional/kernel/PointToPlaneDistancesImpl.h
+    geometry/functional/kernel/PointToPlaneDistances.h
+    geometry/functional/kernel/PointToPlaneDistances.cpp
+    geometry/functional/kernel/instantiations/PointToPlaneDistancesCPU.cpp
+    geometry/functional/kernel/instantiations/PointToPlaneDistancesCUDA.cu
+    geometry/functional/kernel/PointToPlaneDistancesImpl.h
 
     geometry/kernel/Segment.h
+    geometry/kernel/AxisAlignedBoundingBox.h
 
     geometry/functional/Downsample3dPoints.h
     geometry/functional/Downsample3dPoints.cpp
@@ -180,8 +199,8 @@ set(
 
     geometry/functional/AnchorComputationMethod.h
     geometry/TransformationMode.h
-        geometry/functional/PointToPlaneDistances.h
-        geometry/functional/PointToPlaneDistances.cpp
+    geometry/functional/PointToPlaneDistances.h
+    geometry/functional/PointToPlaneDistances.cpp
 
     geometry/functional/FindKNearestNeighbors.cpp
     geometry/functional/FindKNearestNeighbors.h
@@ -211,6 +230,12 @@ set(
     geometry/functional/WarpAnchorComputation.cpp
     geometry/functional/WarpAnchorComputation.h
 
+
+    geometry/functional/MeshFrom2dTriangle.cpp
+    geometry/functional/MeshFrom2dTriangle.h
+    geometry/functional/JoinTriangleMeshes.cpp
+    geometry/functional/JoinTriangleMeshes.h
+
     io/TensorIO.cpp
     io/TensorIO.h
     io/SizeVectorIO.cpp
@@ -225,66 +250,84 @@ set(
     io/VoxelBlockGridIO.h
     io/FileStreamSelector.h
 
-        rendering/RasterizeNdcTriangles.h
-        rendering/RasterizeNdcTriangles.cpp
-    rendering/functional/kernel/BarycentricCoordinates.h
-        rendering/kernel/RasterizeNdcTriangles.cpp
-        rendering/kernel/RasterizeNdcTriangles.h
-        rendering/kernel/RasterizeNdcTrianglesImpl.h
-        rendering/kernel/instantiations/RasterizeNdcTrianglesCPU.cpp
-        rendering/kernel/instantiations/RasterizeNdcTrianglesCUDA.cu
-    rendering/kernel/RasterizationConstants.h
-    rendering/kernel/CoordinateSystemConversions.h
-    rendering/kernel/RayFaceIntersection.h
+    rendering/RasterizeNdcTriangles.h
+    rendering/RasterizeNdcTriangles.cpp
 
-        rendering/kernel/RasterizeNdcTrianglesCUDA.cuh
-    rendering/kernel/GridBitMask.cuh
-        rendering/kernel/RasterizeNdcTrianglesImplCPU.h
-
-    rendering/functional/kernel/ExtractClippedFaceVertices.cpp
-    rendering/functional/kernel/ExtractClippedFaceVertices.h
-    rendering/functional/kernel/ExtractClippedFaceVerticesImpl.h
-    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
-    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
-
+    rendering/VertexColorShader.cpp
+    rendering/VertexColorShader.h
     rendering/FlatEdgeShader.cpp
     rendering/FlatEdgeShader.h
+
     rendering/kernel/FlatEdgeShader.cpp
     rendering/kernel/FlatEdgeShader.h
     rendering/kernel/FlatEdgeShaderImpl.h
     rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp
     rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu
 
-        rendering/functional/InterpolateVertexAttributes.cpp
-        rendering/functional/InterpolateVertexAttributes.h
+
+    rendering/kernel/RasterizeNdcTriangles.cpp
+    rendering/kernel/RasterizeNdcTriangles.h
+    rendering/kernel/RasterizeNdcTrianglesImpl.h
+    rendering/kernel/instantiations/RasterizeNdcTrianglesCPU.cpp
+    rendering/kernel/instantiations/RasterizeNdcTrianglesCUDA.cu
+    rendering/kernel/RasterizationConstants.h
+    rendering/kernel/CoordinateSystemConversions.h
+    rendering/kernel/RayFaceIntersection.h
+    rendering/kernel/RasterizeNdcTrianglesCUDA.cuh
+    rendering/kernel/GridBitMask.cuh
+    rendering/kernel/RasterizeNdcTrianglesImplCPU.h
+
+
+    rendering/functional/InterpolateVertexAttributes.cpp
+    rendering/functional/InterpolateVertexAttributes.h
     rendering/functional/kernel/InterpolateFaceAttributes.cpp
     rendering/functional/kernel/InterpolateFaceAttributes.h
     rendering/functional/kernel/InterpolateFaceAttributesImpl.h
     rendering/functional/kernel/instantiations/InterpolateFaceAttributesCPU.cpp
     rendering/functional/kernel/instantiations/InterpolateFaceAttributesCUDA.cu
+
+    rendering/functional/ExtractFaceVertices.cpp
+    rendering/functional/ExtractFaceVertices.h
+    rendering/functional/kernel/ExtractClippedFaceVertices.cpp
+    rendering/functional/kernel/ExtractClippedFaceVertices.h
+    rendering/functional/kernel/ExtractClippedFaceVerticesImpl.h
+    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCPU.cpp
+    rendering/functional/kernel/instantiations/ExtractClippedFaceVerticesCUDA.cu
+
     rendering/functional/kernel/FrontFaceVertexOrder.h
+    rendering/functional/kernel/BarycentricCoordinates.h
 
-        alignment/DeformableMeshToImageFitter.cpp
-        alignment/DeformableMeshToImageFitter.h
-
-    alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp
-    alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.h
-        alignment/functional/RasterizedVertexAndNormalJacobians.cpp
-        alignment/functional/RasterizedVertexAndNormalJacobians.h
-        alignment/functional/kernel/WarpedVertexAndNormalJacobians.cpp
-        alignment/functional/kernel/WarpedVertexAndNormalJacobians.h
-        alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h
-    alignment/functional/kernel/BarycentricCoordinateJacobians.h
-        alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCPU.cpp
-        alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCUDA.cu
-
-    core/kernel/MathTypedefs.h
-    alignment/functional/kernel/ProjectionJacobians.h
-
+    alignment/DeformableMeshToImageFitter.cpp
+    alignment/DeformableMeshToImageFitter.h
     alignment/NdcTriangleFitter.h
     alignment/NdcTriangleFitter.cpp
 
-    geometry/kernel/AxisAlignedBoundingBox.h geometry/functional/MeshFrom2dTriangle.cpp geometry/functional/MeshFrom2dTriangle.h rendering/functional/ExtractFaceVertices.cpp rendering/functional/ExtractFaceVertices.h core/TensorRepresentationConversion.h core/GetDType.cpp core/GetDType.h geometry/functional/JoinTriangleMeshes.cpp geometry/functional/JoinTriangleMeshes.h rendering/VertexColorShader.cpp rendering/VertexColorShader.h alignment/functional/WarpedVertexAndNormalJacobians.cpp alignment/functional/WarpedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu core/linalg/KroneckerTensorProduct.h alignment/kernel/DeformableMeshToImageFitter.cpp alignment/kernel/DeformableMeshToImageFitter.h alignment/kernel/DeformableMeshToImageFitterImpl.h alignment/kernel/instantiations/DeformableMeshToImageFitterCPU.cpp alignment/kernel/instantiations/DeformableMeshToImageFitterCUDA.cu core/platform_independence/AtomicCounterArray.h core/ParallelFor.h core/linalg/LapackWrapper.h core/linalg/SolveCholeskyCPU.cpp core/linalg/SolveCholesky.h core/linalg/SolveCholesky.cpp core/linalg/SolveCholeskyCUDA.cpp core/linalg/PointerAggregationForBatchOperations.h core/linalg/Rodrigues.cpp core/linalg/Rodrigues.h core/linalg/RodriguesImpl.h core/linalg/instantiations/RodriguesCPU.cpp core/linalg/instantiations/RodriguesCUDA.cu)
+    alignment/kernel/DeformableMeshToImageFitter.cpp
+    alignment/kernel/DeformableMeshToImageFitter.h
+    alignment/kernel/DeformableMeshToImageFitterImpl.h
+    alignment/kernel/instantiations/DeformableMeshToImageFitterCPU.cpp
+    alignment/kernel/instantiations/DeformableMeshToImageFitterCUDA.cu
+
+    alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp
+    alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.h
+    alignment/functional/RasterizedVertexAndNormalJacobians.cpp
+    alignment/functional/RasterizedVertexAndNormalJacobians.h
+    alignment/functional/WarpedVertexAndNormalJacobians.cpp
+    alignment/functional/WarpedVertexAndNormalJacobians.h
+
+    alignment/functional/kernel/WarpedVertexAndNormalJacobians.cpp
+    alignment/functional/kernel/WarpedVertexAndNormalJacobians.h
+    alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h
+    alignment/functional/kernel/BarycentricCoordinateJacobians.h
+    alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCPU.cpp
+    alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCUDA.cu
+    alignment/functional/kernel/ProjectionJacobians.h
+    alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp
+    alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h
+    alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h
+    alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp
+    alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
@@ -314,6 +357,10 @@ set(
     pybind/geometry/geometry.h
     pybind/geometry/functional/functional.cpp
     pybind/geometry/functional/functional.h
+    pybind/rendering/rendering.cpp
+    pybind/rendering/rendering.h
+    pybind/rendering/functional/functional.cpp
+    pybind/rendering/functional/functional.h
     pybind/enum_export.h
     pybind/core/core.cpp
     pybind/core/core.h
@@ -384,6 +431,8 @@ add_custom_target(install-python-stubs
 
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry.functional" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.geometry" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
+    COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.rendering.functional" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
+    COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.rendering" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.core.linalg" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E echo "import nnrt.core" >> ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi
     COMMAND ${CMAKE_COMMAND} -E cat ${STUBS_PACKAGE_DST_DIR}/nnrt/import.pyi ${STUBS_PACKAGE_DST_DIR}/nnrt/nnrt.pyi >> ${STUBS_PACKAGE_DST_DIR}/nnrt/__init__.pyi
@@ -393,6 +442,8 @@ add_custom_target(install-python-stubs
     # IDEs are unable to parse .functional (since it's not inside the geometry.pyi file)
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry.functional -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.geometry -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
+    COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.rendering.functional -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
+    COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.rendering -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.core.linalg -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
     COMMAND ${STUBGEN_EXECUTABLE} -m nnrt.core -o ${STUBS_PACKAGE_DST_DIR} WORKING_DIRECTORY ${PYTHON_PACKAGE_DIR}
 

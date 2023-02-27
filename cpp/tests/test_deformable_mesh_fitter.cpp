@@ -131,7 +131,7 @@ TEST_CASE("Test Deformable Mesh to Image Fitter - 25 Node Plane - CUDA") {
 	TestDeformableImageFitter_25NodePlane(device);
 }
 
-void TestDeformableImageFitter_1NodePlane(const o3c::Device& device, bool draw_depth = true) {
+void TestDeformableImageFitter_1NodePlane(const o3c::Device& device, bool use_perspective_correction = false, bool draw_depth = true) {
 	o3tg::TriangleMesh source_mesh, target_mesh;
 	//TODO: add file to test data pack
 	o3tio::ReadTriangleMesh(test::generated_mesh_test_data_directory.ToString() + "/plane_skin_source_1_node.ply", source_mesh);
@@ -169,7 +169,7 @@ void TestDeformableImageFitter_1NodePlane(const o3c::Device& device, bool draw_d
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
 			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.f, 1,
-			                                       -1, -1, true, false, true);
+			                                       -1, -1, use_perspective_correction, false, true);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
 	pixel_depths = pixel_depths.Reshape(image_resolution);
@@ -202,7 +202,7 @@ void TestDeformableImageFitter_1NodePlane(const o3c::Device& device, bool draw_d
 
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-	nnrt::alignment::DeformableMeshToImageFitter fitter(5, 1e-6, true, 10.f);
+	nnrt::alignment::DeformableMeshToImageFitter fitter(5, 1e-6, use_perspective_correction, 10.f);
 	o3tg::Image dummy_color_image;
 
 	fitter.FitToImage(warp_field, source_mesh, dummy_color_image, depth_image, depth_mask, projection_matrix, extrinsic_matrix, 1.0f);
@@ -212,10 +212,10 @@ void TestDeformableImageFitter_1NodePlane(const o3c::Device& device, bool draw_d
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlane(device);
+	TestDeformableImageFitter_1NodePlane(device, true);
 }
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlane(device);
+	TestDeformableImageFitter_1NodePlane(device, true);
 }

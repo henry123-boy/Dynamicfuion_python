@@ -441,3 +441,26 @@ def test_loss_from_inputs(device: o3c.Device, image_size, intrinsic_matrix, extr
             source_depth_path = path.images / "plane_xy_depth_000.png"
             o3d.t.io.write_image(str(source_depth_path), source_depth_o3d)
             o3d.t.io.write_image(str(source_color_path), source_color_o3d)
+
+
+@pytest.mark.parametrize("device", [o3c.Device('cpu:0')])
+def test_compute_jacobian(device: o3c.Device):
+    image_size = (100, 100)
+    intrinsic_matrix = o3c.Tensor([[100., 0., 50.],
+                                   [0., 100., 50.],
+                                   [0., 0., 1.0]], dtype=o3c.float64, device=o3c.Device('cpu:0'))
+    extrinsic_matrix = o3c.Tensor([[-1.0, 0.0, 0.0, 0.0,
+                                    0.0, 1.0, 0.0, 0.0,
+                                    0.0, 0.0, -1.0, 1.2,
+                                    0.0, 0.0, 0.0, 1.0]], dtype=o3c.float64, device=o3c.Device('cpu:0'))
+    source_mesh: o3d.t.geometry.TriangleMesh = o3d.t.io.read_triangle_mesh(
+        "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/"
+        "test_data/meshes/plane_skin_source_1_node.ply")
+    target_mesh: o3d.t.geometry.TriangleMesh = o3d.t.io.read_triangle_mesh(
+        "/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/"
+        "test_data/meshes/plane_skin_target_1_node.ply")
+
+    source_mesh.transform(extrinsic_matrix)
+    target_mesh.transform(extrinsic_matrix)
+
+    

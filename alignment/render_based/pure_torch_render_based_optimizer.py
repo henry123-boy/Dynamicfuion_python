@@ -179,13 +179,17 @@ class PureTorchRenderBasedOptimizer:
                                           rendered_point_outside_depth_range_mask)
         return residuals
 
+    def compute_jacobian(self):
+        jacobian = torch.autograd.functional.jacobian(
+            lambda graph_node_rotations, graph_node_translations:
+            self.compute_residuals_from_inputs(graph_node_rotations, graph_node_translations),
+            inputs=(self.graph_node_rotations, self.graph_node_translations)
+        )
+        return jacobian
+
     def optimize(self):
         with torch.no_grad():
             max_iteration_count = 1
             for iteration in range(0, max_iteration_count):
-                jacobian = torch.autograd.functional.jacobian(
-                    lambda graph_node_rotations, graph_node_translations:
-                    self.compute_residuals_from_inputs(graph_node_rotations, graph_node_translations),
-                    inputs=(self.graph_node_rotations, self.graph_node_translations)
-                )
+                jacobian = self.compute_jacobian()
                 print(jacobian.shape)

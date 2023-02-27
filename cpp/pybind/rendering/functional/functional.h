@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/18/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 2/27/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,16 +14,13 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-//3rd party
-#include <open3d/core/Tensor.h>
+// local includes
+#include "pybind/nnrt_pybind.h"
 
 namespace nnrt::rendering::functional {
 
-open3d::core::Tensor InterpolateVertexAttributes(
-		const open3d::core::Tensor& pixel_face_indices,
-		const open3d::core::Tensor& barycentric_coordinates,
-		const open3d::core::Tensor& face_vertex_attributes
-);
+void pybind_rendering_functional(py::module& m);
+void pybind_rendering_functional_extract_face_vertices(py::module& m);
+void pybind_rendering_functional_interpolate_vertex_attributes(py::module& m);
 
-
-} // namespace nnrt::rendering::functional
+} // namespace nnrt::geometry::functional

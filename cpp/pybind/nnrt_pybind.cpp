@@ -7,6 +7,7 @@
 
 #include "pybind/nnrt_pybind.h"
 #include "pybind/geometry/geometry.h"
+#include "pybind/rendering/rendering.h"
 #include "pybind/core/core.h"
 #include "pybind/io.h"
 
@@ -37,9 +38,9 @@ PYBIND11_MODULE(nnrt, m) {
 	nnrt::core::pybind_core(m);
 	nnrt::geometry::pybind_geometry(m);
 	nnrt::io::pybind_io(m);
+	nnrt::rendering::pybind_rendering(m);
 
-
-	// legacy NNRT stuff below (deprecated)
+	//TODO: clean up python code and remove legacy NNRT stuff below (deprecated)
 	m.def("compute_augmented_flow_from_rotation",
 	      &image_proc::compute_augmented_flow_from_rotation,
 	      "flow_image_rot_sa2so"_a, "flow_image_so2to"_a, "flow_image_rot_to2ta"_a, "height"_a, "width"_a,

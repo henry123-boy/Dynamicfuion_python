@@ -24,7 +24,7 @@
 #include "geometry/functional/Downsample3dPoints.h"
 
 // local
-#include "functional/functional.h"
+#include "pybind/geometry/functional/functional.h"
 #include "geometry.h"
 
 
