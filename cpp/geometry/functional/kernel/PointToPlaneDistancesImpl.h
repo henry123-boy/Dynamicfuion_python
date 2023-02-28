@@ -29,8 +29,9 @@ void ComputePointToPlaneDistances(open3d::core::Tensor& distances,
                                   const open3d::core::Tensor& vertices2) {
 	const int64_t point_count = vertices1.GetLength();
 	distances = o3c::Tensor::Zeros({point_count}, o3c::Dtype::Float32, vertices1.GetDevice());
+
 	NDArrayIndexer distances_indexer(distances, 1);
-	NDArrayIndexer normals1_indexer(vertices1, 1);
+	NDArrayIndexer normals1_indexer(normals1, 1);
 	NDArrayIndexer vertices1_indexer(vertices1, 1);
 	NDArrayIndexer vertices2_indexer(vertices2, 1);
 

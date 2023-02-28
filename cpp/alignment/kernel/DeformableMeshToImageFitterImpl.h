@@ -316,8 +316,8 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						// auto dn_drotation_c = dn_drotation.toDenseMatrix();
 
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
-						//__DEBUG (uncomment)
-						// pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
+						//__DEBUG (uncomment if commented)
+						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
 						pixel_vertex_anchor_translation_jacobian +=
 								dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
 					}

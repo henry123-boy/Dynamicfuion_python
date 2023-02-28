@@ -463,4 +463,16 @@ def test_compute_jacobian(device: o3c.Device):
     source_mesh.transform(extrinsic_matrix)
     target_mesh.transform(extrinsic_matrix)
 
-    
+    max_depth = 10.0
+    node_coverage = 0.25
+
+    extracted_face_vertices, clipped_face_mask = \
+        nnrt.rendering.functional.get_mesh_ndc_face_vertices_and_clip_mask(
+            source_mesh, intrinsic_matrix, image_size, 0.0, max_depth
+        )
+
+    pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances = \
+        nnrt.rendering.rasterize_ndc_triangles(
+            extracted_face_vertices, clipped_face_mask, image_size, 0., 1, -1, -1, True, False, False
+        )
+

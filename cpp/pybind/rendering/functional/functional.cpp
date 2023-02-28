@@ -26,8 +26,8 @@ void pybind_rendering_functional(py::module& m) {
 	py::module m_submodule = m.def_submodule(
 			"functional", "Module with stateless functions for rasterizing or rendering Open3D/NNRT geometry objects."
 	);
-	pybind_rendering_functional_extract_face_vertices(m);
-	pybind_rendering_functional_interpolate_vertex_attributes(m);
+	pybind_rendering_functional_extract_face_vertices(m_submodule);
+	pybind_rendering_functional_interpolate_vertex_attributes(m_submodule);
 
 
 }
