@@ -49,7 +49,7 @@ open3d::t::geometry::TriangleMesh WarpTriangleMesh(
 );
 
 // uses precomputed anchors
-open3d::t::geometry::TriangleMesh WarpTriangleMesh(
+open3d::t::geometry::TriangleMesh WarpTriangleMeshUsingSuppliedAnchors(
 		const open3d::t::geometry::TriangleMesh& input_mesh,
 		const open3d::core::Tensor& nodes, const open3d::core::Tensor& node_rotations, const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& anchors, const open3d::core::Tensor& anchor_weights,

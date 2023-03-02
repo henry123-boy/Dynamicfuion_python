@@ -292,7 +292,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 								)
 						);
 						// used to compute warped vertex position Jacobian w.r.t. node translation, weight * I_3x3
-						float stored_node_weight =
+						float stored_negative_anchor_weight =
 								warped_vertex_position_jacobian_data[
 										(i_vertex * anchor_count_per_vertex * 4) +
 										(i_vertex_anchor * 4) + 3];
@@ -319,7 +319,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						//__DEBUG (uncomment if commented)
 						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
 						pixel_vertex_anchor_translation_jacobian +=
-								dr_dv * (Eigen::Matrix3f::Identity() * stored_node_weight);
+								dr_dv * (Eigen::Matrix3f::Identity() * stored_negative_anchor_weight);
 					}
 
 					// accumulate addresses of jacobians for each node
@@ -454,6 +454,8 @@ NNRT_CONSTANT_WHEN_CUDACC const int column_1_lookup_table[21] = {
 
 
 //TODO: can optimize: don't fill in lower triangle at all, use a batched triangular solver instead of Cholesky?
+
+
 template<open3d::core::Device::DeviceType TDevice>
 void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
@@ -506,6 +508,17 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				int i_unique_element_in_block = static_cast<int>(workload_index % unique_entry_count_per_block);
 				int i_column_0 = column_0_lookup_table[i_unique_element_in_block];
 				int i_column_1 = column_1_lookup_table[i_unique_element_in_block];
+
+				//__DEBUG
+				// bool TKeepRotationsIndependentFromTranslations = true;
+				// if(TKeepRotationsIndependentFromTranslations){
+				// 	if((i_column_0 >= 3 && i_column_1 < 3) || (i_column_0 < 3 && i_column_1 >= 3)){
+				// 		hessian_approximation_block_data[(i_node * 36) + (i_column_0 * 6) + i_column_1] = 0.0;
+				// 		hessian_approximation_block_data[(i_node * 36) + (i_column_1 * 6) + i_column_0] = 0.0;
+				// 		return;
+				// 	}
+				// }
+
 				int node_pixel_jacobian_list_length = node_pixel_count_data[i_node];
 				float column_product = 0.0;
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {

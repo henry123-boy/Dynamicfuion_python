@@ -32,9 +32,10 @@ inline core::kernel::Matrix2x3f CameraToNdcSpaceProjectionJacobian(float ndc_foc
 	core::kernel::Matrix2x3f jacobian;
 	//TODO: try optimizing by avoiding the comma initializer syntax,
 	// see https://stackoverflow.com/a/17704129/844728
+	float z_squared = camera_space_vertex.z()*camera_space_vertex.z();
 	jacobian <<
-	         ndc_focal_coefficient_x / camera_space_vertex.z(), 0.f, -ndc_focal_coefficient_x * camera_space_vertex.x() / camera_space_vertex.z(),
-			0.f, ndc_focal_coefficient_y / camera_space_vertex.z(), -ndc_focal_coefficient_y * camera_space_vertex.y() / camera_space_vertex.z();
+	         ndc_focal_coefficient_x / camera_space_vertex.z(), 0.f, -ndc_focal_coefficient_x * camera_space_vertex.x() / z_squared,
+			0.f, ndc_focal_coefficient_y / camera_space_vertex.z(), -ndc_focal_coefficient_y * camera_space_vertex.y() / z_squared;
 	return jacobian;
 }
 } // namespace nnrt::alignment::functional::kernel

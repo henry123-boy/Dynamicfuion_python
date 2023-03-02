@@ -67,8 +67,9 @@ void WarpedVertexAndNormalJacobians(
     const auto* node_rotation_data = node_rotations.GetDataPtr<float>();
 
     // these will be used as skew-symmetric vectors later
-    vertex_position_jacobians = o3c::Tensor({vertex_count, anchors_per_vertex, 4}, vertex_positions.GetDtype(), device);
-    vertex_normal_jacobians = o3c::Tensor({vertex_count, anchors_per_vertex, 3}, vertex_positions.GetDtype(), device);
+	// TODO: potential optimization -- maybe can start with uninitialized-value tensors instead of Zeroes
+    vertex_position_jacobians = o3c::Tensor::Zeros({vertex_count, anchors_per_vertex, 4}, vertex_positions.GetDtype(), device);
+    vertex_normal_jacobians = o3c::Tensor::Zeros({vertex_count, anchors_per_vertex, 3}, vertex_positions.GetDtype(), device);
 
     auto* vertex_position_jacobian_data = vertex_position_jacobians.GetDataPtr<float>();
     auto* vertex_normal_jacobian_data = vertex_normal_jacobians.GetDataPtr<float>();
@@ -79,6 +80,9 @@ void WarpedVertexAndNormalJacobians(
                 const auto i_vertex = workload_idx / anchors_per_vertex;
                 const auto i_anchor = workload_idx % anchors_per_vertex;
                 const auto i_node = warp_anchor_data[i_vertex * anchors_per_vertex + i_anchor];
+				if(i_node == -1){
+					return; // sentinel value;
+				}
                 const auto node_weight = warp_anchor_weight_data[i_vertex * anchors_per_vertex + i_anchor];
                 Eigen::Map<const Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>
                         node_rotation(node_rotation_data + (i_node * 9));

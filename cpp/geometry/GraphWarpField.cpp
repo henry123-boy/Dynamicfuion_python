@@ -159,10 +159,12 @@ GraphWarpField::WarpMesh(
 		const open3d::core::Tensor& extrinsics/* = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
 ) const {
 	if (disable_neighbor_thresholding) {
-		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights, false, 0, extrinsics);
+		return functional::WarpTriangleMeshUsingSuppliedAnchors(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights, false,
+		                                                        0, extrinsics);
 	} else {
-		return functional::WarpTriangleMesh(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights,
-		                                    this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count, extrinsics);
+		return functional::WarpTriangleMeshUsingSuppliedAnchors(input_mesh, this->nodes, this->rotations, this->translations, anchors, weights,
+		                                                        this->threshold_nodes_by_distance_by_default, this->minimum_valid_anchor_count,
+		                                                        extrinsics);
 	}
 }
 

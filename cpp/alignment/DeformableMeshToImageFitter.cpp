@@ -145,7 +145,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 		//__DEBUG
-		// auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 
 
 		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
