@@ -214,7 +214,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(const o3c::Device& device, 
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneTranslation(device, true);
+	TestDeformableImageFitter_1NodePlaneTranslation(device, false);
 }
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CUDA") {

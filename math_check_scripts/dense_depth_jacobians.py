@@ -25,11 +25,17 @@ face_vertex0 = np.array([0.0625, -0.0625, 1.2])
 face_vertex1 = np.array([-0.0625, -0.0625, 1.2])
 face_vertex2 = np.array([-0.0625, 0.0625, 1.2])
 
+residual = 0.19999985
+
 tested_ray_point = np.array([-0.0299999714, -0.0299999714])
 
 barycentrics_perspective_distorted = np.array([0.356, 2.14576641e-08, 0.643999577])
 
 intrinsics_ndc = Intrinsics(2.0, -2.0, 0.0, 0.0)
+
+rendered_point_position = np.array([-0.02799999, -0.02799999, 1.3999996])
+rendered_point_normal = np.array([0., 0., -0.99999964])
+reference_point_position = np.array([-0.02399999, -0.02399999, 1.1999997])
 
 
 def project_point(point: np.ndarray, intrinsics: Intrinsics) -> np.ndarray:
@@ -135,6 +141,7 @@ def main():
     d_ndc_v0_d_v0 = jacobian_percpsective_projections_wrt_vertex(face_vertex0, intrinsics_ndc)
     d_ndc_v1_d_v1 = jacobian_percpsective_projections_wrt_vertex(face_vertex1, intrinsics_ndc)
     d_ndc_v2_d_v2 = jacobian_percpsective_projections_wrt_vertex(face_vertex2, intrinsics_ndc)
+    print("Jacobians dndc dv:", d_ndc_v0_d_v0, d_ndc_v1_d_v1, d_ndc_v2_d_v2, sep="\n")
 
     d_bary_distorted_d_v0 = d_bary_distorted_d_ndc_v0.dot(d_ndc_v0_d_v0)
     d_bary_distorted_d_v1 = d_bary_distorted_d_ndc_v1.dot(d_ndc_v1_d_v1)
@@ -142,7 +149,12 @@ def main():
 
     d_bary_distorted_d_v0v1v2 = np.hstack((d_bary_distorted_d_v0, d_bary_distorted_d_v1, d_bary_distorted_d_v2))
 
-    print(d_bary_distorted_d_v0v1v2)
+    print()
+    print("Jacobian dbary_dist dv:", d_bary_distorted_d_v0v1v2)
+
+    d_residual_d_rendered_normal = rendered_point_position - reference_point_position  # 3x1
+    d_residual_d_rendered_vector = rendered_point_normal  # 3x1
+
 
     return PROGRAM_EXIT_SUCCESS
 

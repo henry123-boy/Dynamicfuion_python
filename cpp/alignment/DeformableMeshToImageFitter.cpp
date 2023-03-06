@@ -120,12 +120,11 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 		//__DEBUG
-		// auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		// auto center_reference_point_cloud = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 		auto center_residuals = residuals.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 		// auto center_masks = residual_mask.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-
-
 
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 		// [V X A/V X 4], [V X A/V X 3]
