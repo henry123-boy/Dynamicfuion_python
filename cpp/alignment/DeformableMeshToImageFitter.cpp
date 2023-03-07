@@ -86,7 +86,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		//TODO: add an obvious optional optimization in the case perspective-correct barycentrics are used: output the
 		// distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
 		std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
-				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.f, 1, -1, -1,
+				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.5f, 1, -1, -1,
 				                                       this->use_perspective_correction, false, true);;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
@@ -122,9 +122,9 @@ void DeformableMeshToImageFitter::FitToImage(
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
 
 		//__DEBUG
-		auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 		auto center_residuals = residuals.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 		// auto center_masks = residual_mask.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 
@@ -164,6 +164,23 @@ void DeformableMeshToImageFitter::FitToImage(
 				point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
 				warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength()
 		);
+
+		//__DEBUG
+		auto anchor_count = warp_anchors.GetShape(1);
+		// ==== w/o dropping anchor data beyond first node-anchor (multiple-node-case) ====
+		// auto center_pixel_jacobians = pixel_jacobians.Reshape({100,100, anchor_count*3, 6}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(3,0,3).Clone();
+		// auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(3,3,6).Clone();
+		// auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2,3});
+		// auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2,3});
+		// ==== w/ dropping anchor data beyond first node-anchor (single-node-case) ====
+		auto center_pixel_jacobians = pixel_jacobians.Slice(1,0,1).Reshape({100,100, 6}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2,0,3).Clone();
+		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2,3,6).Clone();
+		auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2});
+		auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2});
+
+
 
 		// compute (J^T)J, i.e. hessian approximation, in block-diagonal form
 		open3d::core::Tensor hessian_approximation_blocks;

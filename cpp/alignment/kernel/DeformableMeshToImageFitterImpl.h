@@ -292,7 +292,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 								)
 						);
 						// used to compute warped vertex position Jacobian w.r.t. node translation, weight * I_3x3
-						float stored_negative_anchor_weight =
+						float stored_anchor_weight =
 								warped_vertex_position_jacobian_data[
 										(i_vertex * anchor_count_per_vertex * 4) +
 										(i_vertex_anchor * 4) + 3];
@@ -310,16 +310,16 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
 
 						//__DEBUG
-						// auto dr_dv_c = dr_dv.eval();
-						// auto dr_dn_c = dr_dn.eval();
-						// auto dv_drotation_c = dv_drotation.toDenseMatrix();
-						// auto dn_drotation_c = dn_drotation.toDenseMatrix();
+						auto dr_dv_c = dr_dv.eval();
+						auto dr_dn_c = dr_dn.eval();
+						auto dv_drotation_c = dv_drotation.toDenseMatrix();
+						auto dn_drotation_c = dn_drotation.toDenseMatrix();
 
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 						//__DEBUG (uncomment if commented)
 						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
 						pixel_vertex_anchor_translation_jacobian +=
-								dr_dv * (Eigen::Matrix3f::Identity() * stored_negative_anchor_weight);
+								dr_dv * (Eigen::Matrix3f::Identity() * stored_anchor_weight);
 					}
 
 					// accumulate addresses of jacobians for each node
@@ -599,7 +599,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 					if (!residual_mask_data[i_pixel]) continue;
 					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
 					float residual = residual_data[i_pixel];
-					node_pixel_gradient -= node_pixel_jacobian * residual;
+					node_pixel_gradient += node_pixel_jacobian * residual;
 				}
 				Eigen::Map<Eigen::Vector<float, 6>> negative_node_gradient(negative_gradient_data + node_index * 6);
 				negative_node_gradient -= node_pixel_gradient;

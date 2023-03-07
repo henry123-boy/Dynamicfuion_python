@@ -95,7 +95,7 @@ void WarpedVertexAndNormalJacobians(
                 // store node weight to increase speed of retrieval for the vertex translation jacobian
                 float* stored_node_weight =
                         vertex_position_jacobian_data + (i_vertex * anchors_per_vertex * 4) + (i_anchor * 4) + 3;
-                *stored_node_weight = -node_weight;
+                *stored_node_weight = node_weight;
                 Eigen::Map<Eigen::Vector3f> normal_rotation_jacobian
                         (vertex_normal_jacobian_data + (i_vertex * anchors_per_vertex * 3) + (i_anchor * 3));
 

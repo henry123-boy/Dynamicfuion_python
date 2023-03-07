@@ -170,7 +170,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(const o3c::Device& device, 
 			nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(target_mesh, projection_matrix, image_resolution, 0.0, max_depth);
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
-			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.f, 1,
+			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.5f, 1,
 			                                       -1, -1, use_perspective_correction, false, true);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
