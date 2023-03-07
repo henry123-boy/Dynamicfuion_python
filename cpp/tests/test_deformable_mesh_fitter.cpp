@@ -209,12 +209,13 @@ void TestDeformableImageFitter_1NodePlaneTranslation(const o3c::Device& device, 
 
 	fitter.FitToImage(warp_field, source_mesh, dummy_color_image, depth_image, depth_mask, projection_matrix, extrinsic_matrix, 1.0f);
 
+	//TODO: real checks against gt
 	REQUIRE(true);
 }
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneTranslation(device, false);
+	TestDeformableImageFitter_1NodePlaneTranslation(device, true);
 }
 
 TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Translation - CUDA") {
@@ -299,6 +300,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device& device, boo
 
 	fitter.FitToImage(warp_field, source_mesh, dummy_color_image, depth_image, depth_mask, projection_matrix, extrinsic_matrix, 1.0f);
 
+	//TODO: real checks against gt
 	REQUIRE(true);
 }
 

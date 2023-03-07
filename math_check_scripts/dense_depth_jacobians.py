@@ -14,6 +14,8 @@
 #  limitations under the License.
 #  ================================================================
 import sys
+from typing import Tuple
+
 import numpy as np
 from collections import namedtuple
 
@@ -76,7 +78,8 @@ def jacobian_percpsective_projections_wrt_vertex(vertex: np.ndarray, intrinsics:
     ])
 
 
-def jacobian_barycentrics_perspective_distorted_wrt_vertices(vertex0, vertex1, vertex2, intrinsics, ray_point):
+def jacobian_barycentrics_perspective_distorted_wrt_vertices(vertex0, vertex1, vertex2, intrinsics, ray_point) -> \
+        Tuple[Tuple[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
     ndc_vertex0 = project_point(vertex0, intrinsics)
     ndc_vertex1 = project_point(vertex1, intrinsics)
     ndc_vertex2 = project_point(vertex2, intrinsics)
@@ -128,33 +131,133 @@ def jacobian_barycentrics_perspective_distorted_wrt_vertices(vertex0, vertex1, v
     d_bary_distorted_d_ndc_v2[2] = \
         (-fp_area2 * d_total_fp_area_d_ndc_v0v1v2[2]) / total_fp_area ** 2
 
-    print(d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2, sep="\n")
+    return (d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2), np.array(
+        [bary_distorted0, bary_distorted1, bary_distorted2])
 
-    return [d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2]
+
+def perspective_correct_barycentrics(barycentrics_distorted: np.ndarray, vertex0: np.ndarray, vertex1: np.ndarray,
+                                     vertex2: np.ndarray) -> np.ndarray:
+    rho0 = barycentrics_distorted[0]
+    rho1 = barycentrics_distorted[1]
+    rho2 = barycentrics_distorted[2]
+    z0 = vertex0[2]
+    z1 = vertex1[2]
+    z2 = vertex2[2]
+
+    bary0 = rho0 * z1 * z2
+    bary1 = rho1 * z0 * z2
+    bary2 = rho2 * z0 * z1
+
+    return np.array([bary0, bary1, bary2]) / (bary0 + bary1 + bary2)
+
+
+def compute_jacobian_perspective_correction(barycentrics_distorted: np.ndarray, vertex0: np.ndarray,
+                                            vertex1: np.ndarray,
+                                            vertex2: np.ndarray) -> np.ndarray:
+    rho0 = barycentrics_distorted[0]
+    rho1 = barycentrics_distorted[1]
+    rho2 = barycentrics_distorted[2]
+    z0 = vertex0[2]
+    z1 = vertex1[2]
+    z2 = vertex2[2]
+
+    coord_0_numerator = rho0 * z1 * z2
+    coord_1_numerator = rho1 * z0 * z2
+    coord_2_numerator = rho2 * z0 * z1
+
+    g = coord_0_numerator + coord_1_numerator + coord_2_numerator
+    g_squared = g * g
+
+    d_g_d_z0 = (rho1 * z2 + rho2 * z1)
+    d_g_d_z1 = (rho0 * z2 + rho2 * z0)
+    d_g_d_z2 = (rho0 * z1 + rho1 * z0)
+
+    d_g_d_rho0 = (z1 * z2)
+    d_g_d_rho1 = (z0 * z2)
+    d_g_d_rho2 = (z0 * z1)
+
+    # row 0
+    d_bary0_d_rho0 = (g - coord_0_numerator) * d_g_d_rho0 / g_squared
+    d_bary0_d_rho1 = (-coord_0_numerator) * d_g_d_rho1 / g_squared
+    d_bary0_d_rho2 = (-coord_0_numerator) * d_g_d_rho2 / g_squared
+
+    d_bary0_d_z0 = (- coord_0_numerator) * d_g_d_z0 / g_squared
+    d_bary0_d_z1 = (g * rho0 * z2 - coord_0_numerator * d_g_d_z1) / g_squared
+    d_bary0_d_z2 = (g * rho0 * z1 - coord_0_numerator * d_g_d_z2) / g_squared
+
+    # row 1
+    d_bary1_d_rho0 = (-coord_1_numerator) * d_g_d_rho0 / g_squared
+    d_bary1_d_rho1 = (g - coord_1_numerator) * d_g_d_rho1 / g_squared
+    d_bary1_d_rho2 = (-coord_1_numerator) * d_g_d_rho2 / g_squared
+
+    d_bary1_d_z0 = (g * rho1 * z2 - coord_1_numerator * d_g_d_z0) / g_squared
+    d_bary1_d_z1 = (- coord_1_numerator * d_g_d_z1) / g_squared
+    d_bary1_d_z2 = (g * rho1 * z0 - coord_1_numerator * d_g_d_z2) / g_squared
+
+    # row 2
+    d_bary2_d_rho0 = (-coord_2_numerator) * d_g_d_rho0 / g_squared
+    d_bary2_d_rho1 = (-coord_2_numerator) * d_g_d_rho1 / g_squared
+    d_bary2_d_rho2 = (g - coord_2_numerator) * d_g_d_rho2 / g_squared
+
+    d_bary2_d_z0 = (g * rho2 * z1 - coord_2_numerator * d_g_d_z0) / g_squared
+    d_bary2_d_z1 = (g * rho2 * z0 - coord_2_numerator * d_g_d_z1) / g_squared
+    d_bary2_d_z2 = (- coord_2_numerator * d_g_d_z2) / g_squared
+
+    return np.array([[d_bary0_d_rho0, d_bary0_d_rho1, d_bary0_d_rho2, d_bary0_d_z0, d_bary0_d_z1, d_bary0_d_z2],
+                     [d_bary1_d_rho0, d_bary1_d_rho1, d_bary1_d_rho2, d_bary1_d_z0, d_bary1_d_z1, d_bary1_d_z2],
+                     [d_bary2_d_rho0, d_bary2_d_rho1, d_bary2_d_rho2, d_bary2_d_z0, d_bary2_d_z1, d_bary2_d_z2]])
+
+
+def jacobian_barycentrics_corrected_wrt_vertices(d_bary_distorted_d_v0v1v2: np.ndarray, d_bary_corrected_d_bary_distorted_and_z):
+    d_z_d_v0v1v2 = np.kron(np.eye(3), np.array([[0, 0, 1]]))
+    d_bary_distorted_and_z_d_v0v1v2 = np.vstack((d_bary_distorted_d_v0v1v2, d_z_d_v0v1v2))
+    return d_bary_corrected_d_bary_distorted_and_z.dot(d_bary_distorted_and_z_d_v0v1v2)
 
 
 def main():
     np.set_printoptions(suppress=True, linewidth=120)
-    d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2 = \
+    (d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2), bary_distorted = \
         jacobian_barycentrics_perspective_distorted_wrt_vertices(face_vertex0, face_vertex1, face_vertex2,
                                                                  intrinsics_ndc, tested_ray_point)
+
+    print("Distorted barycentrics:", bary_distorted, sep="\n")
+    print()
+    print("d_bary d ndc 0, 1, and 2:", d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2,
+          sep="\n")
+    print()
+
     d_ndc_v0_d_v0 = jacobian_percpsective_projections_wrt_vertex(face_vertex0, intrinsics_ndc)
     d_ndc_v1_d_v1 = jacobian_percpsective_projections_wrt_vertex(face_vertex1, intrinsics_ndc)
     d_ndc_v2_d_v2 = jacobian_percpsective_projections_wrt_vertex(face_vertex2, intrinsics_ndc)
-    print("Jacobians dndc dv:", d_ndc_v0_d_v0, d_ndc_v1_d_v1, d_ndc_v2_d_v2, sep="\n")
-
+    print("Jacobians dndc dV:", d_ndc_v0_d_v0, d_ndc_v1_d_v1, d_ndc_v2_d_v2, sep="\n")
+    print()
     d_bary_distorted_d_v0 = d_bary_distorted_d_ndc_v0.dot(d_ndc_v0_d_v0)
     d_bary_distorted_d_v1 = d_bary_distorted_d_ndc_v1.dot(d_ndc_v1_d_v1)
     d_bary_distorted_d_v2 = d_bary_distorted_d_ndc_v2.dot(d_ndc_v2_d_v2)
 
     d_bary_distorted_d_v0v1v2 = np.hstack((d_bary_distorted_d_v0, d_bary_distorted_d_v1, d_bary_distorted_d_v2))
 
+    print("Jacobian dbary_dist dV:", d_bary_distorted_d_v0v1v2, sep="\n")
     print()
-    print("Jacobian dbary_dist dv:", d_bary_distorted_d_v0v1v2)
+
+    d_bary_corrected = perspective_correct_barycentrics(bary_distorted, face_vertex0, face_vertex1, face_vertex2)
+    print("Barycentrics perspective-corrected:", d_bary_corrected, sep="\n")
+    print()
+
+    d_bary_corrected_d_bary_distorted_and_z = \
+        compute_jacobian_perspective_correction(bary_distorted, face_vertex0, face_vertex1, face_vertex2)
+    print("Barycentrics jacobian wr.t. distorted barycentrics & depths:", d_bary_corrected_d_bary_distorted_and_z, sep="\n")
+    print()
+
+    d_bary_corrected_wrt_vertices = \
+        jacobian_barycentrics_corrected_wrt_vertices(d_bary_distorted_d_v0v1v2, d_bary_corrected_d_bary_distorted_and_z)
+    print("Jacobian dbary_corrected dV:", d_bary_corrected_wrt_vertices, sep="\n")
+    print()
+
+
 
     d_residual_d_rendered_normal = rendered_point_position - reference_point_position  # 3x1
     d_residual_d_rendered_vector = rendered_point_normal  # 3x1
-
 
     return PROGRAM_EXIT_SUCCESS
 

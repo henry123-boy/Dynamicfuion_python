@@ -119,6 +119,8 @@ void DeformableMeshToImageFitter::FitToImage(
 						intrinsic_matrix
 				);
 
+		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
+
 		//__DEBUG
 		auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
 		auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
@@ -190,7 +192,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
 		warp_field.RotateNodes(rotation_matrix_updates);
 
-		//TODO: update maximum update vector
+
 		iteration++;
 	}
 }

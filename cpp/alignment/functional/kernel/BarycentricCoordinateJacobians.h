@@ -248,6 +248,7 @@ inline tuple<core::kernel::Matrix3f, core::kernel::Matrix3f> Jacobian_Perspectiv
             -coord2_numerator * v0z_x_v2z,
             (denominator - coord2_numerator) * v0z_x_v1z;
     //@formatter:on
+	partial_coords_wrt_distorted /= denominator_squared;
 
 	const float partial_denominator_wrt_z0 =
 			distorted_barycentric_coordinates(1) * vertex2z + vertex1z * distorted_barycentric_coordinates(2);
@@ -256,7 +257,7 @@ inline tuple<core::kernel::Matrix3f, core::kernel::Matrix3f> Jacobian_Perspectiv
 	const float partial_denominator_wrt_z2 =
 			distorted_barycentric_coordinates(0) * vertex1z + vertex0z * distorted_barycentric_coordinates(1);
 
-	Eigen::Matrix3f partial_coords_wrt_z;
+	core::kernel::Matrix3f partial_coords_wrt_z;
 	//@formatter:off
     partial_coords_wrt_z <<
                          -coord0_numerator * partial_denominator_wrt_z0,
@@ -277,7 +278,7 @@ inline tuple<core::kernel::Matrix3f, core::kernel::Matrix3f> Jacobian_Perspectiv
             coord2_numerator * partial_denominator_wrt_z1,
             -coord2_numerator * partial_denominator_wrt_z2;
     //@formatter:on
-	partial_coords_wrt_z /= (denominator_squared + K_EPSILON);
+	partial_coords_wrt_z /= (denominator_squared);
 
 	return make_tuple(partial_coords_wrt_distorted, partial_coords_wrt_z);
 }
