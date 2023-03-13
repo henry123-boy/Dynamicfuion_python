@@ -103,8 +103,14 @@ void DeformableMeshToImageFitter::FitToImage(
 		// 	o3tio::WriteImage("/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data/images/__debug_depth_1-node.png", stretched_depth_image);
 		// }
 
+		//__DEBUG
+		int debug_start_row = 46;
+		int debug_start_col = 45;
+		int debug_end_row = 54;
+		int debug_end_col = 55;
+
 		// __DEBUG
-		// auto center_faces = pixel_face_indices.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_faces = pixel_face_indices.Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
@@ -122,11 +128,19 @@ void DeformableMeshToImageFitter::FitToImage(
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
 
 		//__DEBUG
-		// auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		// auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		// auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100,100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		auto center_residuals = residuals.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		// auto center_masks = residual_mask.Reshape({100,100}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100, 100, 3})
+		                                                               .Slice(0, debug_start_row, debug_end_row)
+		                                                               .Slice(1, debug_start_col, debug_end_col).Clone();
+		auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100, 100, 3})
+		                                                             .Slice(0, debug_start_row, debug_end_row)
+		                                                             .Slice(1, debug_start_col, debug_end_col).Clone();
+		auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100, 100, 3})
+		                                                             .Slice(0, debug_start_row, debug_end_row)
+		                                                             .Slice(1, debug_start_col, debug_end_col).Clone();
+		auto center_residuals = residuals.Reshape({100, 100}).Slice(0, debug_start_row, debug_end_row)
+		                                 .Slice(1, debug_start_col, debug_end_col).Clone();
+		// auto center_masks = residual_mask.Reshape({100,100})
+		// .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 		// [V X A/V X 4], [V X A/V X 3]
@@ -146,14 +160,15 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 		//__DEBUG
-		auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, debug_start_row, debug_end_row)
+		                                                                .Slice(1, debug_start_col, debug_end_col).Clone();
 
 
 		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
 		o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
 		o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 		//__DEBUG
-		// auto center_point_map_vectors = point_map_vectors.Reshape({100, 100, 3}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_point_map_vectors = point_map_vectors.Reshape({100, 100, 3}).Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
 		o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
 
@@ -166,17 +181,18 @@ void DeformableMeshToImageFitter::FitToImage(
 		);
 
 		//__DEBUG
-		auto anchor_count = warp_anchors.GetShape(1);
+		// auto anchor_count = warp_anchors.GetShape(1);
 		// ==== w/o dropping anchor data beyond first node-anchor (multiple-node-case) ====
-		// auto center_pixel_jacobians = pixel_jacobians.Reshape({100,100, anchor_count*3, 6}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
+		// auto center_pixel_jacobians = pixel_jacobians.Reshape({100,100, anchor_count*3, 6}).Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 		// auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(3,0,3).Clone();
 		// auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(3,3,6).Clone();
 		// auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2,3});
 		// auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2,3});
 		// ==== w/ dropping anchor data beyond first node-anchor (single-node-case) ====
-		auto center_pixel_jacobians = pixel_jacobians.Slice(1,0,1).Reshape({100,100, 6}).Slice(0, 46, 54).Slice(1, 46, 54).Clone();
-		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2,0,3).Clone();
-		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2,3,6).Clone();
+		auto center_pixel_jacobians = pixel_jacobians.Slice(1, 0, 1).Reshape({100, 100, 6})
+		                                             .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
+		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2, 0, 3).Clone();
+		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2, 3, 6).Clone();
 		auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2});
 		auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2});
 
@@ -299,7 +315,8 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeResiduals(
 	o3c::Tensor rasterized_points, rendered_point_mask;
 	nnrt::geometry::functional::UnprojectDepthImageWithoutFiltering(
 			rasterized_points, rendered_point_mask, pixel_depths, intrinsics, identity_extrinsics,
-			1.0f, this->max_depth, false);
+			1.0f, this->max_depth, false
+	);
 
 	rasterized_point_cloud = o3tg::PointCloud(rasterized_points);
 	rasterized_point_cloud.SetPointNormals(rendered_normals.Reshape({-1, 3}));

@@ -187,35 +187,43 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				}
 				auto v_image = static_cast<int>(pixel_index / image_width);
 				auto u_image = static_cast<int>(pixel_index % image_width);
-				Eigen::Map<const Eigen::RowVector3f> pixel_point_map_vector(point_map_vector_data + pixel_index * 3);
-				Eigen::Map<const Eigen::RowVector3f> pixel_rasterized_normal(rasterized_normal_data + pixel_index * 3);
 
-				Eigen::Map<const core::kernel::Matrix3x9f> pixel_vertex_position_jacobian
+				// ==== VARIABLE NAME LEGEND ====
+				// r stands for "residuals"
+				// subscript l refers to pixel l
+				// wl and nl stand for rasterized warped vertex positions and normals, respectively
+				// V and N stand for warped vertex positions and normals, respectively
+
+				// ∂r/∂nl = ∂nl(wl-ol)/∂nl = (wl-ol)^T
+				Eigen::Map<const Eigen::RowVector3f> dr_dnl(point_map_vector_data + pixel_index * 3);
+				// ∂r/∂wl = ∂nl(wl-ol)/∂wl = nl^T
+				Eigen::Map<const Eigen::RowVector3f> dr_dwl(rasterized_normal_data + pixel_index * 3);
+
+
+				Eigen::Map<const core::kernel::Matrix3x9f> dwl_dV
 						(rasterized_vertex_position_jacobian_data + pixel_index * (3 * 9));
-				Eigen::Map<const core::kernel::Matrix3x9f> pixel_rasterized_normal_jacobian
+				Eigen::Map<const core::kernel::Matrix3x9f> dnl_dV
 						(rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10));
 				Eigen::Map<const Eigen::RowVector3f> pixel_barycentric_coordinates
 						(rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10) + (3 * 9));
-				// r stands for "residuals"
-				// wl and nl stand for rasterized vertex positions and normals, respectively
-				// V and N stand for warped vertex positions and normals, respectively
+
 				// [1 x 3] * [3 x 9] = [1 x 9]
-				auto dr_dwl_x_dwl_dV = pixel_rasterized_normal * pixel_vertex_position_jacobian;
+				auto dr_dwl_x_dwl_dV = dr_dwl * dwl_dV;
 				// [1 x 3] * [3 x 9] = [1 x 9]
-				auto dr_dnl_x_dnl_dV = pixel_point_map_vector * pixel_rasterized_normal_jacobian;
+				auto dr_dnl_x_dnl_dV = dr_dnl * dnl_dV;
 				// [1 x 6] * [6 x 9] = [1 x 9]
 				auto dr_dV = dr_dwl_x_dwl_dV + dr_dnl_x_dnl_dV;
-				// dr_dN = dr_dl * dl_dV + dr_dn * dl_dN = 0 + dr_dn   * dl_dN
+				// dr_dN = dr_dl * dl_dV + dr_dn * dl_dN = 0 + dr_dn  * dl_dN
 				//                                             [1 x 3] * [3 x 9] = [1 x 9]
 				auto dr_dN =
-						pixel_point_map_vector *
+						dr_dnl *
 						Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
 
 				//__DEBUG
-				// auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
-				// auto dr_dnl_x_dnl_dV_c = dr_dnl_x_dnl_dV.eval();
-				// auto dr_dV_c = dr_dV.eval();
-				// auto dr_dN_c = dr_dN.eval();
+				auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
+				auto dr_dnl_x_dnl_dV_c = dr_dnl_x_dnl_dV.eval();
+				auto dr_dV_c = dr_dV.eval();
+				auto dr_dN_c = dr_dN.eval();
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
@@ -314,6 +322,13 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 						auto dr_dn_c = dr_dn.eval();
 						auto dv_drotation_c = dv_drotation.toDenseMatrix();
 						auto dn_drotation_c = dn_drotation.toDenseMatrix();
+						auto dr_drotation_v_c = (dr_dv * dv_drotation).eval();
+						auto dr_drotation_n_c = (dr_dn * dn_drotation).eval();
+
+
+						//__DEBUG (remove both lines below)
+						// pixel_vertex_anchor_rotation_jacobian += (dr_dn * dn_drotation);
+						// pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation);
 
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 						//__DEBUG (uncomment if commented)

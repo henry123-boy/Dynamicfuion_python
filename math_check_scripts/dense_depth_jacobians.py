@@ -23,21 +23,49 @@ Intrinsics = namedtuple("Intrinsics", "fx fy cx cy")
 
 PROGRAM_EXIT_SUCCESS = 0
 
-face_vertex0 = np.array([0.0625, -0.0625, 1.2])
-face_vertex1 = np.array([-0.0625, -0.0625, 1.2])
-face_vertex2 = np.array([-0.0625, 0.0625, 1.2])
-
-residual = 0.19999985
-
-tested_ray_point = np.array([-0.0299999714, -0.0299999714])
-
-barycentrics_perspective_distorted = np.array([0.356, 2.14576641e-08, 0.643999577])
-
 intrinsics_ndc = Intrinsics(2.0, -2.0, 0.0, 0.0)
 
-rendered_point_position = np.array([-0.02799999, -0.02799999, 1.3999996])
-rendered_point_normal = np.array([0., 0., -0.99999964])
-reference_point_position = np.array([-0.02399999, -0.02399999, 1.1999997])
+SinglePixelInputs = namedtuple("SinglePixelInputs",
+                               "face_vertex0 face_vertex1 face_vertex2 "
+                               "face_normal0 face_normal1 face_normal2 "
+                               "residual tested_ray_point "
+                               "rendered_point_position rendered_point_normal reference_point_position")
+
+translation_case_pixel4848 = SinglePixelInputs(
+    face_vertex0=np.array([0.0625, -0.0625, 1.2]),
+    face_vertex1=np.array([-0.0625, -0.0625, 1.2]),
+    face_vertex2=np.array([-0.0625, 0.0625, 1.2]),
+    face_normal0=np.array([0., 0., -1.]),
+    face_normal1=np.array([0., 0., -0.99999994]),
+    face_normal2=np.array([0., 0., -1.]),
+
+    residual=0.19999985,
+
+    tested_ray_point=np.array([-0.0299999714, -0.0299999714]),
+
+    rendered_point_position=np.array([-0.02799999, -0.02799999, 1.3999996]),
+    rendered_point_normal=np.array([0., 0., -0.99999964]),
+    reference_point_position=np.array([-0.02399999, -0.02399999, 1.1999997])
+)
+
+rotation_case_pixel4646 = SinglePixelInputs(
+    face_vertex0=np.array([0.0625, -0.0625, 1.2]),
+    face_vertex1=np.array([-0.0625, -0.0625, 1.2]),
+    face_vertex2=np.array([-0.0625, 0.0625, 1.2]),
+    face_normal0=np.array([0., 0., -1.]),
+    face_normal1=np.array([0., 0., -0.99999994]),
+    face_normal2=np.array([0., 0., -1.]),
+
+    # TODO: adjust residual to correct value
+    residual=0.19999985,
+
+    tested_ray_point=np.array([-0.0699999928, -0.0699999928]),
+
+    # TODO: adjust three below values to correct value
+    rendered_point_position=np.array([-0.02799999, -0.02799999, 1.3999996]),
+    rendered_point_normal=np.array([0., 0., -0.99999964]),
+    reference_point_position=np.array([-0.02399999, -0.02399999, 1.1999997])
+)
 
 
 def project_point(point: np.ndarray, intrinsics: Intrinsics) -> np.ndarray:
@@ -208,7 +236,8 @@ def compute_jacobian_perspective_correction(barycentrics_distorted: np.ndarray, 
                      [d_bary2_d_rho0, d_bary2_d_rho1, d_bary2_d_rho2, d_bary2_d_z0, d_bary2_d_z1, d_bary2_d_z2]])
 
 
-def jacobian_barycentrics_corrected_wrt_vertices(d_bary_distorted_d_v0v1v2: np.ndarray, d_bary_corrected_d_bary_distorted_and_z):
+def jacobian_barycentrics_corrected_wrt_vertices(d_bary_distorted_d_v0v1v2: np.ndarray,
+                                                 d_bary_corrected_d_bary_distorted_and_z):
     d_z_d_v0v1v2 = np.kron(np.eye(3), np.array([[0, 0, 1]]))
     d_bary_distorted_and_z_d_v0v1v2 = np.vstack((d_bary_distorted_d_v0v1v2, d_z_d_v0v1v2))
     return d_bary_corrected_d_bary_distorted_and_z.dot(d_bary_distorted_and_z_d_v0v1v2)
@@ -216,9 +245,14 @@ def jacobian_barycentrics_corrected_wrt_vertices(d_bary_distorted_d_v0v1v2: np.n
 
 def main():
     np.set_printoptions(suppress=True, linewidth=120)
+
+    # tp = translation_case_pixel4848
+    tp = rotation_case_pixel4646
+
     (d_bary_distorted_d_ndc_v0, d_bary_distorted_d_ndc_v1, d_bary_distorted_d_ndc_v2), bary_distorted = \
-        jacobian_barycentrics_perspective_distorted_wrt_vertices(face_vertex0, face_vertex1, face_vertex2,
-                                                                 intrinsics_ndc, tested_ray_point)
+        jacobian_barycentrics_perspective_distorted_wrt_vertices(
+            tp.face_vertex0, tp.face_vertex1, tp.face_vertex2, intrinsics_ndc, tp.tested_ray_point
+        )
 
     print("Distorted barycentrics:", bary_distorted, sep="\n")
     print()
@@ -226,10 +260,10 @@ def main():
           sep="\n")
     print()
 
-    d_ndc_v0_d_v0 = jacobian_percpsective_projections_wrt_vertex(face_vertex0, intrinsics_ndc)
-    d_ndc_v1_d_v1 = jacobian_percpsective_projections_wrt_vertex(face_vertex1, intrinsics_ndc)
-    d_ndc_v2_d_v2 = jacobian_percpsective_projections_wrt_vertex(face_vertex2, intrinsics_ndc)
-    print("Jacobians dndc dV:", d_ndc_v0_d_v0, d_ndc_v1_d_v1, d_ndc_v2_d_v2, sep="\n")
+    d_ndc_v0_d_v0 = jacobian_percpsective_projections_wrt_vertex(tp.face_vertex0, intrinsics_ndc)
+    d_ndc_v1_d_v1 = jacobian_percpsective_projections_wrt_vertex(tp.face_vertex1, intrinsics_ndc)
+    d_ndc_v2_d_v2 = jacobian_percpsective_projections_wrt_vertex(tp.face_vertex2, intrinsics_ndc)
+    print("Jacobians d[ndc] dV:", d_ndc_v0_d_v0, d_ndc_v1_d_v1, d_ndc_v2_d_v2, sep="\n")
     print()
     d_bary_distorted_d_v0 = d_bary_distorted_d_ndc_v0.dot(d_ndc_v0_d_v0)
     d_bary_distorted_d_v1 = d_bary_distorted_d_ndc_v1.dot(d_ndc_v1_d_v1)
@@ -240,13 +274,15 @@ def main():
     print("Jacobian dbary_dist dV:", d_bary_distorted_d_v0v1v2, sep="\n")
     print()
 
-    d_bary_corrected = perspective_correct_barycentrics(bary_distorted, face_vertex0, face_vertex1, face_vertex2)
-    print("Barycentrics perspective-corrected:", d_bary_corrected, sep="\n")
+    bary_corrected = perspective_correct_barycentrics(bary_distorted, tp.face_vertex0, tp.face_vertex1,
+                                                      tp.face_vertex2)
+    print("Barycentrics (perspective-corrected):", bary_corrected, sep="\n")
     print()
 
     d_bary_corrected_d_bary_distorted_and_z = \
-        compute_jacobian_perspective_correction(bary_distorted, face_vertex0, face_vertex1, face_vertex2)
-    print("Barycentrics jacobian wr.t. distorted barycentrics & depths:", d_bary_corrected_d_bary_distorted_and_z, sep="\n")
+        compute_jacobian_perspective_correction(bary_distorted, tp.face_vertex0, tp.face_vertex1, tp.face_vertex2)
+    print("Barycentrics jacobian w.r.t. distorted barycentrics & depths:", d_bary_corrected_d_bary_distorted_and_z,
+          sep="\n")
     print()
 
     d_bary_corrected_wrt_vertices = \
@@ -254,10 +290,22 @@ def main():
     print("Jacobian dbary_corrected dV:", d_bary_corrected_wrt_vertices, sep="\n")
     print()
 
+    face_vertex_matrix = np.hstack(
+        (tp.face_vertex0.reshape(-1, 1), tp.face_vertex1.reshape(-1, 1), tp.face_vertex2.reshape(-1, 1)))
+    face_normal_matrix = np.hstack(
+        (tp.face_normal0.reshape(-1, 1), tp.face_normal1.reshape(-1, 1), tp.face_normal2.reshape(-1, 1)))
 
+    d_wl_dV = face_vertex_matrix.dot(d_bary_corrected_wrt_vertices) + np.kron(bary_corrected, np.eye(3))
+    d_nl_dV = face_normal_matrix.dot(d_bary_corrected_wrt_vertices)
 
-    d_residual_d_rendered_normal = rendered_point_position - reference_point_position  # 3x1
-    d_residual_d_rendered_vector = rendered_point_normal  # 3x1
+    print("Jacobian of rendered vertex w.r.t. warped vertices:", d_wl_dV, sep="\n")
+    print()
+    print("Jacobian of rendered normal w.r.t. warped vertices:", d_nl_dV, sep="\n")
+    print()
+
+    # TODO
+    d_residual_d_rendered_normal = tp.rendered_point_position - tp.reference_point_position  # 3x1
+    d_residual_d_rendered_vector = tp.rendered_point_normal  # 3x1
 
     return PROGRAM_EXIT_SUCCESS
 
