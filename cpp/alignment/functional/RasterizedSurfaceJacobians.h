@@ -56,7 +56,7 @@ namespace nnrt::alignment::functional {
  * (warped) geometry (see details). Rendered vertex jacobians are stored in the first output tensor, rendered
  * normal jacobians are stored in the second one.
  */
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> RasterizedVertexAndNormalJacobians(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> RasterizedSurfaceJacobians(
 	const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
 	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsic_matrix,
 	bool use_perspective_corrected_barycentric_coordinates

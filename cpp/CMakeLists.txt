@@ -310,23 +310,23 @@ set(
 
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.cpp
     alignment/functional/WarpedMeshToReferencePointCloud_PointToPlane.h
-    alignment/functional/RasterizedVertexAndNormalJacobians.cpp
-    alignment/functional/RasterizedVertexAndNormalJacobians.h
-    alignment/functional/WarpedVertexAndNormalJacobians.cpp
-    alignment/functional/WarpedVertexAndNormalJacobians.h
+    alignment/functional/RasterizedSurfaceJacobians.cpp
+    alignment/functional/RasterizedSurfaceJacobians.h
+    alignment/functional/WarpedSurfaceJacobians.cpp
+    alignment/functional/WarpedSurfaceJacobians.h
 
-    alignment/functional/kernel/WarpedVertexAndNormalJacobians.cpp
-    alignment/functional/kernel/WarpedVertexAndNormalJacobians.h
-    alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h
+    alignment/functional/kernel/WarpedSurfaceJacobians.cpp
+    alignment/functional/kernel/WarpedSurfaceJacobians.h
+    alignment/functional/kernel/WarpedSurfaceJacobiansImpl.h
     alignment/functional/kernel/BarycentricCoordinateJacobians.h
-    alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCPU.cpp
-    alignment/functional/kernel/instantiations/WarpedVertexAndNormalJacobiansCUDA.cu
+    alignment/functional/kernel/instantiations/WarpedSurfaceJacobiansCPU.cpp
+    alignment/functional/kernel/instantiations/WarpedSurfaceJacobiansCUDA.cu
     alignment/functional/kernel/ProjectionJacobians.h
-    alignment/functional/kernel/RasterizedVertexAndNormalJacobians.cpp
-    alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h
-    alignment/functional/kernel/RasterizedVertexAndNormalJacobiansImpl.h
-    alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCPU.cpp
-    alignment/functional/kernel/instantiations/RasterizedVertexAndNormalJacobiansCUDA.cu
+    alignment/functional/kernel/RasterizedSurfaceJacobians.cpp
+    alignment/functional/kernel/RasterizedSurfaceJacobians.h
+    alignment/functional/kernel/RasterizedSurfaceJacobiansImpl.h
+    alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCPU.cpp
+    alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCUDA.cu
 )
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})

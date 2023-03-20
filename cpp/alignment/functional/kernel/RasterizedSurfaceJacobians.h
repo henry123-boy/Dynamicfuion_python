@@ -21,20 +21,30 @@
 // local includes
 
 namespace nnrt::alignment::functional::kernel {
-void RasterizedVertexAndNormalJacobians(
-        open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
-        const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-        const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-        const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
-        bool perspective_corrected_barycentric_coordinates
+void RasterizedSurfaceJacobians(
+		open3d::core::Tensor& rendered_vertex_jacobians,
+		open3d::core::Tensor& rendered_normal_jacobians,
+		const open3d::core::Tensor& warped_vertex_positions,
+		const open3d::core::Tensor& warped_triangle_indices,
+		const open3d::core::Tensor& warped_vertex_normals,
+		const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& pixel_barycentric_coordinates,
+		const open3d::core::Tensor& ndc_intrinsics,
+		bool perspective_corrected_barycentric_coordinates,
+		bool compute_normal_jacobians
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizedVertexAndNormalJacobians(
-        open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
-        const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-        const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-        const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
-        bool perspective_corrected_barycentric_coordinates
+void RasterizedSurfaceJacobians(
+		open3d::core::Tensor& rendered_vertex_jacobians,
+		open3d::core::Tensor& rendered_normal_jacobians,
+		const open3d::core::Tensor& warped_vertex_positions,
+		const open3d::core::Tensor& warped_triangle_indices,
+		const open3d::core::Tensor& warped_vertex_normals,
+		const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& pixel_barycentric_coordinates,
+		const open3d::core::Tensor& ndc_intrinsics,
+		bool perspective_corrected_barycentric_coordinates,
+		bool compute_normal_jacobians
 );
 } // namespace nnrt::alignment::functional::kernel

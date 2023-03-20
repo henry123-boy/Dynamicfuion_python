@@ -20,7 +20,7 @@
 // local includes
 #include <open3d/utility/Optional.h>
 #include "core/DeviceSelection.h"
-#include "WarpedVertexAndNormalJacobians.h"
+#include "WarpedSurfaceJacobians.h"
 
 
 namespace nnrt::alignment::functional::kernel {

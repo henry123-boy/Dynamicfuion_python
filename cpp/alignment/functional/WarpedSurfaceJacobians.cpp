@@ -18,8 +18,8 @@
 // third-party includes
 
 // local includes
-#include "WarpedVertexAndNormalJacobians.h"
-#include "alignment/functional/kernel/WarpedVertexAndNormalJacobians.h"
+#include "WarpedSurfaceJacobians.h"
+#include "alignment/functional/kernel/WarpedSurfaceJacobians.h"
 
 namespace utility = open3d::utility;
 namespace o3c = open3d::core;

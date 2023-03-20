@@ -22,7 +22,7 @@
 
 
 // local includes
-#include "alignment/functional/kernel/WarpedVertexAndNormalJacobians.h"
+#include "alignment/functional/kernel/WarpedSurfaceJacobians.h"
 #include "core/platform_independence/Qualifiers.h"
 
 namespace o3c = open3d::core;
@@ -64,12 +64,12 @@ void WarpedSurfaceJacobians(
 
 	if (!TVertexRotationOnly) {
 		if (!vertex_normals.has_value()) {
-			utility::LogError("vertex_normals argument needs to contain (be passed) a tensor for a call to WarpedSurfaceJacobians with"
-			                  "TVertexRotationOnly template argument set to false, which it does not.");
+			utility::LogError("vertex_normals argument needs to be a tensor for a call to WarpedSurfaceJacobians with"
+			                  "TVertexRotationOnly template argument set to false, which it is not.");
 		}
 		if (!vertex_normal_jacobians.has_value()) {
-			utility::LogError("vertex_normal_jacobians argument needs to contain (be passed) a tensor for a call to WarpedSurfaceJacobians"
-			                  " with TVertexRotationOnly template argument set to false, which it does not.");
+			utility::LogError("vertex_normal_jacobians argument needs to be a tensor for a call to WarpedSurfaceJacobians"
+			                  " with TVertexRotationOnly template argument set to false, which it is not.");
 		}
 		o3c::AssertTensorDevice(vertex_normals.value().get(), device);
 		o3c::AssertTensorShape(vertex_normals.value().get(), vertex_positions.GetShape());

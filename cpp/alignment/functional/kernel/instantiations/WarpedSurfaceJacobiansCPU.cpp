@@ -18,7 +18,7 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/WarpedVertexAndNormalJacobiansImpl.h"
+#include "alignment/functional/kernel/WarpedSurfaceJacobiansImpl.h"
 
 namespace nnrt::alignment::functional::kernel {
 template

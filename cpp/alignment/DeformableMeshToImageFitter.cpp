@@ -29,8 +29,8 @@
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/kernel/CoordinateSystemConversions.h"
-#include "alignment/functional/WarpedVertexAndNormalJacobians.h"
-#include "alignment/functional/RasterizedVertexAndNormalJacobians.h"
+#include "alignment/functional/WarpedSurfaceJacobians.h"
+#include "alignment/functional/RasterizedSurfaceJacobians.h"
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/linalg/Rodrigues.h"
 
@@ -158,7 +158,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		// for clarity's sake. Also, it makes sense to be explicit that it's not the full "rasterized_vertex_normal_jacobians"
 		// (missing the barycentrics part), or at least insert some comments about this
 		auto [rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians] =
-				functional::RasterizedVertexAndNormalJacobians(
+				functional::RasterizedSurfaceJacobians(
 						warped_mesh, pixel_face_indices,
 						pixel_barycentric_coordinates,
 						ndc_intrinsic_matrix, this->use_perspective_correction

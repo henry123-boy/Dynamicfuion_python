@@ -24,7 +24,7 @@
 //#include <unsupported/Eigen/KroneckerProduct>
 
 // local includes
-#include "alignment/functional/kernel/RasterizedVertexAndNormalJacobians.h"
+#include "alignment/functional/kernel/RasterizedSurfaceJacobians.h"
 #include "alignment/functional/kernel/BarycentricCoordinateJacobians.h"
 #include "alignment/functional/kernel/ProjectionJacobians.h"
 #include "rendering/functional/kernel/FrontFaceVertexOrder.h"
@@ -40,17 +40,17 @@ namespace utility = open3d::utility;
 
 namespace nnrt::alignment::functional::kernel {
 
-template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection,
+template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection, bool TComputeNormalJacobians,
 		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::ClockWise>
-void RasterizedVertexAndNormalJacobians(
-		open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
+void RasterizedSurfaceJacobians(
+		open3d::core::Tensor& rendered_vertex_jacobians, utility::optional<std::reference_wrapper<open3d::core::Tensor>> rendered_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-		const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normals,
+		const open3d::core::Tensor& pixel_faces,
 		const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics
 ) {
 	auto device = warped_vertex_positions.GetDevice();
 	o3c::AssertTensorDevice(warped_triangle_indices, device);
-	o3c::AssertTensorDevice(warped_vertex_normals, device);
 	o3c::AssertTensorDevice(pixel_faces, device);
 	o3c::AssertTensorDevice(pixel_barycentric_coordinates, device);
 
@@ -66,31 +66,49 @@ void RasterizedVertexAndNormalJacobians(
 	const auto vertex_count = warped_vertex_positions.GetLength();
 
 	o3c::AssertTensorShape(warped_vertex_positions, { vertex_count, 3 });
-	o3c::AssertTensorShape(warped_vertex_normals, { vertex_count, 3 });
+
 	o3c::AssertTensorShape(warped_triangle_indices, { utility::nullopt, 3 });
 	o3c::AssertTensorShape(pixel_barycentric_coordinates, { image_height, image_width, faces_per_pixel, 3 });
 	o3c::AssertTensorShape(pixel_faces, { image_height, image_width, faces_per_pixel });
 
 	o3c::AssertTensorDtype(warped_vertex_positions, o3c::Float32);
-	o3c::AssertTensorDtype(warped_vertex_normals, o3c::Float32);
 	o3c::AssertTensorDtype(pixel_barycentric_coordinates, o3c::Float32);
 	o3c::AssertTensorDtype(pixel_faces, o3c::Int64);
+
+	if (TComputeNormalJacobians) {
+		if (!warped_vertex_normals.has_value()) {
+			utility::LogError("warped_vertex_normals argument has to be a tensor for a call to RasterizedSurfaceJacobians with"
+			                  "TComputeNormalJacobians template argument set to true, which it is not.");
+		}
+		if (!rendered_normal_jacobians.has_value()) {
+			utility::LogError("rendered_normal_jacobians argument needs to contain (be passed) a tensor for a call to RasterizedSurfaceJacobians"
+			                  " with TComputeNormalJacobians template argument set to true, which it is not.");
+		}
+		o3c::AssertTensorDevice(warped_vertex_normals.value().get(), device);
+		o3c::AssertTensorShape(warped_vertex_normals.value().get(), { vertex_count, 3 });
+		o3c::AssertTensorDtype(warped_vertex_normals.value().get(), o3c::Float32);
+	}
 
 	auto pixel_count = image_height * image_width;
 
 	auto triangle_index_data = warped_triangle_indices.template GetDataPtr<int64_t>();
 	auto vertex_position_data = warped_vertex_positions.template GetDataPtr<float>();
-	auto vertex_normal_data = warped_vertex_normals.template GetDataPtr<float>();
 
 	auto pixel_face_data = pixel_faces.template GetDataPtr<int64_t>();
 	auto barycentric_coordinate_data = pixel_barycentric_coordinates.template GetDataPtr<float>();
 
-
 	rendered_vertex_jacobians = o3c::Tensor::Zeros({image_height, image_width, 3, 9}, o3c::Float32, device);
-	rendered_normal_jacobians = o3c::Tensor::Zeros({image_height, image_width, 3, 10}, o3c::Float32, device);
 	auto rasterized_vertex_jacobian_data = rendered_vertex_jacobians.GetDataPtr<float>();
-	auto rasterized_normal_jacobian_data = rendered_normal_jacobians.GetDataPtr<float>();
 
+	const float* vertex_normal_data = nullptr;
+	float* rasterized_normal_jacobian_data = nullptr;
+
+	if (TComputeNormalJacobians) {
+		vertex_normal_data = warped_vertex_normals.value().get().template GetDataPtr<float>();
+
+		rendered_normal_jacobians.value().get() = o3c::Tensor::Zeros({image_height, image_width, 3, 10}, o3c::Float32, device);
+		rasterized_normal_jacobian_data = rendered_normal_jacobians.value().get().GetDataPtr<float>();
+	}
 
 	o3c::ParallelFor(
 			device, pixel_count,
@@ -118,13 +136,6 @@ void RasterizedVertexAndNormalJacobians(
 				face_vertex_matrix << face_vertex0, face_vertex1, face_vertex2;
 
 
-				Eigen::Map<const Eigen::Vector3f> face_normal0(vertex_normal_data + face_vertex_indices(0) * 3);
-				Eigen::Map<const Eigen::Vector3f> face_normal1(vertex_normal_data + face_vertex_indices(1) * 3);
-				Eigen::Map<const Eigen::Vector3f> face_normal2(vertex_normal_data + face_vertex_indices(2) * 3);
-				core::kernel::Matrix3f face_normal_matrix;
-				face_normal_matrix << face_normal0, face_normal1, face_normal2;
-
-
 				core::kernel::Matrix3x9f barycentric_coordinate_jacobian;
 
 				auto barycentric_coordinates_index =
@@ -149,13 +160,6 @@ void RasterizedVertexAndNormalJacobians(
 				Eigen::Map<core::kernel::Matrix3x9f>
 						pixel_rendered_vertex_jacobian_wrt_face_vertices
 						(rasterized_vertex_jacobian_data + workload_idx * (3 * 9));
-				Eigen::Map<core::kernel::Matrix3x9f>
-						pixel_rendered_normal_jacobian_wrt_face_vertices
-						(rasterized_normal_jacobian_data + workload_idx * (3 * 10));
-				Eigen::Map<Eigen::RowVector3f>
-						barycentric_coordinates_out
-						(rasterized_normal_jacobian_data + workload_idx * (3 * 10) + (3 * 9));
-
 
 				//TODO: potentially defer adding the Kronecker product until later to optimize (i.e. same Kronecker
 				// product is used for dn_l/dVN
@@ -166,36 +170,70 @@ void RasterizedVertexAndNormalJacobians(
 				pixel_rendered_vertex_jacobian_wrt_face_vertices =
 						face_vertex_matrix * barycentric_coordinate_jacobian;
 				Eigen::Matrix<float, 3, 9, Eigen::RowMajor> kronecker_product_output;
-				nnrt::core::linalg::kernel::ComputeKroneckerProduct(kronecker_product_output, barycentric_coordinates, core::kernel::Matrix3f::Identity());
+				nnrt::core::linalg::kernel::ComputeKroneckerProduct(kronecker_product_output, barycentric_coordinates,
+				                                                    core::kernel::Matrix3f::Identity());
 				pixel_rendered_vertex_jacobian_wrt_face_vertices += kronecker_product_output;
 
-				pixel_rendered_normal_jacobian_wrt_face_vertices =
-						face_normal_matrix * barycentric_coordinate_jacobian;
-				// this will be used to compute ∂(ρn)/∂n later, which is just ρ ⊗ 𝕀_3x3
-				barycentric_coordinates_out = barycentric_coordinates;
+
+				if (TComputeNormalJacobians) {
+					Eigen::Map<const Eigen::Vector3f> face_normal0(vertex_normal_data + face_vertex_indices(0) * 3);
+					Eigen::Map<const Eigen::Vector3f> face_normal1(vertex_normal_data + face_vertex_indices(1) * 3);
+					Eigen::Map<const Eigen::Vector3f> face_normal2(vertex_normal_data + face_vertex_indices(2) * 3);
+					core::kernel::Matrix3f face_normal_matrix;
+					face_normal_matrix << face_normal0, face_normal1, face_normal2;
+
+					Eigen::Map<core::kernel::Matrix3x9f>
+							pixel_rendered_normal_jacobian_wrt_face_vertices
+							(rasterized_normal_jacobian_data + workload_idx * (3 * 10));
+					Eigen::Map<Eigen::RowVector3f>
+							barycentric_coordinates_out
+							(rasterized_normal_jacobian_data + workload_idx * (3 * 10) + (3 * 9));
+
+
+					pixel_rendered_normal_jacobian_wrt_face_vertices =
+							face_normal_matrix * barycentric_coordinate_jacobian;
+					// this will be used to compute ∂(ρn)/∂n later, which is just ρ ⊗ 𝕀_3x3
+					barycentric_coordinates_out = barycentric_coordinates;
+				}
 			}
 	);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RasterizedVertexAndNormalJacobians(
-		open3d::core::Tensor& rendered_vertex_jacobians, open3d::core::Tensor& rendered_normal_jacobians,
-		const open3d::core::Tensor& warped_vertex_positions, const open3d::core::Tensor& warped_triangle_indices,
-		const open3d::core::Tensor& warped_vertex_normals, const open3d::core::Tensor& pixel_faces,
-		const open3d::core::Tensor& pixel_barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsics,
-		bool perspective_corrected_barycentric_coordinates
+void RasterizedSurfaceJacobians(
+		open3d::core::Tensor& rendered_vertex_jacobians,
+		open3d::core::Tensor& rendered_normal_jacobians,
+		const open3d::core::Tensor& warped_vertex_positions,
+		const open3d::core::Tensor& warped_triangle_indices,
+		const open3d::core::Tensor& warped_vertex_normals,
+		const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& pixel_barycentric_coordinates,
+		const open3d::core::Tensor& ndc_intrinsics,
+		bool perspective_corrected_barycentric_coordinates,
+		bool compute_normal_jacobians
 ) {
-	if (perspective_corrected_barycentric_coordinates) {
-		RasterizedVertexAndNormalJacobians<TDeviceType, true>(
-				rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
-				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
-		);
-	} else {
-		RasterizedVertexAndNormalJacobians<TDeviceType, false>(
-				rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
-				warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics
-		);
+	if(compute_normal_jacobians){
+		if (perspective_corrected_barycentric_coordinates) {
+			RasterizedSurfaceJacobians<TDeviceType, true, true>(
+					rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+					warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics);
+		} else {
+			RasterizedSurfaceJacobians<TDeviceType, false, true>(
+					rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+					warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics);
+		}
+	}else{
+		if (perspective_corrected_barycentric_coordinates) {
+			RasterizedSurfaceJacobians<TDeviceType, true, false>(
+					rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+					warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics);
+		} else {
+			RasterizedSurfaceJacobians<TDeviceType, false, false>(
+					rendered_vertex_jacobians, rendered_normal_jacobians, warped_vertex_positions, warped_triangle_indices,
+					warped_vertex_normals, pixel_faces, pixel_barycentric_coordinates, ndc_intrinsics);
+		}
 	}
+
 }
 
 } // namespace nnrt::alignment::functional::kernel
