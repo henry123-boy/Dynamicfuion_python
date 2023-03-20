@@ -51,4 +51,30 @@ RasterizedSurfaceJacobians(const open3d::t::geometry::TriangleMesh& warped_mesh,
 
 	return std::make_tuple(rendered_vertex_jacobians, rendered_normal_jacobians);
 }
+
+open3d::core::Tensor RasterizedVertexJacobians(
+		const open3d::t::geometry::TriangleMesh& warped_mesh,
+		const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& barycentric_coordinates,
+		const open3d::core::Tensor& ndc_intrinsic_matrix,
+		bool use_perspective_corrected_barycentric_coordinates
+) {
+	if (!warped_mesh.HasVertexPositions() || !warped_mesh.HasTriangleIndices()) {
+		utility::LogError("warped_mesh needs to have vertex positions and triangle indices defined. "
+		                  "In argument, vertex positions are {} defined and triangle indices are {} defined.",
+		                  (warped_mesh.HasVertexPositions() ? "" : "not"),
+		                  (warped_mesh.HasTriangleIndices() ? "" : "not"));
+	}
+
+	o3c::Tensor rendered_vertex_jacobians;
+	kernel::RasterizedSurfaceJacobians(rendered_vertex_jacobians, utility::nullopt,
+	                                   warped_mesh.GetVertexPositions(),
+	                                   warped_mesh.GetTriangleIndices(),
+	                                   warped_mesh.GetVertexNormals(),
+	                                   pixel_faces, barycentric_coordinates,
+	                                   ndc_intrinsic_matrix, use_perspective_corrected_barycentric_coordinates, true);
+
+	return rendered_vertex_jacobians;
+}
+
 } // namespace nnrt::alignment::functional

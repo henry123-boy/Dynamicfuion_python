@@ -62,6 +62,12 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> RasterizedSurfaceJacobian
 	bool use_perspective_corrected_barycentric_coordinates
 );
 
+open3d::core::Tensor RasterizedVertexJacobians(
+		const open3d::t::geometry::TriangleMesh& warped_mesh, const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsic_matrix,
+		bool use_perspective_corrected_barycentric_coordinates
+);
+
 
 
 } // namespace nnrt::alignment::functional
