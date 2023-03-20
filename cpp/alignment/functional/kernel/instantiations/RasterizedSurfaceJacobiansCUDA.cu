@@ -24,10 +24,10 @@ namespace nnrt::alignment::functional::kernel {
 template
 void RasterizedSurfaceJacobians<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& rendered_vertex_jacobians,
-		open3d::core::Tensor& rendered_normal_jacobians,
+		utility::optional<std::reference_wrapper<open3d::core::Tensor>> rendered_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_positions,
 		const open3d::core::Tensor& warped_triangle_indices,
-		const open3d::core::Tensor& warped_vertex_normals,
+		utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normals,
 		const open3d::core::Tensor& pixel_faces,
 		const open3d::core::Tensor& pixel_barycentric_coordinates,
 		const open3d::core::Tensor& ndc_intrinsics,
