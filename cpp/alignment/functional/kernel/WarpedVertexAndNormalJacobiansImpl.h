@@ -31,11 +31,11 @@ namespace utility = open3d::utility;
 namespace nnrt::alignment::functional::kernel {
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TVertexRotationOnly>
-void WarpedVertexAndNormalJacobians(
+void WarpedSurfaceJacobians(
 		open3d::core::Tensor& vertex_position_jacobians,
-		utility::optional <std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
-		utility::optional <std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& warp_anchors,
@@ -64,11 +64,11 @@ void WarpedVertexAndNormalJacobians(
 
 	if (!TVertexRotationOnly) {
 		if (!vertex_normals.has_value()) {
-			utility::LogError("vertex_normals argument needs to contain (be passed) a tensor for a call to WarpedVertexAndNormalJacobians with"
+			utility::LogError("vertex_normals argument needs to contain (be passed) a tensor for a call to WarpedSurfaceJacobians with"
 			                  "TVertexRotationOnly template argument set to false, which it does not.");
 		}
 		if (!vertex_normal_jacobians.has_value()) {
-			utility::LogError("vertex_normal_jacobians argument needs to contain (be passed) a tensor for a call to WarpedVertexAndNormalJacobians"
+			utility::LogError("vertex_normal_jacobians argument needs to contain (be passed) a tensor for a call to WarpedSurfaceJacobians"
 			                  " with TVertexRotationOnly template argument set to false, which it does not.");
 		}
 		o3c::AssertTensorDevice(vertex_normals.value().get(), device);

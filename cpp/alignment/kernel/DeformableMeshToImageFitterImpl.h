@@ -97,11 +97,6 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 		int64_t node_count,
 		float tukey_penalty_cutoff
 ) {
-	//__DEBUG
-#ifdef __CUDACC__
-	void* ptr;
-	OPEN3D_CUDA_CHECK(cudaMallocAsync(static_cast<void**>(&ptr), (size_t)8, open3d::core::cuda::GetStream()));
-#endif
 
 	// === dimension, type, and device tensor checks ===
 	int64_t image_height = rasterized_vertex_position_jacobians.GetShape(0);

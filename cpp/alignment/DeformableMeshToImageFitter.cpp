@@ -149,7 +149,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 		// [V X A/V X 4], [V X A/V X 3]
 		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
-				functional::WarpedVertexAndNormalJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
+				functional::WarpedSurfaceJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
 
 
 		// compute rasterized vertex and normal jacobians

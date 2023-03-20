@@ -22,9 +22,9 @@
 
 namespace nnrt::alignment::functional::kernel {
 template
-void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, true>(
+void WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CUDA, true>(
 		open3d::core::Tensor& vertex_position_jacobians,
-		utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
 		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
@@ -33,7 +33,7 @@ void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, true
 		const open3d::core::Tensor& warp_anchor_weights
 );
 template
-void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, false>(
+void WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CUDA, false>(
 		open3d::core::Tensor& vertex_position_jacobians,
 		utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,

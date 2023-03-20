@@ -25,7 +25,7 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void WarpedVertexAndNormalJacobians(
+void WarpedSurfaceJacobians(
 		open3d::core::Tensor& vertex_jacobians,
 		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
@@ -40,13 +40,13 @@ void WarpedVertexAndNormalJacobians(
 		core::ExecuteOnDevice(
 				vertex_positions.GetDevice(),
 				[&] {
-					WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, true>(
+					WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CPU, true>(
 							vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
 							warp_anchor_weights);
 				},
 				[&] {
 					NNRT_IF_CUDA(
-							WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, true>(
+							WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CUDA, true>(
 									vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations,
 									warp_anchors,
 									warp_anchor_weights);
@@ -57,13 +57,13 @@ void WarpedVertexAndNormalJacobians(
 		core::ExecuteOnDevice(
 				vertex_positions.GetDevice(),
 				[&] {
-					WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, false>(
+					WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CPU, false>(
 							vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
 							warp_anchor_weights);
 				},
 				[&] {
 					NNRT_IF_CUDA(
-							WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, false>(
+							WarpedSurfaceJacobians<open3d::core::Device::DeviceType::CUDA, false>(
 									vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations,
 									warp_anchors,
 									warp_anchor_weights);

@@ -26,7 +26,7 @@ namespace o3c = open3d::core;
 
 namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-WarpedVertexAndNormalJacobians(
+WarpedSurfaceJacobians(
 		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
 		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 ) {
@@ -37,9 +37,9 @@ WarpedVertexAndNormalJacobians(
 	}
 
 	o3c::Tensor warped_vertex_jacobians, warped_normal_jacobians;
-	kernel::WarpedVertexAndNormalJacobians(warped_vertex_jacobians, warped_normal_jacobians, canonical_mesh.GetVertexPositions(),
-	                                       canonical_mesh.GetVertexNormals(), warp_field.GetNodePositions(),
-	                                       warp_field.GetNodeRotations(), warp_anchors, warp_anchor_weights, false);
+	kernel::WarpedSurfaceJacobians(warped_vertex_jacobians, warped_normal_jacobians, canonical_mesh.GetVertexPositions(),
+	                               canonical_mesh.GetVertexNormals(), warp_field.GetNodePositions(),
+	                               warp_field.GetNodeRotations(), warp_anchors, warp_anchor_weights, false);
 	return std::make_tuple(warped_vertex_jacobians, warped_normal_jacobians);
 }
 
@@ -55,9 +55,9 @@ open3d::core::Tensor WarpedVertexRotationJacobians(
 	}
 
 	o3c::Tensor warped_vertex_jacobians;
-	kernel::WarpedVertexAndNormalJacobians(warped_vertex_jacobians, utility::nullopt, canonical_mesh.GetVertexPositions(),
-	                                       utility::nullopt, warp_field.GetNodePositions(),
-	                                       warp_field.GetNodeRotations(), warp_anchors, warp_anchor_weights, true);
+	kernel::WarpedSurfaceJacobians(warped_vertex_jacobians, utility::nullopt, canonical_mesh.GetVertexPositions(),
+	                               utility::nullopt, warp_field.GetNodePositions(),
+	                               warp_field.GetNodeRotations(), warp_anchors, warp_anchor_weights, true);
 	return warped_vertex_jacobians;
 }
 

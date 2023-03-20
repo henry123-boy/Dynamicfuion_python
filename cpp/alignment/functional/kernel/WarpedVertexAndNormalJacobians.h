@@ -24,7 +24,7 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void WarpedVertexAndNormalJacobians(
+void WarpedSurfaceJacobians(
 		open3d::core::Tensor& vertex_position_jacobians,
 		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
@@ -37,11 +37,11 @@ void WarpedVertexAndNormalJacobians(
 );
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TVertexRotationOnly = false>
-void WarpedVertexAndNormalJacobians(
+void WarpedSurfaceJacobians(
 		open3d::core::Tensor& vertex_position_jacobians,
 		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
-		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& vertex_normals,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& warp_anchors,

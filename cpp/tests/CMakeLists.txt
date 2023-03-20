@@ -21,6 +21,7 @@ function(nnrt_add_test)
     target_link_libraries(${name} PUBLIC nnrt_cpp test_utils Python3::Python)
     target_link_libraries(${name} PRIVATE Catch2::Catch2)
     target_compile_options(${name} PRIVATE "$<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>")
+    target_link_options(${name} PRIVATE -no-pie)
 
 
     if (ADD_TEST_DEPENDENCIES)
