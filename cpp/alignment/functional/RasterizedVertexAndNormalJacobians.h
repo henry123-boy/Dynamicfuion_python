@@ -61,4 +61,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> RasterizedVertexAndNormal
 	const open3d::core::Tensor& barycentric_coordinates, const open3d::core::Tensor& ndc_intrinsic_matrix,
 	bool use_perspective_corrected_barycentric_coordinates
 );
+
+
+
 } // namespace nnrt::alignment::functional

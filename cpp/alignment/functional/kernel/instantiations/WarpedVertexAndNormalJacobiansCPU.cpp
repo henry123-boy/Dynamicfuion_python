@@ -24,9 +24,9 @@ namespace nnrt::alignment::functional::kernel {
 template
 void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, false>(
 		open3d::core::Tensor& vertex_position_jacobians,
-		open3d::core::Tensor& vertex_normal_jacobians,
+		utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
-		const open3d::core::Tensor& vertex_normals,
+		utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& warp_anchors,
@@ -36,9 +36,9 @@ void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, false
 template
 void WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, true>(
 		open3d::core::Tensor& vertex_position_jacobians,
-		open3d::core::Tensor& vertex_normal_jacobians,
+		utility::optional<std::reference_wrapper<open3d::core::Tensor>> vertex_normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
-		const open3d::core::Tensor& vertex_normals,
+		utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& warp_anchors,

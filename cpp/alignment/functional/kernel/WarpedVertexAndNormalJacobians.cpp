@@ -18,23 +18,25 @@
 // third-party includes
 
 // local includes
+#include <open3d/utility/Optional.h>
 #include "core/DeviceSelection.h"
 #include "WarpedVertexAndNormalJacobians.h"
+
 
 namespace nnrt::alignment::functional::kernel {
 
 void WarpedVertexAndNormalJacobians(
 		open3d::core::Tensor& vertex_jacobians,
-		open3d::core::Tensor& normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> normal_jacobians,
 		const open3d::core::Tensor& vertex_positions,
-		const open3d::core::Tensor& vertex_normals,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> vertex_normals,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& warp_anchors,
 		const open3d::core::Tensor& warp_anchor_weights,
-		bool store_anchor_weights_for_translation_jacobians
+		bool vertex_rotation_only
 ) {
-	if (store_anchor_weights_for_translation_jacobians) {
+	if (vertex_rotation_only) {
 		core::ExecuteOnDevice(
 				vertex_positions.GetDevice(),
 				[&] {

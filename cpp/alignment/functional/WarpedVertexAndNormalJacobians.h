@@ -50,7 +50,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJaco
 		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 );
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalRotationJacobians(
+open3d::core::Tensor WarpedVertexRotationJacobians(
 		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
 		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 );
