@@ -23,7 +23,7 @@
 namespace nnrt::alignment::kernel {
 
 template
-void ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU, true>(
 		open3d::core::Tensor& pixel_jacobians,
 		open3d::core::Tensor& pixel_node_jacobian_counts,
 		open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -38,7 +38,28 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::
 		const open3d::core::Tensor& pixel_faces,
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
-		int64_t node_count
+		int64_t node_count,
+		float tukey_penalty_cutoff
+);
+
+template
+void ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU, false>(
+		open3d::core::Tensor& pixel_jacobians,
+		open3d::core::Tensor& pixel_node_jacobian_counts,
+		open3d::core::Tensor& node_pixel_jacobian_indices,
+		open3d::core::Tensor& node_pixel_jacobian_counts,
+		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
+		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
+		const open3d::core::Tensor& warped_vertex_position_jacobians,
+		const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		const open3d::core::Tensor& point_map_vectors,
+		const open3d::core::Tensor& rasterized_normals,
+		const open3d::core::Tensor& residual_mask,
+		const open3d::core::Tensor& pixel_faces,
+		const open3d::core::Tensor& face_vertices,
+		const open3d::core::Tensor& vertex_anchors,
+		int64_t node_count,
+		float tukey_penalty_cutoff
 );
 
 template

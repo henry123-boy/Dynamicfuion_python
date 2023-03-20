@@ -39,6 +39,7 @@ namespace o3tgk = open3d::t::geometry::kernel;
 namespace utility = open3d::utility;
 
 namespace nnrt::alignment::functional::kernel {
+
 template<open3d::core::Device::DeviceType TDeviceType, bool TWithPerspectiveCorrection,
 		rendering::functional::kernel::FrontFaceVertexOrder TVertexOrder = rendering::functional::kernel::ClockWise>
 void RasterizedVertexAndNormalJacobians(
@@ -155,11 +156,18 @@ void RasterizedVertexAndNormalJacobians(
 						barycentric_coordinates_out
 						(rasterized_normal_jacobian_data + workload_idx * (3 * 10) + (3 * 9));
 
+
 				//TODO: potentially defer adding the Kronecker product until later to optimize (i.e. same Kronecker
 				// product is used for dn_l/dVN
+				// TODO: replace below code if/when Eigen kroneckerProduct works properly w/ CUDA
+				// pixel_rendered_vertex_jacobian_wrt_face_vertices =
+				// 		face_vertex_matrix * barycentric_coordinate_jacobian +
+				// 		Eigen::kroneckerProduct(barycentric_coordinates, core::kernel::Matrix3f::Identity());
 				pixel_rendered_vertex_jacobian_wrt_face_vertices =
-						face_vertex_matrix * barycentric_coordinate_jacobian +
-						Eigen::kroneckerProduct(barycentric_coordinates, core::kernel::Matrix3f::Identity());
+						face_vertex_matrix * barycentric_coordinate_jacobian;
+				Eigen::Matrix<float, 3, 9, Eigen::RowMajor> kronecker_product_output;
+				nnrt::core::linalg::kernel::ComputeKroneckerProduct(kronecker_product_output, barycentric_coordinates, core::kernel::Matrix3f::Identity());
+				pixel_rendered_vertex_jacobian_wrt_face_vertices += kronecker_product_output;
 
 				pixel_rendered_normal_jacobian_wrt_face_vertices =
 						face_normal_matrix * barycentric_coordinate_jacobian;

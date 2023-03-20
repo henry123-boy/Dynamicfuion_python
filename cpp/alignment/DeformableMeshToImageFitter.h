@@ -30,12 +30,14 @@ class DeformableMeshToImageFitter {
 public:
 	//TODO: we need here to have various terminations conditions that can work together or be turned on and off, i.e. probably
 	// use a separate struct holding data that dictates to the DeformableMeshToImageFitter how to facilitate this behavior (and is stored locally)
-    DeformableMeshToImageFitter(
-            int maximal_iteration_count = 100,
-            float minimal_update_threshold = 1e-6,
-            bool use_perspective_correction = false,
-            float max_depth = 10.f
-    );
+	DeformableMeshToImageFitter(
+			int maximal_iteration_count = 100,
+			float minimal_update_threshold = 1e-6,
+			bool use_perspective_correction = false,
+			float max_depth = 10.f,
+			bool use_tukey_penalty = false,
+			float tukey_penalty_cutoff_cm = 0.01
+	);
 
     /**
      * \brief
@@ -88,6 +90,8 @@ private:
     float min_update_threshold;
     float max_depth;
     bool use_perspective_correction;
+	bool use_tukey_penalty;
+	float tukey_penalty_cutoff_cm;
 
     open3d::core::Tensor ComputeResiduals(
             open3d::t::geometry::PointCloud& rasterized_point_cloud,

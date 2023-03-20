@@ -38,30 +38,58 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& pixel_faces,
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
-		int64_t node_count
+		int64_t node_count,
+		bool use_tukey_penalty,
+		float tukey_penalty_cutoff
 ) {
-	core::ExecuteOnDevice(
-			residual_mask.GetDevice(),
-			[&] {
-				ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
-						pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices, node_pixel_counts,
-						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-						point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-						vertex_anchors, node_count);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-						ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
-								pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices,
-								node_pixel_counts,
-								rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-								warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-								point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-								vertex_anchors, node_count);
-				);
-			}
-	);
+	if(use_tukey_penalty){
+		core::ExecuteOnDevice(
+				residual_mask.GetDevice(),
+				[&] {
+					ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU, true>(
+							pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices, node_pixel_counts,
+							rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+							warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+							point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+							vertex_anchors, node_count, tukey_penalty_cutoff);
+				},
+				[&] {
+					NNRT_IF_CUDA(
+							ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA, true>(
+									pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices,
+									node_pixel_counts,
+									rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+									warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+									point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+									vertex_anchors, node_count, tukey_penalty_cutoff);
+					);
+				}
+		);
+	}else{
+		core::ExecuteOnDevice(
+				residual_mask.GetDevice(),
+				[&] {
+					ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU, false>(
+							pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices, node_pixel_counts,
+							rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+							warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+							point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+							vertex_anchors, node_count);
+				},
+				[&] {
+					NNRT_IF_CUDA(
+							ComputePixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA, false>(
+									pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices,
+									node_pixel_counts,
+									rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+									warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+									point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
+									vertex_anchors, node_count);
+					);
+				}
+		);
+	}
+
 }
 
 void ConvertPixelVertexAnchorJacobiansToNodeJacobians(

@@ -20,6 +20,11 @@
 #include <open3d/core/ParallelFor.h>
 #include <Eigen/Dense>
 
+//__DEBUG
+#ifdef __CUDACC__
+#include <open3d/core/CUDAUtils.h>
+#endif
+
 
 // local includes
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
@@ -73,7 +78,7 @@ NNRT_DEVICE_WHEN_CUDACC void HeapSort(TScalar* array, int length) {
 	}
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType, bool TUseTukeyPenalty>
 void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 		open3d::core::Tensor& pixel_node_jacobians,
 		open3d::core::Tensor& pixel_node_jacobian_counts,
@@ -89,8 +94,15 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& pixel_faces,
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
-		int64_t node_count
+		int64_t node_count,
+		float tukey_penalty_cutoff
 ) {
+	//__DEBUG
+#ifdef __CUDACC__
+	void* ptr;
+	OPEN3D_CUDA_CHECK(cudaMallocAsync(static_cast<void**>(&ptr), (size_t)8, open3d::core::cuda::GetStream()));
+#endif
+
 	// === dimension, type, and device tensor checks ===
 	int64_t image_height = rasterized_vertex_position_jacobians.GetShape(0);
 	int64_t image_width = rasterized_vertex_position_jacobians.GetShape(1);
@@ -146,8 +158,10 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 	o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
 
 	// === initialize output matrices ===
-	node_pixel_jacobian_indices = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32);
+	node_pixel_jacobian_indices = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32, device);
+
 	node_pixel_jacobian_indices.Fill(-1);
+
 	auto node_pixel_jacobian_index_data = node_pixel_jacobian_indices.GetDataPtr<int32_t>();
 
 	core::AtomicCounterArray<TDeviceType> node_pixel_counters(node_count);
@@ -156,9 +170,9 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 	// these jacobians are aggregated on a per-node basis
 	// thus, count of jacobians per vertex <= [count of anchor nodes per vertex] * 3
 	// [pixel count] x ([count of anchor nodes per vertex] * 3) x [6 values per node , i.e. 3 rotation angles, 3 translation coordinates]
-	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, 6}, o3c::Float32);
+	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, 6}, o3c::Float32, device);
 	auto pixel_node_jacobians_data = pixel_node_jacobians.GetDataPtr<float>();
-	pixel_node_jacobian_counts = o3c::Tensor::Zeros({pixel_count}, o3c::Int32);
+	pixel_node_jacobian_counts = o3c::Tensor::Zeros({pixel_count}, o3c::Int32, device);
 	auto pixel_node_jacobian_counts_data = pixel_node_jacobian_counts.GetDataPtr<int32_t>();
 
 
@@ -194,10 +208,37 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				// wl and nl stand for rasterized warped vertex positions and normals, respectively
 				// V and N stand for warped vertex positions and normals, respectively
 
-				// ∂r/∂nl = ∂nl(wl-ol)/∂nl = (wl-ol)^T
-				Eigen::Map<const Eigen::RowVector3f> dr_dnl(point_map_vector_data + pixel_index * 3);
-				// ∂r/∂wl = ∂nl(wl-ol)/∂wl = nl^T
-				Eigen::Map<const Eigen::RowVector3f> dr_dwl(rasterized_normal_data + pixel_index * 3);
+				Eigen::Map<const Eigen::RowVector3f> wl_minus_ol(point_map_vector_data + pixel_index * 3);
+				Eigen::Map<const Eigen::RowVector3f> nl(rasterized_normal_data + pixel_index * 3);
+				//TODO: potential optimization: use templated call to rest of code instead to avoid copying to dr_dnl, dr_dwl
+				Eigen::RowVector3f dr_dnl, dr_dwl;
+
+				if (TUseTukeyPenalty) {
+					// recompute r, i.e. residual without applying the Tukey psi / penalty function
+					float r = nl.dot(wl_minus_ol);
+
+					if (fabsf(r) > tukey_penalty_cutoff) {
+						return;
+					}
+					// ∂Tukey(r)/∂r = psi(r) = r * (1 - (r/c)^2)^2
+					float quotient_r_and_c = r / tukey_penalty_cutoff;
+					float psi_r = 1 - quotient_r_and_c * quotient_r_and_c;
+					psi_r = r * psi_r * psi_r;
+
+
+					// ∂Tukey(r)/∂nl = psi(r) * ∂nl(wl-ol)/∂nl = psi(r) * (wl-ol)^T
+					dr_dnl = psi_r * wl_minus_ol;
+
+					// ∂Tukey(r)/∂wl = psi(r) * ∂nl(wl-ol)/∂wl = nl^T
+					dr_dwl = psi_r * nl;
+
+					// note the switch above in meaning of variable "r": r'' = psi(r)
+				} else {
+					// ∂r/∂nl = ∂nl(wl-ol)/∂nl = (wl-ol)^T
+					dr_dnl = wl_minus_ol;
+					// ∂r/∂wl = ∂nl(wl-ol)/∂wl = nl^T
+					dr_dwl = nl;
+				}
 
 
 				Eigen::Map<const core::kernel::Matrix3x9f> dwl_dV
@@ -215,9 +256,13 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				auto dr_dV = dr_dwl_x_dwl_dV + dr_dnl_x_dnl_dV;
 				// dr_dN = dr_dl * dl_dV + dr_dn * dl_dN = 0 + dr_dn  * dl_dN
 				//                                             [1 x 3] * [3 x 9] = [1 x 9]
-				auto dr_dN =
-						dr_dnl *
-						Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
+				//TODO: if/when Eigen::kroneckerProduct gets fixed, use the below line instead of custom function
+				// auto dr_dN =
+				// 		dr_dnl *
+				// 		Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
+				Eigen::Matrix<float, 3, 9, Eigen::RowMajor> kronecker_product_output;
+				nnrt::core::linalg::kernel::ComputeKroneckerProduct(kronecker_product_output, pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
+				auto dr_dN = dr_dnl * kronecker_product_output;
 
 				//__DEBUG
 				auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
@@ -327,7 +372,7 @@ void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 
 
 						//__DEBUG (remove both lines below)
-						// pixel_vertex_anchor_rotation_jacobian += (dr_dn * dn_drotation);
+						// pixel_vertex_anchor_rotation_jacobian += (dr_dn * dn_drotation); //
 						// pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation);
 
 						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])

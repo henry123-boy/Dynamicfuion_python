@@ -44,14 +44,18 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::alignment {
 
 DeformableMeshToImageFitter::DeformableMeshToImageFitter(
-		int maximal_iteration_count,
-		float minimal_update_threshold,
-		bool use_perspective_correction,
-		float max_depth
+		int maximal_iteration_count /* = 100*/,
+		float minimal_update_threshold /* = 1e-6*/,
+		bool use_perspective_correction /* = false*/,
+		float max_depth /* = 10.f*/,
+		bool use_tukey_penalty /* = false*/,
+		float tukey_penalty_cutoff_cm /* = 0.01*/
 ) : max_iteration_count(maximal_iteration_count),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
-    use_perspective_correction(use_perspective_correction) {}
+    use_perspective_correction(use_perspective_correction),
+    use_tukey_penalty(use_tukey_penalty),
+    tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm) {}
 
 void DeformableMeshToImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field,
@@ -147,6 +151,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
 				functional::WarpedVertexAndNormalJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
 
+
 		// compute rasterized vertex and normal jacobians
 		// [W x H x 3 x 9], [W x H x 30]; 30 = 3x9, 1x3
 		//TODO: probably better to explicitly separate the rasterized_vertex_normal_jacobians ([W x H x 3x9]) from the barycentrics ([W x H x 1x3])
@@ -172,12 +177,13 @@ void DeformableMeshToImageFitter::FitToImage(
 
 		o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
 
+		//__DEBUG
 		kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
 				pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts,
 				rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 				warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 				point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
-				warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength()
+				warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(), false, 0.01
 		);
 
 		//__DEBUG
