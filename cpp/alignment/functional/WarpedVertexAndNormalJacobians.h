@@ -46,8 +46,13 @@ namespace nnrt::alignment::functional {
  * vertex position Jacobians are stored in the first tensor in the output tuple, vertex normal Jacobians are stored in the second tensor.
  */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalJacobians(
-	const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
-	const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
+		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
+		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
+);
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpedVertexAndNormalRotationJacobians(
+		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
+		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 );
 
 } // namespace nnrt::alignment::functional

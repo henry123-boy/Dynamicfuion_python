@@ -23,27 +23,53 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void WarpedVertexAndNormalJacobians(open3d::core::Tensor& vertex_jacobians, open3d::core::Tensor& normal_jacobians,
-                                    const open3d::core::Tensor& vertex_positions, const open3d::core::Tensor& vertex_normals,
-                                    const open3d::core::Tensor& node_positions, const open3d::core::Tensor& node_rotations,
-                                    const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights) {
-	core::ExecuteOnDevice(
-			vertex_positions.GetDevice(),
-			[&] {
-				WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU>(
-						vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
-						warp_anchor_weights
-				);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-						WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA>(
-								vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
-								warp_anchor_weights
-						);
-				);
-			}
-	);
+void WarpedVertexAndNormalJacobians(
+		open3d::core::Tensor& vertex_jacobians,
+		open3d::core::Tensor& normal_jacobians,
+		const open3d::core::Tensor& vertex_positions,
+		const open3d::core::Tensor& vertex_normals,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& warp_anchors,
+		const open3d::core::Tensor& warp_anchor_weights,
+		bool store_anchor_weights_for_translation_jacobians
+) {
+	if (store_anchor_weights_for_translation_jacobians) {
+		core::ExecuteOnDevice(
+				vertex_positions.GetDevice(),
+				[&] {
+					WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, true>(
+							vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
+							warp_anchor_weights);
+				},
+				[&] {
+					NNRT_IF_CUDA(
+							WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, true>(
+									vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations,
+									warp_anchors,
+									warp_anchor_weights);
+					);
+				}
+		);
+	} else {
+		core::ExecuteOnDevice(
+				vertex_positions.GetDevice(),
+				[&] {
+					WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CPU, false>(
+							vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations, warp_anchors,
+							warp_anchor_weights);
+				},
+				[&] {
+					NNRT_IF_CUDA(
+							WarpedVertexAndNormalJacobians<open3d::core::Device::DeviceType::CUDA, false>(
+									vertex_jacobians, normal_jacobians, vertex_positions, vertex_normals, node_positions, node_rotations,
+									warp_anchors,
+									warp_anchor_weights);
+					);
+				}
+		);
+	}
+
 
 }
 
