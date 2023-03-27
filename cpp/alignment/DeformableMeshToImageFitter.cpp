@@ -208,16 +208,14 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor hessian_approximation_blocks;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				hessian_approximation_blocks, pixel_jacobians,
-				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts
-		);
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, IterationMode::ALL);
 
 		// compute -(J^T)r
 		o3c::Tensor negative_gradient;
 		int max_anchor_count_per_vertex = warp_anchors.GetShape(1);
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
 				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
-				node_pixel_jacobian_counts, max_anchor_count_per_vertex
-		);
+				node_pixel_jacobian_counts, max_anchor_count_per_vertex, IterationMode::ALL);
 
 		open3d::core::Tensor motion_updates;
 		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);

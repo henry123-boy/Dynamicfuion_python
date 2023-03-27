@@ -53,20 +53,21 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
-		const open3d::core::Tensor& node_pixel_indices,
-		const open3d::core::Tensor& node_pixel_counts
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		IterationMode mode
 ) {
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
 				ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
-						hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
+						hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts, mode
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
-								hessian_approximation_blocks, pixel_jacobians, node_pixel_indices, node_pixel_counts
+								hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts, mode
 						);
 				);
 			}
@@ -74,26 +75,29 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 }
 
 void ComputeNegativeGradient_UnorderedNodePixels(
-		open3d::core::Tensor& gradient,
+		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
-		int max_vertex_anchor_count
+		int max_vertex_anchor_count,
+		IterationMode mode
 ) {
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
 				ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
-						gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
-						node_pixel_jacobian_counts, max_vertex_anchor_count);
+						negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
+						node_pixel_jacobian_counts, max_vertex_anchor_count, mode
+				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
-								gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
-								node_pixel_jacobian_counts, max_vertex_anchor_count);
+								negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
+								node_pixel_jacobian_counts, max_vertex_anchor_count, mode
+						);
 				);
 			}
 	);

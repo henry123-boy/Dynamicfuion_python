@@ -37,7 +37,8 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device:
 		open3d::core::Tensor& workload_index,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
-		const open3d::core::Tensor& node_pixel_jacobian_counts
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		IterationMode mode
 );
 
 template
@@ -48,7 +49,8 @@ void ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceTyp
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
 		const open3d::core::Tensor& node_pixel_jacobian_counts,
-		int max_anchor_count_per_vertex
+		int max_anchor_count_per_vertex,
+		IterationMode mode
 );
 
 } // namespace nnrt::alignment::kernel

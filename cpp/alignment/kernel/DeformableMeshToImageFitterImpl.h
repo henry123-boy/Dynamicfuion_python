@@ -197,8 +197,8 @@ NNRT_CONSTANT_WHEN_CUDACC const int six_column_1_lookup_table[21] = {
 //TODO: can optimize: don't fill in lower triangle at all, use a batched triangular solver instead of Cholesky?
 
 
-template<open3d::core::Device::DeviceType TDevice>
-void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+template<open3d::core::Device::DeviceType TDevice, IterationMode TIterationMode>
+void ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -215,7 +215,19 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 	o3c::AssertTensorDtype(node_pixel_jacobian_indices, o3c::Int32);
 	o3c::AssertTensorDevice(node_pixel_jacobian_indices, device);
 
-	o3c::AssertTensorShape(pixel_jacobians, { utility::nullopt, utility::nullopt, 6 });
+	int jacobian_stride;
+	int64_t unique_entry_count_per_block;
+	if (TIterationMode == IterationMode::ALL) {
+		jacobian_stride = 6;
+		unique_entry_count_per_block = 21;
+	} else {
+		jacobian_stride = 3;
+		unique_entry_count_per_block = 6;
+	}
+
+	const int jacobian_block_stride = jacobian_stride * jacobian_stride;
+
+	o3c::AssertTensorShape(pixel_jacobians, { utility::nullopt, utility::nullopt, jacobian_stride });
 	o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
 	o3c::AssertTensorDevice(pixel_jacobians, device);
 
@@ -225,6 +237,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 	auto pixel_jacobian_data = pixel_jacobians.GetDataPtr<float>();
 
 	/*
+	 * For "ALL" iteration:
 	 * Each node has 6 delta components (3 rotational and 3 translational).
 	 * These would be represented in a dense jacobian as rows within the same 6 columns, with each row
 	 * corresponding to a separate pixel.
@@ -236,10 +249,14 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 	 *       so there are only 21 unique entries per block
 	 *    2. Due to commutativity of addition, it doesn't matter in what order the addends of each dot product are
 	 *       retrieved from memory, as long as we always sample their factors from the same row
+	 *
+	 * For "TRANSLATION_ONLY" or "ROTATION_ONLY" iterations:
+	 * we follow exactly the same logic as above, except
+	 * now we have only 3 delta components, and hence 6 unique elements per each 3x3 block.
 	 */
-	// initialize output structures
-	const int64_t unique_entry_count_per_block = 21;
-	hessian_approximation_blocks = o3c::Tensor({node_count, 6, 6}, o3c::Float32, device);
+
+	// initialize output structure
+	hessian_approximation_blocks = o3c::Tensor({node_count, jacobian_stride, jacobian_stride}, o3c::Float32, device);
 	auto hessian_approximation_block_data = hessian_approximation_blocks.GetDataPtr<float>();
 
 	o3c::ParallelFor(
@@ -247,8 +264,16 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_index) {
 				int i_node = static_cast<int>(workload_index / unique_entry_count_per_block);
 				int i_unique_element_in_block = static_cast<int>(workload_index % unique_entry_count_per_block);
-				int i_column_0 = six_column_0_lookup_table[i_unique_element_in_block];
-				int i_column_1 = six_column_1_lookup_table[i_unique_element_in_block];
+				int i_column_0;
+				int i_column_1;
+
+				if (TIterationMode == IterationMode::ALL) {
+					i_column_0 = six_column_0_lookup_table[i_unique_element_in_block];
+					i_column_1 = six_column_1_lookup_table[i_unique_element_in_block];
+				} else {
+					i_column_0 = three_column_0_lookup_table[i_unique_element_in_block];
+					i_column_1 = three_column_1_lookup_table[i_unique_element_in_block];
+				}
 
 				//__DEBUG
 				// bool TKeepRotationsIndependentFromTranslations = true;
@@ -269,14 +294,62 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 					column_product += addend;
 				}
 				// parenthesis for clarity
-				hessian_approximation_block_data[(i_node * 36) + (i_column_0 * 6) + i_column_1] = column_product;
-				hessian_approximation_block_data[(i_node * 36) + (i_column_1 * 6) + i_column_0] = column_product;
+				hessian_approximation_block_data[(i_node * jacobian_block_stride) + (i_column_0 * jacobian_stride) + i_column_1] = column_product;
+				hessian_approximation_block_data[(i_node * jacobian_block_stride) + (i_column_1 * jacobian_stride) + i_column_0] = column_product;
 			}
 	);
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeNegativeGradient_UnorderedNodePixels(
+void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+		open3d::core::Tensor& hessian_approximation_blocks,
+		const open3d::core::Tensor& pixel_jacobians,
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		IterationMode mode
+) {
+	switch (mode) {
+		case ALL:
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ALL>(
+					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
+			);
+			break;
+		case TRANSLATION_ONLY:
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::TRANSLATION_ONLY>(
+					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
+			);
+			break;
+		case ROTATION_ONLY:
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ROTATION_ONLY>(
+					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
+			);
+			break;
+	}
+}
+
+namespace internal {
+template<IterationMode TIterationMode>
+struct Gradient;
+
+template<>
+struct Gradient<IterationMode::ALL> {
+	typedef typename Eigen::Vector<float, 6> VectorType;
+};
+
+template<>
+struct Gradient<IterationMode::ROTATION_ONLY> {
+	typedef typename Eigen::Vector<float, 3> VectorType;
+};
+
+template<>
+struct Gradient<IterationMode::TRANSLATION_ONLY> {
+	typedef typename Eigen::Vector<float, 3> VectorType;
+};
+
+} // internal
+
+template<open3d::core::Device::DeviceType TDevice, IterationMode TIterationMode>
+void ComputeNegativeGradient_UnorderedNodePixels_Generic(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -290,7 +363,14 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	int64_t pixel_count = pixel_jacobians.GetShape(0);
 	int64_t max_jacobian_count = pixel_jacobians.GetShape(1);
 
-	o3c::AssertTensorShape(pixel_jacobians, { pixel_count, max_jacobian_count, 6 });
+	int jacobian_stride;
+	if (TIterationMode == IterationMode::ALL) {
+		jacobian_stride = 6;
+	} else {
+		jacobian_stride = 3;
+	}
+
+	o3c::AssertTensorShape(pixel_jacobians, { pixel_count, max_jacobian_count, jacobian_stride });
 	o3c::AssertTensorDtype(pixel_jacobians, o3c::Float32);
 	o3c::AssertTensorDevice(pixel_jacobians, device);
 
@@ -320,7 +400,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	auto node_pixel_count_data = node_pixel_jacobian_counts.GetDataPtr<int32_t>();
 
 	// === initialize output structures ===
-	negative_gradient = o3c::Tensor::Zeros({node_count * 6}, o3c::Float32, device);
+	negative_gradient = o3c::Tensor::Zeros({node_count * jacobian_stride}, o3c::Float32, device);
 	auto negative_gradient_data = negative_gradient.GetDataPtr<float>();
 
 	//TODO: this is extremely inefficient. There must be some parallel reduction we can apply here, but everything is difficult.
@@ -331,21 +411,60 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 			device, node_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
 				int node_pixel_jacobian_list_length = node_pixel_count_data[node_index];
-				Eigen::Vector<float, 6> node_pixel_gradient;
-				node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
+				typename internal::Gradient<TIterationMode>::VectorType node_pixel_gradient;
+				if (TIterationMode == IterationMode::ALL) {
+					node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
+				} else {
+					node_pixel_gradient << 0.f, 0.f, 0.f;
+				}
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
 					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
-					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * 6);
-					//TODO: NOT sure mask filtering helps with anything here -- seems like it would only contribute to thread divergence
+					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * jacobian_stride);
 					if (!residual_mask_data[i_pixel]) continue;
-					Eigen::Map<const Eigen::Vector<float, 6>> node_pixel_jacobian(pixel_jacobian_data + pixel_node_jacobian_address);
+					Eigen::Map<const typename internal::Gradient<TIterationMode>::VectorType> node_pixel_jacobian(
+							pixel_jacobian_data + pixel_node_jacobian_address);
 					float residual = residual_data[i_pixel];
 					node_pixel_gradient += node_pixel_jacobian * residual;
 				}
-				Eigen::Map<Eigen::Vector<float, 6>> negative_node_gradient(negative_gradient_data + node_index * 6);
+				Eigen::Map<typename internal::Gradient<TIterationMode>::VectorType> negative_node_gradient(
+						negative_gradient_data + node_index * jacobian_stride);
 				negative_node_gradient -= node_pixel_gradient;
 			}
 	);
 }
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeNegativeGradient_UnorderedNodePixels(
+		open3d::core::Tensor& negative_gradient,
+		const open3d::core::Tensor& residuals,
+		const open3d::core::Tensor& residual_mask,
+		const open3d::core::Tensor& pixel_jacobians,
+		const open3d::core::Tensor& node_pixel_jacobian_indices,
+		const open3d::core::Tensor& node_pixel_jacobian_counts,
+		int max_anchor_count_per_vertex,
+		IterationMode mode
+) {
+	switch (mode) {
+		case ALL:
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ALL>(
+					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
+					node_pixel_jacobian_counts, max_anchor_count_per_vertex
+			);
+			break;
+		case TRANSLATION_ONLY:
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::TRANSLATION_ONLY>(
+					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
+					node_pixel_jacobian_counts, max_anchor_count_per_vertex
+			);
+			break;
+		case ROTATION_ONLY:
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ROTATION_ONLY>(
+					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
+					node_pixel_jacobian_counts, max_anchor_count_per_vertex
+			);
+			break;
+	}
+}
+
 
 } // namespace nnrt::alignment::kernel
