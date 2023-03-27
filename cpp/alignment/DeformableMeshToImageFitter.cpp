@@ -19,6 +19,8 @@
 #include <open3d/core/Dispatch.h>
 #include <open3d/t/io/ImageIO.h>
 
+#include <utility>
+
 // local
 #include "core/functional/Masking.h"
 #include "core/linalg/SolveCholesky.h"
@@ -45,13 +47,15 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::alignment {
 
 DeformableMeshToImageFitter::DeformableMeshToImageFitter(
-		int maximal_iteration_count /* = 100*/,
-		float minimal_update_threshold /* = 1e-6*/,
-		bool use_perspective_correction /* = false*/,
-		float max_depth /* = 10.f*/,
-		bool use_tukey_penalty /* = false*/,
-		float tukey_penalty_cutoff_cm /* = 0.01*/
-) : max_iteration_count(maximal_iteration_count),
+		int max_iteration_count,
+		std::vector<IterationMode> iteration_mode_sequence,
+		float minimal_update_threshold,
+		bool use_perspective_correction,
+		float max_depth,
+		bool use_tukey_penalty,
+		float tukey_penalty_cutoff_cm
+) : max_iteration_count(max_iteration_count),
+	iteration_mode_sequence(std::move(iteration_mode_sequence)),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
     use_perspective_correction(use_perspective_correction),
@@ -80,6 +84,8 @@ void DeformableMeshToImageFitter::FitToImage(
 
 
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
+		IterationMode current_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
+
 		o3tg::TriangleMesh
 				warped_mesh = warp_field.WarpMesh(canonical_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
 

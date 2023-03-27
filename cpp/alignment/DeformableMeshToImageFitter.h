@@ -22,7 +22,8 @@
 #include <open3d/t/geometry/RGBDImage.h>
 
 // local
-#include "../geometry/GraphWarpField.h"
+#include "geometry/GraphWarpField.h"
+#include "alignment/IterationMode.h"
 
 namespace nnrt::alignment {
 
@@ -31,7 +32,8 @@ public:
 	//TODO: we need here to have various terminations conditions that can work together or be turned on and off, i.e. probably
 	// use a separate struct holding data that dictates to the DeformableMeshToImageFitter how to facilitate this behavior (and is stored locally)
 	DeformableMeshToImageFitter(
-			int maximal_iteration_count = 100,
+			int max_iteration_count = 100,
+			std::vector<IterationMode> iteration_mode_sequence = {IterationMode::ALL},
 			float minimal_update_threshold = 1e-6,
 			bool use_perspective_correction = false,
 			float max_depth = 10.f,
@@ -87,6 +89,7 @@ public:
 
 private:
     int max_iteration_count;
+	std::vector<IterationMode> iteration_mode_sequence;
     float min_update_threshold;
     float max_depth;
     bool use_perspective_correction;

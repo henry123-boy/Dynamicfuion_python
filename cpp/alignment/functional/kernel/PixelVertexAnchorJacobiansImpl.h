@@ -78,12 +78,23 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 		                  anchor_count_per_vertex, MAX_ANCHOR_COUNT);
 	}
 
-	o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex, 4 });
+	if (TIterationMode == IterationMode::TRANSLATION_ONLY) {
+		// in the translation-only case, we expect vertex anchor weights to be passed in directly
+		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex });
+	} else {
+		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex, 4 });
+	}
+
 	o3c::AssertTensorDevice(warped_vertex_position_jacobians, device);
 	o3c::AssertTensorDtype(warped_vertex_position_jacobians, o3c::Float32);
 
 	if (TIterationMode == IterationMode::ALL ||
 	    TIterationMode == IterationMode::ROTATION_ONLY) {
+		if(!warped_vertex_normal_jacobians.has_value()){
+			utility::LogError("warped_vertex_normal_jacobians argument has to be a tensor for a call to RasterizedSurfaceJacobians with"
+			                  "TIterationMode template argument set to ALL or ROTATION_ONLY, which it is not.");
+		}
+
 		// warped vertex normal jacobians are irrelevant for translation-only case (vertex normals don't change with only translation)
 		o3c::AssertTensorShape(warped_vertex_normal_jacobians.value().get(), { vertex_count, anchor_count_per_vertex, 3 });
 		o3c::AssertTensorDevice(warped_vertex_normal_jacobians.value().get(), device);
@@ -305,9 +316,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 					float* pixeL_vertex_anchor_rotation_jacobian_data = nullptr;
 					float* pixel_vertex_anchor_translation_jacobian_data = nullptr;
 
-					switch(TIterationMode) {
-						case IterationMode::ALL:
-							pixeL_vertex_anchor_rotation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address;
+					switch (TIterationMode) {
+						case IterationMode::ALL: pixeL_vertex_anchor_rotation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address;
 							pixel_vertex_anchor_translation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address + 3;
 							break;
 						case IterationMode::ROTATION_ONLY:
@@ -324,10 +334,17 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 						int i_vertex_anchor = face_anchor.vertex_anchor_indices[i_face_vertex];
 
 						// used to compute warped vertex position Jacobian w.r.t. node translation, weight * I_3x3
-						float stored_anchor_weight =
-								warped_vertex_position_jacobian_data[
-										(i_vertex * anchor_count_per_vertex * 4) +
-										(i_vertex_anchor * 4) + 3];
+						float stored_anchor_weight;
+						if (TIterationMode == IterationMode::TRANSLATION_ONLY) {
+							// in translation-only mode, we expect the vertex weights to be passed in directly
+							stored_anchor_weight = warped_vertex_position_jacobian_data[i_vertex * anchor_count_per_vertex + i_vertex_anchor];
+						} else {
+							stored_anchor_weight = warped_vertex_position_jacobian_data[
+									(i_vertex * anchor_count_per_vertex * 4) +
+									(i_vertex_anchor * 4) + 3
+							];
+						}
+
 
 						// [1x3]
 						auto dr_dv = dr_dV.block<1, 3>(0, i_face_vertex * 3);
@@ -339,7 +356,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 						if (TIterationMode == IterationMode::ALL ||
 						    TIterationMode == IterationMode::TRANSLATION_ONLY) {
 							Eigen::Map<Eigen::RowVector3<float>>
-									pixel_vertex_anchor_translation_jacobian (pixel_vertex_anchor_translation_jacobian_data);
+									pixel_vertex_anchor_translation_jacobian(pixel_vertex_anchor_translation_jacobian_data);
 							// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 							pixel_vertex_anchor_translation_jacobian += dr_dv * (Eigen::Matrix3f::Identity() * stored_anchor_weight);
 						}
@@ -408,7 +425,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
 		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normal_jacobians,
 		const open3d::core::Tensor& point_map_vectors,
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,
@@ -422,13 +439,13 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 ) {
 
 #define NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS \
-	pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts, \
-	rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,                        \
-			warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                        \
-			point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,        \
-			vertex_anchors, node_count, tukey_penalty_cutoff
+    pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts, \
+    rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,                        \
+            warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                        \
+            point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,        \
+            vertex_anchors, node_count, tukey_penalty_cutoff
 	if (use_tukey_penalty) {
-		switch(mode){
+		switch (mode) {
 			case ALL:
 				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, true, IterationMode::ALL>(
 						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
@@ -446,7 +463,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 				break;
 		}
 	} else {
-		switch(mode){
+		switch (mode) {
 			case ALL:
 				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, false, IterationMode::ALL>(
 						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS

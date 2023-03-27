@@ -31,7 +31,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceT
 		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
 		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normal_jacobians,
 		const open3d::core::Tensor& point_map_vectors,
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,

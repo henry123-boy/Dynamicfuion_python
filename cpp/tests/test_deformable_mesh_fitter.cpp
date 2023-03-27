@@ -124,7 +124,7 @@ void TestDeformableImageFitter_25NodePlane(const o3c::Device& device, bool draw_
 
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-	nnrt::alignment::DeformableMeshToImageFitter fitter(1, 1e-6, true, 10.f, false, 0.01);
+	nnrt::alignment::DeformableMeshToImageFitter fitter(1, {nnrt::alignment::IterationMode::ALL}, 1e-6, true, 10.f, false, 0.01);
 	o3tg::Image dummy_color_image;
 
 
@@ -212,7 +212,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(const o3c::Device& device, 
 
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-	nnrt::alignment::DeformableMeshToImageFitter fitter(1, 1e-6, use_perspective_correction, 10.f, false, 0.01);
+	nnrt::alignment::DeformableMeshToImageFitter fitter(1, {nnrt::alignment::IterationMode::ALL}, 1e-6, use_perspective_correction, 10.f, false, 0.01);
 	o3tg::Image dummy_color_image;
 
 	o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
@@ -302,7 +302,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device& device, boo
 
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-	nnrt::alignment::DeformableMeshToImageFitter fitter(1, 1e-6, use_perspective_correction, 10.f, false, 0.01);
+	nnrt::alignment::DeformableMeshToImageFitter fitter(1, {nnrt::alignment::IterationMode::ALL}, 1e-6, use_perspective_correction, 10.f, false, 0.01);
 	o3tg::Image dummy_color_image;
 
 	o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
