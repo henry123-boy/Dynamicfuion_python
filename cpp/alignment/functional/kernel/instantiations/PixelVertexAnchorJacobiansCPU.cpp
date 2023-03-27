@@ -39,6 +39,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceT
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
 		int64_t node_count,
+		IterationMode mode,
 		bool use_tukey_penalty,
 		float tukey_penalty_cutoff
 );

@@ -36,7 +36,7 @@ namespace utility = open3d::utility;
 
 namespace nnrt::alignment::functional::kernel {
 
-template<open3d::core::Device::DeviceType TDeviceType, bool TUseTukeyPenalty>
+template<open3d::core::Device::DeviceType TDeviceType, bool TUseTukeyPenalty, IterationMode TIterationMode>
 void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 		open3d::core::Tensor& pixel_node_jacobians,
 		open3d::core::Tensor& pixel_node_jacobian_counts,
@@ -45,7 +45,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
 		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normal_jacobians,
 		const open3d::core::Tensor& point_map_vectors,
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,
@@ -82,9 +82,13 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	o3c::AssertTensorDevice(warped_vertex_position_jacobians, device);
 	o3c::AssertTensorDtype(warped_vertex_position_jacobians, o3c::Float32);
 
-	o3c::AssertTensorShape(warped_vertex_normal_jacobians, { vertex_count, anchor_count_per_vertex, 3 });
-	o3c::AssertTensorDevice(warped_vertex_normal_jacobians, device);
-	o3c::AssertTensorDtype(warped_vertex_normal_jacobians, o3c::Float32);
+	if (TIterationMode == IterationMode::ALL ||
+	    TIterationMode == IterationMode::ROTATION_ONLY) {
+		// warped vertex normal jacobians are irrelevant for translation-only case (vertex normals don't change with only translation)
+		o3c::AssertTensorShape(warped_vertex_normal_jacobians.value().get(), { vertex_count, anchor_count_per_vertex, 3 });
+		o3c::AssertTensorDevice(warped_vertex_normal_jacobians.value().get(), device);
+		o3c::AssertTensorDtype(warped_vertex_normal_jacobians.value().get(), o3c::Float32);
+	}
 
 	o3c::AssertTensorShape(point_map_vectors, { pixel_count, 3 });
 	o3c::AssertTensorDevice(point_map_vectors, device);
@@ -122,8 +126,14 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	// each anchor node controls from 1 to 3 vertices per face intersecting with the pixel ray:
 	// these jacobians are aggregated on a per-node basis
 	// thus, count of jacobians per vertex <= [count of anchor nodes per vertex] * 3
-	// [pixel count] x ([count of anchor nodes per vertex] * 3) x [6 values per node , i.e. 3 rotation angles, 3 translation coordinates]
-	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, 6}, o3c::Float32, device);
+	// [pixel count] x ([count of anchor nodes per vertex] * 3) x [6 max. values per node , i.e. 3 rotation angles, 3 translation coordinates]
+	int jacobian_stride;
+	if (TIterationMode == IterationMode::ALL) {
+		jacobian_stride = 6;
+	} else {
+		jacobian_stride = 3;
+	}
+	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, jacobian_stride}, o3c::Float32, device);
 	auto pixel_node_jacobians_data = pixel_node_jacobians.GetDataPtr<float>();
 	pixel_node_jacobian_counts = o3c::Tensor::Zeros({pixel_count}, o3c::Int32, device);
 	auto pixel_node_jacobian_counts_data = pixel_node_jacobian_counts.GetDataPtr<int32_t>();
@@ -138,7 +148,12 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	auto rasterized_vertex_normal_jacobian_data = rasterized_vertex_normal_jacobians.GetDataPtr<float>();
 
 	auto warped_vertex_position_jacobian_data = warped_vertex_position_jacobians.GetDataPtr<float>();
-	auto warped_vertex_normal_jacobian_data = warped_vertex_normal_jacobians.GetDataPtr<float>();
+	const float* warped_vertex_normal_jacobian_data = nullptr;
+
+	if (TIterationMode == IterationMode::ALL ||
+	    TIterationMode == IterationMode::ROTATION_ONLY) {
+		warped_vertex_normal_jacobian_data = warped_vertex_normal_jacobians.value().get().GetDataPtr<float>();
+	}
 
 	auto pixel_face_data = pixel_faces.template GetDataPtr<int64_t>();
 	auto triangle_index_data = face_vertices.GetDataPtr<int64_t>();
@@ -193,13 +208,10 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 					dr_dwl = nl;
 				}
 
-
 				Eigen::Map<const core::kernel::Matrix3x9f> dwl_dV
 						(rasterized_vertex_position_jacobian_data + pixel_index * (3 * 9));
 				Eigen::Map<const core::kernel::Matrix3x9f> dnl_dV
 						(rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10));
-				Eigen::Map<const Eigen::RowVector3f> pixel_barycentric_coordinates
-						(rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10) + (3 * 9));
 
 				// [1 x 3] * [3 x 9] = [1 x 9]
 				auto dr_dwl_x_dwl_dV = dr_dwl * dwl_dV;
@@ -207,26 +219,37 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 				auto dr_dnl_x_dnl_dV = dr_dnl * dnl_dV;
 				// [1 x 6] * [6 x 9] = [1 x 9]
 				auto dr_dV = dr_dwl_x_dwl_dV + dr_dnl_x_dnl_dV;
-				// dr_dN = dr_dl * dl_dV + dr_dn * dl_dN = 0 + dr_dn  * dl_dN
-				//                                             [1 x 3] * [3 x 9] = [1 x 9]
-				//TODO: if/when Eigen::kroneckerProduct gets fixed, use the below line instead of custom function
-				// auto dr_dN =
-				// 		dr_dnl *
-				// 		Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
-				Eigen::Matrix<float, 3, 9, Eigen::RowMajor> kronecker_product_output;
-				nnrt::core::linalg::kernel::ComputeKroneckerProduct(kronecker_product_output, pixel_barycentric_coordinates,
-				                                                    core::kernel::Matrix3f::Identity());
-				auto dr_dN = dr_dnl * kronecker_product_output;
 
 				//__DEBUG
 				// auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
 				// auto dr_dnl_x_dnl_dV_c = dr_dnl_x_dnl_dV.eval();
 				// auto dr_dV_c = dr_dV.eval();
-				// auto dr_dN_c = dr_dN.eval();
+
+				Eigen::Matrix<float, 1, 9, Eigen::RowMajor> dr_dN;
+
+				if (TIterationMode == IterationMode::ALL ||
+				    TIterationMode == IterationMode::ROTATION_ONLY) {
+					Eigen::Map<const Eigen::RowVector3f> pixel_barycentric_coordinates
+							(rasterized_vertex_normal_jacobian_data + pixel_index * (3 * 10) + (3 * 9));
+					//TODO: if/when Eigen::kroneckerProduct gets fixed, use the below line instead of custom function
+					// auto dr_dN =
+					// 		dr_dnl *
+					// 		Eigen::kroneckerProduct(pixel_barycentric_coordinates, core::kernel::Matrix3f::Identity());
+					Eigen::Matrix<float, 3, 9, Eigen::RowMajor> dnl_dN;
+					nnrt::core::linalg::kernel::ComputeKroneckerProduct(dnl_dN, pixel_barycentric_coordinates,
+					                                                    core::kernel::Matrix3f::Identity());
+
+					// dr_dN = dr_dwl * dwl_dN + dr_dnl * dnl_dN = 0 + dr_dnl  * dnl_dN
+					//                                                 [1 x 3] * [3 x 9] = [1 x 9]
+					dr_dN = dr_dnl * dnl_dN;
+
+					//__DEBUG
+					// auto dr_dN_c = dr_dN.eval();
+				}
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 3 * 6);
+				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 3 * jacobian_stride);
 				auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
 
 				const int max_face_anchor_count = 3 * static_cast<int>(anchor_count_per_vertex);
@@ -277,63 +300,82 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 					auto& face_anchor = face_anchor_data[i_face_anchor];
 					int i_node = face_anchor.node_index;
 
-					int jacobian_local_address = i_face_anchor * 6;
+					int jacobian_local_address = i_face_anchor * jacobian_stride;
 
-					Eigen::Map<Eigen::RowVector3<float>>
-							pixel_vertex_anchor_rotation_jacobian
-							(pixel_node_jacobian_data + jacobian_local_address);
-					Eigen::Map<Eigen::RowVector3<float>>
-							pixel_vertex_anchor_translation_jacobian
-							(pixel_node_jacobian_data + jacobian_local_address + 3);
+					float* pixeL_vertex_anchor_rotation_jacobian_data = nullptr;
+					float* pixel_vertex_anchor_translation_jacobian_data = nullptr;
+
+					switch(TIterationMode) {
+						case IterationMode::ALL:
+							pixeL_vertex_anchor_rotation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address;
+							pixel_vertex_anchor_translation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address + 3;
+							break;
+						case IterationMode::ROTATION_ONLY:
+							pixeL_vertex_anchor_rotation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address;
+							break;
+						case IterationMode::TRANSLATION_ONLY:
+							pixel_vertex_anchor_translation_jacobian_data = pixel_node_jacobian_data + jacobian_local_address;
+							break;
+					}
 
 					for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 						int i_vertex = face_anchor.vertices[i_face_vertex];
 						if (i_vertex == -1) continue;
 						int i_vertex_anchor = face_anchor.vertex_anchor_indices[i_face_vertex];
-						// [3x3] warped vertex position Jacobian w.r.t. node rotation
-						const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
-								Eigen::Map<const Eigen::Vector3f>(
-										warped_vertex_position_jacobian_data +
-										(i_vertex * anchor_count_per_vertex * 4) + // vertex index * stride
-										(i_vertex_anchor * 4) // index of the anchor for this vertex * stride
-								)
-						);
+
 						// used to compute warped vertex position Jacobian w.r.t. node translation, weight * I_3x3
 						float stored_anchor_weight =
 								warped_vertex_position_jacobian_data[
 										(i_vertex * anchor_count_per_vertex * 4) +
 										(i_vertex_anchor * 4) + 3];
-						// [3x3] warped vertex normal Jacobian w.r.t. node rotation
-						const Eigen::SkewSymmetricMatrix3<float> dn_drotation(
-								Eigen::Map<const Eigen::Vector3f>(
-										warped_vertex_normal_jacobian_data +
-										(i_vertex * anchor_count_per_vertex * 3) +
-										(i_vertex_anchor * 3)
-								)
-						);
+
 						// [1x3]
 						auto dr_dv = dr_dV.block<1, 3>(0, i_face_vertex * 3);
-						// [1x3]
-						auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
 
 						//__DEBUG
 						// auto dr_dv_c = dr_dv.eval();
 						// auto dr_dn_c = dr_dn.eval();
-						// auto dv_drotation_c = dv_drotation.toDenseMatrix();
-						// auto dn_drotation_c = dn_drotation.toDenseMatrix();
-						// auto dr_drotation_v_c = (dr_dv * dv_drotation).eval();
-						// auto dr_drotation_n_c = (dr_dn * dn_drotation).eval();
 
+						if (TIterationMode == IterationMode::ALL ||
+						    TIterationMode == IterationMode::TRANSLATION_ONLY) {
+							Eigen::Map<Eigen::RowVector3<float>>
+									pixel_vertex_anchor_translation_jacobian (pixel_vertex_anchor_translation_jacobian_data);
+							// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
+							pixel_vertex_anchor_translation_jacobian += dr_dv * (Eigen::Matrix3f::Identity() * stored_anchor_weight);
+						}
 
-						//__DEBUG (remove both lines below)
-						// pixel_vertex_anchor_rotation_jacobian += (dr_dn * dn_drotation); //
-						// pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation);
+						if (TIterationMode == IterationMode::ALL ||
+						    TIterationMode == IterationMode::ROTATION_ONLY) {
+							// [1x3]
+							auto dr_dn = dr_dN.block<1, 3>(0, i_face_vertex * 3);
 
-						// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
-						//__DEBUG (uncomment if commented)
-						pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
-						pixel_vertex_anchor_translation_jacobian +=
-								dr_dv * (Eigen::Matrix3f::Identity() * stored_anchor_weight);
+							// [3x3] warped vertex position Jacobian w.r.t. node rotation
+							const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
+									Eigen::Map<const Eigen::Vector3f>(
+											warped_vertex_position_jacobian_data +
+											(i_vertex * anchor_count_per_vertex * 4) + // vertex index * stride
+											(i_vertex_anchor * 4) // index of the anchor for this vertex * stride
+									)
+							);
+
+							// [3x3] warped vertex normal Jacobian w.r.t. node rotation
+							const Eigen::SkewSymmetricMatrix3<float> dn_drotation(
+									Eigen::Map<const Eigen::Vector3f>(
+											warped_vertex_normal_jacobian_data +
+											(i_vertex * anchor_count_per_vertex * 3) +
+											(i_vertex_anchor * 3)
+									)
+							);
+							//__DEBUG
+							// auto dr_drotation_n_c = (dr_dn * dn_drotation).eval();
+							// auto dv_drotation_c = dv_drotation.toDenseMatrix();
+							// auto dn_drotation_c = dn_drotation.toDenseMatrix();
+							// auto dr_drotation_v_c = (dr_dv * dv_drotation).eval();
+
+							Eigen::Map<Eigen::RowVector3<float>> pixel_vertex_anchor_rotation_jacobian(pixeL_vertex_anchor_rotation_jacobian_data);
+							// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
+							pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);
+						}
 					}
 
 					// accumulate addresses of jacobians for each node
@@ -374,26 +416,55 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
 		int64_t node_count,
+		IterationMode mode,
 		bool use_tukey_penalty,
 		float tukey_penalty_cutoff
 ) {
+
+#define NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS \
+	pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts, \
+	rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,                        \
+			warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                        \
+			point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,        \
+			vertex_anchors, node_count, tukey_penalty_cutoff
 	if (use_tukey_penalty) {
-		PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, true>(
-				pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts,
-				rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-				warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-				point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-				vertex_anchors, node_count, tukey_penalty_cutoff
-		);
+		switch(mode){
+			case ALL:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, true, IterationMode::ALL>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+			case TRANSLATION_ONLY:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, true, IterationMode::TRANSLATION_ONLY>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+			case ROTATION_ONLY:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, true, IterationMode::ROTATION_ONLY>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+		}
 	} else {
-		PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, false>(
-				pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts,
-				rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-				warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-				point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-				vertex_anchors, node_count, tukey_penalty_cutoff
-		);
+		switch(mode){
+			case ALL:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, false, IterationMode::ALL>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+			case TRANSLATION_ONLY:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, false, IterationMode::TRANSLATION_ONLY>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+			case ROTATION_ONLY:
+				PixelVertexAnchorJacobiansAndNodeAssociations_Generic<TDeviceType, false, IterationMode::ROTATION_ONLY>(
+						NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
+				);
+				break;
+		}
 	}
+#undef NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS
 }
 
 } // namespace nnrt::alignment::functional::kernel

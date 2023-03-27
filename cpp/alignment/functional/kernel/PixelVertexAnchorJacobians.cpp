@@ -40,10 +40,10 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
 		int64_t node_count,
+		IterationMode mode,
 		bool use_tukey_penalty,
 		float tukey_penalty_cutoff
 ) {
-
 	core::ExecuteOnDevice(
 			residual_mask.GetDevice(),
 			[&] {
@@ -52,7 +52,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-						vertex_anchors, node_count, use_tukey_penalty, tukey_penalty_cutoff
+						vertex_anchors, node_count, mode, use_tukey_penalty, tukey_penalty_cutoff
 				);
 			},
 			[&] {
@@ -63,7 +63,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 								rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 								warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 								point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,
-								vertex_anchors, node_count, use_tukey_penalty, tukey_penalty_cutoff
+								vertex_anchors, node_count, mode, use_tukey_penalty, tukey_penalty_cutoff
 						);
 				);
 			}

@@ -164,7 +164,17 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 }
 
 // @formatter:off
-NNRT_CONSTANT_WHEN_CUDACC const int column_0_lookup_table[21] = {
+NNRT_CONSTANT_WHEN_CUDACC const int three_column_0_lookup_table[6] = {
+			0, 0, 0,
+			   1, 1,
+			      2
+};
+NNRT_CONSTANT_WHEN_CUDACC const int three_column_1_lookup_table[6] = {
+		0, 1, 2,
+		   1, 2,
+		      2
+};
+NNRT_CONSTANT_WHEN_CUDACC const int six_column_0_lookup_table[21] = {
             0, 0, 0, 0, 0, 0,
                1, 1, 1, 1, 1,
                   2, 2, 2, 2,
@@ -172,7 +182,7 @@ NNRT_CONSTANT_WHEN_CUDACC const int column_0_lookup_table[21] = {
                         4, 4,
                            5
 };
-NNRT_CONSTANT_WHEN_CUDACC const int column_1_lookup_table[21] = {
+NNRT_CONSTANT_WHEN_CUDACC const int six_column_1_lookup_table[21] = {
             0, 1, 2, 3, 4, 5,
                1, 2, 3, 4, 5,
                   2, 3, 4, 5,
@@ -237,8 +247,8 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_index) {
 				int i_node = static_cast<int>(workload_index / unique_entry_count_per_block);
 				int i_unique_element_in_block = static_cast<int>(workload_index % unique_entry_count_per_block);
-				int i_column_0 = column_0_lookup_table[i_unique_element_in_block];
-				int i_column_1 = column_1_lookup_table[i_unique_element_in_block];
+				int i_column_0 = six_column_0_lookup_table[i_unique_element_in_block];
+				int i_column_1 = six_column_1_lookup_table[i_unique_element_in_block];
 
 				//__DEBUG
 				// bool TKeepRotationsIndependentFromTranslations = true;

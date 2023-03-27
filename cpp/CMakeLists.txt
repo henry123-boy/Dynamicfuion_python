@@ -327,7 +327,7 @@ set(
     alignment/functional/kernel/RasterizedSurfaceJacobiansImpl.h
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCPU.cpp
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCUDA.cu
-    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu)
+    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu alignment/IterationMode.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

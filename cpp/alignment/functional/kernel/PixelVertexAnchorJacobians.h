@@ -18,9 +18,10 @@
 
 // third-party includes
 #include <open3d/core/Tensor.h>
+#include "alignment/IterationMode.h"
 
 // local includes
-namespace nnrt::alignment::functional::kernel{
+namespace nnrt::alignment::functional::kernel {
 
 /**
  * \brief Compute per-pixel jacobians w.r.t. their anchoring node transformations and associate outputs
@@ -57,6 +58,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
 		int64_t node_count,
+		IterationMode mode = IterationMode::ALL,
 		bool use_tukey_penalty = false,
 		float tukey_penalty_cutoff = 0.01
 );
@@ -78,8 +80,9 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& face_vertices,
 		const open3d::core::Tensor& vertex_anchors,
 		int64_t node_count,
+		IterationMode mode,
 		bool use_tukey_penalty,
-		float tukey_penalty_cutoff_cm
+		float tukey_penalty_cutoff
 );
 
 } // namespace nnrt::alignment::functional::kernel

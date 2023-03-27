@@ -46,7 +46,7 @@ PixelVertexAnchorJacobiansAndNodeAssociations(
 			pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts,
 			rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians, warped_vertex_position_jacobians,
 			warped_vertex_normal_jacobians, point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices, warp_anchors,
-			node_count, use_tukey_penalty, tukey_penalty_cutoff
+			node_count, IterationMode::ALL, use_tukey_penalty, tukey_penalty_cutoff
 	);
 
 	return std::make_tuple(pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts);
