@@ -58,8 +58,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 			[&] {
 				NNRT_IF_CUDA(
 						PixelVertexAnchorJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
-								pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices,
-								node_pixel_counts,
+								pixel_jacobians, pixel_node_jacobian_counts, node_pixel_indices, node_pixel_counts,
 								rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 								warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 								point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,

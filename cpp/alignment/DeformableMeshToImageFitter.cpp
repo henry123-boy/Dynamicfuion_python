@@ -55,7 +55,7 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 		bool use_tukey_penalty,
 		float tukey_penalty_cutoff_cm
 ) : max_iteration_count(max_iteration_count),
-	iteration_mode_sequence(std::move(iteration_mode_sequence)),
+    iteration_mode_sequence(std::move(iteration_mode_sequence)),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
     use_perspective_correction(use_perspective_correction),
@@ -73,8 +73,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		const open3d::core::SizeVector& rendering_image_size
 ) const {
 	//TODO: make parameter EUCLIDEAN/SHORTEST_PATH, optionally set in constructor
-	auto [warp_anchors, warp_weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
-	                                                                           nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
+	auto [warp_anchors, warp_anchor_weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
+	                                                                                  nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
 
 	int iteration = 0;
 	float maximum_update = std::numeric_limits<float>::max();
@@ -87,7 +87,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		IterationMode current_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
 
 		o3tg::TriangleMesh
-				warped_mesh = warp_field.WarpMesh(canonical_mesh, warp_anchors, warp_weights, true, extrinsic_matrix);
+				warped_mesh = warp_field.WarpMesh(canonical_mesh, warp_anchors, warp_anchor_weights, true, extrinsic_matrix);
 
 		auto [extracted_face_vertices, clipped_face_mask] =
 				nnrt::rendering::functional::GetMeshNdcFaceVerticesAndClipMask(
@@ -153,10 +153,20 @@ void DeformableMeshToImageFitter::FitToImage(
 		// auto center_masks = residual_mask.Reshape({100,100})
 		// .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
-		// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
-		// [V X A/V X 4], [V X A/V X 3]
-		auto [warped_vertex_position_jacobians, warped_vertex_normal_jacobians] =
-				functional::WarpedSurfaceJacobians(canonical_mesh, warp_field, warp_anchors, warp_weights);
+
+
+
+		o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
+
+		if (current_mode == IterationMode::ALL || current_mode == IterationMode::ROTATION_ONLY) {
+			// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
+			// [V X A/V X 4], [V X A/V X 3]
+			std::tie(warped_vertex_position_jacobians, warped_vertex_normal_jacobians) =
+					functional::WarpedSurfaceJacobians(canonical_mesh, warp_field, warp_anchors, warp_anchor_weights);
+		} else {
+			warped_vertex_position_jacobians = warp_anchor_weights;
+		}
+
 
 
 		// compute rasterized vertex and normal jacobians
@@ -168,8 +178,10 @@ void DeformableMeshToImageFitter::FitToImage(
 				functional::RasterizedSurfaceJacobians(
 						warped_mesh, pixel_face_indices,
 						pixel_barycentric_coordinates,
-						ndc_intrinsic_matrix, this->use_perspective_correction
+						ndc_intrinsic_matrix,
+						this->use_perspective_correction
 				);
+
 
 		//__DEBUG
 		auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, debug_start_row, debug_end_row)
@@ -189,7 +201,7 @@ void DeformableMeshToImageFitter::FitToImage(
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
 						warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(),
-						use_tukey_penalty, tukey_penalty_cutoff_cm
+						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
 
 		//__DEBUG
@@ -214,28 +226,38 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor hessian_approximation_blocks;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				hessian_approximation_blocks, pixel_jacobians,
-				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, IterationMode::ALL);
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode);
 
 		// compute -(J^T)r
 		o3c::Tensor negative_gradient;
 		int max_anchor_count_per_vertex = warp_anchors.GetShape(1);
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
 				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
-				node_pixel_jacobian_counts, max_anchor_count_per_vertex, IterationMode::ALL);
+				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
 
 		open3d::core::Tensor motion_updates;
 		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
-		motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
-
-		// convert rotation axis-angle vectors to matrices
-		auto rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
-
-		// apply motion updates
-		warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
-		warp_field.RotateNodes(rotation_matrix_updates);
-
-
+		o3c::Tensor rotation_matrix_updates;
+		switch (current_mode) {
+			case ALL:
+				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
+				// convert rotation axis-angle vectors to matrices
+				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
+				// apply motion updates
+				warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
+				warp_field.RotateNodes(rotation_matrix_updates);
+				break;
+			case TRANSLATION_ONLY:
+				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
+				warp_field.TranslateNodes(motion_updates);
+				break;
+			case ROTATION_ONLY:
+				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
+				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates);
+				warp_field.RotateNodes(rotation_matrix_updates);
+				break;
+		}
 		iteration++;
 	}
 }

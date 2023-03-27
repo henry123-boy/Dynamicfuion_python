@@ -18,6 +18,7 @@
 
 // third-party includes
 #include <open3d/core/Tensor.h>
+#include "alignment/IterationMode.h"
 
 // local includes
 
@@ -29,7 +30,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, ope
 		        const open3d::core::Tensor& rasterized_vertex_position_jacobians,
 		        const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
 		        const open3d::core::Tensor& warped_vertex_position_jacobians,
-		        const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		        open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normal_jacobians,
 		        const open3d::core::Tensor& point_map_vectors,
 		        const open3d::core::Tensor& rasterized_normals,
 		        const open3d::core::Tensor& residual_mask,
@@ -37,8 +38,9 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, ope
 		        const open3d::core::Tensor& face_vertices,
 		        const open3d::core::Tensor& warp_anchors,
 		        int64_t node_count,
-		        bool use_tukey_penalty = false,
-		        float tukey_penalty_cutoff = 0.01
+		        bool use_tukey_penalty,
+		        float tukey_penalty_cutoff,
+		        nnrt::alignment::IterationMode mode
         );
 
 

@@ -90,7 +90,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 
 	if (TIterationMode == IterationMode::ALL ||
 	    TIterationMode == IterationMode::ROTATION_ONLY) {
-		if(!warped_vertex_normal_jacobians.has_value()){
+		if (!warped_vertex_normal_jacobians.has_value()) {
 			utility::LogError("warped_vertex_normal_jacobians argument has to be a tensor for a call to RasterizedSurfaceJacobians with"
 			                  "TIterationMode template argument set to ALL or ROTATION_ONLY, which it is not.");
 		}
@@ -441,9 +441,9 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 #define NNRT_PIXEL_VERTEX_ANCHOR_JACOBIAN_ARGS \
     pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts, \
     rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,                        \
-            warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                        \
-            point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,        \
-            vertex_anchors, node_count, tukey_penalty_cutoff
+    warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                                \
+    point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,                \
+    vertex_anchors, node_count, tukey_penalty_cutoff
 	if (use_tukey_penalty) {
 		switch (mode) {
 			case ALL:

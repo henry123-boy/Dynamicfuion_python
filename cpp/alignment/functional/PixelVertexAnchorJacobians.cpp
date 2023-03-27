@@ -19,6 +19,8 @@
 
 // local includes
 #include "alignment/functional/PixelVertexAnchorJacobians.h"
+
+#include <utility>
 #include "alignment/functional/kernel/PixelVertexAnchorJacobians.h"
 
 
@@ -29,7 +31,7 @@ PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
 		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
 		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
+		open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>> warped_vertex_normal_jacobians,
 		const open3d::core::Tensor& point_map_vectors,
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,
@@ -38,15 +40,16 @@ PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& warp_anchors,
 		int64_t node_count,
 		bool use_tukey_penalty,
-		float tukey_penalty_cutoff
+		float tukey_penalty_cutoff,
+		IterationMode mode
 ) {
 	open3d::core::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts;
 
 	kernel::PixelVertexAnchorJacobiansAndNodeAssociations(
 			pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts,
 			rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians, warped_vertex_position_jacobians,
-			warped_vertex_normal_jacobians, point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices, warp_anchors,
-			node_count, IterationMode::ALL, use_tukey_penalty, tukey_penalty_cutoff
+			std::move(warped_vertex_normal_jacobians), point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices, warp_anchors,
+			node_count, mode, use_tukey_penalty, tukey_penalty_cutoff
 	);
 
 	return std::make_tuple(pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts);
