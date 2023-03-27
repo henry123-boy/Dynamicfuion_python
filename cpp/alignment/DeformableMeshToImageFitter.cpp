@@ -31,6 +31,7 @@
 #include "rendering/kernel/CoordinateSystemConversions.h"
 #include "alignment/functional/WarpedSurfaceJacobians.h"
 #include "alignment/functional/RasterizedSurfaceJacobians.h"
+#include "alignment/functional/PixelVertexAnchorJacobians.h"
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/linalg/Rodrigues.h"
 
@@ -175,16 +176,15 @@ void DeformableMeshToImageFitter::FitToImage(
 		//__DEBUG
 		// auto center_point_map_vectors = point_map_vectors.Reshape({100, 100, 3}).Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
-		o3c::Tensor pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts;
-
-		//__DEBUG
-		kernel::ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-				pixel_jacobians, pixel_node_jacobian_counts, node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts,
-				rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
-				warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
-				point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
-				warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(), false, 0.01
-		);
+		auto [pixel_jacobians, pixel_node_jacobian_counts,
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts] =
+				functional::PixelVertexAnchorJacobiansAndNodeAssociations(
+						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
+						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
+						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
+						warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(),
+						use_tukey_penalty, tukey_penalty_cutoff_cm
+				);
 
 		//__DEBUG
 		// auto anchor_count = warp_anchors.GetShape(1);

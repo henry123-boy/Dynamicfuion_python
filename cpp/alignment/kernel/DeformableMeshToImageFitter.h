@@ -24,65 +24,6 @@
 namespace nnrt::alignment::kernel {
 
 /**
- * \brief Compute per-pixel jacobians w.r.t. their anchoring node transformations and associate outputs
- * with their anchoring nodes (to be accessed by node)
- * \param pixel_jacobians [out] arrays of per-pixel jacobians, ordered by pixel
- * \param pixel_node_jacobian_counts [out] total count of jacobians per pixel
- * \param node_pixel_jacobian_indices [out] ordered by node, lists of indices of jacobians in the pixel_jacobians array
- * \param node_pixel_jacobian_counts [out] ordered by node, counts of per-pixel jacobians for each node
- * \param rasterized_vertex_position_jacobians [in] array containing (condensed) jacobians of rasterized vertices w.r.t the warped positions of the triangular face they lie in
- * \param rasterized_vertex_normal_jacobians [in] array containing (condensed) jacobians of rasterized vertices w.r.t the warped vertices & normals of the triangular face they lie in
- * \param warped_vertex_position_jacobians [in] array containing (condensed) jacobians of warped vertex positions w.r.t node transformations, ordered by warped vertex
- * \param warped_vertex_normal_jacobians [in] array containing (condensed) jacobians of warped vertex normals w.r.t node rotations, ordered by warped vertex
- * \param point_map_vectors [in] array containing vectors between rasterized vertices and observed points, ordered by pixel
- * \param rasterized_normals [in] array containing rasterized, per-pixel normals, ordered by pixel
- * \param residual_mask [in] array containing the residual mask -- dictates which pixels to skip during computation
- * \param pixel_faces [in] array containing lists of faces (often, of length one) associated with each pixel
- * \param face_vertices [in] array containing per-face vertex indices
- * \param vertex_anchors [in] array containing vertex anchor indices
- * \param node_count [in] total node count
- */
-void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-		open3d::core::Tensor& pixel_jacobians,
-		open3d::core::Tensor& pixel_node_jacobian_counts,
-		open3d::core::Tensor& node_pixel_jacobian_indices,
-		open3d::core::Tensor& node_pixel_jacobian_counts,
-		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
-		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
-		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
-		const open3d::core::Tensor& point_map_vectors,
-		const open3d::core::Tensor& rasterized_normals,
-		const open3d::core::Tensor& residual_mask,
-		const open3d::core::Tensor& pixel_faces,
-		const open3d::core::Tensor& face_vertices,
-		const open3d::core::Tensor& vertex_anchors,
-		int64_t node_count,
-		bool use_tukey_penalty = false,
-		float tukey_penalty_cutoff = 0.01
-);
-
-template<open3d::core::Device::DeviceType TDevice, bool TUseTukeyPenalty = false>
-void ComputePixelVertexAnchorJacobiansAndNodeAssociations(
-		open3d::core::Tensor& pixel_jacobians,
-		open3d::core::Tensor& pixel_node_jacobian_counts,
-		open3d::core::Tensor& node_pixel_jacobian_indices,
-		open3d::core::Tensor& node_pixel_jacobian_counts,
-		const open3d::core::Tensor& rasterized_vertex_position_jacobians,
-		const open3d::core::Tensor& rasterized_vertex_normal_jacobians,
-		const open3d::core::Tensor& warped_vertex_position_jacobians,
-		const open3d::core::Tensor& warped_vertex_normal_jacobians,
-		const open3d::core::Tensor& point_map_vectors,
-		const open3d::core::Tensor& rasterized_normals,
-		const open3d::core::Tensor& residual_mask,
-		const open3d::core::Tensor& pixel_faces,
-		const open3d::core::Tensor& face_vertices,
-		const open3d::core::Tensor& vertex_anchors,
-		int64_t node_count,
-		float tukey_penalty_cutoff_cm = 0.01
-);
-
-/**
  * \brief Comes up with a compact, ordered sparse representation of jacobian J of residuals w.r.t. node motion deltas, easily accessible with
  * [node index, pixel index] (in that order).
  *
