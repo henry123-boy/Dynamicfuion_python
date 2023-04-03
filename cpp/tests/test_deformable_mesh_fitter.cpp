@@ -269,7 +269,9 @@ TEST_CASE("Test Deformable Mesh to Image Fitter - TRANSLATION-ONLY MODE - 1 Node
 }
 
 
-void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device, bool use_perspective_correction = false,
+void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device,
+                                                  bool use_perspective_correction = false,
+                                                  std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
                                                   bool draw_depth = true) {
     float max_depth = 10.0f;
     float node_coverage = 0.25;
@@ -346,8 +348,8 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device, boo
 
     nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-    nnrt::alignment::DeformableMeshToImageFitter fitter(1, {nnrt::alignment::IterationMode::ALL}, 1e-6,
-                                                        use_perspective_correction, 10.f, false, 0.01);
+    nnrt::alignment::DeformableMeshToImageFitter fitter(1, std::move(iteration_modes), 1e-6, use_perspective_correction,
+                                                        10.f, false, 0.01);
     o3tg::Image dummy_color_image;
 
     o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
@@ -358,12 +360,23 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device, boo
     REQUIRE(true);
 }
 
-TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Rotation - CPU") {
+TEST_CASE("Test Deformable Mesh to Image Fitter - COMBINED MODE - 1 Node Plane Rotation - CPU") {
     o3c::Device device("CPU:0");
     TestDeformableImageFitter_1NodePlaneRotation(device, true);
 }
 
-TEST_CASE("Test Deformable Mesh to Image Fitter - 1 Node Plane Rotation - CUDA") {
+TEST_CASE("Test Deformable Mesh to Image Fitter - COMBINED MODE - 1 Node Plane Rotation - CUDA") {
     o3c::Device device("CUDA:0");
     TestDeformableImageFitter_1NodePlaneRotation(device, true);
+}
+
+
+TEST_CASE("Test Deformable Mesh to Image Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation - CPU") {
+    o3c::Device device("CPU:0");
+    TestDeformableImageFitter_1NodePlaneRotation(device, true, {nnrt::alignment::IterationMode::ROTATION_ONLY});
+}
+
+TEST_CASE("Test Deformable Mesh to Image Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation - CUDA") {
+    o3c::Device device("CUDA:0");
+    TestDeformableImageFitter_1NodePlaneRotation(device, true, {nnrt::alignment::IterationMode::ROTATION_ONLY});
 }
