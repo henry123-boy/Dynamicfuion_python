@@ -41,18 +41,18 @@ void TestVoxelBlockGrid_SaveLoad(const o3c::Device& device) {
 	);
 
 	o3g::Image depth_legacy;
-	std::string depth_path = test::image_test_data_directory.ToString() + "/red_shorts_200_depth.png";
+	std::string depth_path = test::static_image_test_data_directory.ToString() + "/red_shorts_200_depth.png";
 	open3d::io::ReadImage(depth_path, depth_legacy);
 	o3tg::Image depth = o3tg::Image::FromLegacy(depth_legacy, device);
 
 	o3g::Image color_legacy;
-	std::string color_path = test::image_test_data_directory.ToString() + "/red_shorts_200_color.jpg";
+	std::string color_path = test::static_image_test_data_directory.ToString() + "/red_shorts_200_color.jpg";
 	open3d::io::ReadImage(color_path, color_legacy);
 	o3tg::Image color = o3tg::Image::FromLegacy(color_legacy, device);
 
-	std::string intrinsics_path = test::intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt";
+	std::string intrinsics_path = test::static_intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt";
 	o3c::Device host("CPU:0");
-	o3c::Tensor intrinsics = o3c::Tensor(test::read_intrinsics(test::intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt"),
+	o3c::Tensor intrinsics = o3c::Tensor(test::read_intrinsics(test::static_intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt"),
 	                                     {4, 4}, o3c::Float64, host).Slice(0, 0, 3).Slice(1, 0, 3).Contiguous();
 	o3c::Tensor extrinsics = o3c::Tensor::Eye(4, o3c::Float64, host);
 

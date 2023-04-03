@@ -94,7 +94,7 @@ void TestShadeTriangle_VertexColors(const o3c::Device& device) {
 
     o3tg::Image ground_truth_image;
 //    o3tio::WriteImage(test::image_test_data_directory.ToString() + "/triangle_vertex_colors.png", image);
-    o3tio::ReadImage(test::image_test_data_directory.ToString() + "/triangle_vertex_colors.png", ground_truth_image);
+    o3tio::ReadImage(test::static_image_test_data_directory.ToString() + "/triangle_vertex_colors.png", ground_truth_image);
     ground_truth_image = ground_truth_image.To(device);
 
     REQUIRE(image.AsTensor().AllClose(ground_truth_image.AsTensor()));

@@ -113,10 +113,10 @@ TEST_CASE("Test Compute Mesh Vertex Normals CUDA") {
 
 void TestComputeOrderedPointCloudNormals(const o3c::Device& device) {
 	open3d::geometry::Image image;
-	open3d::io::ReadImage(test::image_test_data_directory.ToString() + "/red_shorts_200_depth.png", image);
+	open3d::io::ReadImage(test::static_image_test_data_directory.ToString() + "/red_shorts_200_depth.png", image);
 	o3tg::Image input_depth = o3tg::Image::FromLegacy(image);
 
-	auto intrinsics_data = test::read_intrinsics(test::intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt");
+	auto intrinsics_data = test::read_intrinsics(test::static_intrinsics_test_data_directory.ToString() + "/red_shorts_intrinsics.txt");
 	// o3c::Device host("CPU:0");
 	// o3c::Tensor intrinsics(intrinsics_data, {4, 4}, o3c::Float64, host);
 	double fx = intrinsics_data[0];
@@ -131,7 +131,7 @@ void TestComputeOrderedPointCloudNormals(const o3c::Device& device) {
 
 	o3c::Tensor normals = nnrt::geometry::ComputeOrderedPointCloudNormals(point_cloud, {input_depth.GetRows(), input_depth.GetCols()});
 
-	o3c::Tensor ground_truth_normals = o3c::Tensor::Load( test::array_test_data_directory.ToString() + "/red_shorts_200_normals.npy");
+	o3c::Tensor ground_truth_normals = o3c::Tensor::Load(test::static_array_test_data_directory.ToString() + "/red_shorts_200_normals.npy");
 
 	REQUIRE(normals.AllClose(ground_truth_normals));
 

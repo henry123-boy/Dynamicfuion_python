@@ -164,7 +164,7 @@ void TestRasterizeMesh(
     if (mesh_is_generated) {
         mesh_path = test::generated_mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply";
     } else {
-        mesh_path = test::mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply";
+        mesh_path = test::static_mesh_test_data_directory.ToString() + "/" + mesh_name + ".ply";
     }
 
     o3tio::ReadTriangleMesh(mesh_path, mesh);
@@ -386,8 +386,8 @@ void TestRasterizeMultipleMeshes(
         mesh1_path = test::generated_mesh_test_data_directory.ToString() + "/" + mesh1_name + ".ply";
         mesh2_path = test::generated_mesh_test_data_directory.ToString() + "/" + mesh2_name + ".ply";
     } else {
-        mesh1_path = test::mesh_test_data_directory.ToString() + "/" + mesh1_name + ".ply";
-        mesh2_path = test::mesh_test_data_directory.ToString() + "/" + mesh2_name + ".ply";
+        mesh1_path = test::static_mesh_test_data_directory.ToString() + "/" + mesh1_name + ".ply";
+        mesh2_path = test::static_mesh_test_data_directory.ToString() + "/" + mesh2_name + ".ply";
     }
 
     o3tio::ReadTriangleMesh(mesh1_path, mesh1_bl);

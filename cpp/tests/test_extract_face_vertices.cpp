@@ -46,9 +46,9 @@ void TestExtractFaceVertices(const o3c::Device& device) {
 
     // test data generated via Python
     auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
-            test::array_test_data_directory.ToString() + "/extracted_face_vertices.npy").To(device);
+            test::static_array_test_data_directory.ToString() + "/extracted_face_vertices.npy").To(device);
     auto clipped_face_mask_ground_truth = open3d::core::Tensor::Load(
-            test::array_test_data_directory.ToString() + "/extracted_face_mask.npy").To(device);
+            test::static_array_test_data_directory.ToString() + "/extracted_face_mask.npy").To(device);
 
 
     extracted_face_vertices.SetItem(o3c::TensorKey::IndexTensor(clipped_face_mask.LogicalNot()),
@@ -85,9 +85,9 @@ void TestExtractFaceVerticesMultipleMeshes(const o3c::Device& device) {
 
     // test data generated via Python
     auto extracted_face_vertices_ground_truth = open3d::core::Tensor::Load(
-            test::array_test_data_directory.ToString() + "/extracted_face_vertices_multiple_meshes.npy").To(device);
+            test::static_array_test_data_directory.ToString() + "/extracted_face_vertices_multiple_meshes.npy").To(device);
     auto clipped_face_mask_ground_truth = open3d::core::Tensor::Load(
-            test::array_test_data_directory.ToString() + "/extracted_face_mask_multiple_meshes.npy").To(device);
+            test::static_array_test_data_directory.ToString() + "/extracted_face_mask_multiple_meshes.npy").To(device);
 
 
     extracted_face_vertices.SetItem(o3c::TensorKey::IndexTensor(clipped_face_mask.LogicalNot()),

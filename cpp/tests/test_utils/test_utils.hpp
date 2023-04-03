@@ -30,10 +30,11 @@ namespace test {
 	static constexpr auto generated_mesh_test_data_directory = StringFactory(GENERATED_TEST_DATA_DIRECTORY "meshes");
 	static constexpr auto generated_image_test_data_directory = StringFactory(GENERATED_TEST_DATA_DIRECTORY "images");
 	static constexpr auto generated_array_test_data_directory = StringFactory(GENERATED_TEST_DATA_DIRECTORY "arrays");
-	static constexpr auto mesh_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "meshes");
-	static constexpr auto image_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "images");
-	static constexpr auto array_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "arrays");
-	static constexpr auto intrinsics_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "intrinsics");
+    static constexpr auto static_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY);
+	static constexpr auto static_mesh_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "meshes");
+	static constexpr auto static_image_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "images");
+	static constexpr auto static_array_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "arrays");
+	static constexpr auto static_intrinsics_test_data_directory = StringFactory(STATIC_TEST_DATA_DIRECTORY "intrinsics");
 
 	// image persistence
 	template<typename TElement>

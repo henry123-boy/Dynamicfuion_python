@@ -24,7 +24,7 @@
 
 
 TEST_CASE("Test Regular Graph Construction") {
-	std::string depth_path = test::image_test_data_directory.ToString() + "/frame-000000.depth.png";
+	std::string depth_path = test::static_image_test_data_directory.ToString() + "/frame-000000.depth.png";
 	py::array_t<unsigned short> depth = test::load_image<unsigned short>(depth_path);
 
 	float fx = 570.342f;
@@ -48,7 +48,7 @@ TEST_CASE("Test Regular Graph Construction") {
 	py::array_t<unsigned short> graph_edges_ushort = graph_edges;
 	py::array_t<unsigned short> pixel_anchors_ushort = pixel_anchors;
 
-	std::string graph_nodes_path = test::image_test_data_directory.ToString() + "/frame-000000.graph_nodes.dng";
+	std::string graph_nodes_path = test::static_image_test_data_directory.ToString() + "/frame-000000.graph_nodes.dng";
 	// TODO: need a way to save arbitrary-sized arrays and int arrays, preferably with compression.
 	//  Take a look at z_stream dependency / IStreamWrapper / OStreamWrapper in ORUtils of github.com/Algomorph/InfiniTAM
 	//  The zlib dependency can be handled the same way as in Open3D
