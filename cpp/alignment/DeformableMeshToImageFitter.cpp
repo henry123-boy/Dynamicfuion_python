@@ -213,12 +213,12 @@ void DeformableMeshToImageFitter::FitToImage(
 		// auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2,3});
 		// auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2,3});
 		// ==== w/ dropping anchor data beyond first node-anchor (single-node-case) ====
-		auto center_pixel_jacobians = pixel_jacobians.Slice(1, 0, 1).Reshape({100, 100, 6})
-		                                             .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
-		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2, 0, 3).Clone();
-		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2, 3, 6).Clone();
-		auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2});
-		auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2});
+//		auto center_pixel_jacobians = pixel_jacobians.Slice(1, 0, 1).Reshape({100, 100, 6})
+//		                                             .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
+//		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2, 0, 3).Clone();
+//		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2, 3, 6).Clone();
+//		auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2});
+//		auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2});
 
 
 

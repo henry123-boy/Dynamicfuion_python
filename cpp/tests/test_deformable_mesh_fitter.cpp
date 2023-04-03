@@ -163,7 +163,7 @@ TEST_CASE("Test Deformable Mesh to Image Fitter - 25 Node Plane - CUDA") {
 void TestDeformableImageFitter_1NodePlaneTranslation(
         const o3c::Device &device, bool use_perspective_correction = false,
         std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
-        bool draw_depth = true
+        bool draw_depth = false
 ) {
     float max_depth = 10.0f;
     float node_coverage = 0.25;
