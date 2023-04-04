@@ -30,8 +30,8 @@ void SolveQRBlockDiagonal(open3d::core::Tensor &X,
                           const open3d::core::Tensor &B) {
     SolveBlockDiagonal_Generic(
             X, A_blocks, B,
-            internal::SolveQRBlockDiagonalCUDA,
-            internal::SolveQRBlockDiagonalCPU
+            internal::SolveQRBlockDiagonalCPU,
+            internal::SolveQRBlockDiagonalCUDA
     );
 }
 

@@ -42,12 +42,7 @@ void SolveQRBlockDiagonalCUDA(
         int64_t block_count,
         open3d::core::Dtype data_type,
         const open3d::core::Device &device
-)
-#ifdef BUILD_CUDA_MODULE
-;
-#else
-{}; // empty stub function
-#endif
+);
 
 } // namespace internal
 } // namespace nnrt::core::linalg

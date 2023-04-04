@@ -24,6 +24,7 @@
 // local
 #include "core/functional/Masking.h"
 #include "core/linalg/SolveBlockDiagonalCholesky.h"
+#include "core/linalg/SolveBlockDiagonalQR.h"
 #include "alignment/DeformableMeshToImageFitter.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/PointToPlaneDistances.h"
@@ -236,7 +237,8 @@ void DeformableMeshToImageFitter::FitToImage(
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
 
 		open3d::core::Tensor motion_updates;
-		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+        core::linalg::SolveQRBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+//		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
 		o3c::Tensor rotation_matrix_updates;
 		switch (current_mode) {

@@ -103,4 +103,18 @@ void SolveCholeskyBlockDiagonalCUDA(
 
 
 } // nnrt::core::linalg::internal
+#else
+namespace nnrt::core::linalg::internal {
+ // empty function stub
+void SolveCholeskyBlockDiagonalCUDA(
+		void* A_blocks_data,
+		void* B_data,
+		const int64_t A_and_B_block_row_count,
+		const int64_t B_column_count,
+		const int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
+) {
+}
+} // nnrt::core::linalg::internal
 #endif

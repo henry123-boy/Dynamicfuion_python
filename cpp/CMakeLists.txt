@@ -327,7 +327,7 @@ set(
     alignment/functional/kernel/RasterizedSurfaceJacobiansImpl.h
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCPU.cpp
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCUDA.cu
-    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu alignment/IterationMode.h core/linalg/SolveBlockDiagonalQR.cpp core/linalg/SolveBlockDiagonalQR.h core/linalg/SolveBlockDiagonalGeneric.h core/platform_independence/Macros.h core/linalg/SolveBlockDiagonalQR_CPU.cpp)
+    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu alignment/IterationMode.h core/linalg/SolveBlockDiagonalQR.cpp core/linalg/SolveBlockDiagonalQR.h core/linalg/SolveBlockDiagonalGeneric.h core/platform_independence/Macros.h core/linalg/SolveBlockDiagonalQR_CPU.cpp core/linalg/SolveBlockDiagonalQR_CUDA.cpp)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

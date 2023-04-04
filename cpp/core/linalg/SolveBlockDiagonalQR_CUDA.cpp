@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/24/23.
-//  Copyright (c) 2023 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/4/23.
+//  Copyright (c) Gregory Kramida. All rights reserved.
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,28 +14,25 @@
 //  limitations under the License.
 //  ================================================================
 // stdlib includes
-
 // third-party includes
-
 // local includes
-#include "core/linalg/SolveBlockDiagonalCholesky.h"
-#include "core/linalg/SolveBlockDiagonalGeneric.h"
+#include "core/linalg/SolveBlockDiagonalQR.h"
 
+namespace nnrt::core::linalg::internal {
 
-namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-namespace nnrt::core::linalg {
-
-void SolveCholeskyBlockDiagonal(open3d::core::Tensor &X,
-                                const open3d::core::Tensor &A_blocks,
-                                const open3d::core::Tensor &B) {
-    SolveBlockDiagonal_Generic(
-            X, A_blocks, B,
-            internal::SolveCholeskyBlockDiagonalCPU,
-            internal::SolveCholeskyBlockDiagonalCUDA
-    );
+void SolveQRBlockDiagonalCUDA(
+        void *A_blocks_data,
+        void *B_data,
+        int64_t A_and_B_block_row_count,
+        int64_t B_column_count,
+        int64_t block_count,
+        open3d::core::Dtype data_type,
+        const open3d::core::Device &device
+) {
+    //TODO
+    utility::LogError("Not implemented.");
 }
 
-
-} // namespace nnrt::core::linalg
+} // namespace nnrt::core::linalg::internal
