@@ -237,7 +237,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
 
 		open3d::core::Tensor motion_updates;
-        core::linalg::SolveQRBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+        core::linalg::SolveQRBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient, false);
 //		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
 		o3c::Tensor rotation_matrix_updates;

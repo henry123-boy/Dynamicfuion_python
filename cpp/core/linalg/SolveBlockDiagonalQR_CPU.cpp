@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 // third-party includes
-//#include <open3d/core/linalg/LapackWrapper.h>
+#include <open3d/core/linalg/LapackWrapper.h>
 #include <open3d/utility/Parallel.h>
 // local includes
 #include "core/linalg/SolveBlockDiagonalQR.h"
@@ -25,7 +25,7 @@ namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg::internal {
 
-template<typename scalar_t>
+template<typename scalar_t, bool BAssumeFullRank>
 inline void SolveQRBlockDiagonalCPU_Generic(
         void *A_blocks_data,
         void *B_data,
@@ -44,33 +44,35 @@ inline void SolveQRBlockDiagonalCPU_Generic(
     for (int64_t i_block = 0; i_block < block_count; i_block++) {
         auto *A_block_data = A_blocks_data_typed + A_block_stride * i_block;
         auto *B_block_data = B_data_typed + B_block_stride * i_block;
-        long long rank;
-        long long jbvt[A_and_B_block_row_count];
-        memset(&jbvt, 0, sizeof(long long) * A_and_B_block_row_count);
-
-//        NNRT_LAPACK_CHECK(
-//                open3d::core::gels_cpu<scalar_t>(LAPACK_COL_MAJOR, 'N', A_and_B_block_row_count,
-//                                                 A_and_B_block_row_count, B_column_count,
-//                                                 static_cast<scalar_t *>(A_block_data), A_and_B_block_row_count,
-//                                                 static_cast<scalar_t *>(B_block_data), A_and_B_block_row_count
-//                ),
-//                "gels failed in LeastSquaresCPU"
-//        );
-        NNRT_LAPACK_CHECK(
-                nnrt::core::gelsy_cpu<scalar_t>(LAPACK_COL_MAJOR, A_and_B_block_row_count,
-                                                 A_and_B_block_row_count, B_column_count,
-                                                 static_cast<scalar_t *>(A_block_data),
-                                                 A_and_B_block_row_count,
-                                                 static_cast<scalar_t *>(B_block_data),
-                                                 A_and_B_block_row_count,
-                                                 jbvt, 1e-6, &rank
-                ),
-                "gels failed in LeastSquaresCPU"
-        );
+        if (BAssumeFullRank) {
+            NNRT_LAPACK_CHECK(
+                    open3d::core::gels_cpu<scalar_t>(LAPACK_COL_MAJOR, 'N', A_and_B_block_row_count,
+                                                     A_and_B_block_row_count, B_column_count,
+                                                     static_cast<scalar_t *>(A_block_data), A_and_B_block_row_count,
+                                                     static_cast<scalar_t *>(B_block_data), A_and_B_block_row_count
+                    ),
+                    "gels failed in LeastSquaresCPU"
+            );
+        } else {
+            long long rank;
+            long long jbvt[A_and_B_block_row_count];
+            memset(&jbvt, 0, sizeof(long long) * A_and_B_block_row_count);
+            NNRT_LAPACK_CHECK(
+                    nnrt::core::gelsy_cpu<scalar_t>(LAPACK_COL_MAJOR, A_and_B_block_row_count,
+                                                    A_and_B_block_row_count, B_column_count,
+                                                    static_cast<scalar_t *>(A_block_data),
+                                                    A_and_B_block_row_count,
+                                                    static_cast<scalar_t *>(B_block_data),
+                                                    A_and_B_block_row_count,
+                                                    jbvt, 1e-7, &rank
+                    ),
+                    "gelsy failed in LeastSquaresCPU"
+            );
+        }
     }
 }
 
-void SolveQRBlockDiagonalCPU(
+void SolveQRBlockDiagonalCPU_FullRank(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -80,8 +82,22 @@ void SolveQRBlockDiagonalCPU(
         const open3d::core::Device &device
 ) {
     DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
-        SolveQRBlockDiagonalCPU_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
+        SolveQRBlockDiagonalCPU_Generic<scalar_t, true>(A_blocks_data, B_data, A_and_B_block_row_count,
                                                   B_column_count, block_count);
+    });
+}
+void SolveQRBlockDiagonalCPU_General(
+        void *A_blocks_data,
+        void *B_data,
+        int64_t A_and_B_block_row_count,
+        int64_t B_column_count,
+        int64_t block_count,
+        open3d::core::Dtype data_type,
+        const open3d::core::Device &device
+) {
+    DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
+        SolveQRBlockDiagonalCPU_Generic<scalar_t, false>(A_blocks_data, B_data, A_and_B_block_row_count,
+                                                        B_column_count, block_count);
     });
 }
 } // namespace nnrt::core::linalg::internal

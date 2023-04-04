@@ -22,7 +22,20 @@ namespace nnrt::core::linalg::internal {
 
 namespace utility = open3d::utility;
 
-void SolveQRBlockDiagonalCUDA(
+void SolveQRBlockDiagonalCUDA_FullRank(
+        void *A_blocks_data,
+        void *B_data,
+        int64_t A_and_B_block_row_count,
+        int64_t B_column_count,
+        int64_t block_count,
+        open3d::core::Dtype data_type,
+        const open3d::core::Device &device
+) {
+    //TODO
+    utility::LogError("Not implemented.");
+}
+
+void SolveQRBlockDiagonalCUDA_General(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,

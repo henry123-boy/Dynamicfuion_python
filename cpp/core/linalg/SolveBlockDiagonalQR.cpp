@@ -25,14 +25,25 @@ namespace o3c = open3d::core;
 namespace nnrt::core::linalg {
 
 //TODO: logic identical to SolveCholeskyBlockDiagonal; unify using same sources
-void SolveQRBlockDiagonal(open3d::core::Tensor &X,
-                          const open3d::core::Tensor &A_blocks,
-                          const open3d::core::Tensor &B) {
-    SolveBlockDiagonal_Generic(
-            X, A_blocks, B,
-            internal::SolveQRBlockDiagonalCPU,
-            internal::SolveQRBlockDiagonalCUDA
-    );
+void SolveQRBlockDiagonal(
+        open3d::core::Tensor &X,
+        const open3d::core::Tensor &A_blocks,
+        const open3d::core::Tensor &B,
+        bool assume_full_rank
+) {
+    if (assume_full_rank) {
+        SolveBlockDiagonal_Generic(
+                X, A_blocks, B,
+                internal::SolveQRBlockDiagonalCPU_FullRank,
+                internal::SolveQRBlockDiagonalCUDA_FullRank
+        );
+    } else {
+        SolveBlockDiagonal_Generic(
+                X, A_blocks, B,
+                internal::SolveQRBlockDiagonalCPU_General,
+                internal::SolveQRBlockDiagonalCUDA_General
+        );
+    }
 }
 
 } // namespace nnrt::core::linalg
