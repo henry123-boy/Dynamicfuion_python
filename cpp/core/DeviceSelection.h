@@ -15,15 +15,12 @@
 //  ================================================================
 #pragma once
 
+// third-party includes
 #include <open3d/core/Tensor.h>
+// local includes
+#include "core/platform_independence/Macros.h"
 
 namespace nnrt::core {
-
-#ifdef BUILD_CUDA_MODULE
-#define NNRT_IF_CUDA(...) __VA_ARGS__ static_assert(true)
-#else
-#define NNRT_IF_CUDA(...) static_assert(true)
-#endif
 
 template<typename FExecuteOnCPU, typename FExecuteOnCUDA>
 void ExecuteOnDevice(open3d::core::Device device,

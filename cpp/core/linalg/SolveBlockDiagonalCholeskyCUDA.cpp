@@ -13,6 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#ifdef BUILD_CUDA_MODULE
 // stdlib includes
 
 // third-party includes
@@ -22,7 +23,7 @@
 
 // local includes
 #include "core/linalg/LinalgUtils.h"
-#include "core/linalg/SolveCholesky.h"
+#include "core/linalg/SolveBlockDiagonalCholesky.h"
 #include "core/linalg/LapackWrapper.h"
 #include "core/linalg/BlasWrapper.h"
 #include "core/linalg/PointerAggregationForBatchOperations.h"
@@ -102,3 +103,4 @@ void SolveCholeskyBlockDiagonalCUDA(
 
 
 } // nnrt::core::linalg::internal
+#endif

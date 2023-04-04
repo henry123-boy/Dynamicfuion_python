@@ -13,38 +13,29 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
 
 // local includes
+#include "core/linalg/SolveBlockDiagonalCholesky.h"
+#include "core/linalg/SolveBlockDiagonalGeneric.h"
+
+
+namespace o3c = open3d::core;
+namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg {
 
-void SolveCholeskyBlockDiagonal(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B);
-
-namespace internal{
-void SolveCholeskyBlockDiagonalCPU(
-		void* A_blocks_data,
-		void* B_data,
-		int64_t A_and_B_block_row_count,
-		int64_t B_column_count,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
-);
-#ifdef BUILD_CUDA_MODULE
-void SolveCholeskyBlockDiagonalCUDA(
-		void* A_blocks_data,
-		void* B_data,
-		int64_t A_and_B_block_row_count,
-		int64_t B_column_count,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
-);
-#endif
+void SolveCholeskyBlockDiagonal(open3d::core::Tensor &X,
+                                const open3d::core::Tensor &A_blocks,
+                                const open3d::core::Tensor &B) {
+    SolveBlockDiagonal_Generic(
+            X, A_blocks, B,
+            internal::SolveCholeskyBlockDiagonalCUDA,
+            internal::SolveCholeskyBlockDiagonalCPU
+    );
 }
+
+
 } // namespace nnrt::core::linalg

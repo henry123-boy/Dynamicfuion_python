@@ -27,7 +27,7 @@
 // i.e. ?potrf (Cholesky factorization of a symmetric (Hermitian) positive-definite matrix)
 
 namespace nnrt::core {
-
+// region =============================== POTRF: Cholesky Matrix Factorization =========================================
 template<typename scalar_t>
 inline NNRT_CPU_LINALG_INT
 potrf_cpu(int layout, char upper_or_lower, NNRT_CPU_LINALG_INT A_leading_dimension, scalar_t* A_data, NNRT_CPU_LINALG_INT A_other_dimension) {
@@ -100,5 +100,6 @@ inline cusolverStatus_t potrf_batched_cuda<double>(
 }
 #endif
 
+// endregion ===========================================================================================================
 
 } // nnrt::core

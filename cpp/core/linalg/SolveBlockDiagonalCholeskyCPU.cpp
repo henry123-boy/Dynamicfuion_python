@@ -22,7 +22,7 @@
 
 // local includes
 #include "core/linalg/LinalgUtils.h"
-#include "core/linalg/SolveCholesky.h"
+#include "core/linalg/SolveBlockDiagonalCholesky.h"
 #include "core/linalg/LapackWrapper.h"
 #include "core/linalg/BlasWrapper.h"
 

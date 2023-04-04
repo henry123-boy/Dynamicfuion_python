@@ -249,7 +249,6 @@ inline void trsm_cpu<double>(
 
 #ifdef BUILD_CUDA_MODULE
 
-// CUDA batched trsm, see https://docs.nvidia.com/cuda/cublas/index.html#cublas-t-trsmbatched
 template<typename scalar_t>
 inline cublasStatus_t trsm_batched_cuda(
 		cublasHandle_t handle,
@@ -318,7 +317,17 @@ inline cublasStatus_t trsm_batched_cuda<double>(
 	                          batch_count);
 }
 
+
+#endif
+// endregion
+// region ==================================== ?gels (Batched) =========================================================
+
+
+#ifdef BUILD_CUDA_MODULE
+
 #endif
 
+
 // endregion
+
 } // nnrt::core

@@ -22,7 +22,7 @@
 #include "tests/test_main.hpp"
 
 // code being tested
-#include "core/linalg/SolveCholesky.h"
+#include "core/linalg/SolveBlockDiagonalCholesky.h"
 
 namespace o3c = open3d::core;
 

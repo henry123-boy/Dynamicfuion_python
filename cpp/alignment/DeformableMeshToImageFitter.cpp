@@ -23,7 +23,7 @@
 
 // local
 #include "core/functional/Masking.h"
-#include "core/linalg/SolveCholesky.h"
+#include "core/linalg/SolveBlockDiagonalCholesky.h"
 #include "alignment/DeformableMeshToImageFitter.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/PointToPlaneDistances.h"

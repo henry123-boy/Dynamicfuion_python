@@ -108,10 +108,10 @@ set(
     core/linalg/LinalgUtils.h
     core/linalg/LinalgUtils.cpp
     core/linalg/LapackWrapper.h
-    core/linalg/SolveCholeskyCPU.cpp
-    core/linalg/SolveCholesky.h
-    core/linalg/SolveCholesky.cpp
-    core/linalg/SolveCholeskyCUDA.cpp
+        core/linalg/SolveBlockDiagonalCholeskyCPU.cpp
+        core/linalg/SolveBlockDiagonalCholesky.h
+        core/linalg/SolveBlockDiagonalCholesky.cpp
+        core/linalg/SolveBlockDiagonalCholeskyCUDA.cpp
     core/linalg/PointerAggregationForBatchOperations.h
     core/linalg/Rodrigues.cpp
     core/linalg/Rodrigues.h
@@ -327,7 +327,7 @@ set(
     alignment/functional/kernel/RasterizedSurfaceJacobiansImpl.h
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCPU.cpp
     alignment/functional/kernel/instantiations/RasterizedSurfaceJacobiansCUDA.cu
-    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu alignment/IterationMode.h)
+    alignment/functional/PixelVertexAnchorJacobians.cpp alignment/functional/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobians.cpp alignment/functional/kernel/PixelVertexAnchorJacobians.h alignment/functional/kernel/PixelVertexAnchorJacobiansImpl.h alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu alignment/IterationMode.h core/linalg/SolveBlockDiagonalQR.cpp core/linalg/SolveBlockDiagonalQR.h core/linalg/SolveBlockDiagonalGeneric.h core/platform_independence/Macros.h core/linalg/SolveBlockDiagonalQR_CPU.cpp)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
