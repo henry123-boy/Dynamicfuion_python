@@ -164,6 +164,7 @@ TEST_CASE("Test DMI Fitter - 25 Node Plane - CUDA") {
 void TestDeformableImageFitter_1NodePlaneTranslation(
         const o3c::Device &device, bool use_perspective_correction = false,
         std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
+        int max_iterations = 1,
         bool draw_depth = false
 ) {
     float max_depth = 10.0f;
@@ -237,7 +238,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 
     nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-    nnrt::alignment::DeformableMeshToImageFitter fitter(1, std::move(iteration_modes), 1e-6,
+    nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
                                                         use_perspective_correction, 10.f, false, 0.01);
     o3tg::Image dummy_color_image;
 
@@ -251,31 +252,37 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 
 TEST_CASE("Test DMI Fitter Fitter - COMBINED MODE - 1 Node Plane Translation - CPU") {
     o3c::Device device("CPU:0");
-    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL});
+    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL}, 1);
 }
 
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Translation - CUDA") {
     o3c::Device device("CUDA:0");
-    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL});
+    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL}, 1);
 }
 
 TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 1 Node Plane Translation - CPU") {
     o3c::Device device("CPU:0");
-    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY});
+    TestDeformableImageFitter_1NodePlaneTranslation(
+            device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3
+    );
 }
 
 TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 1 Node Plane Translation - CUDA") {
     o3c::Device device("CUDA:0");
-    TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY});
+    TestDeformableImageFitter_1NodePlaneTranslation(
+            device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 1
+    );
 }
 
 
-void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device,
-                                                  int angle,
-                                                  bool use_perspective_correction = false,
-                                                  std::vector<nnrt::alignment::IterationMode> iteration_modes = {
-                                                          nnrt::alignment::IterationMode::ALL},
-                                                  bool draw_depth = true) {
+void TestDeformableImageFitter_1NodePlaneRotation(
+        const o3c::Device &device, int angle,
+        bool use_perspective_correction = false,
+        std::vector<nnrt::alignment::IterationMode> iteration_modes = {
+                nnrt::alignment::IterationMode::ALL},
+        int max_iterations = 1,
+        bool draw_depth = true
+) {
     float max_depth = 10.0f;
     float node_coverage = 0.25;
 
@@ -343,27 +350,22 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device,
             rotation_xyz).cast<float>();
 
     o3c::Tensor expected_node_rotations =
-            o3c::Tensor(std::vector<float>{
-                                rotation_eigen(0, 0), rotation_eigen(0, 1), rotation_eigen(0, 2),
-                                rotation_eigen(1, 0), rotation_eigen(1, 1), rotation_eigen(1, 2),
-                                rotation_eigen(2, 0), rotation_eigen(2, 1), rotation_eigen(2, 2)},
-                        {1, 3, 3}, o3c::Float32, device);
-
-//    o3c::Tensor expected_node_rotations = o3c::Tensor(std::vector<float>{1., 0., 0.,
-//                                                                         0., 0.70710677, -0.70710677,
-//                                                                         0., 0.70710677, 0.70710677}, {1, 3, 3},
-//                                                      o3c::Float32, device);
-    // rotation about x
-    // o3c::Tensor expected_node_rotations = o3c::Tensor(std::vector<float>{1., 0., 0.,
-    //                                                                      0., 0.9961947, -0.08715574,
-    //                                                                      0., 0.08715574, 0.9961947}, {1, 3, 3}, o3c::Float32, device);
+            o3c::Tensor(
+                    std::vector<float>{
+                            rotation_eigen(0, 0), rotation_eigen(0, 1), rotation_eigen(0, 2),
+                            rotation_eigen(1, 0), rotation_eigen(1, 1), rotation_eigen(1, 2),
+                            rotation_eigen(2, 0), rotation_eigen(2, 1), rotation_eigen(2, 2)},
+                    {1, 3, 3}, o3c::Float32, device
+            );
 
     o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1}, {1, 4}, o3c::Int32, device);
 
     nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
-    nnrt::alignment::DeformableMeshToImageFitter fitter(1, std::move(iteration_modes), 1e-6, use_perspective_correction,
-                                                        10.f, false, 0.01);
+    nnrt::alignment::DeformableMeshToImageFitter fitter(
+            max_iterations, std::move(iteration_modes), 1e-6,
+            use_perspective_correction, 10.f, false, 0.01
+    );
     o3tg::Image dummy_color_image;
 
     o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
@@ -376,26 +378,26 @@ void TestDeformableImageFitter_1NodePlaneRotation(const o3c::Device &device,
 
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x-45 - CPU") {
     o3c::Device device("CPU:0");
-    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true);
+    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
 }
 
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x-45 - CUDA") {
     o3c::Device device("CUDA:0");
-    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true);
+    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
 }
 
 
 TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-45 - CPU") {
     o3c::Device device("CPU:0");
-    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY});
+    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
 }
 
 TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-45 - CUDA") {
     o3c::Device device("CUDA:0");
-    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY});
+    TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
 }
 
 TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-5 - CPU") {
     o3c::Device device("CPU:0");
-    TestDeformableImageFitter_1NodePlaneRotation(device, 5, true, {nnrt::alignment::IterationMode::ROTATION_ONLY});
+    TestDeformableImageFitter_1NodePlaneRotation(device, 5, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 2);
 }

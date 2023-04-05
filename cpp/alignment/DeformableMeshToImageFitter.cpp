@@ -297,11 +297,10 @@ DeformableMeshToImageFitter::FitToImage(
 	}
 
 	o3c::SizeVector rendering_image_size{reference_depth_image.GetRows(), reference_depth_image.GetCols()};
-	//TODO: employ the min_update_threshold termination condition as well
-	for (int i_iteration = 0; i_iteration < this->max_iteration_count; i_iteration++) {
-		FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
-		           intrinsic_matrix, extrinsic_matrix, rendering_image_size);
-	}
+
+    FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
+               intrinsic_matrix, extrinsic_matrix, rendering_image_size);
+
 }
 
 void
