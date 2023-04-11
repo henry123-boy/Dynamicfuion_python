@@ -105,10 +105,8 @@ void TestDeformableImageFitter_25NodePlane(
 	nnrt::core::functional::ReplaceValue(zero_bg_pixel_depths, -1.0f, 0.0f);
 	o3tg::Image depth_image(zero_bg_pixel_depths);
 	o3c::Tensor depth_mask =
-
 			(zero_bg_pixel_depths ==
 			 o3c::Tensor::Zeros(zero_bg_pixel_depths.GetShape(), zero_bg_pixel_depths.GetDtype(), device)).LogicalNot();
-
 
 	if (draw_depth) {
 		auto pd_tmp = pixel_depths.Clone();
@@ -142,7 +140,7 @@ void TestDeformableImageFitter_25NodePlane(
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
-														use_perspective_correction, 10.f, false, 0.01, 0.01);
+														use_perspective_correction, 10.f, false, 0.01, 0.001);
 	o3tg::Image dummy_color_image;
 
 
@@ -165,6 +163,16 @@ TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CPU") {
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_25NodePlane(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+}
+
+TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 25 Node Plane - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_25NodePlane(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
+}
+
+TEST_CASE("Test DMI Fitter -  TRANSLATION-ONLY MODE - 25 Node Plane - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter_25NodePlane(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
 }
 
 void TestDeformableImageFitter_1NodePlaneTranslation(
@@ -245,7 +253,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
-	                                                    use_perspective_correction, 10.f, false, 0.01, 0.01);
+	                                                    use_perspective_correction, 10.f, false, 0.01, 0.001);
 	o3tg::Image dummy_color_image;
 
 	o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));

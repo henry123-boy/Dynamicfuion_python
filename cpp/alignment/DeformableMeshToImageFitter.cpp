@@ -63,9 +63,10 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
     use_perspective_correction(use_perspective_correction),
     use_tukey_penalty(use_tukey_penalty),
     tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm),
-	preconditioning_dampening_factor(preconditioning_dampening_factor){
-	if(preconditioning_dampening_factor < 0.0f || preconditioning_dampening_factor > 1.0f){
-		utility::LogError("`preconditioning_dampening_factor` should be a small non-negative value between 0 and 1. Got: {}", preconditioning_dampening_factor);
+    preconditioning_dampening_factor(preconditioning_dampening_factor) {
+	if (preconditioning_dampening_factor < 0.0f || preconditioning_dampening_factor > 1.0f) {
+		utility::LogError("`preconditioning_dampening_factor` should be a small non-negative value between 0 and 1. Got: {}",
+		                  preconditioning_dampening_factor);
 	}
 }
 
@@ -108,7 +109,6 @@ void DeformableMeshToImageFitter::FitToImage(
 				                                       this->use_perspective_correction, false, true);;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
-
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
 		o3tg::PointCloud rasterized_point_cloud;
 		o3c::Tensor residual_mask;
@@ -122,8 +122,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
-
-				o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
+		o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
 
 		if (current_mode == IterationMode::ALL || current_mode == IterationMode::ROTATION_ONLY) {
 			// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
@@ -162,8 +161,6 @@ void DeformableMeshToImageFitter::FitToImage(
 						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
 
-
-
 		// compute (J^T)J, i.e. hessian approximation, in block-diagonal form
 		open3d::core::Tensor hessian_approximation_blocks;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
@@ -177,7 +174,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
 
-		if(preconditioning_dampening_factor > 0.0){
+		if (preconditioning_dampening_factor > 0.0) {
 			kernel::PreconditionBlocks(hessian_approximation_blocks, preconditioning_dampening_factor);
 		}
 
@@ -186,20 +183,17 @@ void DeformableMeshToImageFitter::FitToImage(
 
 		o3c::Tensor rotation_matrix_updates;
 		switch (current_mode) {
-			case ALL:
-				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
+			case ALL: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
 				// convert rotation axis-angle vectors to matrices
 				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
 				// apply motion updates
 				warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
 				warp_field.RotateNodes(rotation_matrix_updates);
 				break;
-			case TRANSLATION_ONLY:
-				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
+			case TRANSLATION_ONLY: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
 				warp_field.TranslateNodes(motion_updates);
 				break;
-			case ROTATION_ONLY:
-				motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
+			case ROTATION_ONLY: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
 				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates);
 				warp_field.RotateNodes(rotation_matrix_updates);
 				break;
@@ -242,8 +236,8 @@ DeformableMeshToImageFitter::FitToImage(
 
 	o3c::SizeVector rendering_image_size{reference_depth_image.GetRows(), reference_depth_image.GetCols()};
 
-    FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
-               intrinsic_matrix, extrinsic_matrix, rendering_image_size);
+	FitToImage(warp_field, canonical_mesh, reference_color_image, point_cloud, final_reference_point_mask,
+	           intrinsic_matrix, extrinsic_matrix, rendering_image_size);
 
 }
 

@@ -69,7 +69,7 @@ void pybind_geometry_functional_warping(pybind11::module& m) {
 	m.def("warp_triangle_mesh",
 	      py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::core::Tensor&,
 			      const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, const open3d::core::Tensor&, bool, int,
-			      const open3d::core::Tensor&>(&WarpTriangleMesh),
+			      const open3d::core::Tensor&>(&WarpTriangleMeshUsingSuppliedAnchors),
 	      "input_mesh"_a, "nodes"_a, "node_rotations"_a,
 	      "node_translations"_a, "anchors"_a, "anchor_weights"_a, "threshold_nodes_by_distance"_a = false,
 	      "minimum_valid_anchor_count"_a = 0,
