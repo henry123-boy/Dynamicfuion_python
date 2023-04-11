@@ -3,7 +3,7 @@ function(nnrt_add_test)
     set(oneValueArgs)
     set(multiValueArgs DEPENDENCIES SOURCES)
     cmake_parse_arguments(ADD_TEST "${options}" "${oneValueArgs}"
-            "${multiValueArgs}" ${ARGN})
+        "${multiValueArgs}" ${ARGN})
     list(LENGTH ARGN ARGC)
 
     if (${ARGC} EQUAL 0)
@@ -40,7 +40,7 @@ function(nnrt_add_test_data_download_target)
     set(oneValueArgs URL SHA256 DESTINATION)
     set(multiValueArgs EXTRACTED_NAMES)
     cmake_parse_arguments(DOWNLOAD_DATA "${options}" "${oneValueArgs}"
-            "${multiValueArgs}" ${ARGN})
+        "${multiValueArgs}" ${ARGN})
 
     list(LENGTH ARGN ARGC)
     if (${ARGC} EQUAL 0)
@@ -77,14 +77,14 @@ function(nnrt_add_test_data_download_target)
     list(APPEND byproduct_paths ${destination_path})
 
     add_custom_target(
-            ${target_name}
-            BYPRODUCTS ${byproduct_paths}
-            COMMAND ${CMAKE_COMMAND}
-            -DBYPRODUCTS=${byproduct_paths}
-            -DURL=${DOWNLOAD_DATA_URL}
-            -DDESTINATION=${destination_path}
-            -DSHA256=${DOWNLOAD_DATA_SHA256}
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/DownloadAndExtractFile.cmake
+        ${target_name}
+        BYPRODUCTS ${byproduct_paths}
+        COMMAND ${CMAKE_COMMAND}
+        -DBYPRODUCTS=${byproduct_paths}
+        -DURL=${DOWNLOAD_DATA_URL}
+        -DDESTINATION=${destination_path}
+        -DSHA256=${DOWNLOAD_DATA_SHA256}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/DownloadAndExtractFile.cmake
     )
 endfunction()
 
@@ -98,36 +98,39 @@ if (BUILD_CPP_TESTS)
     configure_file(test_utils/test_data_paths.hpp.in test_utils/test_data_paths.hpp @ONLY)
 
     add_library(
-            test_utils STATIC
-            test_utils/test_utils.hpp
-            test_utils/test_utils.tpp
-            test_utils/test_utils.cpp
-            test_utils/compile_time_string_concatenation.hpp
-            test_utils/numpy_image.h
-            test_utils/image_io/load_png.h
-            test_utils/image_io/load_png.cpp
-            test_utils/pixel.h
-            test_utils/image_view.h
-            test_utils/image_io/dng_shared.h
-            test_utils/image_io/load_dng.h
-            test_utils/image_io/load_dng.cpp
-            test_utils/enable_if.h
-            test_utils/entropy_range_decoder.h
-            test_utils/entropy_range_decoder.cpp
-            test_utils/uintn.h
-            test_utils/entropy_decoder_model.h
-            test_utils/float_details.h
-            test_utils/vectorstream.h
-            test_utils/algs.h
-            test_utils/image_io/save_png.h
-            test_utils/image_io/save_png.cpp
-            test_utils/array2d.h
-            test_utils/image_io/save_dng.h
-            test_utils/entropy_encoder_model.h
-            test_utils/entropy_range_encoder.h
-            test_utils/entropy_range_encoder.cpp
-            test_utils/geometry.cpp
-            test_utils/geometry.h)
+        test_utils STATIC
+        test_utils/test_utils.hpp
+        test_utils/test_utils.tpp
+        test_utils/test_utils.cpp
+        test_utils/compile_time_string_concatenation.hpp
+        test_utils/numpy_image.h
+        test_utils/image_io/load_png.h
+        test_utils/image_io/load_png.cpp
+        test_utils/pixel.h
+        test_utils/image_view.h
+        test_utils/image_io/dng_shared.h
+        test_utils/image_io/load_dng.h
+        test_utils/image_io/load_dng.cpp
+        test_utils/enable_if.h
+        test_utils/entropy_range_decoder.h
+        test_utils/entropy_range_decoder.cpp
+        test_utils/uintn.h
+        test_utils/entropy_decoder_model.h
+        test_utils/float_details.h
+        test_utils/vectorstream.h
+        test_utils/algs.h
+        test_utils/image_io/save_png.h
+        test_utils/image_io/save_png.cpp
+        test_utils/array2d.h
+        test_utils/image_io/save_dng.h
+        test_utils/entropy_encoder_model.h
+        test_utils/entropy_range_encoder.h
+        test_utils/entropy_range_encoder.cpp
+        test_utils/geometry.cpp
+        test_utils/geometry.h
+        test_utils/fitter_testing.cpp
+        test_utils/fitter_testing.h
+    )
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -149,102 +152,104 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_voxel_block_grid_io)
     nnrt_add_test(test_unproject_3d_points)
     nnrt_add_test(test_extract_face_vertices)
-    nnrt_add_test(test_deformable_mesh_fitter)
+    nnrt_add_test(test_deformable_mesh_fitter_basic)
+    nnrt_add_test(test_deformable_mesh_fitter_intermediate)
+    nnrt_add_test(test_deformable_mesh_fitter_advanced)
     nnrt_add_test(test_flat_edge_shader)
     nnrt_add_test(test_triangle_fitter)
     nnrt_add_test(test_vertex_color_shader)
     nnrt_add_test(
-            test_atomic_counter_array
-            SOURCES
-            test_atomic_counter_array/test_atomic_counter_array.cpp
-            test_atomic_counter_array/test_atomic_counter_array.h
-            test_atomic_counter_array/test_atomic_counter_array_impl.h
-            test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
-            test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
+        test_atomic_counter_array
+        SOURCES
+        test_atomic_counter_array/test_atomic_counter_array.cpp
+        test_atomic_counter_array/test_atomic_counter_array.h
+        test_atomic_counter_array/test_atomic_counter_array_impl.h
+        test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
+        test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
     )
     nnrt_add_test(test_solve_cholesky_block_diagonal)
     nnrt_add_test(test_rodrigues)
     nnrt_add_test(test_warped_vertex_jacobians)
 
     nnrt_add_test_data_download_target(
-            test_data_plane_and_cube_rendering
-            URL https://algomorph.com/storage/reco/plane_and_cube_rendering_test_data.7z
-            SHA256 0c43e50fc52f5c31b5b24aa826891db251ebee328edc55c279a78af3cce343c9
-            DESTINATION plane_and_cube_rendering_test_data.7z
-            EXTRACTED_NAMES
-            arrays/cube_0_pixel_barycentric_coordinates.npy
-            arrays/cube_0_pixel_depths.npy
-            arrays/cube_0_pixel_face_distances.npy
-            arrays/cube_0_pixel_face_indices.npy
-            arrays/plane_0_pixel_barycentric_coordinates.npy
-            arrays/plane_0_pixel_depths.npy
-            arrays/plane_0_pixel_face_distances.npy
-            arrays/plane_0_pixel_face_indices.npy
+        test_data_plane_and_cube_rendering
+        URL https://algomorph.com/storage/reco/plane_and_cube_rendering_test_data.7z
+        SHA256 0c43e50fc52f5c31b5b24aa826891db251ebee328edc55c279a78af3cce343c9
+        DESTINATION plane_and_cube_rendering_test_data.7z
+        EXTRACTED_NAMES
+        arrays/cube_0_pixel_barycentric_coordinates.npy
+        arrays/cube_0_pixel_depths.npy
+        arrays/cube_0_pixel_face_distances.npy
+        arrays/cube_0_pixel_face_indices.npy
+        arrays/plane_0_pixel_barycentric_coordinates.npy
+        arrays/plane_0_pixel_depths.npy
+        arrays/plane_0_pixel_face_distances.npy
+        arrays/plane_0_pixel_face_indices.npy
     )
 
     nnrt_add_test_data_download_target(
-            test_data_mesh_bunny_res4
-            URL https://algomorph.com/storage/reco/mesh_bunny_res4.7z
-            SHA256 8db8ae2812b012271116a64fe873fb0d9073936c1f99c4615693df6fa1b5563e
-            DESTINATION mesh_bunny_res4.7z
-            EXTRACTED_NAMES
-            meshes/mesh_bunny_res4.ply
-            arrays/mesh_bunny_res4_pixel_barycentric_coordinates.npy
-            arrays/mesh_bunny_res4_pixel_depths.npy
-            arrays/mesh_bunny_res4_pixel_face_distances.npy
-            arrays/mesh_bunny_res4_pixel_face_indices.npy
-            images/mesh_bunny_res4_render_preview.png
+        test_data_mesh_bunny_res4
+        URL https://algomorph.com/storage/reco/mesh_bunny_res4.7z
+        SHA256 8db8ae2812b012271116a64fe873fb0d9073936c1f99c4615693df6fa1b5563e
+        DESTINATION mesh_bunny_res4.7z
+        EXTRACTED_NAMES
+        meshes/mesh_bunny_res4.ply
+        arrays/mesh_bunny_res4_pixel_barycentric_coordinates.npy
+        arrays/mesh_bunny_res4_pixel_depths.npy
+        arrays/mesh_bunny_res4_pixel_face_distances.npy
+        arrays/mesh_bunny_res4_pixel_face_indices.npy
+        images/mesh_bunny_res4_render_preview.png
     )
 
     nnrt_add_test_data_download_target(
-            test_data_mesh_bunny_res2
-            URL https://algomorph.com/storage/reco/mesh_bunny_res2.7z
-            SHA256 5086803a46be1db566fcbc784cde962a7282c72e72f09703a2f7b739b1a9241e
-            DESTINATION mesh_bunny_res2.7z
-            EXTRACTED_NAMES
-            meshes/mesh_bunny_res2.ply
-            arrays/mesh_bunny_res2_pixel_barycentric_coordinates.npy
-            arrays/mesh_bunny_res2_pixel_depths.npy
-            arrays/mesh_bunny_res2_pixel_face_distances.npy
-            arrays/mesh_bunny_res2_pixel_face_indices.npy
-            images/mesh_bunny_res2_render_preview.png
+        test_data_mesh_bunny_res2
+        URL https://algomorph.com/storage/reco/mesh_bunny_res2.7z
+        SHA256 5086803a46be1db566fcbc784cde962a7282c72e72f09703a2f7b739b1a9241e
+        DESTINATION mesh_bunny_res2.7z
+        EXTRACTED_NAMES
+        meshes/mesh_bunny_res2.ply
+        arrays/mesh_bunny_res2_pixel_barycentric_coordinates.npy
+        arrays/mesh_bunny_res2_pixel_depths.npy
+        arrays/mesh_bunny_res2_pixel_face_distances.npy
+        arrays/mesh_bunny_res2_pixel_face_indices.npy
+        images/mesh_bunny_res2_render_preview.png
     )
 
     nnrt_add_test_data_download_target(
-            test_data_mesh_64_bunny_array
-            URL https://algomorph.com/storage/reco/mesh_64_bunny_array.7z
-            SHA256 529944b4e5714f4fdfb5dfd3965ac4ff53d3ea306698fdb2083ce4cbf51a76f9
-            DESTINATION mesh_64_bunny_array.7z
-            EXTRACTED_NAMES
-            meshes/mesh_64_bunny_array.ply
-            arrays/mesh_64_bunny_array_pixel_barycentric_coordinates.npy
-            arrays/mesh_64_bunny_array_pixel_depths.npy
-            arrays/mesh_64_bunny_array_pixel_face_distances.npy
-            arrays/mesh_64_bunny_array_pixel_face_indices.npy
-            images/mesh_64_bunny_array_render_preview.png
+        test_data_mesh_64_bunny_array
+        URL https://algomorph.com/storage/reco/mesh_64_bunny_array.7z
+        SHA256 529944b4e5714f4fdfb5dfd3965ac4ff53d3ea306698fdb2083ce4cbf51a76f9
+        DESTINATION mesh_64_bunny_array.7z
+        EXTRACTED_NAMES
+        meshes/mesh_64_bunny_array.ply
+        arrays/mesh_64_bunny_array_pixel_barycentric_coordinates.npy
+        arrays/mesh_64_bunny_array_pixel_depths.npy
+        arrays/mesh_64_bunny_array_pixel_face_distances.npy
+        arrays/mesh_64_bunny_array_pixel_face_indices.npy
+        images/mesh_64_bunny_array_render_preview.png
     )
 
     nnrt_add_test_data_download_target(
-            suzanne_and_bunny_res_4_2_rasterization_test
-            URL https://algomorph.com/storage/reco/suzanne_and_bunny_res_4_2_rasterization_test.7z
-            SHA256 9de26bbc3ad92e004671582c661ab854cca4df05192c68b3352bd014f55e248d
-            DESTINATION suzanne_and_bunny_res_4_2_rasterization_test.7z
-            EXTRACTED_NAMES
-            arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_indices.npy
-            arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_distances.npy
-            arrays/suzanne_and_mesh_bunny_res4_2_pixel_depths.npy
-            arrays/suzanne_and_mesh_bunny_res4_2_pixel_barycentric_coordinates.npy
+        suzanne_and_bunny_res_4_2_rasterization_test
+        URL https://algomorph.com/storage/reco/suzanne_and_bunny_res_4_2_rasterization_test.7z
+        SHA256 9de26bbc3ad92e004671582c661ab854cca4df05192c68b3352bd014f55e248d
+        DESTINATION suzanne_and_bunny_res_4_2_rasterization_test.7z
+        EXTRACTED_NAMES
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_indices.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_face_distances.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_depths.npy
+        arrays/suzanne_and_mesh_bunny_res4_2_pixel_barycentric_coordinates.npy
     )
 
     nnrt_add_test_data_download_target(
-            test_data_rendered_normals
-            URL https://algomorph.com/storage/reco/interpolate_face_attribute_test_data.7z
-            SHA256 4247cef37c9f4fe8bda3ec1d628b169618b891602e648bdc64807c12fe9eddde
-            DESTINATION interpolate_face_attribute_test_data.7z
-            EXTRACTED_NAMES
-            arrays/mesh_64_bunny_array_rendered_normals.npy
-            arrays/mesh_bunny_res2_rendered_normals.npy
-            arrays/mesh_bunny_res4_rendered_normals.npy
+        test_data_rendered_normals
+        URL https://algomorph.com/storage/reco/interpolate_face_attribute_test_data.7z
+        SHA256 4247cef37c9f4fe8bda3ec1d628b169618b891602e648bdc64807c12fe9eddde
+        DESTINATION interpolate_face_attribute_test_data.7z
+        EXTRACTED_NAMES
+        arrays/mesh_64_bunny_array_rendered_normals.npy
+        arrays/mesh_bunny_res2_rendered_normals.npy
+        arrays/mesh_bunny_res4_rendered_normals.npy
     )
 
 

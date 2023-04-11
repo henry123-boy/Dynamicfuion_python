@@ -222,7 +222,6 @@ DeformableMeshToImageFitter::FitToImage(
 			depth_scale, this->max_depth, false
 	);
 
-
 	open3d::t::geometry::PointCloud point_cloud(points);
 
 	o3c::Tensor final_reference_point_mask;
