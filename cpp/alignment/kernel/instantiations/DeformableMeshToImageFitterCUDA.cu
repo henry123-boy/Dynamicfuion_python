@@ -52,4 +52,11 @@ void ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceTyp
 		IterationMode mode
 );
 
+
+template
+void PreconditionBlocks<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor & blocks,
+		float dampening_factor
+);
+
 } // namespace nnrt::alignment::kernel

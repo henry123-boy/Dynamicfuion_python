@@ -103,5 +103,23 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	);
 }
 
+void PreconditionBlocks(open3d::core::Tensor& blocks, float dampening_factor) {
+	core::ExecuteOnDevice(
+			blocks.GetDevice(),
+			[&] {
+				PreconditionBlocks<open3d::core::Device::DeviceType::CPU>(
+						blocks, dampening_factor
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						PreconditionBlocks<open3d::core::Device::DeviceType::CUDA>(
+								blocks, dampening_factor
+						);
+				);
+			}
+	);
+}
+
 
 } // namespace nnrt::alignment::kernel

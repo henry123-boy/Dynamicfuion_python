@@ -231,11 +231,6 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 				// [1 x 6] * [6 x 9] = [1 x 9]
 				auto dr_dV = dr_dwl_x_dwl_dV + dr_dnl_x_dnl_dV;
 
-				//__DEBUG
-				// auto dr_dwl_x_dwl_dV_c = dr_dwl_x_dwl_dV.eval();
-				// auto dr_dnl_x_dnl_dV_c = dr_dnl_x_dnl_dV.eval();
-				// auto dr_dV_c = dr_dV.eval();
-
 				Eigen::Matrix<float, 1, 9, Eigen::RowMajor> dr_dN;
 
 				if (TIterationMode == IterationMode::ALL ||
@@ -253,9 +248,6 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 					// dr_dN = dr_dwl * dwl_dN + dr_dnl * dnl_dN = 0 + dr_dnl  * dnl_dN
 					//                                                 [1 x 3] * [3 x 9] = [1 x 9]
 					dr_dN = dr_dnl * dnl_dN;
-
-					//__DEBUG
-					// auto dr_dN_c = dr_dN.eval();
 				}
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
@@ -349,10 +341,6 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 						// [1x3]
 						auto dr_dv = dr_dV.block<1, 3>(0, i_face_vertex * 3);
 
-						//__DEBUG
-						// auto dr_dv_c = dr_dv.eval();
-						// auto dr_dn_c = dr_dn.eval();
-
 						if (TIterationMode == IterationMode::ALL ||
 						    TIterationMode == IterationMode::TRANSLATION_ONLY) {
 							Eigen::Map<Eigen::RowVector3<float>>
@@ -383,12 +371,6 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 											(i_vertex_anchor * 3)
 									)
 							);
-							//__DEBUG
-							// auto dr_drotation_n_c = (dr_dn * dn_drotation).eval();
-							// auto dv_drotation_c = dv_drotation.toDenseMatrix();
-							// auto dn_drotation_c = dn_drotation.toDenseMatrix();
-							// auto dr_drotation_v_c = (dr_dv * dv_drotation).eval();
-
 							Eigen::Map<Eigen::RowVector3<float>> pixel_vertex_anchor_rotation_jacobian(pixeL_vertex_anchor_rotation_jacobian_data);
 							// [1x3] = ([1x3] * [3x3]) + ([1x3] * [3x3])
 							pixel_vertex_anchor_rotation_jacobian += (dr_dv * dv_drotation) + (dr_dn * dn_drotation);

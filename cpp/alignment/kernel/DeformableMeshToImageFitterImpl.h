@@ -275,16 +275,6 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic(
 					i_column_1 = three_column_1_lookup_table[i_unique_element_in_block];
 				}
 
-				//__DEBUG
-				// bool TKeepRotationsIndependentFromTranslations = true;
-				// if(TKeepRotationsIndependentFromTranslations){
-				// 	if((i_column_0 >= 3 && i_column_1 < 3) || (i_column_0 < 3 && i_column_1 >= 3)){
-				// 		hessian_approximation_block_data[(i_node * 36) + (i_column_0 * 6) + i_column_1] = 0.0;
-				// 		hessian_approximation_block_data[(i_node * 36) + (i_column_1 * 6) + i_column_0] = 0.0;
-				// 		return;
-				// 	}
-				// }
-
 				int node_pixel_jacobian_list_length = node_pixel_count_data[i_node];
 				float column_product = 0.0;
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
@@ -310,17 +300,17 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 ) {
 	switch (mode) {
 		case ALL:
-			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ALL>(
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<TDevice, IterationMode::ALL>(
 					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
 			);
 			break;
 		case TRANSLATION_ONLY:
-			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::TRANSLATION_ONLY>(
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<TDevice, IterationMode::TRANSLATION_ONLY>(
 					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
 			);
 			break;
 		case ROTATION_ONLY:
-			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ROTATION_ONLY>(
+			ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic<TDevice, IterationMode::ROTATION_ONLY>(
 					hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts
 			);
 			break;
@@ -446,24 +436,50 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 ) {
 	switch (mode) {
 		case ALL:
-			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ALL>(
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<TDevice, IterationMode::ALL>(
 					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 					node_pixel_jacobian_counts, max_anchor_count_per_vertex
 			);
 			break;
 		case TRANSLATION_ONLY:
-			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::TRANSLATION_ONLY>(
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<TDevice, IterationMode::TRANSLATION_ONLY>(
 					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 					node_pixel_jacobian_counts, max_anchor_count_per_vertex
 			);
 			break;
 		case ROTATION_ONLY:
-			ComputeNegativeGradient_UnorderedNodePixels_Generic<open3d::core::Device::DeviceType::CPU, IterationMode::ROTATION_ONLY>(
+			ComputeNegativeGradient_UnorderedNodePixels_Generic<TDevice, IterationMode::ROTATION_ONLY>(
 					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 					node_pixel_jacobian_counts, max_anchor_count_per_vertex
 			);
 			break;
 	}
+}
+
+template<open3d::core::Device::DeviceType TDevice>
+void PreconditionBlocks(
+		open3d::core::Tensor& blocks,
+		float dampening_factor
+) {
+	if (blocks.GetShape().size() != 3) {
+		utility::LogError("Expecting `blocks` to have three dimensions, got dimension count: {}", blocks.GetShape().size());
+	}
+	int64_t block_size = blocks.GetShape(1);
+	int64_t block_count = blocks.GetShape(0);
+	o3c::AssertTensorShape(blocks, { block_count, block_size, block_size });
+	o3c::AssertTensorDtype(blocks, o3c::Float32);
+	o3c::Device device = blocks.GetDevice();
+
+	int64_t block_size_squared = block_size * block_size;
+	auto* block_data = blocks.GetDataPtr<float>();
+	o3c::ParallelFor(
+			device, block_size * block_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_index) {
+				int64_t i_block = workload_index / block_size;
+				int64_t i_position_in_block = workload_index % block_size;
+				block_data[i_block * (block_size_squared) + i_position_in_block * block_size + i_position_in_block] += dampening_factor;
+			}
+	);
 }
 
 

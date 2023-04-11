@@ -48,20 +48,26 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::alignment {
 
 DeformableMeshToImageFitter::DeformableMeshToImageFitter(
-		int max_iteration_count,
-		std::vector<IterationMode> iteration_mode_sequence,
-		float minimal_update_threshold,
-		bool use_perspective_correction,
-		float max_depth,
-		bool use_tukey_penalty,
-		float tukey_penalty_cutoff_cm
+		int max_iteration_count /* = 100*/,
+		std::vector<IterationMode> iteration_mode_sequence /* = {IterationMode::ALL}*/,
+		float minimal_update_threshold /* = 1e-6f*/,
+		bool use_perspective_correction /* = true*/,
+		float max_depth /* = 10.0f*/,
+		bool use_tukey_penalty /* = false*/,
+		float tukey_penalty_cutoff_cm /* = 0.01f*/,
+		float preconditioning_dampening_factor /* = 0.0f*/
 ) : max_iteration_count(max_iteration_count),
     iteration_mode_sequence(std::move(iteration_mode_sequence)),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
     use_perspective_correction(use_perspective_correction),
     use_tukey_penalty(use_tukey_penalty),
-    tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm) {}
+    tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm),
+	preconditioning_dampening_factor(preconditioning_dampening_factor){
+	if(preconditioning_dampening_factor < 0.0f || preconditioning_dampening_factor > 1.0f){
+		utility::LogError("`preconditioning_dampening_factor` should be a small non-negative value between 0 and 1. Got: {}", preconditioning_dampening_factor);
+	}
+}
 
 void DeformableMeshToImageFitter::FitToImage(
 		nnrt::geometry::GraphWarpField& warp_field,
@@ -102,28 +108,6 @@ void DeformableMeshToImageFitter::FitToImage(
 				                                       this->use_perspective_correction, false, true);;
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
-		//__DEBUG
-		// bool draw_depth = true;
-		// if (draw_depth) {
-		// 	auto pd_tmp = pixel_depths.Clone();
-		// 	nnrt::core::functional::ReplaceValue(pd_tmp, -1.0f, 10.0f);
-		// 	float minimum_depth = pd_tmp.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
-		// 	float maximum_depth = pixel_depths.Max({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
-		// 	nnrt::core::functional::ReplaceValue(pd_tmp, 10.0f, minimum_depth);
-		// 	pd_tmp = 255.f - ((pd_tmp - minimum_depth) * 255.f / (maximum_depth - minimum_depth));
-		// 	o3tg::Image stretched_depth_image(pd_tmp.To(o3c::UInt8));
-		// 	o3tio::WriteImage("/home/algomorph/Builds/NeuralTracking/cmake-build-debug/cpp/tests/test_data/images/__debug_depth_1-node.png", stretched_depth_image);
-		// }
-
-		//__DEBUG
-		int debug_start_row = 46;
-		int debug_start_col = 45;
-		int debug_end_row = 54;
-		int debug_end_col = 55;
-
-		// __DEBUG
-		// auto center_faces = pixel_face_indices.Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
-
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
 		o3tg::PointCloud rasterized_point_cloud;
@@ -139,25 +123,7 @@ void DeformableMeshToImageFitter::FitToImage(
 
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
 
-		//__DEBUG
-		auto center_rasterized_point_positions = rasterized_point_cloud.GetPointPositions().Reshape({100, 100, 3})
-		                                                               .Slice(0, debug_start_row, debug_end_row)
-		                                                               .Slice(1, debug_start_col, debug_end_col).Clone();
-		auto center_rasterized_point_normals = rasterized_point_cloud.GetPointNormals().Reshape({100, 100, 3})
-		                                                             .Slice(0, debug_start_row, debug_end_row)
-		                                                             .Slice(1, debug_start_col, debug_end_col).Clone();
-		auto center_reference_point_positions = reference_point_cloud.GetPointPositions().Reshape({100, 100, 3})
-		                                                             .Slice(0, debug_start_row, debug_end_row)
-		                                                             .Slice(1, debug_start_col, debug_end_col).Clone();
-		auto center_residuals = residuals.Reshape({100, 100}).Slice(0, debug_start_row, debug_end_row)
-		                                 .Slice(1, debug_start_col, debug_end_col).Clone();
-		// auto center_masks = residual_mask.Reshape({100,100})
-		// .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
-
-
-
-
-		o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
+				o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
 
 		if (current_mode == IterationMode::ALL || current_mode == IterationMode::ROTATION_ONLY) {
 			// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
@@ -167,8 +133,6 @@ void DeformableMeshToImageFitter::FitToImage(
 		} else {
 			warped_vertex_position_jacobians = warp_anchor_weights;
 		}
-
-
 
 		// compute rasterized vertex and normal jacobians
 		// [W x H x 3 x 9], [W x H x 30]; 30 = 3x9, 1x3
@@ -184,16 +148,9 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 
-		//__DEBUG
-		auto center_rvp_jacobians = rasterized_vertex_position_jacobians.Slice(0, debug_start_row, debug_end_row)
-		                                                                .Slice(1, debug_start_col, debug_end_col).Clone();
-
-
 		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
 		o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
 		o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
-		//__DEBUG
-		// auto center_point_map_vectors = point_map_vectors.Reshape({100, 100, 3}).Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
 
 		auto [pixel_jacobians, pixel_node_jacobian_counts,
 				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts] =
@@ -204,22 +161,6 @@ void DeformableMeshToImageFitter::FitToImage(
 						warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(),
 						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
-
-		//__DEBUG
-		// auto anchor_count = warp_anchors.GetShape(1);
-		// ==== w/o dropping anchor data beyond first node-anchor (multiple-node-case) ====
-		// auto center_pixel_jacobians = pixel_jacobians.Reshape({100,100, anchor_count*3, 6}).Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
-		// auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(3,0,3).Clone();
-		// auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(3,3,6).Clone();
-		// auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2,3});
-		// auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2,3});
-		// ==== w/ dropping anchor data beyond first node-anchor (single-node-case) ====
-//		auto center_pixel_jacobians = pixel_jacobians.Slice(1, 0, 1).Reshape({100, 100, 6})
-//		                                             .Slice(0, debug_start_row, debug_end_row).Slice(1, debug_start_col, debug_end_col).Clone();
-//		auto center_pixel_rotation_jacobians = center_pixel_jacobians.Slice(2, 0, 3).Clone();
-//		auto center_pixel_translation_jacobians = center_pixel_jacobians.Slice(2, 3, 6).Clone();
-//		auto center_pixel_rotation_gradients = center_pixel_rotation_jacobians.Sum({2});
-//		auto center_pixel_translation_gradients = center_pixel_translation_jacobians.Sum({2});
 
 
 
@@ -236,9 +177,12 @@ void DeformableMeshToImageFitter::FitToImage(
 				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
 
+		if(preconditioning_dampening_factor > 0.0){
+			kernel::PreconditionBlocks(hessian_approximation_blocks, preconditioning_dampening_factor);
+		}
+
 		open3d::core::Tensor motion_updates;
-        core::linalg::SolveQRBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient, false);
-//		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
 		o3c::Tensor rotation_matrix_updates;
 		switch (current_mode) {

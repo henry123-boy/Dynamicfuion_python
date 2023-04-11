@@ -98,4 +98,15 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		IterationMode mode
 );
 
+void PreconditionBlocks(
+		open3d::core::Tensor& blocks,
+		float dampening_factor
+);
+
+template<open3d::core::Device::DeviceType TDevice>
+void PreconditionBlocks(
+		open3d::core::Tensor& blocks,
+		float dampening_factor
+);
+
 } // namespace nnrt::alignment::kernel
