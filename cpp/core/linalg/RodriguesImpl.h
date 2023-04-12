@@ -67,6 +67,10 @@ inline void AxisAngleVectorsToMatricesRodrigues_TypeDispatched(open3d::core::Ten
 	o3c::Device device = vectors.GetDevice();
 	auto rotation_count = vectors.GetShape(0);
 	matrices = o3c::Tensor({rotation_count, 3, 3}, vectors.GetDtype(), device);
+	if (!vectors.IsContiguous()) {
+		utility::LogError(
+				"Axis-angle-to-matrix conversion: only contiguous input vectors are supported.");
+	}
 	const auto* vector_data = vectors.GetDataPtr<TElement>();
 	auto* matrix_data = matrices.GetDataPtr<TElement>();
 	o3c::ParallelFor(

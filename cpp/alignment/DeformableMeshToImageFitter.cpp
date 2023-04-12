@@ -181,11 +181,12 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor motion_updates;
 		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
 
+
 		o3c::Tensor rotation_matrix_updates;
 		switch (current_mode) {
 			case ALL: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
 				// convert rotation axis-angle vectors to matrices
-				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3));
+				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3).Contiguous());
 				// apply motion updates
 				warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
 				warp_field.RotateNodes(rotation_matrix_updates);

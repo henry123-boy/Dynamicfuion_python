@@ -36,13 +36,13 @@ def skew(vector):
                      [-vector[1], vector[0], 0]])
 
 
-def deform_objects(node_rotations: List[Rotation] | None = None, rotate_using_normals: bool = False,
+def deform_objects(rotations: List[Rotation] | None = None, rotate_using_normals: bool = False,
                    export_edges: bool = False):
     # input section
     nodes_source_object_name = "Plane Nodes Source"
     nodes_target_object_name = "Plane Nodes Target"
     skin_source_object_name = "Plane Skin Source"
-    node_coverage = 0.25
+    node_coverage = 0.1
 
     # calculation
     objects_to_look_at = None
@@ -81,12 +81,12 @@ def deform_objects(node_rotations: List[Rotation] | None = None, rotate_using_no
             [np.eye(3) + skew(v) + skew(v).dot(skew(v)) * (1 - c) / s ** 2 for v, s, c in zip(V, S, C)])
         node_rotations = o3c.Tensor(node_rotations_np.astype(np.float32))
     else:
-        if node_rotations is not None:
-            if len(node_rotations) != len(nodes_source):
+        if rotations is not None:
+            if len(rotations) != len(nodes_source):
                 raise ValueError(
-                    f"Number rotations ({len(node_rotations)}) must match the number of vertices in node source {len(nodes_source)}")
+                    f"Number of rotations ({len(rotations)}) must match the number of vertices in node source {len(nodes_source)}")
             node_rotations = o3c.Tensor(
-                np.array([node_rotation.as_matrix().astype(np.float32) for node_rotation in node_rotations]))
+                np.array([rotation.as_matrix().astype(np.float32) for rotation in rotations]))
         else:
             node_rotations = o3c.Tensor(np.array([np.eye(3, dtype=np.float32)] * len(nodes_source)))
 
@@ -115,15 +115,16 @@ def deform_objects(node_rotations: List[Rotation] | None = None, rotate_using_no
 
 def main():
     bpy.ops.wm.open_mainfile(
-        # filepath="/mnt/Data/Reconstruction/synthetic_data/plane_fit/fitter_test_starter_file.blend"
-        filepath="/mnt/Data/Reconstruction/synthetic_data/plane_fit/fitter_test_2-node_starter_file.blend"
+        # filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/fitter_test_starter_file.blend"
+        filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/fitter_test_2-node_starter_file.blend"
     )
-    # deform_objects(Rotation.from_euler('xyz', (45, 0, 0), degrees=True))
+    # deform_objects([Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)])
     deform_objects(
-        [Rotation.from_euler('xyz', (5, 0, 0), degrees=True), Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)])
+        [Rotation.from_euler('xyz', (45, 0, 0), degrees=True), Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)]
+    )
     bpy.ops.wm.save_mainfile(
-        # filepath="/mnt/Data/Reconstruction/synthetic_data/plane_fit/plane_fit_1_node.blend"
-        filepath="/mnt/Data/Reconstruction/synthetic_data/plane_fit/plane_fit_2_nodes.blend"
+        # filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/plane_fit_1_node_rotation_-45.blend"
+        filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/plane_fit_2_nodes_45.blend"
     )
 
     return PROGRAM_EXIT_SUCCESS

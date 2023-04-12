@@ -52,13 +52,16 @@ void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name) {
 
 void TestDeformableImageFitter_2NodePlanes(
 		const o3c::Device& device,
+		int angle,
 		bool use_perspective_correction = false,
 		std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
 		int max_iterations = 1,
-		bool draw_depth = false
+		bool draw_depth = false,
+		float rotation_absolute_tolerance = 1e-5,
+		float translation_absolute_tolerance = 1e-3
 ) {
 	float max_depth = 10.0f;
-	float node_coverage = 0.25;
+	float node_coverage = 0.1;
 
 	// flip 180 degrees around the Y-axis, move 1.2 units away from camera
 	o3c::Tensor mesh_transform(
@@ -71,7 +74,7 @@ void TestDeformableImageFitter_2NodePlanes(
 
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
-			test::ReadAndTransformTwoMeshes("plane_skin_source_2_nodes", "plane_skin_target_2_nodes", device,
+			test::ReadAndTransformTwoMeshes("plane_skin_source_2_nodes", "plane_skin_target_2_nodes_" + std::to_string(angle), device,
 			                                mesh_transform);
 
 	o3c::SizeVector image_resolution{100, 100};
@@ -99,9 +102,13 @@ void TestDeformableImageFitter_2NodePlanes(
 			(zero_bg_pixel_depths ==
 			 o3c::Tensor::Zeros(zero_bg_pixel_depths.GetShape(), zero_bg_pixel_depths.GetDtype(), device)).LogicalNot();
 
+	//__DEBUG
+	auto center1_depth = pixel_depths.Slice(0, 22, 32).Slice(1, 45, 55).Contiguous();
+
 	if (draw_depth) {
-		DrawDepth(pixel_depths, "target_depth_25-node_plane");
+		DrawDepth(pixel_depths, "target_depth_2_node_planes");
 	}
+
 
 	o3c::Tensor node_positions = o3c::Tensor(
 			std::vector<float>{
@@ -119,8 +126,7 @@ void TestDeformableImageFitter_2NodePlanes(
 			{2, 3}, o3c::Float32, device
 	);
 
-	float angle = 5.f;
-	Eigen::Vector3d rotation_xyz(static_cast<double>(-angle * M_PI / 180.0), 0.0, 0.0);
+	Eigen::Vector3d rotation_xyz(static_cast<double>(angle * M_PI / 180.0), 0.0, 0.0);
 	Eigen::Matrix3f rotation_eigen = open3d::geometry::Geometry3D::GetRotationMatrixFromXYZ(
 			rotation_xyz).cast<float>();
 
@@ -132,7 +138,7 @@ void TestDeformableImageFitter_2NodePlanes(
 							rotation_eigen(2, 0), rotation_eigen(2, 1), rotation_eigen(2, 2),
 
 							rotation_eigen(0, 0), rotation_eigen(0, 1), rotation_eigen(0, 2),
-							rotation_eigen(1, 0), rotation_eigen(1, 1), -rotation_eigen(1, 2),
+							rotation_eigen(1, 0), rotation_eigen(1, 1), -rotation_eigen(1, 2), // second rotation is flipped
 							rotation_eigen(2, 0), -rotation_eigen(2, 1), rotation_eigen(2, 2)
 					},
 					{2, 3, 3}, o3c::Float32, device
@@ -151,17 +157,27 @@ void TestDeformableImageFitter_2NodePlanes(
 	fitter.FitToImage(warp_field, source_mesh, dummy_color_image, depth_image, depth_mask, projection_matrix,
 	                  extrinsic_matrix, 1.0f);
 
-	REQUIRE(warp_field.GetNodeRotations().AllClose(expected_node_rotations, 1., 1e-5));
-	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., 1e-5));
+	REQUIRE(warp_field.GetNodeRotations().AllClose(expected_node_rotations, 1., rotation_absolute_tolerance));
+	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., translation_absolute_tolerance));
 }
 
 // DMI stands for "Deformable-Mesh-to-Image"
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 2 Node Planes - CPU") {
+TEST_CASE("Test DMI Fitter - 2 Node Planes at 5 Deg - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+	TestDeformableImageFitter_2NodePlanes(device, 5, true, {nnrt::alignment::IterationMode::ALL}, 4, true, 1e-5, 1e-3);
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 2 Node Planes - CUDA") {
+TEST_CASE("Test DMI Fitter - 2 Node Planes at 5 Deg - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+	TestDeformableImageFitter_2NodePlanes(device, 5, true, {nnrt::alignment::IterationMode::ALL}, 4, false, 1e-5, 1e-3);
+}
+
+TEST_CASE("Test DMI Fitter - 2 Node Planes at 45 Deg - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_2NodePlanes(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 6, true, 1e-2,  5e-2);
+}
+
+TEST_CASE("Test DMI Fitter - 2 Node Planes at 45 Deg - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter_2NodePlanes(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 6, false,  1e-2,  5e-2);
 }

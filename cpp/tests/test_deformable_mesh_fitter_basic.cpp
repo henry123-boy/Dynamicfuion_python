@@ -206,7 +206,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 			 o3c::Tensor::Zeros(zero_bg_pixel_depths.GetShape(), zero_bg_pixel_depths.GetDtype(), device)).LogicalNot();
 
 	if (draw_depth) {
-		DrawDepth(pixel_depths, "target_depth_1-node_plane_rotation");
+		DrawDepth(pixel_depths, "target_depth_1-node_plane_rotation_" + std::to_string(angle));
 	}
 
 	o3c::Tensor node_positions = o3c::Tensor(std::vector<float>{0.0, 0.0, 1.2}, {1, 3}, o3c::Float32, device);
@@ -246,30 +246,40 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., 1e-3));
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x-45 - CPU") {
+TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x 45 - CPU") {
 	o3c::Device device("CPU:0");
 	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x-45 - CUDA") {
+TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x 45 - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
 }
 
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-45 - CPU") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 45 - CPU") {
 	o3c::Device device("CPU:0");
 	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-45 - CUDA") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 45 - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x-5 - CPU") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 5 - CPU") {
 	o3c::Device device("CPU:0");
 	TestDeformableImageFitter_1NodePlaneRotation(device, 5, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 2);
+}
+
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x -45 - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_1NodePlaneRotation(device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
+}
+
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x -45 - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter_1NodePlaneRotation(device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
 }
 
 
