@@ -18,7 +18,7 @@
 #include <Eigen/Dense>
 
 // local
-#include "tests/test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 #include "catch2/catch_approx.hpp"
 #include "geometry/functional/Downsample3dPoints.h"
 

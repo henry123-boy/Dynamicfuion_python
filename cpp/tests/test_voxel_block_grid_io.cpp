@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 
 // 3rd party
 #include <open3d/core/Device.h>

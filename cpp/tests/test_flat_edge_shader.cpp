@@ -22,7 +22,7 @@
 
 // local includes
 #include "tests/test_utils/test_utils.hpp"
-#include "tests/test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "rendering/FlatEdgeShader.h"
 #include "rendering/functional/ExtractFaceVertices.h"

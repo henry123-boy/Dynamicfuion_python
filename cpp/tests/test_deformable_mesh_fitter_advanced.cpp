@@ -24,7 +24,7 @@
 // local includes
 // test utils
 #include "tests/test_utils/test_utils.hpp"
-#include "tests/test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "core/functional/Masking.h"

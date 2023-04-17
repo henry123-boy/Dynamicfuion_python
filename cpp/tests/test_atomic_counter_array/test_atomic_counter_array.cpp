@@ -19,7 +19,7 @@
 #include <open3d/core/Device.h>
 
 // local includes
-#include "tests/test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 #include "core/ParallelFor.h"
 #include "core/platform_independence/Qualifiers.h"
 #include "core/platform_independence/AtomicCounterArray.h"

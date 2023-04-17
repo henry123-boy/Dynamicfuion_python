@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #define NNRT_TEST_USE_PYTHON
-#include "test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
 
 #include <cpu/graph_proc.h>
 #include <cpu/image_proc.h>

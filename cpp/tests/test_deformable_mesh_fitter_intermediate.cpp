@@ -24,13 +24,14 @@
 // local includes
 // test utils
 #include "tests/test_utils/test_utils.hpp"
-#include "tests/test_main.hpp"
+#include "tests/test_utils/test_main.hpp"
+#include "tests/test_utils/fitter_testing.h"
+
+// code being tested
+#include "core/functional/Masking.h"
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/RasterizeNdcTriangles.h"
-#include "core/functional/Masking.h"
 #include "alignment/DeformableMeshToImageFitter.h"
-#include "tests/test_utils/fitter_testing.h"
-// code being tested
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;

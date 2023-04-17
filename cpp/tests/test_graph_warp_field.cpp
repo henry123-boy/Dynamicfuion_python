@@ -13,12 +13,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// test framework
-#include "test_main.hpp"
-
 // 3rd party
 #include <open3d/core/Tensor.h>
-
+// test framework
+#include "tests/test_utils/test_main.hpp"
 // code being tested
 #include "geometry/GraphWarpField.h"
 
@@ -48,8 +46,8 @@ void TestGraphWarpFieldConstructor(const o3c::Device& device) {
 	REQUIRE(gwf.nodes.GetShape(1) == 3);
 	REQUIRE(gwf.nodes.ToFlatVector<float>() == nodes.ToFlatVector<float>());
 	REQUIRE(gwf.edges.ToFlatVector<int>() == edges.ToFlatVector<int>());
-	REQUIRE(gwf.edge_weights.ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
-	REQUIRE(gwf.clusters.ToFlatVector<int>() == clusters.ToFlatVector<int>());
+	REQUIRE(gwf.edge_weights.value().get().ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
+	REQUIRE(gwf.clusters.value().get().ToFlatVector<int>() == clusters.ToFlatVector<int>());
 
 }
 
