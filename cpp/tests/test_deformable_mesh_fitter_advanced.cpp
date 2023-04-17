@@ -50,7 +50,7 @@ void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name){
 	                  stretched_depth_image);
 }
 
-void TestDeformableImageFitter_2NodePlanes(
+void TestDeformableImageFitter_25NodeSurface(
 		const o3c::Device& device,
 		bool use_perspective_correction = false,
 		std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
@@ -58,7 +58,7 @@ void TestDeformableImageFitter_2NodePlanes(
 		bool draw_depth = false
 ) {
 	float max_depth = 10.0f;
-	float node_coverage = 0.25;
+	float node_coverage = 0.1;
 
 	// flip 180 degrees around the Y-axis, move 1.2 units away from camera
 	o3c::Tensor mesh_transform(
@@ -140,20 +140,20 @@ void TestDeformableImageFitter_2NodePlanes(
 // DMI stands for "Deformable-Mesh-to-Image"
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
 }
 
 TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
 }
 
 TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 25 Node Plane - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
+	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
 }
 
 TEST_CASE("Test DMI Fitter -  TRANSLATION-ONLY MODE - 25 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_2NodePlanes(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
+	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
 }

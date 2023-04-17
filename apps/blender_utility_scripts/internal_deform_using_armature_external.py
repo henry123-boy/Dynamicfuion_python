@@ -17,6 +17,7 @@
 # script intended for usage outside of blender
 
 import sys
+from collections import namedtuple
 from typing import List
 
 import bpy
@@ -26,6 +27,7 @@ import open3d as o3d
 import open3d.core as o3c
 from scipy.spatial.transform import Rotation
 from triangle_indices_to_vertex_edge_array import triangle_indices_to_vertex_edge_array
+from enum import Enum
 
 PROGRAM_EXIT_SUCCESS = 0
 
@@ -36,8 +38,10 @@ def skew(vector):
                      [-vector[1], vector[0], 0]])
 
 
-def deform_objects(rotations: List[Rotation] | None = None, rotate_using_normals: bool = False,
-                   export_edges: bool = False):
+def deform_objects(
+        rotations: List[Rotation] | None = None, node_coverage: float = 0.1,
+        rotate_using_normals: bool = False, export_edges: bool = False
+):
     # input section
     nodes_source_object_name = "Plane Nodes Source"
     nodes_target_object_name = "Plane Nodes Target"
@@ -91,7 +95,9 @@ def deform_objects(rotations: List[Rotation] | None = None, rotate_using_normals
             node_rotations = o3c.Tensor(np.array([np.eye(3, dtype=np.float32)] * len(nodes_source)))
 
     skin_source_vertices = o3c.Tensor(
-        np.array([np.array(v.co) for v in skin_source_object.data.vertices]).astype(np.float32))
+        np.array([np.array(v.co) for v in skin_source_object.data.vertices]).astype(np.float32)
+    )
+
     anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(
         skin_source_vertices, nodes_source, 4, 0, node_coverage
     )
@@ -113,18 +119,55 @@ def deform_objects(rotations: List[Rotation] | None = None, rotate_using_normals
     objects_to_look_at.link(skin_target_object)
 
 
+class Scene(Enum):
+    SINGLE_NODE_ROTATION = 0
+    TWO_NODE_SEPARATE_PLANES = 1
+    TWO_NODE_COMBINED_PLANES = 2
+
+
+SceneDescriptor = namedtuple("SceneDescriptor", "starter_file, rotations, node_coverage, output_prefix")
+
+generated_blender_test_data_path = "/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/"
+
+scene_data_map = {
+    Scene.SINGLE_NODE_ROTATION: SceneDescriptor(
+        starter_file="fitter_test_starter_file",
+        rotations=[Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)],
+        node_coverage=0.25,
+        output_prefix="plane_fit_1_node_rotation_-45"
+    ),
+    Scene.TWO_NODE_SEPARATE_PLANES: SceneDescriptor(
+        starter_file="fitter_test_2-node_starter_file",
+        rotations=[
+            Rotation.from_euler('xyz', (45, 0, 0), degrees=True),
+            Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)
+        ],
+        node_coverage=0.1,
+        output_prefix="plane_fit_2_nodes_45"
+    ),
+    Scene.TWO_NODE_COMBINED_PLANES: SceneDescriptor(
+        starter_file="fitter_test_2-node_connected_starter_file",
+        rotations=[
+            Rotation.from_euler('xyz', (0, 0, 0), degrees=True),
+            Rotation.from_euler('xyz', (0, 0, 0), degrees=True)
+        ],
+        node_coverage=0.1,
+        output_prefix="contiguous_surface_fit_2_nodes"
+    )
+}
+
+
 def main():
+    scene = Scene.TWO_NODE_COMBINED_PLANES
+    scene_data = scene_data_map[scene]
     bpy.ops.wm.open_mainfile(
-        # filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/fitter_test_starter_file.blend"
-        filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/fitter_test_2-node_starter_file.blend"
+        filepath=f"{generated_blender_test_data_path}{scene_data.starter_file}.blend"
     )
-    # deform_objects([Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)])
-    deform_objects(
-        [Rotation.from_euler('xyz', (45, 0, 0), degrees=True), Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)]
-    )
+
+    deform_objects(scene_data.rotations, scene_data.node_coverage)
+
     bpy.ops.wm.save_mainfile(
-        # filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/plane_fit_1_node_rotation_-45.blend"
-        filepath="/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/plane_fit_2_nodes_45.blend"
+        filepath=f"{generated_blender_test_data_path}{scene_data.output_prefix}.blend"
     )
 
     return PROGRAM_EXIT_SUCCESS
