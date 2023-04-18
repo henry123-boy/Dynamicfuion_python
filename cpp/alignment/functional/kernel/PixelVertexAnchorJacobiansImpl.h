@@ -72,17 +72,17 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	o3c::AssertTensorDtype(rasterized_vertex_normal_jacobians, o3c::Float32);
 
 	int64_t vertex_count = warped_vertex_position_jacobians.GetShape(0);
-	int64_t anchor_count_per_vertex = warped_vertex_position_jacobians.GetShape(1);
-	if (anchor_count_per_vertex > MAX_ANCHOR_COUNT) {
+	int64_t anchor_per_vertex_count = warped_vertex_position_jacobians.GetShape(1);
+	if (anchor_per_vertex_count > MAX_ANCHOR_COUNT) {
 		utility::LogError("Supplied anchor count per vertex, {}, is greater than the allowed maximum, {}.",
-		                  anchor_count_per_vertex, MAX_ANCHOR_COUNT);
+		                  anchor_per_vertex_count, MAX_ANCHOR_COUNT);
 	}
 
 	if (TIterationMode == IterationMode::TRANSLATION_ONLY) {
 		// in the translation-only case, we expect vertex anchor weights to be passed in directly
-		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex });
+		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_per_vertex_count });
 	} else {
-		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_count_per_vertex, 4 });
+		o3c::AssertTensorShape(warped_vertex_position_jacobians, { vertex_count, anchor_per_vertex_count, 4 });
 	}
 
 	o3c::AssertTensorDevice(warped_vertex_position_jacobians, device);
@@ -96,7 +96,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 		}
 
 		// warped vertex normal jacobians are irrelevant for translation-only case (vertex normals don't change with only translation)
-		o3c::AssertTensorShape(warped_vertex_normal_jacobians.value().get(), { vertex_count, anchor_count_per_vertex, 3 });
+		o3c::AssertTensorShape(warped_vertex_normal_jacobians.value().get(), { vertex_count, anchor_per_vertex_count, 3 });
 		o3c::AssertTensorDevice(warped_vertex_normal_jacobians.value().get(), device);
 		o3c::AssertTensorDtype(warped_vertex_normal_jacobians.value().get(), o3c::Float32);
 	}
@@ -121,7 +121,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	o3c::AssertTensorDevice(face_vertices, device);
 	o3c::AssertTensorDtype(face_vertices, o3c::Int64);
 
-	o3c::AssertTensorShape(vertex_anchors, { vertex_count, anchor_count_per_vertex });
+	o3c::AssertTensorShape(vertex_anchors, { vertex_count, anchor_per_vertex_count });
 	o3c::AssertTensorDevice(vertex_anchors, device);
 	o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
 
@@ -144,11 +144,11 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	} else {
 		jacobian_stride = 3;
 	}
-	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, anchor_count_per_vertex * 3, jacobian_stride}, o3c::Float32, device);
+	const int max_face_anchor_count = 3 * static_cast<int>(anchor_per_vertex_count);
+	pixel_node_jacobians = o3c::Tensor::Zeros({pixel_count, max_face_anchor_count, jacobian_stride}, o3c::Float32, device);
 	auto pixel_node_jacobians_data = pixel_node_jacobians.GetDataPtr<float>();
 	pixel_node_jacobian_counts = o3c::Tensor::Zeros({pixel_count}, o3c::Int32, device);
 	auto pixel_node_jacobian_counts_data = pixel_node_jacobian_counts.GetDataPtr<int32_t>();
-
 
 	// === get access to raw input data
 	auto residual_mask_data = static_cast<const unsigned char*>(residual_mask.GetDataPtr());
@@ -169,6 +169,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	auto pixel_face_data = pixel_faces.template GetDataPtr<int64_t>();
 	auto triangle_index_data = face_vertices.GetDataPtr<int64_t>();
 	auto vertex_anchor_data = vertex_anchors.GetDataPtr<int32_t>();
+
+
 
 	// === loop over all pixels & compute
 	o3c::ParallelFor(
@@ -252,10 +254,10 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
-				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_count_per_vertex) * 3 * jacobian_stride);
+				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_per_vertex_count) * 3 * jacobian_stride);
 				auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
 
-				const int max_face_anchor_count = 3 * static_cast<int>(anchor_count_per_vertex);
+
 				struct {
 					int node_index = -1;
 					int64_t vertices[3] = {-1, -1, -1};
@@ -269,8 +271,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 				int32_t pixel_node_jacobian_count = 0;
 				for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 					int64_t i_vertex = vertex_indices(i_face_vertex);
-					for (int i_vertex_anchor = 0; i_vertex_anchor < anchor_count_per_vertex; i_vertex_anchor++) {
-						auto i_node = vertex_anchor_data[i_vertex * anchor_count_per_vertex + i_vertex_anchor];
+					for (int i_vertex_anchor = 0; i_vertex_anchor < anchor_per_vertex_count; i_vertex_anchor++) {
+						auto i_node = vertex_anchor_data[i_vertex * anchor_per_vertex_count + i_vertex_anchor];
 						if (i_node == -1) {
 							// -1 is the sentinel value for anchors
 							continue;
@@ -329,10 +331,10 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 						float stored_anchor_weight;
 						if (TIterationMode == IterationMode::TRANSLATION_ONLY) {
 							// in translation-only mode, we expect the vertex weights to be passed in directly
-							stored_anchor_weight = warped_vertex_position_jacobian_data[i_vertex * anchor_count_per_vertex + i_vertex_anchor];
+							stored_anchor_weight = warped_vertex_position_jacobian_data[i_vertex * anchor_per_vertex_count + i_vertex_anchor];
 						} else {
 							stored_anchor_weight = warped_vertex_position_jacobian_data[
-									(i_vertex * anchor_count_per_vertex * 4) +
+									(i_vertex * anchor_per_vertex_count * 4) +
 									(i_vertex_anchor * 4) + 3
 							];
 						}
@@ -358,7 +360,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 							const Eigen::SkewSymmetricMatrix3<float> dv_drotation(
 									Eigen::Map<const Eigen::Vector3f>(
 											warped_vertex_position_jacobian_data +
-											(i_vertex * anchor_count_per_vertex * 4) + // vertex index * stride
+											(i_vertex * anchor_per_vertex_count * 4) + // vertex index * stride
 											(i_vertex_anchor * 4) // index of the anchor for this vertex * stride
 									)
 							);
@@ -367,7 +369,7 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 							const Eigen::SkewSymmetricMatrix3<float> dn_drotation(
 									Eigen::Map<const Eigen::Vector3f>(
 											warped_vertex_normal_jacobian_data +
-											(i_vertex * anchor_count_per_vertex * 3) +
+											(i_vertex * anchor_per_vertex_count * 3) +
 											(i_vertex_anchor * 3)
 									)
 							);
