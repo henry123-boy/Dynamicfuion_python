@@ -19,7 +19,6 @@
 
 // local includes
 #include "alignment/functional/AssociateFacesWithAnchors.h"
-#include "alignment/functional/FaceNodeAnchors.h"
 #include "alignment/functional/kernel/AssociateFacesWithAnchors.h"
 
 namespace o3c = open3d::core;
@@ -28,15 +27,11 @@ namespace utility = open3d::utility;
 
 namespace nnrt::alignment::functional{
 
-
 std::tuple<std::shared_ptr<open3d::core::Blob>, open3d::core::Tensor>
 AssociateFacesWithAnchors(const open3d::core::Tensor& face_vertex_indices, const open3d::core::Tensor& warp_vertex_anchors) {
-
-
 	std::shared_ptr<open3d::core::Blob> face_node_anchors;
 	o3c::Tensor face_anchor_counts;
 
-	//TODO
 	kernel::AssociateFacesWithAnchors(face_node_anchors, face_anchor_counts, face_vertex_indices, warp_vertex_anchors);
 
 	return std::make_tuple(face_node_anchors, face_anchor_counts);

@@ -35,6 +35,7 @@
 #include "alignment/functional/WarpedSurfaceJacobians.h"
 #include "alignment/functional/RasterizedSurfaceJacobians.h"
 #include "alignment/functional/PixelVertexAnchorJacobians.h"
+#include "alignment/functional/AssociateFacesWithAnchors.h"
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/linalg/Rodrigues.h"
 
@@ -81,8 +82,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		const open3d::core::SizeVector& rendering_image_size
 ) const {
 	//TODO: make parameter EUCLIDEAN/SHORTEST_PATH, optionally set in constructor
-	auto [warp_anchors, warp_anchor_weights] = warp_field.PrecomputeAnchorsAndWeights(canonical_mesh,
-	                                                                                  nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
+	auto [warp_anchors, warp_anchor_weights] =
+			warp_field.PrecomputeAnchorsAndWeights(canonical_mesh, nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
 
 	int iteration = 0;
 	float maximum_update = std::numeric_limits<float>::max();
@@ -90,6 +91,8 @@ void DeformableMeshToImageFitter::FitToImage(
 	auto [ndc_intrinsic_matrix, ndc_xy_range] =
 			rendering::kernel::ImageSpaceIntrinsicsToNdc(intrinsic_matrix, rendering_image_size);
 
+	auto [face_node_anchors, face_node_anchor_counts] =
+			functional::AssociateFacesWithAnchors(canonical_mesh.GetTriangleIndices(), warp_anchors);
 
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
 		IterationMode current_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
@@ -157,7 +160,7 @@ void DeformableMeshToImageFitter::FitToImage(
 						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
-						warped_mesh.GetTriangleIndices(), warp_anchors, warp_field.nodes.GetLength(),
+						face_node_anchors, face_node_anchor_counts, warp_field.nodes.GetLength(),
 						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
 

@@ -28,6 +28,7 @@
 #include "core/platform_independence/AtomicCounterArray.h"
 #include "core/platform_independence/Atomics.h"
 #include "geometry/functional/kernel/Defines.h"
+#include "alignment/functional/FaceNodeAnchors.h"
 
 #define MAX_PIXELS_PER_NODE 4000
 
@@ -50,13 +51,13 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_faces,
-		const open3d::core::Tensor& face_vertices,
-		const open3d::core::Tensor& vertex_anchors,
+		const std::shared_ptr<open3d::core::Blob>& face_node_anchors,
+		const open3d::core::Tensor& face_node_anchor_counts,
 		int64_t node_count,
 		float tukey_penalty_cutoff
 ) {
 
-	// === dimension, type, and device tensor checks ===
+	// === dimension, type, and device tensor checks; counts ===
 	int64_t image_height = rasterized_vertex_position_jacobians.GetShape(0);
 	int64_t image_width = rasterized_vertex_position_jacobians.GetShape(1);
 	int64_t pixel_count = image_width * image_height;
@@ -117,13 +118,15 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	o3c::AssertTensorDevice(pixel_faces, device);
 	o3c::AssertTensorDtype(pixel_faces, o3c::Int64);
 
-	o3c::AssertTensorShape(face_vertices, { utility::nullopt, 3 });
-	o3c::AssertTensorDevice(face_vertices, device);
-	o3c::AssertTensorDtype(face_vertices, o3c::Int64);
+	int64_t face_count = face_node_anchor_counts.GetShape(0);
+	o3c::AssertTensorShape(face_node_anchor_counts, { face_count });
+	o3c::AssertTensorDevice(face_node_anchor_counts, device);
+	o3c::AssertTensorDtype(face_node_anchor_counts, o3c::Int32);
 
-	o3c::AssertTensorShape(vertex_anchors, { vertex_count, anchor_per_vertex_count });
-	o3c::AssertTensorDevice(vertex_anchors, device);
-	o3c::AssertTensorDtype(vertex_anchors, o3c::Int32);
+	if(face_node_anchors->GetDevice() != device){
+		utility::LogError("face_node_anchors need to have the same device as all other argument tensors (which is {}), got {} instead.",
+						  device.ToString(), face_node_anchors->GetDevice().ToString());
+	}
 
 	// === initialize output matrices ===
 	node_pixel_jacobian_indices = o3c::Tensor({node_count, MAX_PIXELS_PER_NODE}, o3c::Int32, device);
@@ -167,8 +170,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 	}
 
 	auto pixel_face_data = pixel_faces.template GetDataPtr<int64_t>();
-	auto triangle_index_data = face_vertices.GetDataPtr<int64_t>();
-	auto vertex_anchor_data = vertex_anchors.GetDataPtr<int32_t>();
+	auto face_node_anchor_data = reinterpret_cast<FaceNodeAnchors*>(face_node_anchors->GetDataPtr());
+	auto face_node_anchor_count_data = face_node_anchor_counts.GetDataPtr<int32_t>();
 
 
 
@@ -253,55 +256,17 @@ void PixelVertexAnchorJacobiansAndNodeAssociations_Generic(
 				}
 
 				auto i_face = pixel_face_data[(v_image * image_width * faces_per_pixel) + (u_image * faces_per_pixel)];
-				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(triangle_index_data + i_face * 3);
+
 				int pixel_jacobian_list_address = static_cast<int>(pixel_index) * (static_cast<int>(anchor_per_vertex_count) * 3 * jacobian_stride);
 				auto pixel_node_jacobian_data = pixel_node_jacobians_data + pixel_jacobian_list_address;
 
+				FaceNodeAnchors* face_anchor_data = face_node_anchor_data + i_face * (3 * MAX_ANCHOR_COUNT);
+				int32_t face_anchor_count = face_node_anchor_count_data[i_face];
 
-				struct {
-					int node_index = -1;
-					int64_t vertices[3] = {-1, -1, -1};
-					int vertex_anchor_indices[3] = {-1, -1, -1};
-				} face_anchor_data[3 * MAX_ANCHOR_COUNT];
-
-				// group vertices by anchor node
-				//TODO: this simple per-face reindexing operation needs only to be done on a per-face basis. It is
-				// probably much more efficient to outsource it to a separate kernel instead of rearranging things here
-				// for every pixel.
-				int32_t pixel_node_jacobian_count = 0;
-				for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
-					int64_t i_vertex = vertex_indices(i_face_vertex);
-					for (int i_vertex_anchor = 0; i_vertex_anchor < anchor_per_vertex_count; i_vertex_anchor++) {
-						auto i_node = vertex_anchor_data[i_vertex * anchor_per_vertex_count + i_vertex_anchor];
-						if (i_node == -1) {
-							// -1 is the sentinel value for anchors
-							continue;
-						}
-						int i_face_anchor = 0;
-						int inspected_anchor_node_index = face_anchor_data[i_face_anchor].node_index;
-						// find (if any) matching node among anchors of previous vertices
-						while (
-								inspected_anchor_node_index != i_node && // found match in previous matches
-								inspected_anchor_node_index != -1 && // end of filled list reached
-								i_face_anchor + 1 < max_face_anchor_count// end of list reached)
-								) {
-							i_face_anchor++;
-							inspected_anchor_node_index = face_anchor_data[i_face_anchor].node_index;
-						}
-
-						auto& face_anchor = face_anchor_data[i_face_anchor];
-						if (inspected_anchor_node_index != i_node) { // unique node found
-							pixel_node_jacobian_count++; // tally per pixel
-							face_anchor.node_index = i_node;
-						}
-						face_anchor.vertices[i_face_vertex] = i_vertex;
-						face_anchor.vertex_anchor_indices[i_face_vertex] = i_vertex_anchor;
-					}
-				}
-				pixel_node_jacobian_counts_data[pixel_index] = pixel_node_jacobian_count;
+				pixel_node_jacobian_counts_data[pixel_index] = face_anchor_count;
 
 				// traverse all anchors associated with current face, compute their jacobians for current pixel
-				for (int i_face_anchor = 0; i_face_anchor < pixel_node_jacobian_count; i_face_anchor++) {
+				for (int i_face_anchor = 0; i_face_anchor < face_anchor_count; i_face_anchor++) {
 					auto& face_anchor = face_anchor_data[i_face_anchor];
 					int i_node = face_anchor.node_index;
 
@@ -414,8 +379,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& rasterized_normals,
 		const open3d::core::Tensor& residual_mask,
 		const open3d::core::Tensor& pixel_faces,
-		const open3d::core::Tensor& face_vertices,
-		const open3d::core::Tensor& vertex_anchors,
+		const std::shared_ptr<open3d::core::Blob>& face_node_anchors,
+		const open3d::core::Tensor& face_node_anchor_counts,
 		int64_t node_count,
 		IterationMode mode,
 		bool use_tukey_penalty,
@@ -426,8 +391,8 @@ void PixelVertexAnchorJacobiansAndNodeAssociations(
     pixel_jacobians, pixel_jacobian_counts, node_pixel_jacobian_indices, node_pixel_jacobian_counts, \
     rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,                        \
     warped_vertex_position_jacobians, warped_vertex_normal_jacobians,                                \
-    point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_vertices,                \
-    vertex_anchors, node_count, tukey_penalty_cutoff
+    point_map_vectors, rasterized_normals, residual_mask, pixel_faces, face_node_anchors,            \
+    face_node_anchor_counts, node_count, tukey_penalty_cutoff
 	if (use_tukey_penalty) {
 		switch (mode) {
 			case ALL:

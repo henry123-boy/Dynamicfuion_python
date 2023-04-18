@@ -59,8 +59,8 @@ void AssociateFacesWithAnchors(
 
 
 	// === output structures and pointers ===
-	face_anchor_counts = o3c::Tensor({face_count}, o3c::Int32, device);
-	int64_t face_node_anchor_stride = 3 * MAX_ANCHOR_COUNT;
+	face_anchor_counts = o3c::Tensor::Zeros({face_count}, o3c::Int32, device);
+	const int64_t face_node_anchor_stride = 3 * MAX_ANCHOR_COUNT;
 	face_node_anchors = std::make_shared<open3d::core::Blob>(face_count * face_node_anchor_stride * sizeof(FaceNodeAnchors), device);
 	auto face_node_anchor_data = reinterpret_cast<FaceNodeAnchors*>(face_node_anchors->GetDataPtr());
 	auto face_anchor_count_data = face_anchor_counts.GetDataPtr<int32_t>();
@@ -70,7 +70,7 @@ void AssociateFacesWithAnchors(
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_face) {
 				Eigen::Map<const Eigen::RowVector3<int64_t>> vertex_indices(face_vertex_index_data + i_face * 3);
 				int current_face_anchor_count = 0;
-				FaceNodeAnchors* current_face_anchor_data = face_node_anchor_data + i_face * face_node_anchor_stride;
+				FaceNodeAnchors current_face_anchor_data[face_node_anchor_stride];
 
 				for (int i_face_vertex = 0; i_face_vertex < 3; i_face_vertex++) {
 					int64_t i_vertex = vertex_indices(i_face_vertex);
@@ -102,6 +102,7 @@ void AssociateFacesWithAnchors(
 					}
 				}
 				face_anchor_count_data[i_face] = current_face_anchor_count;
+				memcpy(face_node_anchor_data + i_face * face_node_anchor_stride, current_face_anchor_data, face_node_anchor_stride * sizeof(FaceNodeAnchors));
 			}
 	);
 }
