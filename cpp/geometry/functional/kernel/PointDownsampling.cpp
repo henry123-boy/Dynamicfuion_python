@@ -13,16 +13,18 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "geometry/kernel/PointDownsampling.h"
+#include "PointDownsampling.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::downsampling {
 
 
-void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
-                          const open3d::core::HashBackendType& hash_backend) {
+void GridDownsamplePoints(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend
+) {
 	core::ExecuteOnDevice(
 			original_points.GetDevice(),
 			[&] {
@@ -37,8 +39,10 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 	);
 }
 
-void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
-                            const open3d::core::HashBackendType& hash_backend) {
+void RadiusDownsamplePoints(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
+		const open3d::core::HashBackendType& hash_backend
+) {
 	core::ExecuteOnDevice(
 			original_points.GetDevice(),
 			[&] {
@@ -47,10 +51,10 @@ void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open
 			[&] {
 				NNRT_IF_CUDA(
 						RadiusDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius,
-						                                                    hash_backend);
+						                                                      hash_backend);
 				);
 			}
 	);
 }
 
-} // nnrt::geometry::kernel::downsampling
+} // nnrt::geometry::functional::kernel::downsampling

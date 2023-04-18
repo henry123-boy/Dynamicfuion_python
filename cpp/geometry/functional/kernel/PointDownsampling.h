@@ -17,7 +17,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/hashmap/HashMap.h>
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::downsampling {
 
 
 void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
@@ -36,4 +36,4 @@ void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open
                             const open3d::core::HashBackendType& hash_backend);
 
 
-} // nnrt::geometry::kernel::downsampling
+} // nnrt::geometry::functional::kernel::downsampling

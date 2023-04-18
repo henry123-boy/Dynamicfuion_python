@@ -113,7 +113,8 @@ GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTre
 
 		rotations(original.rotations.Clone()),
 		translations(original.translations.Clone()),
-		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
+		rotations_data(this->rotations.GetDataPtr<float>()),
+		translations_data(this->translations.GetDataPtr<float>()) {
 	if (original.edge_weights.has_value()) {
 		//TODO: not sure this actually works on memory level, verify
 		auto cloned_edge_weights = original.edge_weights.value().get().Clone();
@@ -236,8 +237,7 @@ const open3d::core::Tensor& GraphWarpField::GetNodePositions() const {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::PrecomputeAnchorsAndWeights(
 		const open3d::t::geometry::TriangleMesh& input_mesh,
 		AnchorComputationMethod anchor_computation_method
-)
-const {
+) const {
 	o3c::Tensor anchors, weights;
 
 	if (!input_mesh.HasVertexPositions()) {
@@ -246,18 +246,38 @@ const {
 	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
 	switch (anchor_computation_method) {
 		case AnchorComputationMethod::EUCLIDEAN:
-			functional::ComputeAnchorsAndWeightsEuclidean(anchors, weights, vertex_positions, this->nodes, this->anchor_count,
-			                                              this->minimum_valid_anchor_count, this->node_coverage);
+			functional::ComputeAnchorsAndWeightsEuclidean(
+					anchors, weights, vertex_positions, this->nodes, this->anchor_count,
+					this->minimum_valid_anchor_count, this->node_coverage
+			);
 			break;
 		case AnchorComputationMethod::SHORTEST_PATH:
-			functional::ComputeAnchorsAndWeightsShortestPath(anchors, weights, vertex_positions, this->nodes, this->edges,
-			                                                 this->anchor_count, this->node_coverage);
+			functional::ComputeAnchorsAndWeightsShortestPath(
+					anchors, weights, vertex_positions, this->nodes, this->edges,
+					this->anchor_count, this->node_coverage
+			);
 			break;
 		default: utility::LogError("Unsupported AnchorComputationMethod value: {}", anchor_computation_method);
 	}
 
 	return std::make_tuple(anchors, weights);
 }
+
+const GraphWarpFieldRegularizationLayer& GraphWarpField::GetRegularizationLevel(int i_layer) const{
+	return this->regularization_layers[i_layer];
+}
+
+int GraphWarpField::GetRegularizationLevelCount() const {
+	return static_cast<int>(this->regularization_layers.size());
+}
+
+void GraphWarpField::BuildRegularizationLayers(int count, float decimation_radius) {
+	this->regularization_layers = {};
+	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes});
+	// this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{de});
+	//TODO
+}
+
 
 
 } // namespace nnrt::geometry

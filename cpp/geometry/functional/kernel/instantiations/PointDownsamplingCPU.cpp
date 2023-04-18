@@ -14,24 +14,24 @@
 //  limitations under the License.
 //  ================================================================
 #include <open3d/core/ParallelFor.h>
-#include "geometry/kernel/PointDownsamplingImpl.h"
+#include "geometry/functional/kernel/PointDownsamplingImpl.h"
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::downsampling {
 
 template
-void
-GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+void GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& downsampled_points,
-		const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::Tensor& original_points,
+		float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend
 );
 
 template
-void
-RadiusDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points,
+void RadiusDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& downsampled_points,
+		const open3d::core::Tensor& original_points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend
 );
 
-} // namespace nnrt::geometry::kernel::downsampling
+} // namespace nnrt::geometry::functional::kernel::downsampling

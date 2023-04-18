@@ -14,9 +14,9 @@
 //  limitations under the License.
 //  ================================================================
 #include <open3d/core/ParallelFor.h>
-#include "geometry/kernel/PointDownsamplingImpl.h"
+#include "geometry/functional/kernel/PointDownsamplingImpl.h"
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::downsampling {
 
 template
 void GridDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
@@ -33,4 +33,4 @@ RadiusDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
 		const open3d::core::HashBackendType& hash_backend
 );
 
-} // namespace nnrt::geometry::kernel::downsampling
+} // namespace nnrt::geometry::functional::kernel::downsampling

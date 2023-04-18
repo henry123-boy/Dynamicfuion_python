@@ -15,7 +15,7 @@
 //  ================================================================
 #include "Downsample3dPoints.h"
 #include <open3d/core/TensorCheck.h>
-#include "geometry/kernel/PointDownsampling.h"
+#include "geometry/functional/kernel/PointDownsampling.h"
 #include <open3d/core/hashmap/HashSet.h>
 
 namespace o3c = open3d::core;
@@ -29,7 +29,7 @@ GridDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_c
 
 
 	o3c::Tensor downsampled_points;
-	kernel::downsampling::GridDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
+	functional::kernel::downsampling::GridDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
 	return downsampled_points;
 }
 
@@ -40,7 +40,7 @@ RadiusDownsample3dPoints(const open3d::core::Tensor& original_points, float radi
 
 
 	o3c::Tensor downsampled_points;
-	kernel::downsampling::RadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
+	functional::kernel::downsampling::RadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
 	return downsampled_points;
 }
 

@@ -187,11 +187,11 @@ set(
     geometry/functional/Downsample3dPoints.h
     geometry/functional/Downsample3dPoints.cpp
 
-    geometry/kernel/PointDownsampling.cpp
-    geometry/kernel/PointDownsampling.h
-    geometry/kernel/PointDownsamplingImpl.h
-    geometry/kernel/instantiations/PointDownsamplingCPU.cpp
-    geometry/kernel/instantiations/PointDownsamplingCUDA.cu
+    geometry/functional/kernel/PointDownsampling.cpp
+    geometry/functional/kernel/PointDownsampling.h
+    geometry/functional/kernel/PointDownsamplingImpl.h
+    geometry/functional/kernel/instantiations/PointDownsamplingCPU.cpp
+    geometry/functional/kernel/instantiations/PointDownsamplingCUDA.cu
 
     geometry/VoxelBlockGrid.h
     geometry/VoxelBlockGrid.cpp

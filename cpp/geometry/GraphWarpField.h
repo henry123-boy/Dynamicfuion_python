@@ -29,6 +29,12 @@
 
 namespace nnrt::geometry {
 
+struct GraphWarpFieldRegularizationLayer{
+public:
+	float decimation_radius = 0.025; // m
+	open3d::core::Tensor nodes;
+};
+
 
 class GraphWarpField {
 
@@ -138,9 +144,15 @@ public:
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
 
+	const GraphWarpFieldRegularizationLayer& GetRegularizationLevel(int i_layer) const;
+	int GetRegularizationLevelCount() const;
+
 
 private:
 	GraphWarpField(const GraphWarpField& original, const core::KdTree& index);
+
+	void BuildRegularizationLayers(int count, float decimation_radius);
+
 	core::KdTree index;
 	const float node_coverage_squared;
 	const core::kernel::kdtree::KdTreeNode* kd_tree_nodes;
@@ -154,6 +166,8 @@ private:
 
 	float const* rotations_data;
 	float const* translations_data;
+
+	std::vector<GraphWarpFieldRegularizationLayer> regularization_layers;
 };
 
 

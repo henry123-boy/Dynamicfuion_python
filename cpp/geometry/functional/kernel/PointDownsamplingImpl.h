@@ -25,7 +25,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 // local
-#include "geometry/kernel/PointDownsampling.h"
+#include "PointDownsampling.h"
 #include "core/platform_independence/Qualifiers.h"
 #include "core/platform_independence/Atomics.h"
 #include "core/kernel/HashTableUtilities.h"
@@ -35,7 +35,7 @@ namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
 namespace hash_table = nnrt::core::kernel::hash_table;
 
-namespace nnrt::geometry::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::downsampling {
 
 namespace {
 
@@ -236,4 +236,4 @@ void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open
 }
 
 
-} // namespace nnrt::geometry::kernel::downsampling
+} // namespace nnrt::geometry::functional::kernel::downsampling
