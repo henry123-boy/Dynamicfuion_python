@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/6/21.
-//  Copyright (c) 2021 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/24/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,20 +14,19 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-#include "pybind/nnrt_pybind.h"
+// stdlib includes
 
-
-namespace nnrt::geometry {
-
-void pybind_geometry(py::module& m);
-void pybind_geometry_enums(py::module& m);
-void pybind_geometry_voxel_block_grid(py::module& m);
-void pybind_geometry_non_rigid_surface_voxel_block_grid(py::module& m);
-void pybind_geometry_graph_warp_field(py::module& m);
+// third-party includes
+#include <open3d/core/Tensor.h>
+// local includes
 
 
 
-} //namespace nnrt::geometry
+namespace nnrt::geometry::functional::kernel {
 
+void ComputeDistanceMatrix(open3d::core::Tensor& i_matrix_entry, const open3d::core::Tensor& point_set1, const open3d::core::Tensor& point_set2);
 
+template <open3d::core::Device::DeviceType TDeviceType>
+void ComputeDistanceMatrix(open3d::core::Tensor& i_matrix_entry, const open3d::core::Tensor& point_set1, const open3d::core::Tensor& point_set2);
 
+} // namespace nnrt::geometry::functional::kernel

@@ -18,7 +18,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/hashmap/HashMap.h>
 
-namespace nnrt::geometry {
+namespace nnrt::geometry::functional {
 
 
 /// Downsample the current set of points by averaging them within a grid.
@@ -29,4 +29,4 @@ open3d::core::Tensor GridDownsample3dPoints(const open3d::core::Tensor& original
 open3d::core::Tensor RadiusDownsample3dPoints(const open3d::core::Tensor& original_points, float radius,
                                               const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
 
-} // nnrt::geometry
+} // nnrt::geometry::functional

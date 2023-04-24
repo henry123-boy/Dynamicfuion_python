@@ -20,7 +20,7 @@
 
 namespace o3c = open3d::core;
 
-namespace nnrt::geometry {
+namespace nnrt::geometry::functional {
 
 open3d::core::Tensor
 GridDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
@@ -44,4 +44,4 @@ RadiusDownsample3dPoints(const open3d::core::Tensor& original_points, float radi
 	return downsampled_points;
 }
 
-} // namespace nnrt::geometry
+} // namespace nnrt::geometry::functional

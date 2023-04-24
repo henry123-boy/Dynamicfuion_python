@@ -26,5 +26,6 @@ void pybind_geometry_functional_normals_operations(py::module& m);
 
 void pybind_geometry_functional_comparison(py::module& m);
 void pybind_geometry_functional_pointcloud(py::module& m);
+void pybind_geometry_downsampling(py::module& m);
 
 } // namespace nnrt::geometry::functional

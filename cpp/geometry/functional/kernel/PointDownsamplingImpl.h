@@ -230,9 +230,10 @@ template<open3d::core::Device::DeviceType DeviceType>
 void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
                             const open3d::core::HashBackendType& hash_backend) {
 	o3c::Tensor downsampled_points_stage_1;
-	AveragePointsIntoGridCells<DeviceType>(downsampled_points_stage_1, original_points, radius*2, hash_backend);
-	// merge again while offsetting the grid, to mer
-	AveragePointsIntoGridCells<DeviceType>(downsampled_points, downsampled_points_stage_1, radius*2, hash_backend, Eigen::Vector3f(0.5, 0.5, 0.5));
+	float sampling_radius = sqrtf(2 * (radius * radius));
+	AveragePointsIntoGridCells<DeviceType>(downsampled_points_stage_1, original_points, sampling_radius*2, hash_backend);
+	// merge again while offsetting the grid
+	AveragePointsIntoGridCells<DeviceType>(downsampled_points, downsampled_points_stage_1, sampling_radius*2, hash_backend, Eigen::Vector3f(0.5, 0.5, 0.5));
 }
 
 

@@ -7,11 +7,11 @@ from warp_field.distance_matrix import compute_distance_matrix
 
 
 def test_pythonic_radius_search_averaging():
-    point_count = 1000
+    point_count = 100
     seed = int(np.random.rand() * 100)
     np.random.seed(seed)
-    points = (np.random.random((point_count, 3)) - 0.5) * 100.0
-    search_radius = 10
+    points = (np.random.random((point_count, 3)) - 0.5) * 50.0
+    search_radius = 20
     benchmark_iteration_count = 5
     benchmark = False
     start_time = timeit.default_timer()

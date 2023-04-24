@@ -43,9 +43,6 @@ void pybind_geometry(py::module& m) {
 
 	pybind_geometry_non_rigid_surface_voxel_block_grid(m_submodule);
 	pybind_geometry_graph_warp_field(m_submodule);
-
-	//TODO: move these to pybind/geometry/functional
-	pybind_geometry_downsampling(m_submodule);
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
@@ -317,18 +314,7 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def_readonly("edges", &GraphWarpField::edges);
 	graph_warp_field.def_readonly("edge_weights", &GraphWarpField::edge_weights);
 	graph_warp_field.def_readonly("clusters", &GraphWarpField::clusters);
-
-
 }
-
-
-void pybind_geometry_downsampling(pybind11::module& m) {
-	m.def("grid_downsample_3d_points", &GridDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("radius_downsample_3d_points", &RadiusDownsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
-}
-
-
-
 
 } // namespace nnrt
 
