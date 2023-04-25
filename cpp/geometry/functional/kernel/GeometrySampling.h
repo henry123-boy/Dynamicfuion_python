@@ -37,16 +37,16 @@ void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const 
 
 
 void RadiusMedianSubsample3dPoints(
-		open3d::core::Tensor downsampled_points,
-		const open3d::core::Tensor& original_points,
+		open3d::core::Tensor sample,
+		const open3d::core::Tensor& points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend_type
 );
 
 template<open3d::core::Device::DeviceType DeviceType>
 void RadiusMedianSubsample3dPoints(
-		open3d::core::Tensor& downsampled_points,
-		const open3d::core::Tensor& original_points,
+		open3d::core::Tensor& sample,
+		const open3d::core::Tensor& points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend_type
 );

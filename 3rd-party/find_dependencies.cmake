@@ -660,6 +660,16 @@ nnrt_import_3rdparty_library(3rdparty_tbb
     )
 list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_tbb)
 
+# parallelstl
+include(${NNRT_3RDPARTY_DIR}/parallelstl/parallelstl.cmake)
+nnrt_import_3rdparty_library(3rdparty_parallelstl
+    PUBLIC
+    INCLUDE_DIRS ${PARALLELSTL_INCLUDE_DIRS}
+    INCLUDE_ALL
+    DEPENDS      ext_parallelstl
+    )
+list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_parallelstl)
+
 # MKL/BLAS
 if (USE_BLAS)
     if (NOT BUILD_BLAS_FROM_SOURCE)

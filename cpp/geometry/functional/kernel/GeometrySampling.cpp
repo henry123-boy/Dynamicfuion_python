@@ -58,19 +58,19 @@ void FastRadiusDownsamplePoints(
 }
 
 void RadiusMedianSubsample3dPoints(
-		open3d::core::Tensor downsampled_points,
-		const open3d::core::Tensor& original_points,
+		open3d::core::Tensor sample,
+		const open3d::core::Tensor& points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend_type
 ) {
 	core::ExecuteOnDevice(
-	original_points.GetDevice(),
+			points.GetDevice(),
 			[&] {
-				RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius, hash_backend_type);
+				RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CPU>(sample, points, radius, hash_backend_type);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius,
+						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(sample, points, radius,
 						                                                             hash_backend_type);
 				);
 			}

@@ -46,6 +46,6 @@ open3d::core::Tensor FastRadiusAverageDownsample3dPoints(const open3d::core::Ten
 
 
 open3d::core::Tensor
-RadiusMedianSubsample3dPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend_type);
+RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type);
 
 } // nnrt::geometry::functional

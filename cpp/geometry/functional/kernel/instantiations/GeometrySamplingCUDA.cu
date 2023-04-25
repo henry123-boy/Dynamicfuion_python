@@ -34,7 +34,7 @@ void FastRadiusDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
 
 template
 void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points,
+		open3d::core::Tensor& sample, const open3d::core::Tensor& points,
 		float min_distance,
 		const open3d::core::HashBackendType& hash_backend
 );

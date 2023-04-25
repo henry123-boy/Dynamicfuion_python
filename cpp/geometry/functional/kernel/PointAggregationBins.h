@@ -24,7 +24,7 @@
 #include "../../../../3rd-party/Eigen/Eigen/Dense"
 
 
-struct PointAggregationBin {
+struct PointAverageAggregationBin {
 #ifdef __CUDACC__
 	float x;
 	float y;
