@@ -23,7 +23,7 @@
 #include "catch2/catch_approx.hpp"
 
 // code being tested
-#include "geometry/functional/Downsample3dPoints.h"
+#include "geometry/functional/GeometrySampling.h"
 #include "geometry/functional/ComputeDistanceMatrix.h"
 #include "core/functional/Masking.h"
 
@@ -111,7 +111,7 @@ void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downs
 
 void TestGridDownsampling_Hash(const o3c::Device& device) {
 	TestGridDownsampling_Generic(device, [](o3c::Tensor& points, float grid_cell_size) {
-		return geometry::functional::GridDownsample3dPoints(points, grid_cell_size);
+		return geometry::functional::GridAverageDownsample3dPoints(points, grid_cell_size);
 	});
 }
 
@@ -130,7 +130,7 @@ TEST_CASE("Test Grid Downsampling - Hash - CUDA") {
 void TestRadiusDownsampling(const o3c::Device& device) {
 	o3c::Tensor points = o3c::Tensor::Load(test::static_array_test_data_directory.ToString() + "/downsampling_source.npy");
 	float downsampling_radius = 10.0;
-	o3c::Tensor downsampled_points = geometry::functional::RadiusDownsample3dPoints(points, 10.0);
+	o3c::Tensor downsampled_points = geometry::functional::FastRadiusAverageDownsample3dPoints(points, 10.0);
 	o3c::Tensor distance_matrix = geometry::functional::ComputeDistanceMatrix(downsampled_points, downsampled_points);
 	core::functional::ReplaceValue(distance_matrix, 0.f, std::numeric_limits<float>::max());
 	float min_distance = distance_matrix.Min({0,1}).ToFlatVector<float>()[0];

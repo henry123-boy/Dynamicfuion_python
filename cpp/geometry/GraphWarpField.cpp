@@ -20,6 +20,7 @@
 #include "geometry/GraphWarpField.h"
 #include "core/linalg/Matmul3D.h"
 #include "geometry/functional/WarpAnchorComputation.h"
+#include "geometry/functional/GeometrySampling.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -37,7 +38,9 @@ GraphWarpField::GraphWarpField(
 		float node_coverage,
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
-		int minimum_valid_anchor_count
+		int minimum_valid_anchor_count,
+		int layer_count,
+		float decimation_radius
 ) :
 		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
 		node_coverage(node_coverage), anchor_count(anchor_count), threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
@@ -96,8 +99,9 @@ GraphWarpField::GraphWarpField(
 		}
 	}
 
-
 	this->ResetRotations();
+
+	this->BuildRegularizationLayers(layer_count, decimation_radius);
 }
 
 GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTree& index) :
@@ -274,8 +278,12 @@ int GraphWarpField::GetRegularizationLevelCount() const {
 void GraphWarpField::BuildRegularizationLayers(int count, float decimation_radius) {
 	this->regularization_layers = {};
 	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes});
-	// this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{de});
-	//TODO
+	float current_decimation_radius = decimation_radius;
+	for(int i_layer = 1; i_layer < count; i_layer++){
+		o3c::Tensor layer_nodes = geometry::functional::FastRadiusAverageDownsample3dPoints(this->nodes, current_decimation_radius);
+		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
+		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes});
+	}
 }
 
 

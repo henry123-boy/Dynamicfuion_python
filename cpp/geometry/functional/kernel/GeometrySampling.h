@@ -17,7 +17,7 @@
 #include <open3d/core/Tensor.h>
 #include <open3d/core/hashmap/HashMap.h>
 
-namespace nnrt::geometry::functional::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::sampling {
 
 
 void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
@@ -28,12 +28,27 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
                           const open3d::core::HashBackendType& hash_backend);
 
 
-void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
-                            const open3d::core::HashBackendType& hash_backend);
+void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
+                                const open3d::core::HashBackendType& hash_backend);
 
 template<open3d::core::Device::DeviceType DeviceType>
-void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
-                            const open3d::core::HashBackendType& hash_backend);
+void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
+                                const open3d::core::HashBackendType& hash_backend);
 
 
-} // nnrt::geometry::functional::kernel::downsampling
+void RadiusMedianSubsample3dPoints(
+		open3d::core::Tensor downsampled_points,
+		const open3d::core::Tensor& original_points,
+		float radius,
+		const open3d::core::HashBackendType& hash_backend_type
+);
+
+template<open3d::core::Device::DeviceType DeviceType>
+void RadiusMedianSubsample3dPoints(
+		open3d::core::Tensor& downsampled_points,
+		const open3d::core::Tensor& original_points,
+		float radius,
+		const open3d::core::HashBackendType& hash_backend_type
+);
+
+} // nnrt::geometry::functional::kernel::sampling

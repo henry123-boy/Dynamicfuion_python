@@ -25,7 +25,7 @@
 #include <open3d/t/geometry/kernel/GeometryIndexer.h>
 
 // local
-#include "PointDownsampling.h"
+#include "GeometrySampling.h"
 #include "core/platform_independence/Qualifiers.h"
 #include "core/platform_independence/Atomics.h"
 #include "core/kernel/HashTableUtilities.h"
@@ -35,7 +35,7 @@ namespace o3c = open3d::core;
 namespace o3gk = open3d::t::geometry::kernel;
 namespace hash_table = nnrt::core::kernel::hash_table;
 
-namespace nnrt::geometry::functional::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::sampling {
 
 namespace {
 
@@ -227,8 +227,8 @@ void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d
 }
 
 template<open3d::core::Device::DeviceType DeviceType>
-void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
-                            const open3d::core::HashBackendType& hash_backend) {
+void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
+                                const open3d::core::HashBackendType& hash_backend) {
 	o3c::Tensor downsampled_points_stage_1;
 	float sampling_radius = sqrtf(2 * (radius * radius));
 	AveragePointsIntoGridCells<DeviceType>(downsampled_points_stage_1, original_points, sampling_radius*2, hash_backend);
@@ -236,5 +236,16 @@ void RadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open
 	AveragePointsIntoGridCells<DeviceType>(downsampled_points, downsampled_points_stage_1, sampling_radius*2, hash_backend, Eigen::Vector3f(0.5, 0.5, 0.5));
 }
 
+template<open3d::core::Device::DeviceType DeviceType>
+void RadiusMedianSubsample3dPoints(
+		open3d::core::Tensor& downsampled_points,
+		const open3d::core::Tensor& original_points,
+		float radius,
+		const open3d::core::HashBackendType& hash_backend_type
+){
+	//TODO
+	open3d::utility::LogError("Not implemented!");
+}
 
-} // namespace nnrt::geometry::functional::kernel::downsampling
+
+} // namespace nnrt::geometry::functional::kernel::sampling

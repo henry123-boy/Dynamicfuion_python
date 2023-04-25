@@ -21,7 +21,7 @@
 #include "geometry/functional/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
 
-#include "geometry/functional/Downsample3dPoints.h"
+#include "geometry/functional/GeometrySampling.h"
 
 // local
 #include "pybind/geometry/functional/functional.h"

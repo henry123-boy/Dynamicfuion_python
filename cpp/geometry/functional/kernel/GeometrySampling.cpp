@@ -13,12 +13,12 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "PointDownsampling.h"
+#include "GeometrySampling.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 
-namespace nnrt::geometry::functional::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::sampling {
 
 
 void GridDownsamplePoints(
@@ -39,22 +39,42 @@ void GridDownsamplePoints(
 	);
 }
 
-void RadiusDownsamplePoints(
-		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
+void FastRadiusDownsamplePoints(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
 		const open3d::core::HashBackendType& hash_backend
 ) {
 	core::ExecuteOnDevice(
 			original_points.GetDevice(),
 			[&] {
-				RadiusDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius, hash_backend);
+				FastRadiusDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, min_distance, hash_backend);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						RadiusDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius,
-						                                                      hash_backend);
+						FastRadiusDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, min_distance,
+						                                                          hash_backend);
 				);
 			}
 	);
 }
 
-} // nnrt::geometry::functional::kernel::downsampling
+void RadiusMedianSubsample3dPoints(
+		open3d::core::Tensor downsampled_points,
+		const open3d::core::Tensor& original_points,
+		float radius,
+		const open3d::core::HashBackendType& hash_backend_type
+) {
+	core::ExecuteOnDevice(
+	original_points.GetDevice(),
+			[&] {
+				RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, radius, hash_backend_type);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, radius,
+						                                                             hash_backend_type);
+				);
+			}
+	);
+}
+
+} // nnrt::geometry::functional::kernel::sampling

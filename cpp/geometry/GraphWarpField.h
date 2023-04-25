@@ -44,10 +44,12 @@ public:
 			open3d::core::Tensor edges,
 			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
 			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
-			float node_coverage = 0.05,
+			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0
+			int minimum_valid_anchor_count = 0,
+			int layer_count = 4,
+			float decimation_radius = 0.02  // m
 	);
 	GraphWarpField(const GraphWarpField& original) = default;
 	GraphWarpField(GraphWarpField&& other) = default;

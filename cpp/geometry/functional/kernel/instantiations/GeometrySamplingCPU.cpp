@@ -14,23 +14,30 @@
 //  limitations under the License.
 //  ================================================================
 #include <open3d/core/ParallelFor.h>
-#include "geometry/functional/kernel/PointDownsamplingImpl.h"
+#include "geometry/functional/kernel/GeometrySamplingImpl.h"
 
-namespace nnrt::geometry::functional::kernel::downsampling {
+namespace nnrt::geometry::functional::kernel::sampling {
 
 template
-void GridDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
+void GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& downsampled_points,
-		const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::Tensor& original_points,
+		float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend
 );
 
 template
-void
-RadiusDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points,
-		float radius,
+void FastRadiusDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& downsampled_points,
+		const open3d::core::Tensor& original_points,
+		float min_distance,
 		const open3d::core::HashBackendType& hash_backend
 );
 
-} // namespace nnrt::geometry::functional::kernel::downsampling
+template
+void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
+		const open3d::core::HashBackendType& hash_backend
+);
+
+} // namespace nnrt::geometry::functional::kernel::sampling

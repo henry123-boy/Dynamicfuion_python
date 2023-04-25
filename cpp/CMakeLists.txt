@@ -184,14 +184,14 @@ set(
     geometry/kernel/Segment.h
     geometry/kernel/AxisAlignedBoundingBox.h
 
-    geometry/functional/Downsample3dPoints.h
-    geometry/functional/Downsample3dPoints.cpp
+    geometry/functional/GeometrySampling.h
+    geometry/functional/GeometrySampling.cpp
 
-    geometry/functional/kernel/PointDownsampling.cpp
-    geometry/functional/kernel/PointDownsampling.h
-    geometry/functional/kernel/PointDownsamplingImpl.h
-    geometry/functional/kernel/instantiations/PointDownsamplingCPU.cpp
-    geometry/functional/kernel/instantiations/PointDownsamplingCUDA.cu
+    geometry/functional/kernel/GeometrySampling.cpp
+    geometry/functional/kernel/GeometrySampling.h
+    geometry/functional/kernel/GeometrySamplingImpl.h
+    geometry/functional/kernel/instantiations/GeometrySamplingCPU.cpp
+    geometry/functional/kernel/instantiations/GeometrySamplingCUDA.cu
 
     geometry/VoxelBlockGrid.h
     geometry/VoxelBlockGrid.cpp
