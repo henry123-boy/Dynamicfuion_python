@@ -49,12 +49,12 @@ MeshToAdjacencyArray_Generic(
 
 	// compile adjacency lists. Note: these might (and, almost certainly, will) have duplicates, since two triangles often share the same edge.
 	o3c::ParallelFor(
-			device, triangle_count * 2,
+			device, triangle_count * 3,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t triangle_index = workload_idx / 2;
-				int64_t index0_in_triangle = workload_idx % 2;
+				int64_t triangle_index = workload_idx / 3;
+				int64_t index0_in_triangle = workload_idx % 3;
 				TVertexIndexType index0 = triangle_index_data[triangle_index * 3 + index0_in_triangle];
-				TVertexIndexType index1 = triangle_index_data[triangle_index * 3 + index0_in_triangle + 1];
+				TVertexIndexType index1 = triangle_index_data[triangle_index * 3 + ((index0_in_triangle + 1) % 3)];
 				TVertexIndexType source_index, target_index;
 				if (index0 < index1) {
 					source_index = index0;
@@ -93,12 +93,17 @@ MeshToAdjacencyArray_Generic(
 				TVertexIndexType* vertex_unique_adjacencies = adjacency_data + i_vertex * max_expected_vertex_degree;
 				TVertexIndexType previous_adjacency = sentinel;
 				int unique_adjacency_count = 0;
-				for(int i_raw_adjacency = 0; i_raw_adjacency < vertex_count; i_raw_adjacency++){
+				for (int i_raw_adjacency = 0; i_raw_adjacency < vertex_count; i_raw_adjacency++) {
 					TVertexIndexType raw_adjacency = vertex_raw_adjacencies[i_raw_adjacency];
-					if(raw_adjacency != previous_adjacency){
+					if (raw_adjacency != previous_adjacency) {
 						previous_adjacency = raw_adjacency;
-						vertex_unique_adjacencies[unique_adjacency_count] = raw_adjacency;
-						unique_adjacency_count++;
+						if (unique_adjacency_count > max_expected_vertex_degree) {
+							printf("Warning: vertex degree appears to be greater than the max_expected_vertex_degree argument can accommodate, "
+							       "the result of adjacency array generation will be incomplete. Please re-run with this argument increased.");
+						} else {
+							vertex_unique_adjacencies[unique_adjacency_count] = raw_adjacency;
+							unique_adjacency_count++;
+						}
 					}
 				}
 			}
@@ -117,7 +122,7 @@ void MeshToAdjacencyArray(open3d::core::Tensor& adjacency_array, const open3d::t
 	}
 
 	const o3c::Tensor& triangle_indices = mesh.GetTriangleIndices();
-	o3c::AssertTensorDtypes(triangle_indices, {o3c::Int32, o3c::Int64});
+	o3c::AssertTensorDtypes(triangle_indices, { o3c::Int32, o3c::Int64 });
 	int64_t vertex_count = mesh.GetVertexPositions().GetLength();
 
 
