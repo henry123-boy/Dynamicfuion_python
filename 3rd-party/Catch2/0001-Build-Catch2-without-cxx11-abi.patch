@@ -1,0 +1,25 @@
+From 64a34269d52c416965e2f38a15efbf00ccdb467b Mon Sep 17 00:00:00 2001
+From: Gregory Kramida <algomorph@gmail.com>
+Date: Mon, 1 May 2023 18:16:19 -0400
+Subject: [PATCH] Build Catch2 without cxx11 abi
+
+---
+ src/CMakeLists.txt | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index fd05dbdd..a3f52769 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -484,6 +484,8 @@ endif()
+ list(APPEND CATCH_WARNING_TARGETS Catch2 Catch2WithMain)
+ set(CATCH_WARNING_TARGETS ${CATCH_WARNING_TARGETS} PARENT_SCOPE)
+ 
++target_compile_definitions(Catch2 PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
++
+ 
+ # We still do not support building dynamic library with hidden visibility
+ # so we want to check & warn users if they do this. However, we won't abort
+-- 
+2.34.1
+

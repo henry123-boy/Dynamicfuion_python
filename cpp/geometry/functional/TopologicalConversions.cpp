@@ -31,4 +31,5 @@ open3d::core::Tensor MeshToAdjacencyArray(const open3d::t::geometry::TriangleMes
 	return adjacency_array;
 }
 
+
 } // namespace nnrt::geometry::functional

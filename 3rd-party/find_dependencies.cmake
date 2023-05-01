@@ -557,14 +557,14 @@ if (BUILD_CPP_TESTS)
             FetchContent_Declare(
                 Catch2
                 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-                GIT_TAG v3.1.1
-                PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace ${NNRT_3RDPARTY_DIR}/Catch2/build_catch2_without_cxx11_abi.patch || true
+                GIT_TAG v3.3.2
+                PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace ${NNRT_3RDPARTY_DIR}/Catch2/0001-Build-Catch2-without-cxx11-abi.patch || true
             )
         else ()
             FetchContent_Declare(
                 Catch2
                 GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-                GIT_TAG v3.1.1
+                GIT_TAG v3.3.2
             )
         endif ()
         FetchContent_MakeAvailable(Catch2)
