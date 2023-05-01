@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/11/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/1/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,28 +13,30 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// stdlib includes
-
 // third-party includes
-#include <open3d/core/Device.h>
+#include <open3d/t/geometry/TriangleMesh.h>
 
 // local includes
-#include "tests/test_main.hpp"
-#include "core/ParallelFor.h"
-#include "core/platform_independence/Qualifiers.h"
-#include "core/platform_independence/AtomicCounterArray.h"
-#include "test_atomic_counter_array.h"
+#include "test_main.hpp"
+
+// code being tested
+#include "geometry/functional/TopologicalConversions.h"
 
 namespace o3c = open3d::core;
+namespace o3tg = open3d::t::geometry;
 
+void TestTriangleMeshToAdjacencyArrayConversion(const o3c::Device& device){
+	o3tg::TriangleMesh sphere = o3tg::TriangleMesh::CreateSphere(1.0, 20, o3c::Float32, o3c::Int64, device);
+	o3c::Tensor adjacency_array = nnrt::geometry::functional::MeshToAdjacencyArray(sphere, 4);
 
-
-TEST_CASE("Test Atomic Counter Array - CPU") {
-	auto device = o3c::Device("CPU:0");
-	TestAtomicCounterArray<o3c::Device::DeviceType::CPU>(device);
 }
 
-TEST_CASE("Test Atomic Counter Array - CUDA") {
+TEST_CASE("Test Mest to Adjacency Array - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestTriangleMeshToAdjacencyArrayConversion(device);
+}
+
+TEST_CASE("Test Mest to Adjacency Array - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestAtomicCounterArray<o3c::Device::DeviceType::CUDA>(device);
+	TestTriangleMeshToAdjacencyArrayConversion(device);
 }

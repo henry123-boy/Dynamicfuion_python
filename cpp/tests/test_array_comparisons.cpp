@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 #define NNRT_TEST_USE_PYTHON
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 #include "tests/test_utils/test_utils.hpp"
 namespace py = pybind11;
 TEST_CASE("Test Float Array Comparison") {

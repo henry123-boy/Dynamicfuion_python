@@ -24,7 +24,7 @@
 // local includes
 // test utils
 #include "tests/test_utils/test_utils.hpp"
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 #include "tests/test_utils/fitter_testing.h"
 
 // code being tested

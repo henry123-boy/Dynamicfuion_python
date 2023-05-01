@@ -129,8 +129,7 @@ if (BUILD_CPP_TESTS)
         test_utils/geometry.cpp
         test_utils/geometry.h
         test_utils/fitter_testing.cpp
-        test_utils/fitter_testing.h
-    )
+        test_utils/fitter_testing.h)
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -169,6 +168,7 @@ if (BUILD_CPP_TESTS)
     )
     nnrt_add_test(test_solve_cholesky_block_diagonal)
     nnrt_add_test(test_rodrigues)
+    nnrt_add_test(test_mesh_to_adjacency_array_conversion)
 
     nnrt_add_test_data_download_target(
         test_data_plane_and_cube_rendering

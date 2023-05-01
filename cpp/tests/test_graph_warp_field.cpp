@@ -16,7 +16,7 @@
 // 3rd party
 #include <open3d/core/Tensor.h>
 // test framework
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 // code being tested
 #include "geometry/GraphWarpField.h"
 

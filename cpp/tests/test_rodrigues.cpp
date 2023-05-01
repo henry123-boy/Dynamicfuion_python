@@ -19,7 +19,7 @@
 #include <open3d/core/Tensor.h>
 
 // local includes
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 
 // code being tested
 #include "core/linalg/Rodrigues.h"

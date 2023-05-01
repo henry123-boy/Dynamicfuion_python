@@ -21,7 +21,7 @@
 #include <open3d/t/io/ImageIO.h>
 
 // local includes
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 #include "tests/test_utils/test_utils.hpp"
 #include "alignment/NdcTriangleFitter.h"
 #include "core/kernel/MathTypedefs.h"

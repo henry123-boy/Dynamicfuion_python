@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 // test framework
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 #include "tests/test_utils/geometry.h"
 #include "tests/test_utils/test_utils.hpp"
 

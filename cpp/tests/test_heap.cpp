@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 
 #include <core/heap/CPU/DeviceHeapCPU.h>
 #include "core/heap/Heap.h"

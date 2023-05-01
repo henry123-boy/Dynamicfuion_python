@@ -16,7 +16,7 @@
 #include <fmt/ranges.h>
 #include <catch2/catch_approx.hpp>
 
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 
 #include <open3d/core/Tensor.h>
 #include "core/TensorManipulationRoutines.h"

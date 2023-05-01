@@ -18,7 +18,7 @@
 #include <fmt/ranges.h>
 #include <open3d/t/geometry/Image.h>
 
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 
 #include "geometry/functional/NormalsOperations.h"
 #include <geometry/NonRigidSurfaceVoxelBlockGrid.h>

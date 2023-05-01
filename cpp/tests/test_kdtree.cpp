@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "tests/test_utils/test_main.hpp"
+#include "test_main.hpp"
 #include "catch2/catch_approx.hpp"
 
 #include <core/KdTree.h>
