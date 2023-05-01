@@ -18,3 +18,17 @@
 // third-party includes
 
 // local includes
+#include "core/functional/ExclusiveParallelPrefixScan.h"
+#include "core/functional/kernel/ExclusiveParallelPrefixScan.h"
+
+namespace o3c = open3d::core;
+
+namespace nnrt::core::functional {
+
+open3d::core::Tensor ExclusiveParallelPrefixSum1D(const open3d::core::Tensor& source) {
+	o3c::Tensor prefix_sum;
+	kernel::ExclusiveParallelPrefixSum1D(prefix_sum, source);
+	return prefix_sum;
+}
+
+} // namespace nnrt::core::functional
