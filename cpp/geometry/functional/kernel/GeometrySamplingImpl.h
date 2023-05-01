@@ -382,6 +382,7 @@ o3c::Tensor FindMedianPointIndices(
 				}
 			}
 	);
+	return bin_distance_matrix_start_indices;
 }
 
 } // anonymous namespace

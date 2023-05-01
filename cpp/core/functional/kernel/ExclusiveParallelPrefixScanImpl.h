@@ -29,8 +29,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_scan.h>
 
-#include <open3d/utility/Logging.h>
-
+//TODO: deprecate OneApi / separate parallelstl package usage? Check Open3D compiler support requirements. Both GCC and Clang long-since include
+// parallelstl algorithm implementations, including std::exclusive_scan and std::inclusive_scan.
 
 // clang-format off
 #if TBB_INTERFACE_VERSION >= 10000
@@ -61,15 +61,19 @@
 #endif
 
 #ifdef BUILD_CUDA_MODULE
+
 #include <thrust/scan.h>
 #include <thrust/execution_policy.h>
 #include <open3d/core/Device.h>
+
 #endif
 
 #include <open3d/core/Dispatch.h>
+#include <open3d/utility/Logging.h>
 
 // local includes
 #include "core/functional/kernel/ExclusiveParallelPrefixScan.h"
+#include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -122,7 +126,7 @@ void ExclusivePrefixSumCPU(const Tin* first, const Tin* last, Tout* out) {
 #ifdef NNRT_USE_ONEAPI_PACKAGES
 	std::exclusive_scan(oneapi::dpl::execution::par_unseq, first, last, out);
 #else
-	std::exclusive_scan(std::execution::par_unseq, first, last, out);
+	std::exclusive_scan(std::execution::par_unseq, first, last, out, 0);
 #endif
 #else
 	ScanSumBody<Tin, Tout> body(out, first);
@@ -131,19 +135,12 @@ void ExclusivePrefixSumCPU(const Tin* first, const Tin* last, Tout* out) {
 #endif
 }
 
-#ifdef BUILD_CUDA_MODULE
+#ifdef __CUDACC__
 template<class Tin, class Tout>
 void ExclusivePrefixSumCUDA(const Tin* first, const Tin* last, Tout* out, const open3d::core::Device& device){
 	cudaSetDevice(device.GetID());
 	thrust::exclusive_scan(thrust::device, first, last, out);
 }
-#else
-
-template<class Tin, class Tout>
-void ExclusivePrefixSumCUDA(const Tin* first, const Tin* last, Tout* out) {
-	open3d::utility::LogError("CUDA BUILD is OFF, there must be an error in the code using ExclusivePrefixSumCUDA.")
-}
-
 #endif
 
 template<typename TElement, open3d::core::Device::DeviceType TDeviceType>
@@ -153,14 +150,16 @@ void ExclusiveParallelPrefixSum1D_Generic(open3d::core::Tensor& prefix_sum, cons
 	auto source_data_end = source_data_begin + source.GetLength();
 	auto sum_data_begin = prefix_sum.GetDataPtr<TElement>();
 	switch (TDeviceType) {
-		case o3c::Device::DeviceType::CPU:
-			ExclusivePrefixSumCPU(source_data_begin, source_data_end, sum_data_begin);
+		case o3c::Device::DeviceType::CPU: ExclusivePrefixSumCPU(source_data_begin, source_data_end, sum_data_begin);
 			break;
 		case o3c::Device::DeviceType::CUDA:
-			ExclusivePrefixSumCUDA(source_data_begin, source_data_end, sum_data_begin);
+#ifdef __CUDACC__
+				ExclusivePrefixSumCUDA(source_data_begin, source_data_end, sum_data_begin, source.GetDevice());
+#else
+			utility::LogError("BUILD ERROR. Wrong device: {}", source.GetDevice().ToString());
+#endif
 			break;
-		default:
-			utility::LogError("Unsupported device: {}", source.GetDevice().ToString());
+		default: utility::LogError("Unsupported device: {}", source.GetDevice().ToString());
 			break;
 	}
 }
