@@ -24,6 +24,7 @@
 #include "../../../../3rd-party/Eigen/Eigen/Dense"
 
 
+namespace nnrt::geometry::functional::kernel::sampling {
 struct PointAverageAggregationBin {
 #ifdef __CUDACC__
 	float x;
@@ -36,12 +37,35 @@ struct PointAverageAggregationBin {
 	std::atomic<float> z;
 	std::atomic<int> count;
 #endif
+
 	template<open3d::core::Device::DeviceType DeviceType, typename TPoint>
 	NNRT_DEVICE_WHEN_CUDACC
-	void UpdateWithPointAndCount(const TPoint& point, int _count){
+	void UpdateWithPointAndCount(const TPoint& point, int _count) {
 		x = point.x();
 		y = point.y();
 		z = point.z();
 		this->count = _count;
 	}
 };
+#define MAX_POINTS_PER_BIN 1000
+struct PointCollectionBin {
+	int64_t indices[MAX_POINTS_PER_BIN];
+#ifdef __CUDACC__
+	int count;
+#else
+	std::atomic<int> count;
+#endif
+	template<open3d::core::Device::DeviceType DeviceType>
+	NNRT_DEVICE_WHEN_CUDACC
+	void UpdateWithPoint(int64_t point_index){
+#ifdef __CUDACC__
+		int previous_count = atomicAdd(&count, 1);
+#else
+		int previous_count = count.fetch_add(1);
+#endif
+		indices[previous_count] = point_index;
+	}
+
+};
+
+} // namespace nnrt::geometry::functional::kernel::sampling

@@ -191,10 +191,9 @@ void TransferFromBinsToTensor_CountCheck(
 	);NNRT_CLEAN_UP_ATOMIC(downsampled_point_count_atomic);
 }
 
-
-template<open3d::core::Device::DeviceType DeviceType>
-void AveragePointsIntoGridCells(
-		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+template<open3d::core::Device::DeviceType TDeviceType, typename TBinType>
+std::tuple<open3d::core::Tensor, int64_t, o3c::HashMap> GridBinPoints(
+		const open3d::core::Tensor& original_points, float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
 	auto device = original_points.GetDevice();
 
@@ -203,32 +202,118 @@ void AveragePointsIntoGridCells(
 	o3c::Tensor point_bins_float = original_points / grid_cell_size + grid_offset_tensor;
 	o3c::Tensor point_bins_integer = point_bins_float.Floor().To(o3c::Int32);
 
-	o3c::HashMap point_bin_coord_map(point_bins_integer.GetLength(), o3c::Int32, {3}, o3c::UInt8, {sizeof(PointAverageAggregationBin)}, device,
+	o3c::HashMap point_bin_coord_map(point_bins_integer.GetLength(), o3c::Int32, {3}, o3c::UInt8, {sizeof(TBinType)}, device,
 	                                 hash_backend);
 
-	// activate entries in the hash map that correspond to the
 	o3c::Tensor bin_indices_tensor, success_mask;
 	point_bin_coord_map.Activate(point_bins_integer, bin_indices_tensor, success_mask);
+
 	o3c::Tensor bins_integer = point_bins_integer.GetItem(o3c::TensorKey::IndexTensor(success_mask));
 	auto bin_count = bins_integer.GetLength();
 
-	PointAverageAggregationBin* bins = reinterpret_cast<PointAverageAggregationBin*>(point_bin_coord_map.GetValueTensor().GetDataPtr());
-	InitializeAveragingBins<DeviceType>(device, bin_count, bins);
-
 	std::tie(bin_indices_tensor, success_mask) = point_bin_coord_map.Find(point_bins_integer);
-	auto bin_indices = bin_indices_tensor.GetDataPtr<int32_t>();
+	return std::make_tuple(bin_indices_tensor, bin_count, point_bin_coord_map);
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void AveragePointsIntoGridCells(
+		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
+	auto device = original_points.GetDevice();
+
+	auto [bin_indices_tensor, bin_count, point_bin_coord_map] = GridBinPoints<TDeviceType, PointAverageAggregationBin>(original_points,
+	                                                                                                                   grid_cell_size, hash_backend,
+	                                                                                                                   grid_offset);
+
+	auto bin_indices = bin_indices_tensor.template GetDataPtr<int32_t>();
+	auto* bins = reinterpret_cast<PointAverageAggregationBin*>(point_bin_coord_map.GetValueTensor().GetDataPtr());
+	InitializeAveragingBins<TDeviceType>(device, bin_count, bins);
 
 	o3gk::NDArrayIndexer original_point_indexer(original_points, 1);
 	auto original_point_count = original_points.GetLength();
 
-	ComputeBinAverageAggregates<DeviceType>(original_point_indexer, device, original_point_count, bins, bin_indices);
-	ComputeBinAverages<DeviceType>(device, bin_count, bins);
+	ComputeBinAverageAggregates<TDeviceType>(original_point_indexer, device, original_point_count, bins, bin_indices);
+	ComputeBinAverages<TDeviceType>(device, bin_count, bins);
 
 	downsampled_points = o3c::Tensor({bin_count, 3}, o3c::Float32, device);
 	o3gk::NDArrayIndexer downsampled_point_indexer(downsampled_points, 1);
 
-	TransferFromBinsToTensor_NoCountCheck<DeviceType>(downsampled_point_indexer, device, bin_count, bins);
+	TransferFromBinsToTensor_NoCountCheck<TDeviceType>(downsampled_point_indexer, device, bin_count, bins);
 }
+//
+// template<open3d::core::Device::DeviceType TDeviceType>
+// void FindGridCellRadiusClusters(
+// 		const open3d::core::Tensor& vertices, const open3d::core::Tensor& edges, float grid_cell_size, float radius,
+// 		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
+// 	auto device = vertices.GetDevice();
+//
+// 	auto [bin_indices_tensor, bin_count, point_bin_coord_map] =
+// 			GridBinPoints<TDeviceType, PointCollectionBin>(vertices, grid_cell_size, hash_backend, grid_offset);
+//
+// 	auto* bins = reinterpret_cast<PointCollectionBin*>(point_bin_coord_map.GetValueTensor().GetDataPtr());
+//
+// 	auto bin_index_data = bin_indices_tensor.template GetDataPtr<int32_t>();
+//
+// 	int64_t vertex_count = vertices.GetLength();
+// 	o3c::ParallelFor(
+// 			device, vertex_count,
+// 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_vertex) {
+// 				int32_t i_bin = bin_index_data[i_vertex];
+// 				bins[i_bin].UpdateWithPoint<TDeviceType>(i_vertex);
+// 			}
+// 	);
+//
+//
+// 	int64_t max_vertex_degree = edges.GetShape(1);
+// 	auto edge_data = edges.GetDataPtr<int64_t>();
+// 	o3c::Tensor vertex_cluster_assignments({vertex_count}, o3c::Int32, device);
+// 	vertex_cluster_assignments.Fill(-1);
+// 	auto vertex_cluster_data = vertex_cluster_assignments.GetDataPtr<int32_t>();
+//
+// 	auto vertex_data = vertices.GetDataPtr<float>();
+//
+// 	NNRT_DECLARE_ATOMIC_INT(cluster_count);
+//
+// 	o3c::ParallelFor(
+// 			device, bin_count,
+// 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_bin) {
+// 				PointCollectionBin& bin = bins[i_bin];
+// 				const int bin_point_count = bin.count;
+// 				for (int i_source_in_bin = 0; i_source_in_bin < bin_point_count; i_source_in_bin++) {
+// 					int64_t source_vertex_index = bin.indices[i_source_in_bin];
+// 					const int64_t* vertex_edges = edge_data + source_vertex_index * max_vertex_degree;
+// 					int cluster_source = vertex_cluster_data[source_vertex_index];
+// 					Eigen::Map<const Eigen::Vector3f> source_vertex(vertex_data + source_vertex_index * 3);
+// 					for (int i_target = 0; i_target < max_vertex_degree; i_target++) {
+// 						int64_t target_vertex_index = edge_data[i_target];
+// 						Eigen::Map<const Eigen::Vector3f> target_vertex(vertex_data + target_vertex_index * 3);
+// 						float distance = (source_vertex - target_vertex).norm();
+// 						if (distance < radius) {
+// 							if (cluster_source == -1) {
+// 								int cluster_target = vertex_cluster_data[target_vertex_index];
+// 								if (cluster_target == -1) {
+// 									int new_cluster_index = NNRT_ATOMIC_ADD(cluster_count, 1);
+// 									vertex_cluster_data[source_vertex_index] = cluster_source = new_cluster_index;
+// 									vertex_cluster_data[target_vertex_index] = new_cluster_index;
+// 								} else {
+// 									vertex_cluster_data[source_vertex_index] = cluster_source = cluster_target;
+// 								}
+// 							} else {
+// 								int cluster_target = vertex_cluster_data[target_vertex_index];
+// 							}
+// 						}
+//
+// 					}
+// 				}
+// 			}
+// 	);
+//
+// 	NNRT_CLEAN_UP_ATOMIC(cluster_count);
+//
+//
+// }
+
 
 template<open3d::core::Device::DeviceType TDeviceType>
 open3d::core::Tensor ComputeBinPointCounts(o3c::Device& device, const o3c::Tensor& bin_indices, int64_t bin_count) {
@@ -466,20 +551,186 @@ void RadiusMedianSubsample3dPoints(
 	MedianGridSamplePoints<TDeviceType>(median_point_indices_stage1, points, extended_radius * 2, hash_backend_type);
 	o3c::Tensor points_stage_1 = points.GetItem(o3c::TensorKey::IndexTensor(median_point_indices_stage1));
 	// merge again while offsetting the grid
-	MedianGridSamplePoints<TDeviceType>(median_point_indices_stage2, points_stage_1, extended_radius * 2, hash_backend_type, Eigen::Vector3f(0.5, 0.5, 0.5));
+	MedianGridSamplePoints<TDeviceType>(median_point_indices_stage2, points_stage_1, extended_radius * 2, hash_backend_type,
+	                                    Eigen::Vector3f(0.5, 0.5, 0.5));
 	sample = median_point_indices_stage1.GetItem(o3c::TensorKey::IndexTensor(median_point_indices_stage2));
 }
 
 
-template<open3d::core::Device::DeviceType DeviceType>
+template<open3d::core::Device::DeviceType TDeviceType>
 void RadiusSubsampleGraph(
-		open3d::core::Tensor& sample,
+		open3d::core::Tensor& resampled_vertices,
 		open3d::core::Tensor& resampled_edges,
 		const open3d::core::Tensor& vertices,
 		const open3d::core::Tensor& edges,
 		float radius
-){
-	//TODO
+) {
+	// counters and checks
+	o3c::Device device = vertices.GetDevice();
+	int64_t vertex_count = vertices.GetLength();
+	o3c::AssertTensorShape(vertices, { vertex_count, 3 });
+	o3c::AssertTensorDtype(vertices, o3c::Float32);
+
+	int64_t max_vertex_degree = edges.GetShape(1);
+	o3c::AssertTensorShape(edges, { vertex_count, max_vertex_degree });
+	o3c::AssertTensorDtype(edges, o3c::Int64);
+	o3c::AssertTensorDevice(edges, device);
+
+	if (radius < 1e-7) {
+		utility::LogError("Radius must be a positive value above 1e-7. Provided radius: {}", radius);
+	}
+
+	// prep inputs
+	auto* vertex_data = vertices.GetDataPtr<float>();
+	auto* edge_data = edges.GetDataPtr<int64_t>();
+
+	// init output for this phase
+
+	// find super-independent vertices
+	o3c::Tensor super_independent_mask_tier1 = o3c::Tensor::Zeros({vertex_count}, o3c::Bool, device);
+	auto* super_independent_mask1_data = super_independent_mask_tier1.GetDataPtr<bool>();
+	NNRT_DECLARE_ATOMIC(int, super_independent_count);
+	o3c::Tensor super_independent_set = o3c::Tensor({vertex_count}, o3c::Int64, device);
+	auto super_independent_set_data = super_independent_set.GetDataPtr<int64_t>();
+
+	// greedy algorithm, prone to race conditions
+	o3c::ParallelFor(
+			device, vertex_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_source_vertex) {
+				if (super_independent_mask1_data[i_source_vertex]) {
+					return;
+				} else {
+					auto vertex_edges = edge_data + i_source_vertex * max_vertex_degree;
+					for (int i_edge = 0; i_edge < max_vertex_degree; i_edge++) {
+						int64_t i_target_vertex = vertex_edges[i_edge];
+						if (i_target_vertex == -1) {
+							break;
+						} else if (super_independent_mask1_data[i_target_vertex]) {
+							// neighbor already in set, this source should be excluded
+							return;
+						}
+					}
+					super_independent_mask1_data[i_source_vertex] = true;
+					int index = NNRT_ATOMIC_ADD(super_independent_count, 1);
+					super_independent_set_data[index] = i_source_vertex;
+				}
+			}
+	);
+
+	// check for race conditions: remove any extra vertices from the set (which have distance < 3 edges from another vertex in the set)
+	o3c::Tensor super_independent_mask_tier2 = o3c::Tensor::Ones({NNRT_GET_ATOMIC_VALUE_HOST(super_independent_count)}, o3c::Bool, device);
+	auto* super_independent_mask2_data = super_independent_mask_tier2.GetDataPtr<bool>();
+	o3c::ParallelFor(
+			device, NNRT_GET_ATOMIC_VALUE_HOST(super_independent_count),
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_super_independent_vertex) {
+				int64_t i_source_vertex = super_independent_set_data[i_super_independent_vertex];
+				auto vertex_edges_1_ring = edge_data + i_source_vertex * max_vertex_degree;
+				for (int i_edge_1_ring = 0; i_edge_1_ring < max_vertex_degree; i_edge_1_ring++) {
+					int64_t i_target_vertex_1_ring = vertex_edges_1_ring[i_edge_1_ring];
+					if (i_target_vertex_1_ring == -1) {
+						break;
+					} else if (super_independent_mask1_data[i_target_vertex_1_ring] && super_independent_mask2_data[i_target_vertex_1_ring]) {
+						// distance is only 1 edge
+						super_independent_mask2_data[i_super_independent_vertex] = false;
+					} else {
+						auto vertex_edges_2_ring = edge_data + i_target_vertex_1_ring * max_vertex_degree;
+						for (int i_edge_2_ring = 0; i_edge_2_ring < max_vertex_degree; i_edge_2_ring++) {
+							int64_t i_target_vertex_2_ring = vertex_edges_2_ring[i_edge_2_ring];
+							if (i_target_vertex_2_ring == -1) {
+								break;
+							} else if (super_independent_mask1_data[i_target_vertex_2_ring] && super_independent_mask2_data[i_target_vertex_2_ring]) {
+								// distance is only 2 edges
+								super_independent_mask2_data[i_super_independent_vertex] = false;
+							}
+						}
+					}
+				}
+			}
+	);
+
+	super_independent_set = super_independent_set.GetItem(o3c::TensorKey::IndexTensor(super_independent_mask_tier2));NNRT_CLEAN_UP_ATOMIC(
+			super_independent_count);
+
+	int64_t super_independent_vertex_count = super_independent_set.GetLength();
+	super_independent_set_data = super_independent_set.GetDataPtr<int64_t>();
+	o3c::Tensor new_vertex_indices({vertex_count}, o3c::Int64, device);
+	new_vertex_indices.Fill(-1);
+	auto new_vertex_index_data = new_vertex_indices.GetDataPtr<int64_t>();
+	o3c::Tensor new_vertex_positions({vertex_count, 3}, o3c::Float32, device);
+	auto new_vertex_position_data = new_vertex_positions.GetDataPtr<float>();
+
+	NNRT_DECLARE_ATOMIC(int, new_vertex_count);
+
+	// collapse edges around super-independent vertices if they are shorter than radius
+	o3c::ParallelFor(
+			device, super_independent_vertex_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_super_independent_vertex) {
+				int64_t i_source_vertex = super_independent_set_data[i_super_independent_vertex];
+				Eigen::Map<const Eigen::Vector3f> source_vertex(vertex_data + i_source_vertex * 3);
+
+				int new_merged_vertex_index = NNRT_ATOMIC_ADD(new_vertex_count, 1);
+				new_vertex_index_data[i_source_vertex] = new_merged_vertex_index;
+
+				Eigen::Map<Eigen::Vector3f> averaged_vertex(new_vertex_position_data + new_merged_vertex_index * 3);
+				averaged_vertex = Eigen::Vector3f(0.f, 0.f, 0.f);
+				averaged_vertex += source_vertex;
+				int averaged_vertex_count = 0;
+
+				auto vertex_edges = edge_data + i_source_vertex * max_vertex_degree;
+				for (int i_edge = 0; i_edge < max_vertex_degree; i_edge++) {
+					int64_t i_target_vertex = vertex_edges[i_edge];
+					Eigen::Map<const Eigen::Vector3f> target_vertex(vertex_data + i_target_vertex * 3);
+					if ((source_vertex - target_vertex).norm() < radius) {
+						averaged_vertex_count++;
+						averaged_vertex += target_vertex;
+						new_vertex_index_data[i_target_vertex] = new_merged_vertex_index;
+					} else {
+						int unmerged_vertex_index = NNRT_ATOMIC_ADD(new_vertex_count, 1);
+						new_vertex_index_data[i_target_vertex] = unmerged_vertex_index;
+						memcpy(new_vertex_position_data + unmerged_vertex_index * 3, vertex_data + i_target_vertex * 3, 3 * sizeof(float));
+					}
+				}
+				averaged_vertex /= static_cast<float>(averaged_vertex_count);
+			}
+	);
+
+	int64_t new_max_vertex_degree = max_vertex_degree * 4;
+
+	resampled_vertices = new_vertex_positions.Slice(0, 0, NNRT_GET_ATOMIC_VALUE_HOST(new_vertex_count));NNRT_CLEAN_UP_ATOMIC(new_vertex_count);
+
+	resampled_edges = o3c::Tensor({vertices.GetLength(), new_max_vertex_degree}, o3c::Int64, device);
+	resampled_edges.Fill(-1);
+	auto new_edge_data = resampled_edges.GetDataPtr<int64_t>();
+	core::AtomicCounterArray<TDeviceType> new_edge_counts(vertices.GetLength());
+
+	// reconstruct edges from new indices
+	o3c::ParallelFor(
+			device, vertex_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_source_vertex) {
+				int64_t i_new_source_vertex = new_vertex_index_data[i_source_vertex];
+				auto vertex_edges = edge_data + i_source_vertex * max_vertex_degree;
+				auto new_vertex_edges = new_edge_data + i_new_source_vertex * new_max_vertex_degree;
+				for (int i_edge = 0; i_edge < max_vertex_degree; i_edge++) {
+					int64_t i_target_vertex = vertex_edges[i_edge];
+					int64_t i_new_target_vertex = new_vertex_index_data[i_target_vertex];
+					bool already_added = false;
+					for (int i_new_edge = 0; i_new_edge < new_edge_counts.GetCount(i_new_source_vertex); i_new_edge++) {
+						if (new_vertex_edges[i_new_edge] == i_new_target_vertex) {
+							already_added = true;
+							break;
+						}
+					}
+					//TODO: take care of possible race condition -- adding two equivalent i_new_target_vertex values from separate threads
+					if (!already_added) {
+						int new_edge_index = new_edge_counts.FetchAdd(i_new_source_vertex, 1);
+						if (new_edge_index < new_max_vertex_degree) {
+							new_vertex_edges[new_edge_index] = i_new_target_vertex;
+						}
+					}
+				}
+			}
+	);
+
 }
 
 

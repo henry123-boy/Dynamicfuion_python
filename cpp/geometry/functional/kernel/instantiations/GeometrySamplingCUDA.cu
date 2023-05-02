@@ -41,7 +41,7 @@ void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CUDA>(
 
 template
 void RadiusSubsampleGraph<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& sample,
+		open3d::core::Tensor& vertices,
 		open3d::core::Tensor& resampled_edges,
 		const open3d::core::Tensor& vertices,
 		const open3d::core::Tensor& edges,
