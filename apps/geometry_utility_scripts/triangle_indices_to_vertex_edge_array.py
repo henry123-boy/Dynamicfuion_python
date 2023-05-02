@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def triangle_indices_to_vertex_edge_array(triangle_indices: np.ndarray, max_degree: int = 4) -> np.ndarray:
     vertex_indices = np.unique(triangle_indices)
     vertex_edge_array = -np.ones((vertex_indices.size, max_degree), dtype=np.int64)
@@ -24,3 +25,7 @@ def triangle_indices_to_vertex_edge_array(triangle_indices: np.ndarray, max_degr
         for i_target_vertex, target_vertex in enumerate(sorted_edge_set):
             vertex_edge_array[source_vertex, i_target_vertex] = target_vertex
     return vertex_edge_array
+
+
+def radius_median_subsample_3d_points(source_points: np.array):
+    pass

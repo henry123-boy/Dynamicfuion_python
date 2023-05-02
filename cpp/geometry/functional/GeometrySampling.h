@@ -24,28 +24,37 @@ namespace nnrt::geometry::functional {
 /**
  * \brief average-downsample points within each grid cell of a uniform cubic grid
  * \param downsampled_points resulting points
- * \param original_points original points
+ * \param original_points original points in open3d::core::Float32 format
  * \param grid_cell_size side length of each (cubic) grid cell
  * \param hash_backend hash backend to use for the operation
+ * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
 open3d::core::Tensor GridAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size,
                                                    const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
 
 /**
- * \brief average-downsample points such that resulting points are at least at min_distance apart.
+ * \brief average-downsample points such that resulting points are at least at `radius` apart.
  * \details does not necessarily produce a maximal downsampling set, but efficient since it uses two grid-averaging
  * downsampling iterations (with a 1/2 grid-cell offset in the second iteration) to produce the result.
  * \param downsampled_points resulting downsampled points
- * \param original_points original points
+ * \param original_points original points in open3d::core::Float32 format
  * \param min_distance minimal distance between resulting points
  * \param hash_backend backend to use for hashing
+ * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
 open3d::core::Tensor FastRadiusAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float radius,
                                                          const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
 
-
-
+/**
+ * \brief (Untested) median-downsample points such that resulting sample consists of points at least `radius` apart from one another.
+ * \param points original points
+ * \param radius minimum distance between selected points
+ * \param hash_backend_type backend to use for hashing
+ * \return resulting sample of point indexes, in a 1D Int64 tensor, stored on the same device as the original points
+ */
 open3d::core::Tensor
 RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type);
+
+
 
 } // nnrt::geometry::functional
