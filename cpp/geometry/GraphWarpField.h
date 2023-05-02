@@ -33,6 +33,7 @@ struct GraphWarpFieldRegularizationLayer{
 public:
 	float decimation_radius = 0.025; // m
 	open3d::core::Tensor nodes;
+	open3d::core::Tensor edges_to_coarser_layer;
 };
 
 

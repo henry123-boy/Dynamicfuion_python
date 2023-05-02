@@ -277,12 +277,19 @@ int GraphWarpField::GetRegularizationLevelCount() const {
 
 void GraphWarpField::BuildRegularizationLayers(int count, float decimation_radius) {
 	this->regularization_layers = {};
-	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes});
+	o3c::Tensor empty_tensor;
+	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes, empty_tensor});
+
 	float current_decimation_radius = decimation_radius;
 	for(int i_layer = 1; i_layer < count; i_layer++){
 		o3c::Tensor layer_nodes = geometry::functional::FastRadiusAverageDownsample3dPoints(this->nodes, current_decimation_radius);
 		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
-		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes});
+		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes, empty_tensor});
+	}
+	if(count > 1){
+		o3c::Tensor edges_layer_0, squared_distances;
+		this->index.FindKNearestToPoints(edges_layer_0, squared_distances, this->regularization_layers[1].nodes, 4);
+		//TODO: add edges for other layers
 	}
 }
 
