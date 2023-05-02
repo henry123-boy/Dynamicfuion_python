@@ -70,8 +70,28 @@ void RadiusMedianSubsample3dPoints(
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(sample, points, radius,
-						                                                             hash_backend_type);
+						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(sample, points, radius, hash_backend_type);
+				);
+			}
+	);
+}
+
+
+void RadiusSubsampleGraph(
+		open3d::core::Tensor& sample,
+		open3d::core::Tensor& resampled_edges,
+		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& edges,
+		float radius
+) {
+	core::ExecuteOnDevice(
+			vertices.GetDevice(),
+			[&] {
+				RadiusSubsampleGraph<o3c::Device::DeviceType::CPU>(sample, resampled_edges, vertices, edges, radius);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						RadiusSubsampleGraph<o3c::Device::DeviceType::CUDA>(sample, resampled_edges, vertices, edges, radius);
 				);
 			}
 	);

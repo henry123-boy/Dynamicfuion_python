@@ -471,4 +471,16 @@ void RadiusMedianSubsample3dPoints(
 }
 
 
+template<open3d::core::Device::DeviceType DeviceType>
+void RadiusSubsampleGraph(
+		open3d::core::Tensor& sample,
+		open3d::core::Tensor& resampled_edges,
+		const open3d::core::Tensor& vertices,
+		const open3d::core::Tensor& edges,
+		float radius
+){
+	//TODO
+}
+
+
 } // namespace nnrt::geometry::functional::kernel::sampling

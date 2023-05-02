@@ -29,8 +29,10 @@ namespace nnrt::geometry::functional {
  * \param hash_backend hash backend to use for the operation
  * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
-open3d::core::Tensor GridAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size,
-                                                   const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
+open3d::core::Tensor GridAverageDownsample3dPoints(
+		const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
+);
 
 /**
  * \brief average-downsample points such that resulting points are at least at `radius` apart.
@@ -42,8 +44,10 @@ open3d::core::Tensor GridAverageDownsample3dPoints(const open3d::core::Tensor& o
  * \param hash_backend backend to use for hashing
  * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
-open3d::core::Tensor FastRadiusAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float radius,
-                                                         const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default);
+open3d::core::Tensor FastRadiusAverageDownsample3dPoints(
+		const open3d::core::Tensor& original_points, float radius,
+		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
+);
 
 /**
  * \brief (Untested) median-downsample points such that resulting sample consists of points at least `radius` apart from one another.
@@ -55,6 +59,9 @@ open3d::core::Tensor FastRadiusAverageDownsample3dPoints(const open3d::core::Ten
 open3d::core::Tensor
 RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type);
 
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+RadiusSubsampleGraph(const open3d::core::Tensor& vertices, const open3d::core::Tensor& edges, float radius);
 
 
 } // nnrt::geometry::functional

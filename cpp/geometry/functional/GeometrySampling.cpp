@@ -55,4 +55,11 @@ RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, 
 	return sample;
 }
 
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+RadiusSubsampleGraph(const open3d::core::Tensor& vertices, const open3d::core::Tensor& edges, float radius) {
+	o3c::Tensor sample, resampled_edges;
+	functional::kernel::sampling::RadiusSubsampleGraph(sample, resampled_edges, vertices, edges, radius);
+	return std::make_tuple(sample, resampled_edges);
+}
+
 } // namespace nnrt::geometry::functional
