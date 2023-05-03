@@ -13,31 +13,24 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#pragma once
 // stdlib includes
 
 // third-party includes
+#include <open3d/core/Tensor.h>
 
 // local includes
-#include "core/DeviceSelection.h"
-#include "core/functional/kernel/ExclusiveParallelPrefixScan.h"
 
-namespace o3c = open3d::core;
+namespace nnrt::core::functional::kernel{
 
-namespace nnrt::core::functional::kernel {
+void ExclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
 
-void ExclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source) {
-	core::ExecuteOnDevice(
-			source.GetDevice(),
-			[&] {
-				ExclusiveParallelPrefixSum1D<o3c::Device::DeviceType::CPU>(prefix_sum, source);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-						ExclusiveParallelPrefixSum1D<o3c::Device::DeviceType::CUDA>(prefix_sum, source);
-				);
-			}
+template<open3d::core::Device::DeviceType TDeviceType>
+void ExclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
 
-	);
-}
+void InclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void InclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
 
 } // namespace nnrt::core::functional::kernel

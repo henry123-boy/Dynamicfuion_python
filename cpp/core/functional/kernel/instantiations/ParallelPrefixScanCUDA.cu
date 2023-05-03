@@ -18,11 +18,14 @@
 // third-party includes
 
 // local includes
-#include "core/functional/kernel/ExclusiveParallelPrefixScanImpl.h"
+#include "core/functional/kernel/ParallelPrefixScanImpl.h"
 
 namespace nnrt::core::functional::kernel {
 
 template
-void ExclusiveParallelPrefixSum1D<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
+void ExclusiveParallelPrefixSum1D<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
+
+template
+void InclusiveParallelPrefixSum1D<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source);
 
 } // namespace nnrt::core::functional::kernel

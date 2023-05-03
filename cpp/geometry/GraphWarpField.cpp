@@ -282,7 +282,7 @@ void GraphWarpField::BuildRegularizationLayers(int count, float decimation_radiu
 
 	float current_decimation_radius = decimation_radius;
 	for(int i_layer = 1; i_layer < count; i_layer++){
-		o3c::Tensor layer_nodes = geometry::functional::FastRadiusAverageDownsample3dPoints(this->nodes, current_decimation_radius);
+		o3c::Tensor layer_nodes = geometry::functional::FastMeanRadiusDownsample3dPoints(this->nodes, current_decimation_radius);
 		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
 		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes, empty_tensor});
 	}

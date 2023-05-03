@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/26/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/25/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,16 +13,28 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
 
 // local includes
+#include "core/functional/ParallelPrefixScan.h"
+#include "core/functional/kernel/ParallelPrefixScan.h"
+
+namespace o3c = open3d::core;
 
 namespace nnrt::core::functional {
 
-open3d::core::Tensor ExclusiveParallelPrefixSum1D(const open3d::core::Tensor& source);
+open3d::core::Tensor ExclusiveParallelPrefixSum1D(const open3d::core::Tensor& source) {
+	o3c::Tensor prefix_sum;
+	kernel::ExclusiveParallelPrefixSum1D(prefix_sum, source);
+	return prefix_sum;
+}
+
+open3d::core::Tensor InclusiveParallelPrefixSum1D(const open3d::core::Tensor& source) {
+	o3c::Tensor prefix_sum;
+	kernel::InclusiveParallelPrefixSum1D(prefix_sum, source);
+	return prefix_sum;
+}
 
 } // namespace nnrt::core::functional

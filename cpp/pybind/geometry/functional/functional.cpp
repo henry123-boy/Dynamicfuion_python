@@ -123,8 +123,8 @@ void pybind_geometry_functional_pointcloud(pybind11::module& m) {
 
 
 void pybind_geometry_downsampling(pybind11::module& m) {
-	m.def("grid_downsample_3d_points", &GridAverageDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("radius_downsample_3d_points", &FastRadiusAverageDownsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
+	m.def("grid_downsample_3d_points", &MeanGridDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
+	m.def("radius_downsample_3d_points", &FastMeanRadiusDownsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
 }
 
 } // namespace nnrt::geometry::functional

@@ -25,7 +25,7 @@
 
 
 namespace nnrt::geometry::functional::kernel::sampling {
-struct PointAverageAggregationBin {
+struct PointMeanAggregationBin {
 #ifdef __CUDACC__
 	float x;
 	float y;
@@ -47,9 +47,9 @@ struct PointAverageAggregationBin {
 		this->count = _count;
 	}
 };
-#define MAX_POINTS_PER_BIN 1000
-struct PointCollectionBin {
-	int64_t indices[MAX_POINTS_PER_BIN];
+template<int TMaxPointCount>
+struct PointCollectionBin{
+	int64_t indices[TMaxPointCount];
 #ifdef __CUDACC__
 	int count;
 #else

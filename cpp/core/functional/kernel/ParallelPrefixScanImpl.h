@@ -70,15 +70,16 @@
 
 #include <open3d/core/Dispatch.h>
 #include <open3d/utility/Logging.h>
+#include <open3d/utility/ParallelScan.h>
 
 // local includes
-#include "core/functional/kernel/ExclusiveParallelPrefixScan.h"
+#include "core/functional/kernel/ParallelPrefixScan.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
-//NOTE: Code adapted from open3d/utility/ParallelScan.h (Open3D release 0.16, https://github.com/isl-org/Open3D)
+//NOTE: Some of the code adapted from open3d/utility/ParallelScan.h (Open3D release 0.16, https://github.com/isl-org/Open3D)
 
 namespace nnrt::core::functional::kernel {
 
@@ -116,6 +117,8 @@ public:
 
 	void assign(ExclusiveScanSumBody& b) { sum = b.sum; }
 };
+
+
 } // namespace
 
 template<class Tin, class Tout>
@@ -140,6 +143,12 @@ template<class Tin, class Tout>
 void ExclusivePrefixSumCUDA(const Tin* first, const Tin* last, Tout* out, const open3d::core::Device& device){
 	cudaSetDevice(device.GetID());
 	thrust::exclusive_scan(thrust::device, first, last, out);
+}
+
+template<class Tin, class Tout>
+void InclusivePrefixSumCUDA(const Tin* first, const Tin* last, Tout* out, const open3d::core::Device& device){
+	cudaSetDevice(device.GetID());
+	thrust::inclusive_scan(thrust::device, first, last, out);
 }
 #endif
 
@@ -171,6 +180,39 @@ void ExclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d
 
 	DISPATCH_DTYPE_TO_TEMPLATE(source.GetDtype(), [&] {
 		ExclusiveParallelPrefixSum1D_Generic<scalar_t, TDeviceType>(prefix_sum, source);
+	});
+}
+
+template<typename TElement, open3d::core::Device::DeviceType TDeviceType>
+void InclusiveParallelPrefixSum1D_Generic(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source) {
+	prefix_sum = o3c::Tensor({source.GetLength()}, source.GetDtype(), source.GetDevice());
+	auto source_data_begin = source.GetDataPtr<TElement>();
+	auto source_data_end = source_data_begin + source.GetLength();
+	auto sum_data_begin = prefix_sum.GetDataPtr<TElement>();
+	switch (TDeviceType) {
+		case o3c::Device::DeviceType::CPU:
+			open3d::utility::InclusivePrefixSum(source_data_begin, source_data_end, sum_data_begin);
+			break;
+		case o3c::Device::DeviceType::CUDA:
+#ifdef __CUDACC__
+			InclusivePrefixSumCUDA(source_data_begin, source_data_end, sum_data_begin, source.GetDevice());
+#else
+			utility::LogError("BUILD ERROR. Wrong device: {}", source.GetDevice().ToString());
+#endif
+			break;
+		default: utility::LogError("Unsupported device: {}", source.GetDevice().ToString());
+			break;
+	}
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void InclusiveParallelPrefixSum1D(open3d::core::Tensor& prefix_sum, const open3d::core::Tensor& source) {
+	o3c::AssertTensorShape(source, { source.GetLength() });
+	o3c::AssertTensorDtypes(source, { o3c::Float32, o3c::Float64, o3c::Int16, o3c::Int32, o3c::Int64, o3c::UInt16, o3c::UInt32, o3c::UInt64 });
+
+	DISPATCH_DTYPE_TO_TEMPLATE(source.GetDtype(), [&] {
+		InclusiveParallelPrefixSum1D_Generic<scalar_t, TDeviceType>(prefix_sum, source);
 	});
 }
 

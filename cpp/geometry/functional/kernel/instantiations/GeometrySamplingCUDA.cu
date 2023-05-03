@@ -33,6 +33,14 @@ void FastRadiusDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
 );
 
 template
+void GridMedianSubsample3dPoints<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& sample,
+		const open3d::core::Tensor& points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend_type
+);
+
+template
 void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& sample, const open3d::core::Tensor& points,
 		float min_distance,
@@ -41,7 +49,7 @@ void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CUDA>(
 
 template
 void RadiusSubsampleGraph<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& vertices,
+		open3d::core::Tensor& resampled_vertices,
 		open3d::core::Tensor& resampled_edges,
 		const open3d::core::Tensor& vertices,
 		const open3d::core::Tensor& edges,

@@ -16,6 +16,7 @@
 // third-party
 #include <open3d/core/Tensor.h>
 #include <Eigen/Dense>
+#include <set>
 
 // test utilities
 #include "test_main.hpp"
@@ -111,7 +112,7 @@ void TestGridDownsampling_Generic(const o3c::Device& device, TDownsample&& downs
 
 void TestGridDownsampling_Hash(const o3c::Device& device) {
 	TestGridDownsampling_Generic(device, [](o3c::Tensor& points, float grid_cell_size) {
-		return geometry::functional::GridAverageDownsample3dPoints(points, grid_cell_size);
+		return geometry::functional::MeanGridDownsample3dPoints(points, grid_cell_size);
 	});
 }
 
@@ -130,7 +131,7 @@ TEST_CASE("Test Grid Downsampling - Hash - CUDA") {
 void TestRadiusDownsampling(const o3c::Device& device) {
 	o3c::Tensor points = o3c::Tensor::Load(test::static_array_test_data_directory.ToString() + "/downsampling_source.npy");
 	float downsampling_radius = 10.0;
-	o3c::Tensor downsampled_points = geometry::functional::FastRadiusAverageDownsample3dPoints(points, 10.0);
+	o3c::Tensor downsampled_points = geometry::functional::FastMeanRadiusDownsample3dPoints(points, 10.0);
 	o3c::Tensor distance_matrix = geometry::functional::ComputeDistanceMatrix(downsampled_points, downsampled_points);
 	core::functional::ReplaceValue(distance_matrix, 0.f, std::numeric_limits<float>::max());
 	float min_distance = distance_matrix.Min({0,1}).ToFlatVector<float>()[0];
@@ -147,4 +148,39 @@ TEST_CASE("Test Radius Downsampling - CPU") {
 TEST_CASE("Test Radius Downsampling - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestRadiusDownsampling(device);
+}
+
+void TestGridMedianDownsampling(const o3c::Device& device){
+	std::vector<float> point_data = {
+			1.36, 1.2, 1,
+			1.41, 1.95, 1,
+			1.76, 1.5, 1, // median for 1, 1, 1 grid cell
+			2.46, 2.75, 1, // median for 2, 2, 2 grid cell
+			2.61, 2.45, 1,
+			2.26, 2.3, 1,
+			3.51, 2.6, 1, // either of two points can be median in 3, 2, 1 grid cell
+			3.56, 2.35, 1,
+			3.66, 1.7, 1, // either of two points can be median in 3, 1, 1 grid cell
+			3.11, 1.05, 1
+	};
+	o3c::Tensor points(point_data, {10, 3}, o3c::Dtype::Float32, device);
+	o3c::Tensor sample = geometry::functional::MedianGridSubsample3dPoints(points, 1.0f);
+	auto sample_data = sample.ToFlatVector<int64_t>();
+	std::set<int64_t> sample_data_set(std::make_move_iterator(sample_data.begin()), std::make_move_iterator(sample_data.end()));
+
+	REQUIRE(sample_data_set.find((int64_t)2) != sample_data_set.end());
+	REQUIRE(sample_data_set.find((int64_t)4) != sample_data_set.end());
+	REQUIRE((sample_data_set.find((int64_t)6) != sample_data_set.end() || sample_data_set.find((int64_t)7) != sample_data_set.end()));
+	REQUIRE((sample_data_set.find((int64_t)8) != sample_data_set.end() || sample_data_set.find((int64_t)9) != sample_data_set.end()));
+
+}
+
+TEST_CASE("Test Median Grid Downsampling - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestGridMedianDownsampling(device);
+}
+
+TEST_CASE("Test Median Grid Downsampling - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestGridMedianDownsampling(device);
 }

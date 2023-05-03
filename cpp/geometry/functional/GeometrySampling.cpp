@@ -24,7 +24,7 @@ namespace nnrt::geometry::functional {
 
 
 open3d::core::Tensor
-GridAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
+MeanGridDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
 
@@ -36,7 +36,7 @@ GridAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float
 
 
 open3d::core::Tensor
-FastRadiusAverageDownsample3dPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
+FastMeanRadiusDownsample3dPoints(const open3d::core::Tensor& original_points, float radius, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
 
@@ -44,6 +44,15 @@ FastRadiusAverageDownsample3dPoints(const open3d::core::Tensor& original_points,
 	o3c::Tensor downsampled_points;
 	functional::kernel::sampling::FastRadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
 	return downsampled_points;
+}
+
+open3d::core::Tensor
+MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size, const open3d::core::HashBackendType& hash_backend_type) {
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
+	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
+	o3c::Tensor sample;
+	functional::kernel::sampling::GridMedianSubsample3dPoints(sample, points, grid_size, hash_backend_type);
+	return sample;
 }
 
 open3d::core::Tensor

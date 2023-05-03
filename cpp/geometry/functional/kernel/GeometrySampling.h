@@ -36,8 +36,24 @@ void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const 
                                 const open3d::core::HashBackendType& hash_backend);
 
 
+void GridMedianSubsample3dPoints(
+		open3d::core::Tensor& sample,
+		const open3d::core::Tensor& points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend_type
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void GridMedianSubsample3dPoints(
+		open3d::core::Tensor& sample,
+		const open3d::core::Tensor& points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend_type
+);
+
+
 void RadiusMedianSubsample3dPoints(
-		open3d::core::Tensor sample,
+		open3d::core::Tensor& sample,
 		const open3d::core::Tensor& points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend_type
@@ -52,7 +68,7 @@ void RadiusMedianSubsample3dPoints(
 );
 
 void RadiusSubsampleGraph(
-		open3d::core::Tensor& vertices,
+		open3d::core::Tensor& resampled_vertices,
 		open3d::core::Tensor& resampled_edges,
 		const open3d::core::Tensor& vertices,
 		const open3d::core::Tensor& edges,
@@ -61,7 +77,7 @@ void RadiusSubsampleGraph(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void RadiusSubsampleGraph(
-		open3d::core::Tensor& vertices,
+		open3d::core::Tensor& resampled_vertices,
 		open3d::core::Tensor& resampled_edges,
 		const open3d::core::Tensor& vertices,
 		const open3d::core::Tensor& edges,

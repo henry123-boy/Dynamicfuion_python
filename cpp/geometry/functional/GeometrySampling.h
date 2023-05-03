@@ -29,7 +29,7 @@ namespace nnrt::geometry::functional {
  * \param hash_backend hash backend to use for the operation
  * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
-open3d::core::Tensor GridAverageDownsample3dPoints(
+open3d::core::Tensor MeanGridDownsample3dPoints(
 		const open3d::core::Tensor& original_points, float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
@@ -44,10 +44,14 @@ open3d::core::Tensor GridAverageDownsample3dPoints(
  * \param hash_backend backend to use for hashing
  * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
-open3d::core::Tensor FastRadiusAverageDownsample3dPoints(
+open3d::core::Tensor FastMeanRadiusDownsample3dPoints(
 		const open3d::core::Tensor& original_points, float radius,
 		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
+
+open3d::core::Tensor
+MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size,
+							const open3d::core::HashBackendType& hash_backend_type  = open3d::core::HashBackendType::Default);
 
 /**
  * \brief (Untested) median-downsample points such that resulting sample consists of points at least `radius` apart from one another.
@@ -57,9 +61,17 @@ open3d::core::Tensor FastRadiusAverageDownsample3dPoints(
  * \return resulting sample of point indexes, in a 1D Int64 tensor, stored on the same device as the original points
  */
 open3d::core::Tensor
-RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type);
+RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius,
+							  const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default);
 
-
+/**
+ * \brief (Untested, most likely suffers from race conditions) sub-sample a dense graph (can potentially be used for construction of the bottom-level
+ * N_warp layer in DynamicFusion-style algorithms, but probably not...)
+ * \param vertices
+ * \param edges
+ * \param radius
+ * \return
+ */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 RadiusSubsampleGraph(const open3d::core::Tensor& vertices, const open3d::core::Tensor& edges, float radius);
 
