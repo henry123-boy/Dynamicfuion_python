@@ -29,13 +29,6 @@
 
 namespace nnrt::geometry {
 
-struct GraphWarpFieldRegularizationLayer {
-public:
-	float decimation_radius = 0.025; // m
-	open3d::core::Tensor nodes;
-	open3d::core::Tensor edges_to_coarser_layer;
-};
-
 
 class WarpField {
 
@@ -45,9 +38,7 @@ public:
 			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0,
-			int layer_count = 4,
-			float decimation_radius = 0.02  // m
+			int minimum_valid_anchor_count = 0
 	);
 	WarpField(const WarpField& original) = default;
 	WarpField(WarpField&& other) = default;
@@ -65,7 +56,8 @@ public:
 			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
 			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(const open3d::t::geometry::TriangleMesh& input_mesh
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
+			const open3d::t::geometry::TriangleMesh& input_mesh
 	) const;
 
 	void ResetRotations();
@@ -123,6 +115,7 @@ public:
 	open3d::core::Tensor GetNodeTranslations();
 	const open3d::core::Tensor& GetNodeTranslations() const;
 	const open3d::core::Tensor& GetNodePositions() const;
+	open3d::core::Device GetDevice() const;
 
 	void SetNodeRotations(const o3c::Tensor& node_rotations);
 	void SetNodeTranslations(const o3c::Tensor& node_translations);
@@ -136,15 +129,8 @@ public:
 	const int anchor_count;
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
-
-	const GraphWarpFieldRegularizationLayer& GetRegularizationLevel(int i_layer) const;
-	int GetRegularizationLevelCount() const;
-
-
 protected:
 	WarpField(const WarpField& original, const core::KdTree& index);
-
-	void BuildRegularizationLayers(int count, float decimation_radius);
 
 	core::KdTree index;
 	const float node_coverage_squared;
@@ -160,13 +146,9 @@ protected:
 	float const* rotations_data;
 	float const* translations_data;
 
-	std::vector<GraphWarpFieldRegularizationLayer> regularization_layers;
 };
 
 class PlanarGraphWarpField : public WarpField {
-
-	PlanarGraphWarpField(const PlanarGraphWarpField& original) = default;
-	PlanarGraphWarpField(PlanarGraphWarpField&& other) = default;
 public:
 	PlanarGraphWarpField(
 			open3d::core::Tensor nodes,
@@ -176,10 +158,10 @@ public:
 			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0,
-			int layer_count = 4,
-			float decimation_radius = 0.02  // m
+			int minimum_valid_anchor_count = 0
 	);
+	PlanarGraphWarpField(const PlanarGraphWarpField& original) = default;
+	PlanarGraphWarpField(PlanarGraphWarpField&& other) = default;
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
 			const open3d::t::geometry::TriangleMesh& input_mesh,
@@ -198,6 +180,38 @@ protected:
 };
 
 
+class HierarchicalGraphWarpField : public WarpField {
+public:
+	struct RegularizationLayer {
+	public:
+		float node_coverage; // m
+		open3d::core::Tensor nodes;
+		open3d::core::Tensor edges_to_coarser_layer;
+		open3d::core::Tensor rotations;
+		open3d::core::Tensor translations;
+		std::shared_ptr<core::KdTree> index;
+	};
+public:
+	HierarchicalGraphWarpField(
+			open3d::core::Tensor nodes,
+			float node_coverage = 0.05, // m
+			bool threshold_nodes_by_distance_by_default = false,
+			int anchor_count = 4,
+			int minimum_valid_anchor_count = 0,
+			int layer_count = 4,
+			int max_vertex_degree = 4
+	);
+
+
+	void RebuildRegularizationLayers(int count, int max_vertex_degree);
+
+	const HierarchicalGraphWarpField::RegularizationLayer& GetRegularizationLevel(int i_layer) const;
+	int GetRegularizationLevelCount() const;
+
+protected:
+	std::vector<RegularizationLayer> regularization_layers;
+
+};
 
 
 } // namespace nnrt::geometry

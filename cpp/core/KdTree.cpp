@@ -114,5 +114,4 @@ open3d::core::Tensor KdTree::GetPoints() const {
 	return this->points;
 }
 
-
 } // namespace nnrt::core

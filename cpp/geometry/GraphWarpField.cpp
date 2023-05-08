@@ -35,9 +35,7 @@ WarpField::WarpField(
 		float node_coverage,
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
-		int minimum_valid_anchor_count,
-		int layer_count,
-		float decimation_radius
+		int minimum_valid_anchor_count
 ) :
 		nodes(std::move(nodes)), node_coverage(node_coverage), anchor_count(anchor_count),
 		threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
@@ -52,11 +50,10 @@ WarpField::WarpField(
 		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
 
 	int64_t node_count = this->nodes.GetLength();
-	o3c::AssertTensorShape(this->nodes, {node_count, 3});
+	o3c::AssertTensorShape(this->nodes, { node_count, 3 });
 	o3c::AssertTensorDtype(this->nodes, o3c::Float32);
 
 	this->ResetRotations();
-	this->BuildRegularizationLayers(layer_count, decimation_radius);
 }
 
 WarpField::WarpField(const WarpField& original, const core::KdTree& index) :
@@ -137,6 +134,10 @@ WarpField WarpField::Clone() {
 	return {*this, this->index.Clone()};
 }
 
+open3d::core::Device WarpField::GetDevice() const {
+	return this->nodes.GetDevice();
+}
+
 void WarpField::SetNodeRotations(const o3c::Tensor& node_rotations) {
 	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
 	o3c::AssertTensorShape(node_rotations, { this->nodes.GetLength(), 3, 3 });
@@ -198,33 +199,6 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpField::PrecomputeAnch
 	return std::make_tuple(anchors, weights);
 }
 
-const GraphWarpFieldRegularizationLayer& WarpField::GetRegularizationLevel(int i_layer) const {
-	return this->regularization_layers[i_layer];
-}
-
-int WarpField::GetRegularizationLevelCount() const {
-	return static_cast<int>(this->regularization_layers.size());
-}
-
-void WarpField::BuildRegularizationLayers(int count, float decimation_radius) {
-	this->regularization_layers = {};
-	o3c::Tensor empty_tensor;
-	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes, empty_tensor});
-
-	float current_decimation_radius = decimation_radius;
-	for (int i_layer = 1; i_layer < count; i_layer++) {
-		o3c::Tensor layer_nodes = geometry::functional::FastMeanRadiusDownsample3dPoints(this->nodes, current_decimation_radius);
-		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
-		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes, empty_tensor});
-	}
-	if (count > 1) {
-		o3c::Tensor edges_layer_0, squared_distances;
-		this->index.FindKNearestToPoints(edges_layer_0, squared_distances, this->regularization_layers[1].nodes, 4);
-		//TODO: add edges for other layers
-	}
-}
-
-
 PlanarGraphWarpField::PlanarGraphWarpField(
 		open3d::core::Tensor nodes,
 		open3d::core::Tensor edges,
@@ -233,11 +207,9 @@ PlanarGraphWarpField::PlanarGraphWarpField(
 		float node_coverage,
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
-		int minimum_valid_anchor_count,
-		int layer_count,
-		float decimation_radius
+		int minimum_valid_anchor_count
 ) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count,
-              minimum_valid_anchor_count, layer_count, decimation_radius),
+              minimum_valid_anchor_count),
     edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)) {
 	auto device = this->nodes.GetDevice();
 	int64_t node_count = this->nodes.GetLength();
@@ -245,7 +217,7 @@ PlanarGraphWarpField::PlanarGraphWarpField(
 
 	o3c::AssertTensorDevice(this->edges, device);
 	o3c::AssertTensorShape(this->edges, { node_count, max_vertex_degree });
-	o3c::AssertTensorDtypes(this->edges, { o3c::Int32, o3c::Int64});
+	o3c::AssertTensorDtypes(this->edges, { o3c::Int32, o3c::Int64 });
 
 	if (this->edge_weights.has_value()) {
 		o3c::AssertTensorDevice(this->edge_weights.value().get(), device);
@@ -295,9 +267,8 @@ PlanarGraphWarpField PlanarGraphWarpField::ApplyTransformations() const {
 	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
 }
 
-PlanarGraphWarpField::PlanarGraphWarpField(const PlanarGraphWarpField& original, const core::KdTree& index):
-		WarpField(original, index), edges(original.edges.Clone())
-{
+PlanarGraphWarpField::PlanarGraphWarpField(const PlanarGraphWarpField& original, const core::KdTree& index) :
+		WarpField(original, index), edges(original.edges.Clone()) {
 	if (original.edge_weights.has_value()) {
 		auto cloned_edge_weights = original.edge_weights.value().get().Clone();
 		this->edge_weights = cloned_edge_weights;
@@ -305,6 +276,62 @@ PlanarGraphWarpField::PlanarGraphWarpField(const PlanarGraphWarpField& original,
 	if (original.clusters.has_value()) {
 		auto cloned_clusters = original.clusters.value().get().Clone();
 		this->clusters = cloned_clusters;
+	}
+}
+
+HierarchicalGraphWarpField::HierarchicalGraphWarpField(
+		open3d::core::Tensor nodes,
+		float node_coverage,
+		bool threshold_nodes_by_distance_by_default,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		int layer_count,
+		int max_vertex_degree
+) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count, minimum_valid_anchor_count),
+    regularization_layers() {
+	this->RebuildRegularizationLayers(layer_count, max_vertex_degree);
+}
+
+
+const HierarchicalGraphWarpField::RegularizationLayer& HierarchicalGraphWarpField::GetRegularizationLevel(int i_layer) const {
+	return this->regularization_layers[i_layer];
+}
+
+int HierarchicalGraphWarpField::GetRegularizationLevelCount() const {
+	return static_cast<int>(this->regularization_layers.size());
+}
+
+void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_vertex_degree) {
+	this->regularization_layers.resize(count);
+	auto& finest_layer = this->regularization_layers[0];
+	// use all nodes at first for finest layer
+	finest_layer.node_coverage = this->node_coverage;
+	finest_layer.nodes = this->nodes;
+	finest_layer.translations = this->translations;
+	finest_layer.rotations = this->rotations;
+	finest_layer.index = std::make_shared<core::KdTree>(this->index);
+
+	// build up node indices for each layer
+	for (int i_layer = 1; i_layer < count; i_layer++) {
+		auto& previous_layer = this->regularization_layers[i_layer - 1];
+
+		// === find decimation "radius" and median-grid-subsample the previous layer to find the current layer.
+		float current_node_coverage = static_cast<float>(i_layer + 1) * node_coverage;
+		o3c::Tensor layer_node_indices =
+				geometry::functional::MedianGridSubsample3dPoints(previous_layer.nodes, current_node_coverage * 2);
+		o3c::TensorKey layer_node_index_key = o3c::TensorKey::IndexTensor(layer_node_indices);
+		o3c::Tensor current_layer_nodes = previous_layer.nodes.GetItem(layer_node_index_key);
+
+		o3c::Tensor layer_edges, squared_distances;
+		previous_layer.index->FindKNearestToPoints(layer_edges, squared_distances, current_layer_nodes, max_vertex_degree);
+		previous_layer.edges_to_coarser_layer = layer_edges;
+
+		auto& current_layer = this->regularization_layers[i_layer];
+		current_layer.node_coverage = current_node_coverage;
+		current_layer.nodes = current_layer_nodes;
+		current_layer.translations = previous_layer.translations.GetItem(layer_node_index_key);
+		current_layer.rotations = previous_layer.rotations.GetItem(layer_node_index_key);
+		current_layer.index = std::make_shared<core::KdTree>(current_layer_nodes);
 	}
 }
 
