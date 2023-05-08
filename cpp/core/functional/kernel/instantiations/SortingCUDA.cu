@@ -20,4 +20,7 @@ namespace nnrt::core::functional::kernel {
 template void
 SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted);
 
+
+template
+void SortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column);
 } //  nnrt::core::functional::kernel

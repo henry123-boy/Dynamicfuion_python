@@ -21,6 +21,6 @@
 namespace nnrt::core::functional {
 
 open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted);
-
+open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column);
 
 } // nnrt::core::functional

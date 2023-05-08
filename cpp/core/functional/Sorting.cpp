@@ -30,4 +30,13 @@ open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& un
 	return sorted;
 }
 
+open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column) {
+	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
+		return unsorted;
+	}
+	o3c::Tensor sorted;
+	kernel::SortTensorByColumn(sorted, unsorted, column);
+	return sorted;
+}
+
 } // nnrt::core::functional

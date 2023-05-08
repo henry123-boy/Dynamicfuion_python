@@ -25,4 +25,9 @@ void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::co
 template<open3d::core::Device::DeviceType TDeviceType>
 void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted);
 
+void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column);
+
 } // namespace nnrt::core::functional::kernel
