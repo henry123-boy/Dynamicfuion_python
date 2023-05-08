@@ -258,7 +258,7 @@ void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
 	                                       "truncation_voxel_multiplier"_a);
 
 	non_rigid_surface_voxel_block_grid.def("integrate_non_rigid", py::overload_cast<
-			                                       const o3c::Tensor&, const GraphWarpField&,
+			                                       const o3c::Tensor&, const WarpField&,
 			                                       const o3tg::Image&, const o3tg::Image&, const o3c::Tensor&,
 			                                       const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&,
 			                                       float, float, float
@@ -275,7 +275,7 @@ void pybind_geometry_non_rigid_surface_voxel_block_grid(pybind11::module& m) {
 
 void pybind_geometry_graph_warp_field(pybind11::module& m) {
 
-	py::class_<GraphWarpField> graph_warp_field(
+	py::class_<WarpField> graph_warp_field(
 			m, "GraphWarpField",
 			"A warp (motion) field represented by a graph (i.e. using a bidirectional graph as the motion proxy)."
 			"Motion of a particular point within the field can be represented by a weighted function of the motions of "
@@ -286,34 +286,34 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	                     "nodes"_a, "edges"_a, "edge_weights"_a, "clusters"_a,
 	                     "node_coverage"_a = 0.05, "threshold_nodes_by_distance"_a = false,
 	                     "anchor_count"_a = 4, "minimum_valid_anchor_count"_a = 0);
-	graph_warp_field.def("get_warped_nodes", &GraphWarpField::GetWarpedNodes);
-	graph_warp_field.def("get_node_extent", &GraphWarpField::GetNodeExtent);
+	graph_warp_field.def("get_warped_nodes", &WarpField::GetWarpedNodes);
+	graph_warp_field.def("get_node_extent", &WarpField::GetNodeExtent);
 	graph_warp_field.def("warp_mesh",
 	                     py::overload_cast<const open3d::t::geometry::TriangleMesh&, bool,
-			                     const open3d::core::Tensor&>(&GraphWarpField::WarpMesh, py::const_),
+			                     const open3d::core::Tensor&>(&WarpField::WarpMesh, py::const_),
 	                     "input_mesh"_a, "disable_neighbor_thresholding"_a = true,
 	                     "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
 	graph_warp_field.def("warp_mesh",
 	                     py::overload_cast<const open3d::t::geometry::TriangleMesh&, const open3d::core::Tensor&, const open3d::core::Tensor&,
-			                     bool, const open3d::core::Tensor&>(&GraphWarpField::WarpMesh, py::const_),
+			                     bool, const open3d::core::Tensor&>(&WarpField::WarpMesh, py::const_),
 	                     "input_mesh"_a, "anchors"_a, "anchor_weights"_a, "disable_neighbor_thresholding"_a = true,
 	                     "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0")));
-	graph_warp_field.def("clone", &GraphWarpField::Clone);
+	graph_warp_field.def("clone", &WarpField::Clone);
 
-	graph_warp_field.def("reset_rotations", &GraphWarpField::ResetRotations);
-	graph_warp_field.def("apply_transformations", &GraphWarpField::ApplyTransformations);
+	graph_warp_field.def("reset_rotations", &WarpField::ResetRotations);
+	graph_warp_field.def("apply_transformations", &WarpField::ApplyTransformations);
 
-	graph_warp_field.def("get_node_rotations", py::overload_cast<>(&GraphWarpField::GetNodeRotations));
-	graph_warp_field.def("get_node_translations", py::overload_cast<>(&GraphWarpField::GetNodeTranslations));
-	graph_warp_field.def("set_node_rotations", &GraphWarpField::SetNodeRotations, "node_rotations"_a);
-	graph_warp_field.def("set_node_translations", &GraphWarpField::SetNodeTranslations, "node_translations"_a);
-	graph_warp_field.def("translate_nodes", &GraphWarpField::TranslateNodes, "node_translation_deltas"_a);
-	graph_warp_field.def("rotate_nodes", &GraphWarpField::RotateNodes, "node_rotation_deltas"_a);
+	graph_warp_field.def("get_node_rotations", py::overload_cast<>(&WarpField::GetNodeRotations));
+	graph_warp_field.def("get_node_translations", py::overload_cast<>(&WarpField::GetNodeTranslations));
+	graph_warp_field.def("set_node_rotations", &WarpField::SetNodeRotations, "node_rotations"_a);
+	graph_warp_field.def("set_node_translations", &WarpField::SetNodeTranslations, "node_translations"_a);
+	graph_warp_field.def("translate_nodes", &WarpField::TranslateNodes, "node_translation_deltas"_a);
+	graph_warp_field.def("rotate_nodes", &WarpField::RotateNodes, "node_rotation_deltas"_a);
 
-	graph_warp_field.def_readonly("nodes", &GraphWarpField::nodes);
-	graph_warp_field.def_readonly("edges", &GraphWarpField::edges);
-	graph_warp_field.def_readonly("edge_weights", &GraphWarpField::edge_weights);
-	graph_warp_field.def_readonly("clusters", &GraphWarpField::clusters);
+	graph_warp_field.def_readonly("nodes", &WarpField::nodes);
+	graph_warp_field.def_readonly("edges", &WarpField::edges);
+	graph_warp_field.def_readonly("edge_weights", &WarpField::edge_weights);
+	graph_warp_field.def_readonly("clusters", &WarpField::clusters);
 }
 
 } // namespace nnrt

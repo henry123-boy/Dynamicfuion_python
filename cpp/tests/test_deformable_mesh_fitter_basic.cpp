@@ -115,7 +115,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 
 	o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1}, {1, 4}, o3c::Int32, device);
 
-	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
+	nnrt::geometry::WarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 	                                                    use_perspective_correction, 10.f, false, 0.01, 0.001);
@@ -216,7 +216,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 
 	o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1}, {1, 4}, o3c::Int32, device);
 
-	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
+	nnrt::geometry::WarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(
 			max_iterations, std::move(iteration_modes), 1e-6,
@@ -344,7 +344,7 @@ void TestDeformableImageFitter_1NodePlane(
 
 	o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1}, {1, 4}, o3c::Int32, device);
 
-	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
+	nnrt::geometry::WarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(
 			max_iterations, std::move(iteration_modes), 1e-6,

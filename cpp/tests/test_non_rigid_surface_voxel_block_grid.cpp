@@ -87,7 +87,7 @@ void TestNonRigidSurfaceVoxelBlockGrid_GetBoundingBoxesOfWarpedBlocks(const o3c:
 	o3c::Tensor clusters = o3c::Tensor::Ones({4}, o3c::Dtype::Float32, device);
 
 
-	geometry::GraphWarpField field(nodes, edges, edge_weights, clusters, 1.0, false, 4);
+	geometry::WarpField field(nodes, edges, edge_weights, clusters, 1.0, false, 4);
 	// move one unit in the +x direction
 	std::vector<float> translation_data{1.0, 0.0, 0.0};
 	o3c::Tensor node_translations({4, 3}, o3c::Float32, device);
@@ -293,7 +293,7 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	o3c::Tensor clusters = o3c::Tensor::Zeros({5}, o3c::Int32, device);
 	float node_coverage = 0.005f;
 	int minimum_valid_anchor_count = 1;
-	nnrt::geometry::GraphWarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, minimum_valid_anchor_count);
+	nnrt::geometry::WarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, minimum_valid_anchor_count);
 	graph_warp_field.SetNodeRotations(node_rotations);
 	graph_warp_field.SetNodeTranslations(node_translations);
 

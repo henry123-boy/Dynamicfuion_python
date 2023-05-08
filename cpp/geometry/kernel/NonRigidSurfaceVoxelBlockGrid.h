@@ -33,7 +33,7 @@ IntegrateNonRigid(
 		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
 		const open3d::core::Tensor& depth, const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
 		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
-		const GraphWarpField& warp_field, float depth_scale, float depth_max
+		const WarpField& warp_field, float depth_scale, float depth_max
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -44,14 +44,14 @@ IntegrateNonRigid(
 		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
 		const open3d::core::Tensor& depth, const open3d::core::Tensor& color, const open3d::core::Tensor& depth_normals,
 		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
-		const GraphWarpField& warp_field, float depth_scale, float depth_max
+		const WarpField& warp_field, float depth_scale, float depth_max
 );
 
-void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const WarpField& warp_field,
                                     float voxel_size, index_t block_resolution, const open3d::core::Tensor& extrinsics);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys, const WarpField& warp_field,
                                     float voxel_size, index_t block_resolution, const open3d::core::Tensor& extrinsics);
 
 void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,

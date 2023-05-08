@@ -53,7 +53,7 @@ public:
      * \param depth_max
      */
     void FitToImage(
-            nnrt::geometry::GraphWarpField& warp_field,
+            nnrt::geometry::WarpField& warp_field,
             const open3d::t::geometry::TriangleMesh& canonical_mesh,
             const open3d::t::geometry::RGBDImage& reference_image,
             const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
@@ -64,7 +64,7 @@ public:
     const;
 
     void FitToImage(
-            nnrt::geometry::GraphWarpField& warp_field,
+            nnrt::geometry::WarpField& warp_field,
             const open3d::t::geometry::TriangleMesh& canonical_mesh,
             const open3d::t::geometry::Image& reference_color_image,
             const open3d::t::geometry::Image& reference_depth_image,
@@ -76,7 +76,7 @@ public:
     const;
 
     void FitToImage(
-		    nnrt::geometry::GraphWarpField& warp_field,
+		    nnrt::geometry::WarpField& warp_field,
 		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		    const open3d::t::geometry::Image& reference_color_image,
 		    const open3d::t::geometry::PointCloud& reference_point_cloud,

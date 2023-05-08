@@ -29,7 +29,7 @@
 
 namespace nnrt::geometry {
 
-struct GraphWarpFieldRegularizationLayer{
+struct GraphWarpFieldRegularizationLayer {
 public:
 	float decimation_radius = 0.025; // m
 	open3d::core::Tensor nodes;
@@ -37,14 +37,11 @@ public:
 };
 
 
-class GraphWarpField {
+class WarpField {
 
 public:
-	GraphWarpField(
+	WarpField(
 			open3d::core::Tensor nodes,
-			open3d::core::Tensor edges,
-			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
-			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
 			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
@@ -52,10 +49,10 @@ public:
 			int layer_count = 4,
 			float decimation_radius = 0.02  // m
 	);
-	GraphWarpField(const GraphWarpField& original) = default;
-	GraphWarpField(GraphWarpField&& other) = default;
+	WarpField(const WarpField& original) = default;
+	WarpField(WarpField&& other) = default;
 
-	virtual ~GraphWarpField() = default;
+	virtual ~WarpField() = default;
 
 
 	open3d::core::Tensor GetWarpedNodes() const;
@@ -68,13 +65,11 @@ public:
 			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
 			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
-			const open3d::t::geometry::TriangleMesh& input_mesh,
-			AnchorComputationMethod anchor_computation_method
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(const open3d::t::geometry::TriangleMesh& input_mesh
 	) const;
 
 	void ResetRotations();
-	GraphWarpField ApplyTransformations() const;
+	WarpField ApplyTransformations() const;
 
 	const core::KdTree& GetIndex() const;
 
@@ -120,7 +115,7 @@ public:
 		return warped_point;
 	}
 
-	GraphWarpField Clone();
+	WarpField Clone();
 
 
 	open3d::core::Tensor GetNodeRotations();
@@ -135,12 +130,7 @@ public:
 	void TranslateNodes(const o3c::Tensor& node_translation_deltas);
 	void RotateNodes(const o3c::Tensor& node_rotation_deltas);
 
-	//TODO: store nodes, edges, and edge weights inside a open3d::t::geometry::TensorMap instead of separate fields
 	const open3d::core::Tensor nodes;
-	const open3d::core::Tensor edges;
-	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights;
-	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters;
-
 
 	const float node_coverage;
 	const int anchor_count;
@@ -151,8 +141,8 @@ public:
 	int GetRegularizationLevelCount() const;
 
 
-private:
-	GraphWarpField(const GraphWarpField& original, const core::KdTree& index);
+protected:
+	WarpField(const WarpField& original, const core::KdTree& index);
 
 	void BuildRegularizationLayers(int count, float decimation_radius);
 
@@ -172,6 +162,42 @@ private:
 
 	std::vector<GraphWarpFieldRegularizationLayer> regularization_layers;
 };
+
+class PlanarGraphWarpField : public WarpField {
+
+	PlanarGraphWarpField(const PlanarGraphWarpField& original) = default;
+	PlanarGraphWarpField(PlanarGraphWarpField&& other) = default;
+public:
+	PlanarGraphWarpField(
+			open3d::core::Tensor nodes,
+			open3d::core::Tensor edges,
+			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
+			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
+			float node_coverage = 0.05, // m
+			bool threshold_nodes_by_distance_by_default = false,
+			int anchor_count = 4,
+			int minimum_valid_anchor_count = 0,
+			int layer_count = 4,
+			float decimation_radius = 0.02  // m
+	);
+
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
+			const open3d::t::geometry::TriangleMesh& input_mesh,
+			AnchorComputationMethod anchor_computation_method
+	) const;
+
+	const open3d::core::Tensor edges;
+	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights;
+	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters;
+
+	PlanarGraphWarpField ApplyTransformations() const;
+
+protected:
+	PlanarGraphWarpField(const PlanarGraphWarpField& original, const core::KdTree& index);
+
+};
+
+
 
 
 } // namespace nnrt::geometry

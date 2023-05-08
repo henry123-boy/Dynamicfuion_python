@@ -30,7 +30,7 @@ namespace nnrt::geometry {
 
 // TODO: adapt to adhere to the new allocation / integration function split, as in Open3D v >0.15.1
 open3d::core::Tensor
-NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& block_coords, const GraphWarpField& warp_field,
+NonRigidSurfaceVoxelBlockGrid::IntegrateNonRigid(const open3d::core::Tensor& block_coords, const WarpField& warp_field,
                                                  const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color,
                                                  const open3d::core::Tensor& depth_normals,
                                                  const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
@@ -118,7 +118,7 @@ int64_t NonRigidSurfaceVoxelBlockGrid::ActivateSleeveBlocks() {
 
 
 open3d::core::Tensor
-NonRigidSurfaceVoxelBlockGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+NonRigidSurfaceVoxelBlockGrid::GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const WarpField& warp_field,
                                                               const open3d::core::Tensor& extrinsics) const {
 	o3c::AssertTensorDtype(block_keys, o3c::Dtype::Int32);
 	o3c::AssertTensorShape(block_keys, { utility::nullopt, 3 });
@@ -148,7 +148,7 @@ NonRigidSurfaceVoxelBlockGrid::GetAxisAlignedBoxesIntersectingSurfaceMask(const 
 }
 
 open3d::core::Tensor
-NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion(const open3d::t::geometry::Image& depth, const GraphWarpField& warp_field,
+NonRigidSurfaceVoxelBlockGrid::FindBlocksIntersectingTruncationRegion(const open3d::t::geometry::Image& depth, const WarpField& warp_field,
                                                                       const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
                                                                       float depth_scale, float depth_max, float truncation_voxel_multiplier) const {
 	AssertInitialized();

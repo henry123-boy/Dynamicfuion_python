@@ -27,7 +27,7 @@ namespace o3c = open3d::core;
 namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 WarpedSurfaceJacobians(
-		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::GraphWarpField& warp_field,
+		const open3d::t::geometry::TriangleMesh& canonical_mesh, const geometry::WarpField& warp_field,
 		const open3d::core::Tensor& warp_anchors, const open3d::core::Tensor& warp_anchor_weights
 ) {
 	if (!canonical_mesh.HasVertexNormals() || !canonical_mesh.HasVertexPositions()) {
@@ -45,7 +45,7 @@ WarpedSurfaceJacobians(
 
 open3d::core::Tensor WarpedVertexRotationJacobians(
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		const geometry::GraphWarpField& warp_field,
+		const geometry::WarpField& warp_field,
 		const open3d::core::Tensor& warp_anchors,
 		const open3d::core::Tensor& warp_anchor_weights
 ) {

@@ -120,7 +120,7 @@ void TestDeformableImageFitter_25NodeSurface(
 	o3c::Tensor edges = o3c::Tensor::Load(
 			test::static_array_test_data_directory.ToString() + "/edges_25-node_plane.npy").To(device);
 
-	nnrt::geometry::GraphWarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
+	nnrt::geometry::WarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 														use_perspective_correction, 10.f, false, 0.01, 0.001);

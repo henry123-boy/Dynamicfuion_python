@@ -32,7 +32,7 @@ struct PartialDifferentiationState {
 };
 
 std::tuple<open3d::core::Tensor, PartialDifferentiationState>
-ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::GraphWarpField& warp_field,
+ComputeReferencePointToRenderedPlaneDistances(const nnrt::geometry::WarpField& warp_field,
                                               const open3d::t::geometry::TriangleMesh& canonical_mesh,
                                               const open3d::t::geometry::Image& reference_color_image,
                                               const open3d::t::geometry::PointCloud& reference_point_cloud,

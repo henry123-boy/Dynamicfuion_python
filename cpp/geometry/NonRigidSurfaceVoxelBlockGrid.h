@@ -31,12 +31,12 @@ public:
 	using VoxelBlockGrid::VoxelBlockGrid;
 
 	open3d::core::Tensor FindBlocksIntersectingTruncationRegion(
-			const open3d::t::geometry::Image& depth, const GraphWarpField& warp_field, const open3d::core::Tensor& intrinsics,
+			const open3d::t::geometry::Image& depth, const WarpField& warp_field, const open3d::core::Tensor& intrinsics,
 			const open3d::core::Tensor& extrinsics, float depth_scale = 1000.f, float depth_max = 3.f, float truncation_voxel_multiplier = 8.f
 	) const;
 
 	open3d::core::Tensor IntegrateNonRigid(
-			const open3d::core::Tensor& block_coords, const GraphWarpField& warp_field,
+			const open3d::core::Tensor& block_coords, const WarpField& warp_field,
 			const open3d::t::geometry::Image& depth, const open3d::t::geometry::Image& color, const open3d::core::Tensor& depth_normals,
 			const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
 			float depth_scale = 1000.f, float depth_max = 3.f, float truncation_voxel_multiplier = 8.f
@@ -55,7 +55,7 @@ protected:
 	open3d::core::Tensor BufferCoordinatesOfInactiveNeighborBlocks(const open3d::core::Tensor& active_block_addresses) const;
 
 	/// Get minimum extent (min & max corner) coordinates of bounding boxes for projected block coordinates
-	open3d::core::Tensor GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const GraphWarpField& warp_field,
+	open3d::core::Tensor GetBoundingBoxesOfWarpedBlocks(const open3d::core::Tensor& block_keys, const WarpField& warp_field,
 	                                                    const open3d::core::Tensor& extrinsics) const;
 	open3d::core::Tensor GetAxisAlignedBoxesIntersectingSurfaceMask(const open3d::core::Tensor& boxes, const open3d::t::geometry::Image& depth,
 	                                                                const open3d::core::Tensor& intrinsics, float depth_scale,

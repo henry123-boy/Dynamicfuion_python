@@ -41,13 +41,18 @@ void TestGraphWarpFieldConstructor(const o3c::Device& device) {
 	std::vector<int> clusters_data{0,0,0};
 	o3c::Tensor clusters(clusters_data, {3}, o3c::Dtype::Int32, device);
 
-	ngeom::GraphWarpField gwf(nodes, edges, edge_weights, clusters);
+	ngeom::WarpField gwf(nodes);
 	REQUIRE(gwf.nodes.GetShape(0) == 3);
 	REQUIRE(gwf.nodes.GetShape(1) == 3);
-	REQUIRE(gwf.nodes.ToFlatVector<float>() == nodes.ToFlatVector<float>());
-	REQUIRE(gwf.edges.ToFlatVector<int>() == edges.ToFlatVector<int>());
-	REQUIRE(gwf.edge_weights.value().get().ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
-	REQUIRE(gwf.clusters.value().get().ToFlatVector<int>() == clusters.ToFlatVector<int>());
+
+
+	ngeom::PlanarGraphWarpField pgwf(nodes, edges, edge_weights, clusters);
+	REQUIRE(pgwf.nodes.GetShape(0) == 3);
+	REQUIRE(pgwf.nodes.GetShape(1) == 3);
+	REQUIRE(pgwf.nodes.ToFlatVector<float>() == nodes.ToFlatVector<float>());
+	REQUIRE(pgwf.edges.ToFlatVector<int>() == edges.ToFlatVector<int>());
+	REQUIRE(pgwf.edge_weights.value().get().ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
+	REQUIRE(pgwf.clusters.value().get().ToFlatVector<int>() == clusters.ToFlatVector<int>());
 
 }
 

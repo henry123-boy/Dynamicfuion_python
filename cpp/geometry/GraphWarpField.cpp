@@ -30,11 +30,8 @@ namespace o3tg = open3d::t::geometry;
 namespace nnrt::geometry {
 
 
-GraphWarpField::GraphWarpField(
+WarpField::WarpField(
 		o3c::Tensor nodes,
-		o3c::Tensor edges,
-		utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
-		utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
 		float node_coverage,
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
@@ -42,8 +39,8 @@ GraphWarpField::GraphWarpField(
 		int layer_count,
 		float decimation_radius
 ) :
-		nodes(std::move(nodes)), edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)),
-		node_coverage(node_coverage), anchor_count(anchor_count), threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
+		nodes(std::move(nodes)), node_coverage(node_coverage), anchor_count(anchor_count),
+		threshold_nodes_by_distance_by_default(threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(minimum_valid_anchor_count),
 
 		index(this->nodes), node_coverage_squared(node_coverage * node_coverage),
@@ -53,59 +50,17 @@ GraphWarpField::GraphWarpField(
 		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
 		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
-	auto device = this->nodes.GetDevice();
-	o3c::AssertTensorDevice(this->edges, device);
 
-	auto nodes_shape = this->nodes.GetShape();
-	auto edges_shape = this->edges.GetShape();
-
-
-	if (nodes_shape.size() != 2 || edges_shape.size() != 2) {
-		utility::LogError("Arguments `nodes` and `edges` need to have two dimensions. Got dimension counts {} and {}, respectively.",
-		                  nodes_shape.size(), edges_shape.size());
-	}
-	const int64_t node_count = nodes_shape[0];
-	if (nodes_shape[1] != 3) {
-		utility::LogError("Argument nodes needs to have size N x 3, has size N x {}.", nodes_shape[1]);
-	}
-	if (edges_shape[0] != node_count) {
-		utility::LogError("Argument `edges_shape` needs to have shape ({}, X), where first dimension is the node count N"
-		                  " and the second is the edge degree X, but has shape {}", node_count, edges_shape);
-	}
-
-	if (this->edge_weights.has_value()) {
-		o3c::AssertTensorDevice(this->edge_weights.value().get(), device);
-		auto edge_weights_shape = this->edge_weights.value().get().GetShape();
-		if (edge_weights_shape.size() != 2) {
-			utility::LogError("If a tensor is provided in `edge_weights`, it needs to have two dimensions. Got dimension count {}.",
-			                  edge_weights_shape.size());
-		}
-		if (edge_weights_shape != edges_shape) {
-			utility::LogError("Tensors `edges` & `edge_weights` need to have the same shape. Got shapes: {} and {}, respectively.", edges_shape,
-			                  edge_weights_shape);
-		}
-	}
-
-	if (this->clusters.has_value()) {
-		o3c::AssertTensorDevice(this->clusters.value().get(), device);
-		auto clusters_shape = this->clusters.value().get().GetShape();
-		if (clusters_shape.size() != 1) {
-			utility::LogError("If a tensor is provided in `clusters`, it needs to have one dimension. Got dimension count {}.",
-			                  clusters_shape.size());
-		}
-		if (clusters_shape[0] != node_count) {
-			utility::LogError("If a tensor is provided in `clusters`, `clusters` needs to be a vector of the size {} (node count); got size {}.",
-			                  node_count, clusters_shape[0]);
-		}
-	}
+	int64_t node_count = this->nodes.GetLength();
+	o3c::AssertTensorShape(this->nodes, {node_count, 3});
+	o3c::AssertTensorDtype(this->nodes, o3c::Float32);
 
 	this->ResetRotations();
-
 	this->BuildRegularizationLayers(layer_count, decimation_radius);
 }
 
-GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTree& index) :
-		nodes(index.GetPoints()), edges(original.edges.Clone()),
+WarpField::WarpField(const WarpField& original, const core::KdTree& index) :
+		nodes(index.GetPoints()),
 		node_coverage(original.node_coverage), anchor_count(original.anchor_count),
 		threshold_nodes_by_distance_by_default(original.threshold_nodes_by_distance_by_default),
 		minimum_valid_anchor_count(original.minimum_valid_anchor_count),
@@ -118,24 +73,13 @@ GraphWarpField::GraphWarpField(const GraphWarpField& original, const core::KdTre
 		rotations(original.rotations.Clone()),
 		translations(original.translations.Clone()),
 		rotations_data(this->rotations.GetDataPtr<float>()),
-		translations_data(this->translations.GetDataPtr<float>()) {
-	if (original.edge_weights.has_value()) {
-		//TODO: not sure this actually works on memory level, verify
-		auto cloned_edge_weights = original.edge_weights.value().get().Clone();
-		this->edge_weights = cloned_edge_weights;
-	}
-	if (original.clusters.has_value()) {
-		//TODO: not sure this actually works on memory level, verify
-		auto cloned_clusters = original.clusters.value().get().Clone();
-		this->clusters = cloned_clusters;
-	}
-}
+		translations_data(this->translations.GetDataPtr<float>()) {}
 
-o3c::Tensor GraphWarpField::GetWarpedNodes() const {
+o3c::Tensor WarpField::GetWarpedNodes() const {
 	return nodes + this->translations;
 }
 
-o3c::Tensor GraphWarpField::GetNodeExtent() const {
+o3c::Tensor WarpField::GetNodeExtent() const {
 	o3c::Tensor minMax({2, 3}, nodes.GetDtype(), nodes.GetDevice());
 	minMax.Slice(0, 0, 1) = nodes.Min({0});
 	minMax.Slice(0, 1, 2) = nodes.Max({0});
@@ -143,7 +87,7 @@ o3c::Tensor GraphWarpField::GetNodeExtent() const {
 }
 
 open3d::t::geometry::TriangleMesh
-GraphWarpField::WarpMesh(
+WarpField::WarpMesh(
 		const open3d::t::geometry::TriangleMesh& input_mesh, bool disable_neighbor_thresholding,
 		const open3d::core::Tensor& extrinsics/* = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
 ) const {
@@ -158,7 +102,7 @@ GraphWarpField::WarpMesh(
 }
 
 open3d::t::geometry::TriangleMesh
-GraphWarpField::WarpMesh(
+WarpField::WarpMesh(
 		const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 		const open3d::core::Tensor& weights, bool disable_neighbor_thresholding,
 		const open3d::core::Tensor& extrinsics/* = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))*/
@@ -174,71 +118,150 @@ GraphWarpField::WarpMesh(
 }
 
 
-const core::KdTree& GraphWarpField::GetIndex() const {
+const core::KdTree& WarpField::GetIndex() const {
 	return this->index;
 }
 
-void GraphWarpField::ResetRotations() {
+void WarpField::ResetRotations() {
 	for (int i_node = 0; i_node < this->nodes.GetLength(); i_node++) {
 		rotations.Slice(0, i_node, i_node + 1) = o3c::Tensor::Eye(3, o3c::Dtype::Float32, this->nodes.GetDevice());
 	}
 }
 
-GraphWarpField GraphWarpField::ApplyTransformations() const {
-	return {this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
+WarpField WarpField::ApplyTransformations() const {
+	return {this->nodes + this->translations, this->node_coverage,
 	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
 }
 
-GraphWarpField GraphWarpField::Clone() {
+WarpField WarpField::Clone() {
 	return {*this, this->index.Clone()};
 }
 
-void GraphWarpField::SetNodeRotations(const o3c::Tensor& node_rotations) {
+void WarpField::SetNodeRotations(const o3c::Tensor& node_rotations) {
 	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
 	o3c::AssertTensorShape(node_rotations, { this->nodes.GetLength(), 3, 3 });
 	this->rotations = node_rotations;
 	rotations_data = this->rotations.GetDataPtr<float>();
 }
 
-void GraphWarpField::SetNodeTranslations(const o3c::Tensor& node_translations) {
+void WarpField::SetNodeTranslations(const o3c::Tensor& node_translations) {
 	o3c::AssertTensorDtype(node_translations, o3c::Float32);
 	o3c::AssertTensorShape(node_translations, { this->nodes.GetLength(), 3 });
 	this->translations = node_translations;
 	translations_data = this->translations.GetDataPtr<float>();
 }
 
-void GraphWarpField::TranslateNodes(const o3c::Tensor& node_translation_deltas) {
+void WarpField::TranslateNodes(const o3c::Tensor& node_translation_deltas) {
 	this->translations += node_translation_deltas;
 }
 
-void GraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_deltas) {
+void WarpField::RotateNodes(const o3c::Tensor& node_rotation_deltas) {
 	o3c::Tensor new_rotations;
 	core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
 	this->rotations = new_rotations;
 	rotations_data = this->rotations.GetDataPtr<float>();
 }
 
-open3d::core::Tensor GraphWarpField::GetNodeRotations() {
+open3d::core::Tensor WarpField::GetNodeRotations() {
 	return this->rotations;
 }
 
-const open3d::core::Tensor& GraphWarpField::GetNodeRotations() const {
+const open3d::core::Tensor& WarpField::GetNodeRotations() const {
 	return rotations;
 }
 
-open3d::core::Tensor GraphWarpField::GetNodeTranslations() {
+open3d::core::Tensor WarpField::GetNodeTranslations() {
 	return this->translations;
 }
 
-const open3d::core::Tensor& GraphWarpField::GetNodeTranslations() const {
+const open3d::core::Tensor& WarpField::GetNodeTranslations() const {
 	return this->translations;
 }
 
-const open3d::core::Tensor& GraphWarpField::GetNodePositions() const {
+const open3d::core::Tensor& WarpField::GetNodePositions() const {
 	return nodes;
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::PrecomputeAnchorsAndWeights(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpField::PrecomputeAnchorsAndWeights(
+		const open3d::t::geometry::TriangleMesh& input_mesh
+) const {
+	o3c::Tensor anchors, weights;
+
+	if (!input_mesh.HasVertexPositions()) {
+		utility::LogError("Input mesh doesn't have vertex positions defined, which are required for computing warp field anchors & weights.");
+	}
+	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
+	functional::ComputeAnchorsAndWeightsEuclidean(
+			anchors, weights, vertex_positions, this->nodes, this->anchor_count,
+			this->minimum_valid_anchor_count, this->node_coverage
+	);
+	return std::make_tuple(anchors, weights);
+}
+
+const GraphWarpFieldRegularizationLayer& WarpField::GetRegularizationLevel(int i_layer) const {
+	return this->regularization_layers[i_layer];
+}
+
+int WarpField::GetRegularizationLevelCount() const {
+	return static_cast<int>(this->regularization_layers.size());
+}
+
+void WarpField::BuildRegularizationLayers(int count, float decimation_radius) {
+	this->regularization_layers = {};
+	o3c::Tensor empty_tensor;
+	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes, empty_tensor});
+
+	float current_decimation_radius = decimation_radius;
+	for (int i_layer = 1; i_layer < count; i_layer++) {
+		o3c::Tensor layer_nodes = geometry::functional::FastMeanRadiusDownsample3dPoints(this->nodes, current_decimation_radius);
+		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
+		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes, empty_tensor});
+	}
+	if (count > 1) {
+		o3c::Tensor edges_layer_0, squared_distances;
+		this->index.FindKNearestToPoints(edges_layer_0, squared_distances, this->regularization_layers[1].nodes, 4);
+		//TODO: add edges for other layers
+	}
+}
+
+
+PlanarGraphWarpField::PlanarGraphWarpField(
+		open3d::core::Tensor nodes,
+		open3d::core::Tensor edges,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
+		open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
+		float node_coverage,
+		bool threshold_nodes_by_distance_by_default,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		int layer_count,
+		float decimation_radius
+) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count,
+              minimum_valid_anchor_count, layer_count, decimation_radius),
+    edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)) {
+	auto device = this->nodes.GetDevice();
+	int64_t node_count = this->nodes.GetLength();
+	int64_t max_vertex_degree = this->edges.GetShape(1);
+
+	o3c::AssertTensorDevice(this->edges, device);
+	o3c::AssertTensorShape(this->edges, { node_count, max_vertex_degree });
+	o3c::AssertTensorDtypes(this->edges, { o3c::Int32, o3c::Int64});
+
+	if (this->edge_weights.has_value()) {
+		o3c::AssertTensorDevice(this->edge_weights.value().get(), device);
+		o3c::AssertTensorShape(this->edge_weights.value().get(), { node_count, max_vertex_degree });
+		o3c::AssertTensorDtype(this->edge_weights.value().get(), o3c::Float32);
+	}
+
+	if (this->clusters.has_value()) {
+		o3c::AssertTensorDevice(this->clusters.value().get(), device);
+		o3c::AssertTensorShape(this->clusters.value().get(), { node_count });
+		o3c::AssertTensorDtype(this->clusters.value().get(), o3c::Int32);
+	}
+
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> PlanarGraphWarpField::PrecomputeAnchorsAndWeights(
 		const open3d::t::geometry::TriangleMesh& input_mesh,
 		AnchorComputationMethod anchor_computation_method
 ) const {
@@ -267,32 +290,22 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> GraphWarpField::Precomput
 	return std::make_tuple(anchors, weights);
 }
 
-const GraphWarpFieldRegularizationLayer& GraphWarpField::GetRegularizationLevel(int i_layer) const{
-	return this->regularization_layers[i_layer];
+PlanarGraphWarpField PlanarGraphWarpField::ApplyTransformations() const {
+	return {this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
+	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
 }
 
-int GraphWarpField::GetRegularizationLevelCount() const {
-	return static_cast<int>(this->regularization_layers.size());
-}
-
-void GraphWarpField::BuildRegularizationLayers(int count, float decimation_radius) {
-	this->regularization_layers = {};
-	o3c::Tensor empty_tensor;
-	this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{decimation_radius, this->nodes, empty_tensor});
-
-	float current_decimation_radius = decimation_radius;
-	for(int i_layer = 1; i_layer < count; i_layer++){
-		o3c::Tensor layer_nodes = geometry::functional::FastMeanRadiusDownsample3dPoints(this->nodes, current_decimation_radius);
-		current_decimation_radius = (static_cast<float>(i_layer) + 1) * decimation_radius;
-		this->regularization_layers.emplace_back(GraphWarpFieldRegularizationLayer{current_decimation_radius, layer_nodes, empty_tensor});
+PlanarGraphWarpField::PlanarGraphWarpField(const PlanarGraphWarpField& original, const core::KdTree& index):
+		WarpField(original, index), edges(original.edges.Clone())
+{
+	if (original.edge_weights.has_value()) {
+		auto cloned_edge_weights = original.edge_weights.value().get().Clone();
+		this->edge_weights = cloned_edge_weights;
 	}
-	if(count > 1){
-		o3c::Tensor edges_layer_0, squared_distances;
-		this->index.FindKNearestToPoints(edges_layer_0, squared_distances, this->regularization_layers[1].nodes, 4);
-		//TODO: add edges for other layers
+	if (original.clusters.has_value()) {
+		auto cloned_clusters = original.clusters.value().get().Clone();
+		this->clusters = cloned_clusters;
 	}
 }
-
-
 
 } // namespace nnrt::geometry

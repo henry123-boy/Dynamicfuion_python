@@ -72,7 +72,7 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 }
 
 void DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field,
+		nnrt::geometry::WarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::Image& reference_color_image,
 		const open3d::t::geometry::PointCloud& reference_point_cloud,
@@ -83,7 +83,7 @@ void DeformableMeshToImageFitter::FitToImage(
 ) const {
 	//TODO: make parameter EUCLIDEAN/SHORTEST_PATH, optionally set in constructor
 	auto [warp_anchors, warp_anchor_weights] =
-			warp_field.PrecomputeAnchorsAndWeights(canonical_mesh, nnrt::geometry::AnchorComputationMethod::EUCLIDEAN);
+			warp_field.PrecomputeAnchorsAndWeights(canonical_mesh);
 
 	int iteration = 0;
 	float maximum_update = std::numeric_limits<float>::max();
@@ -208,7 +208,7 @@ void DeformableMeshToImageFitter::FitToImage(
 
 void
 DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field,
+		nnrt::geometry::WarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::Image& reference_color_image,
 		const open3d::t::geometry::Image& reference_depth_image,
@@ -246,7 +246,7 @@ DeformableMeshToImageFitter::FitToImage(
 
 void
 DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::GraphWarpField& warp_field,
+		nnrt::geometry::WarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::RGBDImage& reference_image,
 		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,

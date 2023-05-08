@@ -53,7 +53,7 @@ IntegrateNonRigid_Generic
 		 index_t block_resolution, float voxel_size, float sdf_truncation_distance,
 		 const open3d::core::Tensor& depth, const open3d::core::Tensor& color,
 		 const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
-		 const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field, float depth_scale, float depth_max) {
+		 const open3d::core::Tensor& extrinsics, const WarpField& warp_field, float depth_scale, float depth_max) {
 	using tsdf_t = float;
 	index_t block_resolution_cubed = block_resolution * block_resolution * block_resolution;
 	// Shape / transform indexers, no data involved
@@ -232,7 +232,7 @@ IntegrateNonRigid(
 		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
 		const open3d::core::Tensor& depth, const open3d::core::Tensor& color,
 		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
-		const open3d::core::Tensor& extrinsics, const GraphWarpField& warp_field, float depth_scale, float depth_max
+		const open3d::core::Tensor& extrinsics, const WarpField& warp_field, float depth_scale, float depth_max
 ) {
 
 	o3c::Dtype block_weight_dtype = o3c::Dtype::Float32;
@@ -273,7 +273,7 @@ IntegrateNonRigid(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys,
-                                    const GraphWarpField& warp_field, float voxel_size, index_t block_resolution,
+                                    const WarpField& warp_field, float voxel_size, index_t block_resolution,
                                     const open3d::core::Tensor& extrinsics) {
 	//TODO: optionally, filter out voxel blocks (this is an unnecessary optimization unless we need to use a great multitude of voxel blocks)
 	int64_t block_count = block_keys.GetLength();
