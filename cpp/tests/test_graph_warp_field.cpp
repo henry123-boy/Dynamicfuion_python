@@ -13,6 +13,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// standard library
+#include <cmath>
 // 3rd party
 #include <open3d/core/Tensor.h>
 // test framework
@@ -89,6 +91,7 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			// 4, 1
 			4.26, 1.65, 1,
 			4.61, 1.3, 1,
+			4.00, 1.0, 1,
 			// 3, 1
 			3.21, 1.25, 1,
 			// 2, 1
@@ -114,40 +117,54 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			// 4, 2
 			4.41, 2.65, 1
 	};
-	o3c::Tensor nodes(node_data, {31, 3}, o3c::Dtype::Float32, device);
-	ngeom::HierarchicalGraphWarpField hgwf(nodes, 0.25, false, 4, 0, 3, 4);
+	o3c::Tensor nodes(node_data, {32, 3}, o3c::Dtype::Float32, device);
+	ngeom::HierarchicalGraphWarpField hgwf(
+			nodes, 0.25, false, 4, 0, 3, 4,
+			[](int i_layer, float node_coverage) {
+				return powf(2.f, static_cast<float>(i_layer)) * node_coverage;
+			}
+	);
 
 	o3c::Tensor ground_truth_layer_1 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
-			2.32, 3.7 , 1.  ,
-			2.31, 2.75, 1.  ,
-			3.56, 2.3 , 1.  ,
-			4.21, 3.7 , 1.  ,
-			3.36, 3.7 , 1.  ,
-			5.31, 2.45, 1.  ,
-			5.51, 0.4 , 1.  ,
-			3.21, 1.25, 1.  ,
-			2.21, 1.65, 1.  ,
-			4.41, 2.65, 1.  ,
-			5.46, 3.65, 1.  ,
-			4.26, 1.65, 1.  ,
-			2.30, 0.35, 1.
+			//2-4, 0-2
+			2.21, 1.65, 1.0,
+			2.3, 0.35, 1.0,
+			3.21, 1.25, 1.0, // definite winner
+			//2-4, 2-4
+			2.31, 2.75, 1.0, // definite winner
+			2.32, 3.7, 1.0,
+			3.36, 3.7, 1.0,
+			3.56, 2.3, 1.0,
+			//4-6, 2-4
+			4.21, 3.7, 1.0,
+			4.41, 2.65, 1.0, // definite winner, ~3.441 distance sum to other nodes in group
+			5.31, 2.45, 1.0,
+			5.46, 3.65, 1.0,
+			//4-6, 0-2 (2 nodes, ambiguous case)
+			4.61, 1.3, 1.0,
+			5.51, 0.4, 1.0
 	}, {13, 3}, o3c::Float32, device), 0);
 
-	
-	o3c::Tensor ground_truth_layer_2 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
-			5.51, 0.4 , 1.  ,
-			5.46, 3.65, 1.  ,
-			3.56, 2.3 , 1.  ,
-			2.30, 0.35, 1.  ,
-			2.31, 2.75, 1.  ,
-			3.21, 1.25, 1.  ,
-			4.21, 3.7 , 1.  ,
-			2.32, 3.7 , 1.  ,
-			5.31, 2.45, 1.  
-	}, {9, 3}, o3c::Float32, device), 0);
+
+	o3c::Tensor ground_truth_layer_2_v1 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
+			2.31, 2.75, 1.0,
+			3.21, 1.25, 1.0,
+			4.41, 2.65, 1.0,
+			5.51, 0.4, 1.0
+	}, {4, 3}, o3c::Float32, device), 0);
+
+	o3c::Tensor ground_truth_layer_2_v2 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
+			2.31, 2.75, 1.0,
+			3.21, 1.25, 1.0,
+			4.41, 2.65, 1.0,
+			4.61, 1.3, 1.0
+	}, {4, 3}, o3c::Float32, device), 0);
 
 
-	//TODO: actual comparisons.
+	auto layer_1_nodes = nnrt::core::functional::SortTensorByColumn(hgwf.GetRegularizationLevel(1).nodes, 0);
+	auto layer_2_nodes = nnrt::core::functional::SortTensorByColumn(hgwf.GetRegularizationLevel(2).nodes, 0);
+	REQUIRE(layer_1_nodes.AllClose(ground_truth_layer_1));
+	REQUIRE((layer_2_nodes.AllClose(ground_truth_layer_2_v1) || layer_2_nodes.AllClose(ground_truth_layer_2_v2)));
 
 }
 

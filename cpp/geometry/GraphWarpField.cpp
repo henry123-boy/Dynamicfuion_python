@@ -286,9 +286,10 @@ HierarchicalGraphWarpField::HierarchicalGraphWarpField(
 		int anchor_count,
 		int minimum_valid_anchor_count,
 		int layer_count,
-		int max_vertex_degree
+		int max_vertex_degree,
+		std::function<float(int, float)> compute_layer_decimation_radius
 ) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count, minimum_valid_anchor_count),
-    regularization_layers() {
+    regularization_layers(), compute_layer_decimation_radius(std::move(compute_layer_decimation_radius)) {
 	this->RebuildRegularizationLayers(layer_count, max_vertex_degree);
 }
 
@@ -316,9 +317,9 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		auto& previous_layer = this->regularization_layers[i_layer - 1];
 
 		// === find decimation "radius" and median-grid-subsample the previous layer to find the current layer.
-		float current_node_coverage = static_cast<float>(i_layer + 1) * node_coverage;
+		float current_decimation_radius = this->compute_layer_decimation_radius(i_layer, node_coverage);
 		o3c::Tensor layer_node_indices =
-				geometry::functional::MedianGridSubsample3dPoints(previous_layer.nodes, current_node_coverage * 2);
+				geometry::functional::MedianGridSubsample3dPoints(previous_layer.nodes, current_decimation_radius * 2);
 		o3c::TensorKey layer_node_index_key = o3c::TensorKey::IndexTensor(layer_node_indices);
 		o3c::Tensor current_layer_nodes = previous_layer.nodes.GetItem(layer_node_index_key);
 
@@ -327,7 +328,7 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		previous_layer.edges_to_coarser_layer = layer_edges;
 
 		auto& current_layer = this->regularization_layers[i_layer];
-		current_layer.node_coverage = current_node_coverage;
+		current_layer.node_coverage = current_decimation_radius;
 		current_layer.nodes = current_layer_nodes;
 		current_layer.translations = previous_layer.translations.GetItem(layer_node_index_key);
 		current_layer.rotations = previous_layer.rotations.GetItem(layer_node_index_key);

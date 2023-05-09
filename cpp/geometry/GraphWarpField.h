@@ -199,7 +199,9 @@ public:
 			int anchor_count = 4,
 			int minimum_valid_anchor_count = 0,
 			int layer_count = 4,
-			int max_vertex_degree = 4
+			int max_vertex_degree = 4,
+			std::function<float(int, float)> compute_layer_decimation_radius =
+					[](int i_layer, float node_coverage){ return static_cast<float>(i_layer + 1) * node_coverage;}
 	);
 
 
@@ -210,6 +212,7 @@ public:
 
 protected:
 	std::vector<RegularizationLayer> regularization_layers;
+	std::function<float(int, float)> compute_layer_decimation_radius;
 
 };
 
