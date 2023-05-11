@@ -34,7 +34,6 @@ void FlattenWarpField(
 		const open3d::core::Tensor& concatenated_layer_edges,
 		const open3d::core::Tensor& concatenated_layer_node_indices,
 		const open3d::core::Tensor& layer_edge_weights,
-		int64_t edge_count,
 		const open3d::core::Tensor& layer_virtual_node_count_inclusive_prefix_sum
 ) {
 	// === get counts, check dimensions
@@ -61,9 +60,9 @@ void FlattenWarpField(
 	o3c::AssertTensorDevice(layer_virtual_node_count_inclusive_prefix_sum, device);
 
 	// === initialize output data structures
-	edges = o3c::Tensor({edge_count, 2}, o3c::Int32, device);
+	edges = o3c::Tensor({virtual_source_node_count, max_vertex_degree}, o3c::Int32, device);
 	auto edge_data = edges.GetDataPtr<int32_t>();
-	edge_weights = o3c::Tensor({edge_count}, o3c::Float32, device);
+	edge_weights = o3c::Tensor({virtual_source_node_count, max_vertex_degree}, o3c::Float32, device);
 	auto edge_weight_data = edge_weights.GetDataPtr<float>();
 
 	// === get pointers to input data
@@ -72,9 +71,6 @@ void FlattenWarpField(
 	const auto layer_edge_weight_data = layer_edge_weights.GetDataPtr<float>();
 	const auto layer_cumulative_node_counts = layer_virtual_node_count_inclusive_prefix_sum.GetDataPtr<int32_t>();
 
-	NNRT_DECLARE_ATOMIC(int, filled_edge_count);
-	NNRT_INITIALIZE_ATOMIC(int, filled_edge_count, 0);
-
 	o3c::ParallelFor(
 			device,
 			virtual_source_node_count,
@@ -82,26 +78,26 @@ void FlattenWarpField(
 				// find layer index
 				int32_t i_layer = 0;
 				for (; i_layer < source_layer_count && i_source_virtual_vertex >= layer_cumulative_node_counts[i_layer]; i_layer++);
-				const auto* layer_node_indices_start = layer_node_index_data + (i_layer == 0 ? 0 : layer_cumulative_node_counts[i_layer - 1]);
+				const auto* next_layer_node_indices = layer_node_index_data + layer_cumulative_node_counts[i_layer];
 				float edge_weight = layer_edge_weight_data[i_layer];
 				const auto source_vertex_layer_edges = layer_edge_data + i_source_virtual_vertex;
-				int source_node_index = layer_node_index_data[i_source_virtual_vertex];
+
 				for (int i_vertex_edge = 0; i_vertex_edge < max_vertex_degree; i_vertex_edge++) {
-					int32_t i_target_index_in_layer = source_vertex_layer_edges[i_vertex_edge];
-					if (i_target_index_in_layer == -1) {
+					int32_t i_target_index_in_target_layer = source_vertex_layer_edges[i_vertex_edge];
+					int64_t edge_index = i_source_virtual_vertex * max_vertex_degree + i_vertex_edge;
+					if (i_target_index_in_target_layer == -1) {
+						edge_data[edge_index] = -1;
+						edge_weight_data[edge_index] = 0.0f;
+						// assume the source_vertex_layer_edges values are sorted, so sentinel value -1 always appears in the end.
 						continue;
 					} else {
-						int32_t target_node_index = layer_node_indices_start[i_target_index_in_layer];
-						int32_t edge_index = NNRT_ATOMIC_ADD(filled_edge_count, 1);
-						edge_data[edge_index * 2] = source_node_index;
-						edge_data[edge_index * 2 + 1] = target_node_index;
+						int32_t target_node_index = next_layer_node_indices[i_target_index_in_target_layer];
+						edge_data[edge_index] = target_node_index;
 						edge_weight_data[edge_index] = edge_weight;
 					}
 				}
 			}
 	);
-
-	NNRT_CLEAN_UP_ATOMIC(filled_edge_count);
 }
 
 } // namespace nnrt::geometry::kernel::warp_field

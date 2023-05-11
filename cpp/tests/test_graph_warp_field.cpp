@@ -116,10 +116,12 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			5.31, 2.45, 1, // 29 <--- winner
 			5.51, 2.2, 1,  // 30
 			// 4, 2
-			4.41, 2.65, 1  // 31 <--- winner
+			4.41, 2.65, 1,  // 31 <--- winner
+			// 4, 0
+			4.62, 0.3, 1   // 32 <--- winner
 	};
 	//@formatter:on
-	o3c::Tensor nodes(node_data, {32, 3}, o3c::Dtype::Float32, device);
+	o3c::Tensor nodes(node_data, {33, 3}, o3c::Dtype::Float32, device);
 	ngeom::HierarchicalGraphWarpField hgwf(
 			nodes, 0.25, false, 4, 0, 3, 4,
 			[](int i_layer, float node_coverage) {
@@ -143,32 +145,35 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			31, // 4.41, 2.65, 1.0, <--- definite winner, ~3.441 distance sum to other nodes in group
 			29, // 5.31, 2.45, 1.0,
 			26, // 5.46, 3.65, 1.0,
-			//4-6, 0-2 (2 nodes, ambiguous case)
+			//4-6, 0-2
 			13, // 4.61, 1.3, 1.0,
-			23, // 5.51, 0.4, 1.0
-	}, {13}, o3c::Int32, device));
+			23, // 5.51, 0.4, 1.0,
+			32, // 4.62, 0.3, 1.0   <--- definite winner
+	}, {14}, o3c::Int32, device));
 	//@formatter:on
 
 
-	o3c::Tensor ground_truth_layer_2_v1 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+	o3c::Tensor ground_truth_layer_2 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
 			4, // 2.31, 2.75, 1.0,
 			15,// 3.21, 1.25, 1.0,
 			31,// 4.41, 2.65, 1.0,
-			23,// 5.51, 0.4, 1.0
+			32,//  4.62, 0.3, 1.0
 	}, {4}, o3c::Int32, device));
 
-	o3c::Tensor ground_truth_layer_2_v2 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
-			4, // 2.31, 2.75, 1.0,
-			15,// 3.21, 1.25, 1.0,
-			31,// 4.41, 2.65, 1.0,
-			13,// 4.61, 1.3, 1.0
-	}, {4}, o3c::Int32, device));
 
 
 	auto layer_1_nodes = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetRegularizationLevel(1).node_indices);
 	auto layer_2_nodes = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetRegularizationLevel(2).node_indices);
 	REQUIRE(layer_1_nodes.AllEqual(ground_truth_layer_1));
-	REQUIRE((layer_2_nodes.AllEqual(ground_truth_layer_2_v1) || layer_2_nodes.AllEqual(ground_truth_layer_2_v2)));
+	REQUIRE(layer_2_nodes.AllEqual(ground_truth_layer_2));
+
+
+	auto& edges = hgwf.GetEdges();
+	auto& edge_weights = hgwf.GetEdgeWeights();
+	auto& virtual_node_indices = hgwf.GetVirtualNodeIndices();
+
+	std::cout << edges.ToString() << std::endl;
+
 
 }
 

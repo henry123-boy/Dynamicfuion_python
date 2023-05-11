@@ -202,11 +202,16 @@ public:
 	const RegularizationLayer& GetRegularizationLevel(int i_layer) const;
 	int GetRegularizationLevelCount() const;
 
-protected:
+	const o3c::Tensor& GetEdges() const;
+	const o3c::Tensor& GetEdgeWeights() const;
+	const o3c::Tensor& GetVirtualNodeIndices() const;
+
+private:
 	std::vector<RegularizationLayer> regularization_layers;
 	std::function<float(int, float)> compute_layer_decimation_radius;
 	o3c::Tensor edges;
 	o3c::Tensor edge_weights;
+	o3c::Tensor virtual_node_indices;
 };
 
 

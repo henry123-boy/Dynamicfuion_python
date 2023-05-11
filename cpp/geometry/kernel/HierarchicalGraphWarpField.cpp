@@ -34,7 +34,6 @@ FlattenWarpField(
 		const open3d::core::Tensor& concatenated_layer_edges,
 		const open3d::core::Tensor& concatenated_layer_node_indices,
 		const open3d::core::Tensor& layer_edge_weights,
-		int64_t edge_count,
 		const open3d::core::Tensor& layer_virtual_node_count_prefix_sum
 ) {
 
@@ -43,11 +42,11 @@ FlattenWarpField(
 			[&] {
 				FlattenWarpField<open3d::core::Device::DeviceType::CPU>(edges, edge_weights, concatenated_layer_edges,
 				                                                        concatenated_layer_node_indices, layer_edge_weights,
-				                                                        edge_count, layer_virtual_node_count_prefix_sum);
+				                                                        layer_virtual_node_count_prefix_sum);
 			},
 			[&] {
 				NNRT_IF_CUDA(FlattenWarpField<open3d::core::Device::DeviceType::CUDA>(edges, edge_weights, concatenated_layer_edges,
-				                                                                      concatenated_layer_node_indices, layer_edge_weights, edge_count,
+				                                                                      concatenated_layer_node_indices, layer_edge_weights,
 				                                                                      layer_virtual_node_count_prefix_sum););
 			}
 	);

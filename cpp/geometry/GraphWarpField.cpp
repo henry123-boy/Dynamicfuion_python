@@ -328,17 +328,18 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 				geometry::functional::MedianGridSubsample3dPoints(previous_layer_nodes, current_decimation_radius * 2);
 
 		o3c::TensorKey layer_node_index_key = o3c::TensorKey::IndexTensor(previous_layer_node_index_sample);
-		o3c::Tensor current_layer_indices = previous_layer.node_indices.GetItem(layer_node_index_key);
-		o3c::Tensor current_layer_nodes = previous_layer_nodes.GetItem(layer_node_index_key);
-
-		o3c::Tensor layer_edges, squared_distances;
-		previous_layer.index->FindKNearestToPoints(layer_edges, squared_distances, current_layer_nodes, max_vertex_degree);
-		previous_layer.edges_to_coarser_layer = layer_edges;
 
 		auto& current_layer = this->regularization_layers[i_layer];
+
 		current_layer.node_coverage = current_decimation_radius;
+		o3c::Tensor current_layer_indices = previous_layer.node_indices.GetItem(layer_node_index_key);
 		current_layer.node_indices = current_layer_indices;
+		o3c::Tensor current_layer_nodes = previous_layer_nodes.GetItem(layer_node_index_key);
 		current_layer.index = std::make_shared<core::KdTree>(current_layer_nodes);
+		o3c::Tensor layer_edges, squared_distances;
+		current_layer.index->FindKNearestToPoints(layer_edges, squared_distances, previous_layer_nodes, max_vertex_degree, true);
+		previous_layer.edges_to_coarser_layer = layer_edges;
+
 		previous_layer_nodes = current_layer_nodes;
 	}
 
@@ -346,7 +347,6 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	std::vector<o3c::Tensor> layer_edge_sets;
 	std::vector<o3c::Tensor> node_index_sets;
 	std::vector<float> layer_edge_weight_data = {};
-	int64_t edge_count = 0;
 	int32_t virtual_node_count = 0;
 	std::vector<int32_t> layer_node_count_inclusive_prefix_sum_data = {};
 
@@ -359,15 +359,13 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 			layer_edge_sets.push_back(source_layer.edges_to_coarser_layer);
 			const auto& target_layer = this->regularization_layers[i_layer+1];
 			layer_edge_weight_data.push_back(target_layer.node_coverage);
-			edge_count += source_layer.node_indices.GetLength() * std::min(target_layer.node_indices.GetLength(),
-																		   static_cast<int64_t>(max_vertex_degree));
 		}
 		node_index_sets.push_back(source_layer.node_indices);
 	}
 
 	// concatenate array data, tensor-ize
 	o3c::Tensor concatenated_edges = o3c::Concatenate(layer_edge_sets, 0);
-	o3c::Tensor concatenated_node_indices = o3c::Concatenate(node_index_sets);
+	this->virtual_node_indices = o3c::Concatenate(node_index_sets);
 	o3c::Tensor layer_edge_weights = o3c::Tensor(layer_edge_weight_data, {static_cast<int64_t>(layer_edge_weight_data.size())},o3c::Float32, device);
 	o3c::Tensor layer_node_count_inclusive_prefix_sum(
 			layer_node_count_inclusive_prefix_sum_data,
@@ -375,11 +373,21 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 			o3c::Int32, device
 	);
 
-	kernel::warp_field::FlattenWarpField(this->edges, this->edge_weights, concatenated_edges, concatenated_node_indices, layer_edge_weights,
-	                                     edge_count, layer_node_count_inclusive_prefix_sum);
+	kernel::warp_field::FlattenWarpField(this->edges, this->edge_weights, concatenated_edges, this->virtual_node_indices, layer_edge_weights,
+	                                     layer_node_count_inclusive_prefix_sum);
 
+}
 
+const o3c::Tensor& HierarchicalGraphWarpField::GetEdges() const {
+	return this->edges;
+}
 
+const o3c::Tensor& HierarchicalGraphWarpField::GetEdgeWeights() const {
+	return this->edge_weights;
+}
+
+const o3c::Tensor& HierarchicalGraphWarpField::GetVirtualNodeIndices() const {
+	return this->virtual_node_indices;
 }
 
 } // namespace nnrt::geometry

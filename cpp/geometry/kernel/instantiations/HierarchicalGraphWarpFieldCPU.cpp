@@ -27,7 +27,6 @@ void FlattenWarpField<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& concatenated_layer_edges,
 		const open3d::core::Tensor& concatenated_layer_node_indices,
 		const open3d::core::Tensor& layer_edge_weights,
-		int64_t edge_count,
 		const open3d::core::Tensor& layer_virtual_node_count_inclusive_prefix_sum
 );
 
