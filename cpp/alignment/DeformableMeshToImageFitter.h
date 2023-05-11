@@ -31,7 +31,7 @@ class DeformableMeshToImageFitter {
 public:
 	//TODO: we need here to have various terminations conditions that can work together or be turned on and off, i.e. probably
 	// use a separate struct holding data that dictates to the DeformableMeshToImageFitter how to facilitate this behavior (and is stored locally)
-	DeformableMeshToImageFitter(
+	explicit DeformableMeshToImageFitter(
 			int max_iteration_count = 100,
 			std::vector<IterationMode> iteration_mode_sequence = {IterationMode::ALL},
 			float minimal_update_threshold = 1e-6f,
@@ -53,30 +53,30 @@ public:
      * \param depth_max
      */
     void FitToImage(
-            nnrt::geometry::WarpField& warp_field,
-            const open3d::t::geometry::TriangleMesh& canonical_mesh,
-            const open3d::t::geometry::RGBDImage& reference_image,
-            const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-            const open3d::core::Tensor& intrinsic_matrix,
-            const open3d::core::Tensor& extrinsic_matrix,
-            float depth_scale
+		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
+		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
+		    const open3d::t::geometry::RGBDImage& reference_image,
+		    const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+		    const open3d::core::Tensor& intrinsic_matrix,
+		    const open3d::core::Tensor& extrinsic_matrix,
+		    float depth_scale
     )
     const;
 
     void FitToImage(
-            nnrt::geometry::WarpField& warp_field,
-            const open3d::t::geometry::TriangleMesh& canonical_mesh,
-            const open3d::t::geometry::Image& reference_color_image,
-            const open3d::t::geometry::Image& reference_depth_image,
-            const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-            const open3d::core::Tensor& intrinsic_matrix,
-            const open3d::core::Tensor& extrinsic_matrix,
-            float depth_scale
+		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
+		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
+		    const open3d::t::geometry::Image& reference_color_image,
+		    const open3d::t::geometry::Image& reference_depth_image,
+		    const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+		    const open3d::core::Tensor& intrinsic_matrix,
+		    const open3d::core::Tensor& extrinsic_matrix,
+		    float depth_scale
     )
     const;
 
     void FitToImage(
-		    nnrt::geometry::WarpField& warp_field,
+		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
 		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		    const open3d::t::geometry::Image& reference_color_image,
 		    const open3d::t::geometry::PointCloud& reference_point_cloud,

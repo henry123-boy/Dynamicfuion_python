@@ -200,6 +200,7 @@ void Unproject_TypeDispatched(
     auto unprojected_point_data = unprojected_points.GetDataPtr<float>();
 
     NNRT_DECLARE_ATOMIC(int, unfiltered_point_count);
+	NNRT_INITIALIZE_ATOMIC(int, unfiltered_point_count, 0);
 
     o3c::ParallelFor(
             device, point_count,

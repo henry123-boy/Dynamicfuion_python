@@ -25,6 +25,7 @@
 #include "geometry/functional/Warping.h"
 #include "geometry/functional/kernel/WarpUtilities.h"
 #include "geometry/functional/AnchorComputationMethod.h"
+#include "RegularizationLayer.h"
 
 
 namespace nnrt::geometry {
@@ -181,16 +182,7 @@ protected:
 
 
 class HierarchicalGraphWarpField : public WarpField {
-public:
-	struct RegularizationLayer {
-	public:
-		float node_coverage; // m
-		open3d::core::Tensor nodes;
-		open3d::core::Tensor edges_to_coarser_layer;
-		open3d::core::Tensor rotations;
-		open3d::core::Tensor translations;
-		std::shared_ptr<core::KdTree> index;
-	};
+
 public:
 	HierarchicalGraphWarpField(
 			open3d::core::Tensor nodes,
@@ -207,13 +199,14 @@ public:
 
 	void RebuildRegularizationLayers(int count, int max_vertex_degree);
 
-	const HierarchicalGraphWarpField::RegularizationLayer& GetRegularizationLevel(int i_layer) const;
+	const RegularizationLayer& GetRegularizationLevel(int i_layer) const;
 	int GetRegularizationLevelCount() const;
 
 protected:
 	std::vector<RegularizationLayer> regularization_layers;
 	std::function<float(int, float)> compute_layer_decimation_radius;
-
+	o3c::Tensor edges;
+	o3c::Tensor edge_weights;
 };
 
 

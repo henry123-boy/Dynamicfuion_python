@@ -30,8 +30,8 @@ void IntegrateNonRigid(
 		const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics, const open3d::core::Tensor& extrinsics,
 		const WarpField& warp_field, float depth_scale, float depth_max
 ) {
-	core::InferDeviceFromEntityAndExecute(
-			block_keys,
+	core::ExecuteOnDevice(
+			block_keys.GetDevice(),
 			[&] {
 				IntegrateNonRigid<open3d::core::Device::DeviceType::CPU>(
 						block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,

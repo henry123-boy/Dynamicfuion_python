@@ -70,53 +70,55 @@ TEST_CASE("Test Planar Graph Warp Field Constructor CUDA") {
 }
 
 void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
+	//@formatter:off
 	std::vector<float> node_data{
 			// 2, 3
-			2.11, 3.2, 1,
-			2.32, 3.7, 1,
-			2.66, 3.35, 1,
+			2.11, 3.2, 1,  //  0
+			2.32, 3.7, 1,  //  1 <--- winner
+			2.66, 3.35, 1, //  2
 			// 3, 3
-			3.36, 3.7, 1,
+			3.36, 3.7, 1,  //  3 <--- winner
 			// 2, 2
-			2.31, 2.75, 1,
-			2.41, 2.2, 1,
-			2.71, 2.7, 1,
+			2.31, 2.75, 1, //  4 <--- winner
+			2.41, 2.2, 1,  //  5
+			2.71, 2.7, 1,  //  6
 			// 3, 2
-			3.31, 2.8, 1,
-			3.71, 2.8, 1,
-			3.16, 2.3, 1,
-			3.56, 2.3, 1,
+			3.31, 2.8, 1,  //  7
+			3.71, 2.8, 1,  //  8
+			3.16, 2.3, 1,  //  9
+			3.56, 2.3, 1,  // 10 <--- winner
 			// 4, 3
-			4.21, 3.7, 1,
+			4.21, 3.7, 1,  // 11 <--- winner
 			// 4, 1
-			4.26, 1.65, 1,
-			4.61, 1.3, 1,
-			4.00, 1.0, 1,
+			4.26, 1.65, 1, // 12
+			4.61, 1.3, 1,  // 13 <--- winner
+			4.00, 1.0, 1,  // 14
 			// 3, 1
-			3.21, 1.25, 1,
+			3.21, 1.25, 1, // 15 <--- winner
 			// 2, 1
-			2.21, 1.65, 1,
-			2.36, 1.15, 1,
-			2.76, 1.75, 1,
+			2.21, 1.65, 1, // 16 <--- winner
+			2.36, 1.15, 1, // 17
+			2.76, 1.75, 1, // 18
 			// 2, 0
-			2.30, 0.35, 1,
+			2.30, 0.35, 1, // 19 <--- winner
 			// 5, 0
-			5.71, 0.8, 1,
-			5.11, 0.65, 1,
-			5.11, 0.4, 1,
-			5.51, 0.4, 1,
-			5.91, 0.25, 1,
+			5.71, 0.8, 1,  // 20
+			5.11, 0.65, 1, // 21
+			5.11, 0.4, 1,  // 22
+			5.51, 0.4, 1,  // 23 <--- winner
+			5.91, 0.25, 1, // 24
 			// 5, 3
-			5.16, 3.25, 1,
-			5.46, 3.65, 1,
-			5.71, 3.3, 1,
+			5.16, 3.25, 1, // 25
+			5.46, 3.65, 1, // 26 <--- winner
+			5.71, 3.3, 1,  // 27
 			// 5, 2
-			5.46, 2.75, 1,
-			5.31, 2.45, 1,
-			5.51, 2.2, 1,
+			5.46, 2.75, 1, // 28
+			5.31, 2.45, 1, // 29 <--- winner
+			5.51, 2.2, 1,  // 30
 			// 4, 2
-			4.41, 2.65, 1
+			4.41, 2.65, 1  // 31 <--- winner
 	};
+	//@formatter:on
 	o3c::Tensor nodes(node_data, {32, 3}, o3c::Dtype::Float32, device);
 	ngeom::HierarchicalGraphWarpField hgwf(
 			nodes, 0.25, false, 4, 0, 3, 4,
@@ -125,46 +127,48 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			}
 	);
 
-	o3c::Tensor ground_truth_layer_1 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
+	//@formatter:off
+	o3c::Tensor ground_truth_layer_1 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
 			//2-4, 0-2
-			2.21, 1.65, 1.0,
-			2.3, 0.35, 1.0,
-			3.21, 1.25, 1.0, // definite winner
+			16, // 2.21, 1.65, 1.0,
+			19, // 2.3 , 0.35, 1.0,
+			15, // 3.21, 1.25, 1.0, <--- definite winner
 			//2-4, 2-4
-			2.31, 2.75, 1.0, // definite winner
-			2.32, 3.7, 1.0,
-			3.36, 3.7, 1.0,
-			3.56, 2.3, 1.0,
+			4,  // 2.31, 2.75, 1.0, <--- definite winner
+			1,  // 2.32, 3.7 , 1.0,
+			3,  // 3.36, 3.7 , 1.0,
+			10, // 3.56, 2.3 , 1.0,
 			//4-6, 2-4
-			4.21, 3.7, 1.0,
-			4.41, 2.65, 1.0, // definite winner, ~3.441 distance sum to other nodes in group
-			5.31, 2.45, 1.0,
-			5.46, 3.65, 1.0,
+			11, // 4.21, 3.7 , 1.0,
+			31, // 4.41, 2.65, 1.0, <--- definite winner, ~3.441 distance sum to other nodes in group
+			29, // 5.31, 2.45, 1.0,
+			26, // 5.46, 3.65, 1.0,
 			//4-6, 0-2 (2 nodes, ambiguous case)
-			4.61, 1.3, 1.0,
-			5.51, 0.4, 1.0
-	}, {13, 3}, o3c::Float32, device), 0);
+			13, // 4.61, 1.3, 1.0,
+			23, // 5.51, 0.4, 1.0
+	}, {13}, o3c::Int32, device));
+	//@formatter:on
 
 
-	o3c::Tensor ground_truth_layer_2_v1 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
-			2.31, 2.75, 1.0,
-			3.21, 1.25, 1.0,
-			4.41, 2.65, 1.0,
-			5.51, 0.4, 1.0
-	}, {4, 3}, o3c::Float32, device), 0);
+	o3c::Tensor ground_truth_layer_2_v1 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+			4, // 2.31, 2.75, 1.0,
+			15,// 3.21, 1.25, 1.0,
+			31,// 4.41, 2.65, 1.0,
+			23,// 5.51, 0.4, 1.0
+	}, {4}, o3c::Int32, device));
 
-	o3c::Tensor ground_truth_layer_2_v2 = nnrt::core::functional::SortTensorByColumn(o3c::Tensor(std::vector<float>{
-			2.31, 2.75, 1.0,
-			3.21, 1.25, 1.0,
-			4.41, 2.65, 1.0,
-			4.61, 1.3, 1.0
-	}, {4, 3}, o3c::Float32, device), 0);
+	o3c::Tensor ground_truth_layer_2_v2 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+			4, // 2.31, 2.75, 1.0,
+			15,// 3.21, 1.25, 1.0,
+			31,// 4.41, 2.65, 1.0,
+			13,// 4.61, 1.3, 1.0
+	}, {4}, o3c::Int32, device));
 
 
-	auto layer_1_nodes = nnrt::core::functional::SortTensorByColumn(hgwf.GetRegularizationLevel(1).nodes, 0);
-	auto layer_2_nodes = nnrt::core::functional::SortTensorByColumn(hgwf.GetRegularizationLevel(2).nodes, 0);
-	REQUIRE(layer_1_nodes.AllClose(ground_truth_layer_1));
-	REQUIRE((layer_2_nodes.AllClose(ground_truth_layer_2_v1) || layer_2_nodes.AllClose(ground_truth_layer_2_v2)));
+	auto layer_1_nodes = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetRegularizationLevel(1).node_indices);
+	auto layer_2_nodes = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetRegularizationLevel(2).node_indices);
+	REQUIRE(layer_1_nodes.AllEqual(ground_truth_layer_1));
+	REQUIRE((layer_2_nodes.AllEqual(ground_truth_layer_2_v1) || layer_2_nodes.AllEqual(ground_truth_layer_2_v2)));
 
 }
 

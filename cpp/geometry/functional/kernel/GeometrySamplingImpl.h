@@ -130,6 +130,7 @@ void RadiusSubsampleGraph(
 	o3c::Tensor super_independent_mask_tier1 = o3c::Tensor::Zeros({vertex_count}, o3c::Bool, device);
 	auto* super_independent_mask1_data = super_independent_mask_tier1.GetDataPtr<bool>();
 	NNRT_DECLARE_ATOMIC(int, super_independent_count);
+	NNRT_INITIALIZE_ATOMIC(int, super_independent_count, 0);
 	o3c::Tensor super_independent_set = o3c::Tensor({vertex_count}, o3c::Int64, device);
 	auto super_independent_set_data = super_independent_set.GetDataPtr<int64_t>();
 
@@ -200,6 +201,7 @@ void RadiusSubsampleGraph(
 	auto new_vertex_position_data = new_vertex_positions.GetDataPtr<float>();
 
 	NNRT_DECLARE_ATOMIC(int, new_vertex_count);
+	NNRT_INITIALIZE_ATOMIC(int, new_vertex_count, 0);
 
 	// collapse edges around super-independent vertices if they are shorter than radius
 	o3c::ParallelFor(

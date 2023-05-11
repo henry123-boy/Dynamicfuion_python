@@ -195,6 +195,7 @@ FindKNearestKdTreePoints_Generic(open3d::core::Tensor& nearest_neighbor_indices,
 	o3gk::NDArrayIndexer query_point_indexer(query_points, 1);
 
 	nearest_neighbor_indices = open3d::core::Tensor({query_point_count, k}, o3c::Int32, query_points.GetDevice());
+	nearest_neighbor_indices.Fill(-1);
 	neighbor_distances = open3d::core::Tensor({query_point_count, k}, o3c::Float32, query_points.GetDevice());
 	o3gk::NDArrayIndexer nearest_neighbor_indices_indexer(nearest_neighbor_indices, 1);
 	o3gk::NDArrayIndexer nearest_neighbor_distances_indexer(neighbor_distances, 1);

@@ -72,7 +72,7 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 }
 
 void DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::WarpField& warp_field,
+		nnrt::geometry::HierarchicalGraphWarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::Image& reference_color_image,
 		const open3d::t::geometry::PointCloud& reference_point_cloud,
@@ -164,25 +164,32 @@ void DeformableMeshToImageFitter::FitToImage(
 						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
 
-		// compute (J^T)J, i.e. hessian approximation, in block-diagonal form
-		open3d::core::Tensor hessian_approximation_blocks;
+		// compute (J^T)J, i.e. hessian approximation, for the data term in block-diagonal form
+		open3d::core::Tensor hessian_approximation_blocks_data;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
-				hessian_approximation_blocks, pixel_jacobians,
-				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode);
+				hessian_approximation_blocks_data, pixel_jacobians,
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode
+		);
 
-		// compute -(J^T)r
-		o3c::Tensor negative_gradient;
+		// compute -(J^T)r for the data term
+		o3c::Tensor negative_gradient_data;
 		int max_anchor_count_per_vertex = warp_anchors.GetShape(1);
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
-				negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
-				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode);
+				negative_gradient_data, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
+				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
+		);
+
+
+
+
+
 
 		if (preconditioning_dampening_factor > 0.0) {
-			kernel::PreconditionBlocks(hessian_approximation_blocks, preconditioning_dampening_factor);
+			kernel::PreconditionBlocks(hessian_approximation_blocks_data, preconditioning_dampening_factor);
 		}
 
 		open3d::core::Tensor motion_updates;
-		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks, negative_gradient);
+		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks_data, negative_gradient_data);
 
 
 		o3c::Tensor rotation_matrix_updates;
@@ -208,7 +215,7 @@ void DeformableMeshToImageFitter::FitToImage(
 
 void
 DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::WarpField& warp_field,
+		nnrt::geometry::HierarchicalGraphWarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::Image& reference_color_image,
 		const open3d::t::geometry::Image& reference_depth_image,
@@ -246,7 +253,7 @@ DeformableMeshToImageFitter::FitToImage(
 
 void
 DeformableMeshToImageFitter::FitToImage(
-		nnrt::geometry::WarpField& warp_field,
+		nnrt::geometry::HierarchicalGraphWarpField& warp_field,
 		const open3d::t::geometry::TriangleMesh& canonical_mesh,
 		const open3d::t::geometry::RGBDImage& reference_image,
 		const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
@@ -255,8 +262,7 @@ DeformableMeshToImageFitter::FitToImage(
 		float depth_scale
 ) const {
 	FitToImage(warp_field, canonical_mesh, reference_image.color_, reference_image.depth_, reference_image_mask,
-	           intrinsic_matrix, extrinsic_matrix,
-	           depth_scale);
+	           intrinsic_matrix, extrinsic_matrix, depth_scale);
 
 }
 

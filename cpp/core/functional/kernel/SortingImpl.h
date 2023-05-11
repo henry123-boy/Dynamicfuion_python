@@ -44,10 +44,6 @@ void SortTensorAlongLastDimension_Dispatched(open3d::core::Tensor& sorted, const
 	sorted = unsorted.Clone();
 	int dimension_count = static_cast<int>(shape.size());
 	int64_t stride = shape[dimension_count - 1];
-	if (stride > 8) {
-		utility::LogError("Support for sorting tensor along last dimension where the last dimension is greater than 8 is not supported. "
-		                  "The last dimension is: {}.", stride);
-	}
 	int64_t series_count = unsorted.NumElements() / stride;
 	TElement* sorted_data = sorted.template GetDataPtr<TElement>();
 
@@ -55,6 +51,7 @@ void SortTensorAlongLastDimension_Dispatched(open3d::core::Tensor& sorted, const
 			device, series_count,
 			[=] OPEN3D_DEVICE(int64_t workload_idx) {
 				TElement* series = sorted_data + workload_idx * stride;
+
 #ifdef __CUDACC__
 				BubbleSort(series, stride);
 #else

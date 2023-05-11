@@ -20,6 +20,7 @@
 #include "core/kernel/KdTree.h"
 #include "core/kernel/KdTreeNodeTypes.h"
 #include "open3d/core/MemoryManager.h"
+#include "core/functional/Sorting.h"
 
 #include <limits>
 #include <utility>
@@ -65,10 +66,7 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 		} else {
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
-
-			utility::LogError("Not fully implemented: sort the resulting rows when rows are short."
-			              "Consult https://stackoverflow.com/questions/28150098/how-to-use-thrust-to-sort-the-rows-of-a-matrix"
-			              "for reference on how to use thrust in the CUDA kernel for this.");
+			nearest_neighbor_indices = core::functional::SortTensorAlongLastDimension(nearest_neighbor_indices);
 		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
