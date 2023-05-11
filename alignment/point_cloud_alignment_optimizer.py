@@ -117,18 +117,18 @@ class PointCloudAlignmentOptimizer:
         data_increment_vec_2_3 = torch.arange(2, match_count * 3, 3, out=torch.cuda.LongTensor(),
                                               device=device)  # (match_count)
 
-        arap_increment_vec_0_3 = None
-        arap_increment_vec_1_3 = None
-        arap_increment_vec_2_3 = None
-        arap_one_vec = None
+        every_third_edge_starting_with_0 = None
+        every_third_edge_starting_with_1 = None
+        every_third_edge_starting_with_2 = None
+        ones_for_every_edge = None
         if batch_edge_count > 0:
-            arap_increment_vec_0_3 = torch.arange(0, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
-                                                  device=device)  # (batch_edge_count)
-            arap_increment_vec_1_3 = torch.arange(1, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
-                                                  device=device)  # (batch_edge_count)
-            arap_increment_vec_2_3 = torch.arange(2, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
-                                                  device=device)  # (batch_edge_count)
-            arap_one_vec = torch.ones(batch_edge_count, dtype=float_dtype, device=device)
+            every_third_edge_starting_with_0 = torch.arange(0, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
+                                                            device=device)  # (batch_edge_count)
+            every_third_edge_starting_with_1 = torch.arange(1, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
+                                                            device=device)  # (batch_edge_count)
+            every_third_edge_starting_with_2 = torch.arange(2, batch_edge_count * 3, 3, out=torch.cuda.LongTensor(),
+                                                            device=device)  # (batch_edge_count)
+            ones_for_every_edge = torch.ones(batch_edge_count, dtype=float_dtype, device=device)
 
         ill_posed_system = False
         residuals = None
@@ -149,8 +149,10 @@ class PointCloudAlignmentOptimizer:
             loss_arap = None
             if batch_edge_count > 0:
                 residual_arap, jacobian_arap = \
-                    self.compute_arap_residual_and_jacobian(arap_increment_vec_0_3, arap_increment_vec_1_3,
-                                                            arap_increment_vec_2_3, arap_one_vec,
+                    self.compute_arap_residual_and_jacobian(every_third_edge_starting_with_0,
+                                                            every_third_edge_starting_with_1,
+                                                            every_third_edge_starting_with_2,
+                                                            ones_for_every_edge,
                                                             graph_edge_pairs_filtered, graph_edge_weights_pairs,
                                                             graph_nodes_i, batch_edge_count, optimized_node_count,
                                                             num_neighbors,
@@ -418,10 +420,10 @@ class PointCloudAlignmentOptimizer:
         return residuals_data, jacobian_data
 
     def compute_arap_residual_and_jacobian(self,
-                                           arap_increment_vec_0_3: torch.Tensor,
-                                           arap_increment_vec_1_3: torch.Tensor,
-                                           arap_increment_vec_2_3: torch.Tensor,
-                                           arap_one_vec: torch.Tensor,
+                                           every_third_starting_with_0: torch.Tensor,
+                                           every_third_starting_with_1: torch.Tensor,
+                                           every_third_starting_with_2: torch.Tensor,
+                                           ones_for_every_edge: torch.Tensor,
                                            graph_edge_pairs_filtered: torch.Tensor,
                                            graph_edge_weights_pairs: torch.Tensor,
                                            graph_nodes_i: torch.Tensor,
@@ -433,11 +435,13 @@ class PointCloudAlignmentOptimizer:
         timer_arap_start = timer()
 
         # TODO: initialize somewhere else and zero out here instead to avoid extra memory allocations + deallocations
-        jacobian_arap = torch.zeros((batch_edge_count * 3, opt_num_nodes_i * 6), dtype=arap_one_vec.dtype,
-                                    device=arap_one_vec.device)  # (batch_edge_count*3, opt_num_nodes_i*6)
+        # Notes: first opt_num_nodes_i x 3 entries of each row are reserved for rotations,
+        #        second opt_num_nodes_i x 3 entries of each row are reserved for translations
+        jacobian_arap = torch.zeros((batch_edge_count * 3, opt_num_nodes_i * 6), dtype=ones_for_every_edge.dtype,
+                                    device=ones_for_every_edge.device)  # (batch_edge_count*3, opt_num_nodes_i*6)
 
-        node_idxs_0 = graph_edge_pairs_filtered[:, 0]  # i node
-        node_idxs_1 = graph_edge_pairs_filtered[:, 1]  # j node
+        node_idxs_0 = graph_edge_pairs_filtered[:, 0]  # i node indices
+        node_idxs_1 = graph_edge_pairs_filtered[:, 1]  # j node indices
 
         w = torch.ones_like(graph_edge_weights_pairs)
         if self.gn_use_edge_weighting:
@@ -449,8 +453,8 @@ class PointCloudAlignmentOptimizer:
         w_repeat = w.unsqueeze(-1).repeat(1, 3).unsqueeze(-1)
         w_repeat_repeat = w_repeat.repeat(1, 1, 3)
 
-        nodes_0 = graph_nodes_i[node_idxs_0].view(batch_edge_count, 3, 1)
-        nodes_1 = graph_nodes_i[node_idxs_1].view(batch_edge_count, 3, 1)
+        nodes_0 = graph_nodes_i[node_idxs_0].view(batch_edge_count, 3, 1) # i node positions
+        nodes_1 = graph_nodes_i[node_idxs_1].view(batch_edge_count, 3, 1) # j node positions
 
         lambda_arap = self.lambda_arap
 
@@ -465,19 +469,20 @@ class PointCloudAlignmentOptimizer:
         residuals_arap = residuals_arap.view(batch_edge_count * 3, 1)
 
         # Compute jacobian wrt. translations.
-        jacobian_arap[arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 0] += \
-            lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 1] += \
-            lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_0 + 2] += \
-            lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        dt_start_index = 3 * opt_num_nodes_i
+        jacobian_arap[every_third_starting_with_0, dt_start_index + 3 * node_idxs_0 + 0] += \
+            lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
+        jacobian_arap[every_third_starting_with_1, dt_start_index + 3 * node_idxs_0 + 1] += \
+            lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
+        jacobian_arap[every_third_starting_with_2, dt_start_index + 3 * node_idxs_0 + 2] += \
+            lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
 
-        jacobian_arap[arap_increment_vec_0_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 0] += \
-            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[arap_increment_vec_1_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 1] += \
-            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
-        jacobian_arap[arap_increment_vec_2_3, 3 * opt_num_nodes_i + 3 * node_idxs_1 + 2] += \
-            -lambda_arap * w * arap_one_vec  # (batch_edge_count)
+        jacobian_arap[every_third_starting_with_0, dt_start_index + 3 * node_idxs_1 + 0] += \
+            -lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
+        jacobian_arap[every_third_starting_with_1, dt_start_index + 3 * node_idxs_1 + 1] += \
+            -lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
+        jacobian_arap[every_third_starting_with_2, dt_start_index + 3 * node_idxs_1 + 2] += \
+            -lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
 
         # Compute Jacobian wrt. rotations.
         # Derivative wrt. R_1 is equal to 0.
@@ -487,15 +492,17 @@ class PointCloudAlignmentOptimizer:
                 batch_edge_count, 3, 3
             )  # (batch_edge_count, 3, 3)
 
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 0, 0]
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 0, 1]
-        jacobian_arap[arap_increment_vec_0_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 0, 2]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 1, 0]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 1, 1]
-        jacobian_arap[arap_increment_vec_1_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 1, 2]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 2, 0]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 2, 1]
-        jacobian_arap[arap_increment_vec_2_3, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 2, 2]
+        jacobian_arap[every_third_starting_with_0, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 0, 0]
+        jacobian_arap[every_third_starting_with_0, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 0, 1]
+        jacobian_arap[every_third_starting_with_0, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 0, 2]
+
+        jacobian_arap[every_third_starting_with_1, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 1, 0]
+        jacobian_arap[every_third_starting_with_1, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 1, 1]
+        jacobian_arap[every_third_starting_with_1, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 1, 2]
+
+        jacobian_arap[every_third_starting_with_2, 3 * node_idxs_0 + 0] += skew_symmetric_mat_arap[:, 2, 0]
+        jacobian_arap[every_third_starting_with_2, 3 * node_idxs_0 + 1] += skew_symmetric_mat_arap[:, 2, 1]
+        jacobian_arap[every_third_starting_with_2, 3 * node_idxs_0 + 2] += skew_symmetric_mat_arap[:, 2, 2]
 
         assert torch.isfinite(jacobian_arap).all(), jacobian_arap
 
