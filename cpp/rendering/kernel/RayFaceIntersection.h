@@ -44,6 +44,12 @@ bool operator<(const RayFaceIntersection& a, const RayFaceIntersection& b) {
 	return a.depth < b.depth || (a.depth == b.depth && a.face_index < b.face_index);
 }
 
+NNRT_DEVICE_WHEN_CUDACC
+inline
+bool operator>(const RayFaceIntersection& a, const RayFaceIntersection& b) {
+	return a.depth > b.depth || (a.depth == b.depth && a.face_index > b.face_index);
+}
+
 
 template<typename TVertex>
 NNRT_DEVICE_WHEN_CUDACC

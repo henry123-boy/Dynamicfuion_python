@@ -18,19 +18,19 @@
 
 namespace nnrt::core::functional::kernel {
 
-void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool positive_first) {
 	ExecuteOnDevice(
 			unsorted.GetDevice(),
-			[&]() { SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(sorted, unsorted); },
-			[&]() { NNRT_IF_CUDA(SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted);); }
+			[&]() { SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(sorted, unsorted, positive_first); },
+			[&]() { NNRT_IF_CUDA(SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted, positive_first);); }
 	);
 }
 
-void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column) {
+void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column, bool in_place) {
 	ExecuteOnDevice(
 			unsorted.GetDevice(),
-			[&]() { SortTensorByColumn<open3d::core::Device::DeviceType::CPU>(sorted, unsorted, column); },
-			[&]() { NNRT_IF_CUDA(SortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted, column);); }
+			[&]() { SortTensorByColumn<open3d::core::Device::DeviceType::CPU>(sorted, unsorted, column, false); },
+			[&]() { NNRT_IF_CUDA(SortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted, column, false);); }
 	);
 }
 

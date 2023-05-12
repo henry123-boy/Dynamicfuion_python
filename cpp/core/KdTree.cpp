@@ -66,7 +66,7 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 		} else {
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
-			nearest_neighbor_indices = core::functional::SortTensorAlongLastDimension(nearest_neighbor_indices);
+			nearest_neighbor_indices = core::functional::SortTensorAlongLastDimension(nearest_neighbor_indices, true);
 		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(

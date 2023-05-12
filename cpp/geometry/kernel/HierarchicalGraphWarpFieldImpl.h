@@ -83,13 +83,14 @@ void FlattenWarpField(
 				edge_weight_data[i_source_virtual_vertex] = edge_weight;
 				auto edges_start_index = i_source_virtual_vertex * max_vertex_degree;
 				const auto source_vertex_layer_edges = layer_edge_data + edges_start_index;
+				// relies on all-virtual-vertex layer_node_index to always contain source vertices first, i.e. fine-to-coarse layer ordering
+				int source_vertex_index = layer_node_index_data[i_source_virtual_vertex];
 
 				for (int i_vertex_edge = 0; i_vertex_edge < max_vertex_degree; i_vertex_edge++) {
 					int32_t i_target_index_in_target_layer = source_vertex_layer_edges[i_vertex_edge];
 					int64_t edge_index = edges_start_index + i_vertex_edge;
-					if (i_target_index_in_target_layer == -1) {
+					if (i_target_index_in_target_layer == -1 || next_layer_node_indices[i_target_index_in_target_layer] == source_vertex_index) {
 						edge_data[edge_index] = -1;
-						edge_weight_data[edge_index] = 0.0f;
 						// assume the source_vertex_layer_edges values are sorted, so sentinel value -1 always appears in the end.
 						continue;
 					} else {

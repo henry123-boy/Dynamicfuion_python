@@ -30,12 +30,34 @@ inline void SwapElements(TElement* array, int index_a, int index_b) {
 template<typename TElement>
 NNRT_DEVICE_WHEN_CUDACC
 inline void BubbleSort(TElement* array, int element_count) {
-	// Bubble sort. We only use it for tiny thread-local arrays (n < 8); in this regime we care more about warp divergence than computational
+	// Bubble sort. We only use it for tiny thread-local arrays (n < 20); in this regime we care more about warp divergence than computational
 	// complexity.
 	for (int i_element = 0; i_element < element_count - 1; i_element++) {
 		for (int j_element = 0; j_element < element_count - i_element - 1; j_element++) {
-			if (array[j_element + 1] < array[j_element]) {
+			if (array[j_element] > array[j_element + 1]) {
 				SwapElements(array, j_element, j_element + 1);
+			}
+		}
+	}
+}
+
+template<typename TElement, class = std::enable_if_t<std::is_signed<TElement>::value>>
+NNRT_DEVICE_WHEN_CUDACC
+inline void BubbleSort_PositiveFirst(TElement* array, int element_count) {
+	// Bubble sort. We only use it for tiny thread-local arrays (n < 20); in this regime we care more about warp divergence than computational
+	// complexity.
+	for (int i_element = 0; i_element < element_count - 1; i_element++) {
+		for (int j_element = 0; j_element < element_count - i_element - 1; j_element++) {
+			auto& el_1 = array[j_element + 1];
+			auto& el_0 = array[j_element];
+			if (el_1 >= 0) {
+				if (el_0 < 0 || el_0 > el_1) {
+					SwapElements(array, j_element, j_element + 1);
+				}
+			} else {
+				if (el_0 < 0 && el_0 > el_1) {
+					SwapElements(array, j_element, j_element + 1);
+				}
 			}
 		}
 	}

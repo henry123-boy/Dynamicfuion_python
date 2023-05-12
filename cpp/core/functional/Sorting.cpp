@@ -21,12 +21,12 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::functional {
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted) {
+open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first) {
 	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
 		return unsorted;
 	}
 	o3c::Tensor sorted;
-	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous());
+	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), false);
 	return sorted;
 }
 
@@ -35,7 +35,18 @@ open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, in
 		return unsorted;
 	}
 	o3c::Tensor sorted;
-	kernel::SortTensorByColumn(sorted, unsorted, column);
+	kernel::SortTensorByColumn(sorted, unsorted, column, false);
+	return sorted;
+}
+
+open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const o3c::SizeVector& columns) {
+	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
+		return unsorted;
+	}
+	o3c::Tensor sorted = unsorted.Clone();
+	for(const int64_t& column : columns){
+		kernel::SortTensorByColumn(sorted, sorted, static_cast<int32_t>(column), true);
+	}
 	return sorted;
 }
 

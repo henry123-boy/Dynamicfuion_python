@@ -180,7 +180,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		);
 
 
-
+		// compute J for
 
 
 

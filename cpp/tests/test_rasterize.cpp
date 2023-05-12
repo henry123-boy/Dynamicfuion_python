@@ -265,16 +265,14 @@ void TestRasterizeMesh(
                 pixel_face_indices_ground_truth.GetItem(
                         o3c::TensorKey::IndexTensor(indices_mismatched_with_face_duplicates)).Flatten();
         auto mismatched_face_triangles_with_face_duplicates_out =
-                nnrt::core::functional::SortTensorAlongLastDimension(
-                        mesh.GetTriangleIndices().GetItem(
-                                o3c::TensorKey::IndexTensor(
-                                        mismatched_face_indices_with_face_duplicates_out.To(o3c::Int64)))
-                );
+		        nnrt::core::functional::SortTensorAlongLastDimension(
+				        mesh.GetTriangleIndices().GetItem(
+						        o3c::TensorKey::IndexTensor(
+								        mismatched_face_indices_with_face_duplicates_out.To(o3c::Int64))), false);
         auto mismatched_face_triangles_with_face_duplicates_gt =
-                nnrt::core::functional::SortTensorAlongLastDimension(
-                        mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(
-                                mismatched_face_indices_with_face_duplicates_gt.To(o3c::Int64)))
-                );
+		        nnrt::core::functional::SortTensorAlongLastDimension(
+				        mesh.GetTriangleIndices().GetItem(o3c::TensorKey::IndexTensor(
+						        mismatched_face_indices_with_face_duplicates_gt.To(o3c::Int64))), false);
         auto indices_mismatched_without_face_duplicates =
                 mismatched_face_triangles_with_face_duplicates_out.IsClose(
                         mismatched_face_triangles_with_face_duplicates_gt).LogicalNot().NonZero()[0];
