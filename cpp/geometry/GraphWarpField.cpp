@@ -316,8 +316,6 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int32, device);
 	o3c::Tensor previous_layer_nodes = this->nodes;
 
-
-
 	// build up node indices for each layer
 	for (int i_layer = 1; i_layer < count; i_layer++) {
 		auto& previous_layer = this->regularization_layers[i_layer - 1];
@@ -350,14 +348,14 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	int32_t virtual_node_count = 0;
 	std::vector<int32_t> layer_node_count_inclusive_prefix_sum_data = {};
 
-	for(int i_layer = 0; i_layer < count; i_layer++){
+	for (int i_layer = 0; i_layer < count; i_layer++) {
 		const auto& source_layer = this->regularization_layers[i_layer];
 		virtual_node_count += static_cast<int32_t>(source_layer.node_indices.GetLength());
 		layer_node_count_inclusive_prefix_sum_data.push_back(virtual_node_count);
 
-		if (i_layer < count-1){
+		if (i_layer < count - 1) {
 			layer_edge_sets.push_back(source_layer.edges_to_coarser_layer);
-			const auto& target_layer = this->regularization_layers[i_layer+1];
+			const auto& target_layer = this->regularization_layers[i_layer + 1];
 			layer_edge_weight_data.push_back(target_layer.node_coverage);
 		}
 		node_index_sets.push_back(source_layer.node_indices);
@@ -366,7 +364,7 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	// concatenate array data, tensor-ize
 	o3c::Tensor concatenated_edges = o3c::Concatenate(layer_edge_sets, 0);
 	this->virtual_node_indices = o3c::Concatenate(node_index_sets);
-	o3c::Tensor layer_edge_weights = o3c::Tensor(layer_edge_weight_data, {static_cast<int64_t>(layer_edge_weight_data.size())},o3c::Float32, device);
+	o3c::Tensor layer_edge_weights = o3c::Tensor(layer_edge_weight_data, {static_cast<int64_t>(layer_edge_weight_data.size())}, o3c::Float32, device);
 	o3c::Tensor layer_node_count_inclusive_prefix_sum(
 			layer_node_count_inclusive_prefix_sum_data,
 			{static_cast<int64_t>(layer_node_count_inclusive_prefix_sum_data.size())},
@@ -375,7 +373,6 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 
 	kernel::warp_field::FlattenWarpField(this->edges, this->edge_weights, concatenated_edges, this->virtual_node_indices, layer_edge_weights,
 	                                     layer_node_count_inclusive_prefix_sum);
-
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetEdges() const {
