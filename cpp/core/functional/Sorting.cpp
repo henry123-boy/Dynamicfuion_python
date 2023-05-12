@@ -26,7 +26,7 @@ open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& un
 		return unsorted;
 	}
 	o3c::Tensor sorted;
-	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), false);
+	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), positive_first);
 	return sorted;
 }
 

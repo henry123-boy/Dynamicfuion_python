@@ -57,9 +57,9 @@ void SortTensorAlongLastDimension_PositiveFirst_Dispatched(open3d::core::Tensor&
 #else
 				std::sort(series, series + stride, [](TElement a, TElement b) {
 					if (b >= 0) {
-						return a < 0 || a > b;
+						return a > 0 && a < b;
 					} else {
-						return a < 0 && a > b;
+						return a > 0 || a < b;
 					}
 				});
 #endif

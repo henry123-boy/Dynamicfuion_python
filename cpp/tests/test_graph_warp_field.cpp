@@ -167,7 +167,7 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 	REQUIRE(layer_2_nodes.AllEqual(ground_truth_layer_2));
 
 
-	open3d::core::Tensor edges = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetEdges(), false);
+	open3d::core::Tensor edges = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetEdges(), true);
 	auto& edge_weights = hgwf.GetEdgeWeights();
 	auto& virtual_node_indices = hgwf.GetVirtualNodeIndices();
 
@@ -220,7 +220,7 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 					4, 15, 31, 32,
 					4, 15, 31, 32,
 					4, 15, 31, 32
-			}, {47, 4}, o3c::Int32, device), false);
+			}, {47, 4}, o3c::Int32, device), true);
 
 	o3c::Tensor edge_weights_gt(std::vector<float>{
 			0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
@@ -234,8 +234,8 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 	}, {51}, o3c::Int32, device);
 
 	REQUIRE(edges.Slice(0, 0, 33).Contiguous().AllEqual(edges_gt.Slice(0, 0, 33).Contiguous()));
-	auto edges_l1 = nnrt::core::functional::SortTensorByColumns(edges.Slice(0, 33, 33+14).Contiguous(), {0, 1, 2});
-	auto edges_l1_gt = nnrt::core::functional::SortTensorByColumns(edges_gt.Slice(0, 33, 33+14).Contiguous(), {0, 1, 2});
+	auto edges_l1 = nnrt::core::functional::SortTensorByColumns(edges.Slice(0, 33, 33+14).Contiguous(), {3, 2, 1, 0});
+	auto edges_l1_gt = nnrt::core::functional::SortTensorByColumns(edges_gt.Slice(0, 33, 33+14).Contiguous(), {3, 2, 1, 0});
 
 	REQUIRE(edges_l1.AllEqual(edges_l1_gt));
 

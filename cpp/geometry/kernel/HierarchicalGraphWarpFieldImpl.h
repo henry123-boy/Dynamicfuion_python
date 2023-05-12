@@ -96,9 +96,9 @@ void FlattenWarpField(
 					} else {
 						int32_t target_node_index = next_layer_node_indices[i_target_index_in_target_layer];
 						edge_data[edge_index] = target_node_index;
-
 					}
 				}
+
 			}
 	);
 }

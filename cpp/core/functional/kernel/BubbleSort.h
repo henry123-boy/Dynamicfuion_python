@@ -48,8 +48,8 @@ inline void BubbleSort_PositiveFirst(TElement* array, int element_count) {
 	// complexity.
 	for (int i_element = 0; i_element < element_count - 1; i_element++) {
 		for (int j_element = 0; j_element < element_count - i_element - 1; j_element++) {
-			auto& el_1 = array[j_element + 1];
 			auto& el_0 = array[j_element];
+			auto& el_1 = array[j_element + 1];
 			if (el_1 >= 0) {
 				if (el_0 < 0 || el_0 > el_1) {
 					SwapElements(array, j_element, j_element + 1);
