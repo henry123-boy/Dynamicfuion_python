@@ -77,6 +77,18 @@ void GridMedianSubsample3dPoints(
 	median::MedianGridSamplePoints<TDeviceType>(sample, points, grid_cell_size, hash_backend_type);
 }
 
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void GridMedianSubsample3dPointsWithBinInfo(
+		open3d::core::Tensor& sample,
+		open3d::core::Tensor& other_bin_point_indices,
+		const open3d::core::Tensor& points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend_type
+) {
+	median::MedianGridSamplePointsWithBinInfo<TDeviceType>(sample, other_bin_point_indices, points, grid_cell_size, hash_backend_type);
+}
+
 template<open3d::core::Device::DeviceType TDeviceType>
 void RadiusMedianSubsample3dPoints(
 		open3d::core::Tensor& sample,

@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/1/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/12/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,15 +13,16 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
-#include <open3d/t/geometry/TriangleMesh.h>
 
-namespace nnrt::geometry::functional {
-
-open3d::core::Tensor MeshToAdjacencyArray(const open3d::t::geometry::TriangleMesh& mesh, int max_expected_vertex_degree = 8);
-
-} // namespace nnrt::geometry::functional
+// local includes
+#include "HierarchicalRegularizationEdgeJacobian.h"
+namespace o3c = open3d::core;
+namespace nnrt::alignment::functional {
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(const geometry::HierarchicalGraphWarpField& warp_field) {
+	o3c::Tensor nodes;
+}
+} // namespace nnrt::alignment::functional

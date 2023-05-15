@@ -24,9 +24,8 @@ namespace nnrt::geometry {
 struct RegularizationLayer {
 public:
 	float node_coverage; // m
-	open3d::core::Tensor edges_to_coarser_layer;
+	open3d::core::Tensor edges;
 	open3d::core::Tensor node_indices;
-	std::shared_ptr<core::KdTree> index;
 };
 
 } // namespace nnrt::geometry

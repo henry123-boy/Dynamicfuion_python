@@ -164,7 +164,12 @@ void DeformableMeshToImageFitter::FitToImage(
 						use_tukey_penalty, tukey_penalty_cutoff_cm, current_mode
 				);
 
-		// compute (J^T)J, i.e. hessian approximation, for the data term in block-diagonal form
+		// auto [edge_jacobians, edge_jacobian_counts,
+		// 	  node_edge_jacobian_indices_jagged, node_edge_jacobian_counts ] =
+
+
+
+		// compute (J^T)J, i.e. hessian approximation
 		open3d::core::Tensor hessian_approximation_blocks_data;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				hessian_approximation_blocks_data, pixel_jacobians,
@@ -179,8 +184,6 @@ void DeformableMeshToImageFitter::FitToImage(
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
 		);
 
-
-		// compute J for
 
 
 

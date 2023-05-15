@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/1/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/12/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -18,10 +18,16 @@
 
 // third-party includes
 #include <open3d/core/Tensor.h>
-#include <open3d/t/geometry/TriangleMesh.h>
+#include "geometry/GraphWarpField.h"
 
-namespace nnrt::geometry::functional {
+// local includes
 
-open3d::core::Tensor MeshToAdjacencyArray(const open3d::t::geometry::TriangleMesh& mesh, int max_expected_vertex_degree = 8);
+namespace nnrt::alignment::functional {
 
-} // namespace nnrt::geometry::functional
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+		const nnrt::geometry::HierarchicalGraphWarpField& warp_field
+);
+
+
+} // namespace nnrt::alignment::functional

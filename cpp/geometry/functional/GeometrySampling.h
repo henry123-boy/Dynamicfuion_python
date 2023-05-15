@@ -53,8 +53,13 @@ open3d::core::Tensor
 MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size,
 							const open3d::core::HashBackendType& hash_backend_type  = open3d::core::HashBackendType::Default);
 
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+MedianGridSubsample3dPointsWithBinInfo(const open3d::core::Tensor& points, float grid_size,
+                                       const open3d::core::HashBackendType& hash_backend_type  = open3d::core::HashBackendType::Default
+);
+
 /**
- * \brief (Untested) median-downsample points such that resulting sample consists of points at least `radius` apart from one another.
+ * \brief median-downsample points such that resulting sample consists of points at least `radius` apart from one another.
  * \param points original points
  * \param radius minimum distance between selected points
  * \param hash_backend_type backend to use for hashing
@@ -65,8 +70,8 @@ RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius,
 							  const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default);
 
 /**
- * \brief (Untested, most likely suffers from race conditions) sub-sample a dense graph (can potentially be used for construction of the bottom-level
- * N_warp layer in DynamicFusion-style algorithms, but probably not...)
+ * \brief (Untested, most likely suffers heavily from race conditions) sub-sample a dense graph (can potentially be used for construction of the
+ * edge structure for embedded shape deformation using a planar graph)
  * \param vertices
  * \param edges
  * \param radius

@@ -188,6 +188,45 @@ o3c::Tensor FindMedianPointIndices(
 	return bin_median_point_indices;
 }
 
+template<open3d::core::Device::DeviceType TDeviceType>
+o3c::Tensor CollectUnsampledBinnedPointIndices(
+		o3c::Device& device,
+		const o3c::Tensor& sample,
+		const o3c::Tensor& bin_point_counts,
+		const o3c::Tensor& point_bin_indices,
+		const o3c::Tensor& point_indices_bin_sorted
+) {
+	auto bin_count = static_cast<int32_t>(bin_point_counts.GetLength());
+	int max_bin_point_count = bin_point_counts.Max({0}).ToFlatVector<int32_t>()[0];
+	int64_t point_count = point_bin_indices.GetLength();
+
+	auto point_indices_bin_sorted_data = point_indices_bin_sorted.GetDataPtr<int32_t>();
+	auto point_bin_index_data = point_bin_indices.GetDataPtr<int32_t>();
+	auto sample_data = sample.GetDataPtr<int64_t>();
+
+	int bin_stride = max_bin_point_count - 1;
+	o3c::Tensor other_bin_point_indices({bin_count, bin_stride}, o3c::Int64, device);
+	other_bin_point_indices.Fill(-1);
+	auto other_bin_point_index_data = other_bin_point_indices.GetDataPtr<int64_t>();
+
+	core::AtomicCounterArray<TDeviceType> bin_filled_counts(bin_count);
+
+	// sum distances for each source point in each bin distance matrix
+	o3c::ParallelFor(
+			device, point_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				auto point_index = static_cast<int64_t>(point_indices_bin_sorted_data[workload_idx]);
+				int32_t bin_index = point_bin_index_data[point_index];
+				int64_t sample_point_index_for_bin = sample_data[bin_index];
+				if(point_index != sample_point_index_for_bin){
+					int32_t index_in_bin = bin_filled_counts.FetchAdd(bin_index, 1);
+					other_bin_point_index_data[bin_index * bin_stride + index_in_bin] = static_cast<int64_t>(point_index);
+				}
+			}
+	);
+	return other_bin_point_indices;
+}
+
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void MedianGridSamplePoints(
@@ -221,6 +260,41 @@ void MedianGridSamplePoints(
 			device, bin_distance_matrices, bin_point_counts, bin_start_indices, bin_distance_matrix_start_indices,
 			point_bin_indices, point_indices_bin_sorted
 	);
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void MedianGridSamplePointsWithBinInfo(
+		open3d::core::Tensor& sample, open3d::core::Tensor& other_bin_point_indices, const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
+	auto device = original_points.GetDevice();
+
+	auto [point_bin_indices, bin_count, point_bin_coord_map] =
+			GridBinPoints<TDeviceType, int32_t>(original_points, grid_cell_size, hash_backend, grid_offset);
+
+	o3c::Tensor bin_point_counts = median::ComputeBinPointCounts<TDeviceType>(device, point_bin_indices, bin_count);
+	o3c::Tensor bin_start_indices = core::functional::ExclusiveParallelPrefixSum1D(bin_point_counts);
+
+	o3c::Tensor point_indices_bin_sorted = median::SortPointIndicesByBins<TDeviceType>(device, point_bin_indices, bin_start_indices, bin_count);
+
+	o3c::Tensor point_counts_squared = bin_point_counts * bin_point_counts;
+
+	//TODO: optimize: no need to do two separate scans here -- do an exclusive scan on a sub-tensor starting at 1, fill element 0 with 0 manually.
+	o3c::Tensor bin_distance_matrix_start_indices = core::functional::ExclusiveParallelPrefixSum1D(point_counts_squared);
+	o3c::Tensor bin_distance_matrix_end_indices = core::functional::InclusiveParallelPrefixSum1D(point_counts_squared);
+
+
+	int64_t distance_matrix_set_element_count = point_counts_squared.Sum({0}).ToFlatVector<int32_t>()[0];
+	// represent a ragged 3D tensor using a 1D tensor
+	o3c::Tensor bin_distance_matrices = median::ComputeBinDistanceMatrices<TDeviceType>(
+			device, bin_point_counts, bin_start_indices, bin_distance_matrix_end_indices, original_points,
+			point_indices_bin_sorted, distance_matrix_set_element_count
+	);
+
+	sample = median::FindMedianPointIndices<TDeviceType>(
+			device, bin_distance_matrices, bin_point_counts, bin_start_indices, bin_distance_matrix_start_indices,
+			point_bin_indices, point_indices_bin_sorted
+	);
+	other_bin_point_indices = CollectUnsampledBinnedPointIndices<TDeviceType>(device, sample, bin_point_counts, point_bin_indices, point_indices_bin_sorted);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>

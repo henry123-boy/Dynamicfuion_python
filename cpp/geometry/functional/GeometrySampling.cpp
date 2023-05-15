@@ -55,6 +55,23 @@ MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size,
 	return sample;
 }
 
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+MedianGridSubsample3dPointsWithBinInfo(
+		const open3d::core::Tensor& points,
+		float grid_size,
+		const open3d::core::HashBackendType& hash_backend_type
+) {
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
+	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
+	o3c::Tensor sample, other_bin_point_indices;
+	functional::kernel::sampling::GridMedianSubsample3dPointsWithBinInfo(
+			sample, other_bin_point_indices, points, grid_size,
+			hash_backend_type
+	);
+	return std::make_tuple(sample, other_bin_point_indices);
+}
+
 open3d::core::Tensor
 RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
@@ -70,5 +87,6 @@ RadiusSubsampleGraph(const open3d::core::Tensor& vertices, const open3d::core::T
 	functional::kernel::sampling::RadiusSubsampleGraph(sample, resampled_edges, vertices, edges, radius);
 	return std::make_tuple(sample, resampled_edges);
 }
+
 
 } // namespace nnrt::geometry::functional

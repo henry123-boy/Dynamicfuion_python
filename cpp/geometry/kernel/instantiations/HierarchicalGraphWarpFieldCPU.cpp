@@ -30,4 +30,11 @@ void FlattenWarpField<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& layer_virtual_node_count_inclusive_prefix_sum
 );
 
+
+template
+void PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
+		const open3d::core::Tensor& previous_layer_unfiltered_global_node_indices
+);
 } // namespace nnrt::geometry::kernel::warp_field

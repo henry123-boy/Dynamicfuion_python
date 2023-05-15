@@ -103,4 +103,42 @@ void FlattenWarpField(
 	);
 }
 
+template<open3d::core::Device::DeviceType TDeviceType>
+void PrepareLayerEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
+		const open3d::core::Tensor& previous_layer_unfiltered_global_node_indices
+) {
+	// counters and checks
+	o3c::Device device = previous_layer_unfiltered_local_bin_node_indices.GetDevice();
+
+	int64_t current_layer_node_count = previous_layer_unfiltered_local_bin_node_indices.GetShape(0);
+	int64_t max_vertex_degree = previous_layer_unfiltered_local_bin_node_indices.GetShape(1);
+	o3c::AssertTensorShape(previous_layer_unfiltered_local_bin_node_indices, { current_layer_node_count, max_vertex_degree });
+	o3c::AssertTensorDtype(previous_layer_unfiltered_local_bin_node_indices, o3c::Int64);
+
+	int64_t previous_layer_unfiltered_node_count = previous_layer_unfiltered_global_node_indices.GetLength();
+	o3c::AssertTensorShape(previous_layer_unfiltered_global_node_indices, { previous_layer_unfiltered_node_count });
+	o3c::AssertTensorDtype(previous_layer_unfiltered_global_node_indices, o3c::Int32);
+	o3c::AssertTensorDevice(previous_layer_unfiltered_global_node_indices, device);
+
+	// prepare inputs
+	auto target_local_index_data = previous_layer_unfiltered_local_bin_node_indices.GetDataPtr<int64_t>();
+	auto target_global_index_data = previous_layer_unfiltered_global_node_indices.GetDataPtr<int32_t>();
+
+	// prepare output
+	edges = o3c::Tensor({current_layer_node_count, max_vertex_degree}, o3c::Int32, device);
+	edges.Fill(-1);
+
+	auto edge_data = edges.GetDataPtr<int32_t>();
+	o3c::ParallelFor(
+			device, current_layer_node_count * max_vertex_degree,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t global_edge_index) {
+				auto local_target_index = static_cast<int32_t>(target_local_index_data[global_edge_index]);
+				auto global_target_index = target_global_index_data[local_target_index];
+				edge_data[global_edge_index] = global_target_index;
+			}
+	);
+}
+
 } // namespace nnrt::geometry::kernel::warp_field

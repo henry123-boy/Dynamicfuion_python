@@ -62,7 +62,7 @@ void GridMedianSubsample3dPoints(
 		const open3d::core::Tensor& points,
 		float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend_type
-){
+) {
 	core::ExecuteOnDevice(
 			points.GetDevice(),
 			[&] {
@@ -111,6 +111,30 @@ void RadiusSubsampleGraph(
 			[&] {
 				NNRT_IF_CUDA(
 						RadiusSubsampleGraph<o3c::Device::DeviceType::CUDA>(resampled_vertices, resampled_edges, vertices, edges, radius);
+				);
+			}
+	);
+}
+
+void GridMedianSubsample3dPointsWithBinInfo(
+		open3d::core::Tensor& sample,
+		open3d::core::Tensor& other_bin_point_indices,
+		const open3d::core::Tensor& points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend_type
+) {
+	core::ExecuteOnDevice(
+			points.GetDevice(),
+			[&] {
+				GridMedianSubsample3dPointsWithBinInfo<o3c::Device::DeviceType::CPU>(sample, other_bin_point_indices, points,
+				                                                                     grid_cell_size,
+				                                                                     hash_backend_type);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						GridMedianSubsample3dPointsWithBinInfo<o3c::Device::DeviceType::CUDA>(sample, other_bin_point_indices,
+						                                                                      points, grid_cell_size,
+						                                                                      hash_backend_type);
 				);
 			}
 	);

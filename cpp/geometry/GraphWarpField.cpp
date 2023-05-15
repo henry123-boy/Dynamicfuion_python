@@ -24,6 +24,7 @@
 #include "geometry/functional/WarpAnchorComputation.h"
 #include "geometry/functional/GeometrySampling.h"
 #include "geometry/kernel/HierarchicalGraphWarpField.h"
+#include "core/functional/Sorting.h"
 
 
 namespace o3c = open3d::core;
@@ -311,32 +312,48 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	auto& finest_layer = this->regularization_layers[0];
 	// use all nodes at first for finest layer
 	finest_layer.node_coverage = this->node_coverage;
-	finest_layer.index = std::make_shared<core::KdTree>(this->index);
 	o3c::Device device = this->GetDevice();
 	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int32, device);
 	o3c::Tensor previous_layer_nodes = this->nodes;
+
+	o3c::Tensor false_tensor(std::vector<bool>({false}), {1}, o3c::Bool, device);
 
 	// build up node indices for each layer
 	for (int i_layer = 1; i_layer < count; i_layer++) {
 		auto& previous_layer = this->regularization_layers[i_layer - 1];
 
-		// === find decimation "radius" and median-grid-subsample the previous layer to find the current layer.
+		// === find decimation "radius" and
 		float current_decimation_radius = this->compute_layer_decimation_radius(i_layer, node_coverage);
-		o3c::Tensor previous_layer_node_index_sample =
-				geometry::functional::MedianGridSubsample3dPoints(previous_layer_nodes, current_decimation_radius * 2);
 
-		o3c::TensorKey layer_node_index_key = o3c::TensorKey::IndexTensor(previous_layer_node_index_sample);
+		// median-grid-subsample the previous layer to find the indices of the previous layer nodes to use for the current layer, and the rest.
+		auto [current_layer_node_index_sample, previous_layer_unfiltered_bin_node_indices] =
+				geometry::functional::MedianGridSubsample3dPointsWithBinInfo(previous_layer_nodes, current_decimation_radius * 2);
+
+		o3c::TensorKey current_layer_node_index_key = o3c::TensorKey::IndexTensor(current_layer_node_index_sample);
+
+		// Separate-out the current layer nodes from the previous layer nodes to avoid duplicates to the previous layer. We can do this in multiple
+		// ways, but a boolean mask seems to be the easiest to read and most efficient. Compute the mask first, based on the current layer sample.
+		o3c::Tensor previous_layer_node_mask = o3c::Tensor({previous_layer_nodes.GetLength()}, o3c::Bool, device);
+		previous_layer_node_mask.Fill(true);
+		previous_layer_node_mask.SetItem(current_layer_node_index_key, false_tensor);
+		// we have to retrieve the current layer indices before we proceed with the filtering of the previous (finer) layer
+		o3c::Tensor current_layer_indices = previous_layer.node_indices.GetItem(current_layer_node_index_key);
+		o3c::Tensor current_layer_nodes = previous_layer_nodes.GetItem(current_layer_node_index_key);
+		// Compile edge information based on which previous-layer nodes landed into the same bins as the sampled median ones.
+		// This ensures that when we do coarse-to-fine ordering of the edges when laying out the Jacobian matrix, we get non-zero
+		// values exactly along the diagonal.
+		o3c::Tensor layer_edges;
+		kernel::warp_field::PrepareLayerEdges(layer_edges, previous_layer_unfiltered_bin_node_indices, previous_layer.node_indices);
+
+		// Safely apply the previous layer filtering now
+		o3c::TensorKey previous_layer_filter_key = o3c::TensorKey::IndexTensor(previous_layer_node_mask);
+		previous_layer.node_indices = previous_layer.node_indices.GetItem(previous_layer_filter_key);
+		previous_layer_nodes = previous_layer_nodes.GetItem(previous_layer_filter_key);
 
 		auto& current_layer = this->regularization_layers[i_layer];
-
 		current_layer.node_coverage = current_decimation_radius;
-		o3c::Tensor current_layer_indices = previous_layer.node_indices.GetItem(layer_node_index_key);
 		current_layer.node_indices = current_layer_indices;
-		o3c::Tensor current_layer_nodes = previous_layer_nodes.GetItem(layer_node_index_key);
-		current_layer.index = std::make_shared<core::KdTree>(current_layer_nodes);
-		o3c::Tensor layer_edges, squared_distances;
-		current_layer.index->FindKNearestToPoints(layer_edges, squared_distances, previous_layer_nodes, max_vertex_degree, true);
-		previous_layer.edges_to_coarser_layer = layer_edges;
+		current_layer.edges = layer_edges;
 
 		previous_layer_nodes = current_layer_nodes;
 	}
@@ -354,7 +371,7 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		layer_node_count_inclusive_prefix_sum_data.push_back(virtual_node_count);
 
 		if (i_layer < count - 1) {
-			layer_edge_sets.push_back(source_layer.edges_to_coarser_layer);
+			layer_edge_sets.push_back(source_layer.edges);
 			const auto& target_layer = this->regularization_layers[i_layer + 1];
 			layer_edge_weight_data.push_back(target_layer.node_coverage);
 		}

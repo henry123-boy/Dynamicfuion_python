@@ -52,4 +52,22 @@ FlattenWarpField(
 	);
 }
 
+void PrepareLayerEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
+		const open3d::core::Tensor& previous_layer_unfiltered_global_node_indices
+) {
+	core::ExecuteOnDevice(
+			previous_layer_unfiltered_local_bin_node_indices.GetDevice(),
+			[&] {
+				PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(edges, previous_layer_unfiltered_local_bin_node_indices,
+				                                                         previous_layer_unfiltered_global_node_indices);
+			},
+			[&] {
+				NNRT_IF_CUDA(PrepareLayerEdges<open3d::core::Device::DeviceType::CUDA>(edges, previous_layer_unfiltered_local_bin_node_indices,
+				                                                                       previous_layer_unfiltered_global_node_indices););
+			}
+	);
+}
+
 } // namespace nnrt::geometry::kernel::warp_field
