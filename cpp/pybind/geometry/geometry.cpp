@@ -17,7 +17,7 @@
 
 // nnrt_cpp
 #include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 #include "geometry/functional/AnchorComputationMethod.h"
 #include "geometry/TransformationMode.h"
 

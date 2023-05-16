@@ -21,7 +21,7 @@
 
 // local includes
 #include "core/functional/Masking.h"
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 #include "rendering/functional/InterpolateVertexAttributes.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "WarpedMeshToReferencePointCloud_PointToPlane.h"

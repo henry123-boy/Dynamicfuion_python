@@ -23,7 +23,7 @@
 #include "geometry/functional/NormalsOperations.h"
 #include <geometry/NonRigidSurfaceVoxelBlockGrid.h>
 #include <geometry/kernel/NonRigidSurfaceVoxelBlockGrid.h>
-#include <geometry/GraphWarpField.h>
+#include <geometry/HierarchicalGraphWarpField.h>
 
 
 using namespace nnrt;

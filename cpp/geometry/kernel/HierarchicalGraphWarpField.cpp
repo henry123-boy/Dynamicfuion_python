@@ -54,20 +54,52 @@ FlattenWarpField(
 
 void PrepareLayerEdges(
 		open3d::core::Tensor& edges,
+		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
 		const open3d::core::Tensor& previous_layer_unfiltered_global_node_indices
 ) {
 	core::ExecuteOnDevice(
 			previous_layer_unfiltered_local_bin_node_indices.GetDevice(),
 			[&] {
-				PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(edges, previous_layer_unfiltered_local_bin_node_indices,
+				PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(edges, max_vertex_degree, previous_layer_unfiltered_local_bin_node_indices,
 				                                                         previous_layer_unfiltered_global_node_indices);
 			},
 			[&] {
-				NNRT_IF_CUDA(PrepareLayerEdges<open3d::core::Device::DeviceType::CUDA>(edges, previous_layer_unfiltered_local_bin_node_indices,
+				NNRT_IF_CUDA(PrepareLayerEdges<open3d::core::Device::DeviceType::CUDA>(edges, max_vertex_degree, previous_layer_unfiltered_local_bin_node_indices,
 				                                                                       previous_layer_unfiltered_global_node_indices););
 			}
 	);
 }
+
+void ReindexNodeHierarchy(
+		open3d::core::Tensor& virtual_edges,
+		open3d::core::Tensor& node_by_virtual_node_index,
+		const open3d::core::Tensor& virtual_node_by_node_index,
+		const open3d::core::Tensor& layer_node_count_inclusive_prefix_sum,
+		const open3d::core::Tensor& layer_edges_using_node_indices
+) {
+	core::ExecuteOnDevice(
+			virtual_node_by_node_index.GetDevice(),
+			[&] {
+				ReindexNodeHierarchy<open3d::core::Device::DeviceType::CPU>(
+						virtual_edges,
+						node_by_virtual_node_index,
+						virtual_node_by_node_index,
+						layer_node_count_inclusive_prefix_sum,
+						layer_edges_using_node_indices);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ReindexNodeHierarchy<open3d::core::Device::DeviceType::CPU>(
+								virtual_edges,
+								node_by_virtual_node_index,
+								virtual_node_by_node_index,
+								layer_node_count_inclusive_prefix_sum,
+								layer_edges_using_node_indices);
+				);
+			}
+	);
+}
+
 
 } // namespace nnrt::geometry::kernel::warp_field

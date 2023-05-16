@@ -24,10 +24,10 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
                  mask_lower_threshold: int = 250):
         """
         Define a frame pair dataset.
-        :param start_frame_index: 0-based index of the start frame
+        :param start_frame_index: 0-based linear_index of the start frame
         :param frame_count: total number of frames to process.
-        "None" means "go to highest  index possible"
-        :param sequence_id: 0-based index of the sequence
+        "None" means "go to highest  linear_index possible"
+        :param sequence_id: 0-based linear_index of the sequence
         :param split: which data split to use
         :param base_dataset_type: determines the base directory of the dataset.
         DatasetType.DEEP_DEFORM will use options.base_dataset_dir and assume Deep Deform + graph data database structure,
@@ -85,15 +85,15 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
         image_dims = first_frame_image.get_max_bound()  # array([ width, height])
         self._resolution = (int(image_dims[1]), int(image_dims[0]))  # (height, width)
 
-    def get_frame_at(self, index) -> SequenceFrameDataset:
+    def get_frame_at(self, linear_index) -> SequenceFrameDataset:
         if not self._loaded:
             raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
 
-        mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(index)
+        mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(linear_index)
 
-        return SequenceFrameDataset(index,
-                                    self._color_image_filename_mask.format(index),
-                                    self._depth_image_filename_mask.format(index),
+        return SequenceFrameDataset(linear_index,
+                                    self._color_image_filename_mask.format(linear_index),
+                                    self._depth_image_filename_mask.format(linear_index),
                                     mask_image_path)
 
     def get_next_frame(self) -> typing.Union[None, SequenceFrameDataset]:
@@ -105,11 +105,11 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
             self._next_frame_index += 1
             return frame
 
-    def advance_to_frame(self, index):
-        if index < self.start_frame_index or index >= self._end_before_index:
-            raise ValueError(f"Provided index not within frame range, {self.start_frame_index, self._end_before_index}")
+    def advance_to_frame(self, linear_index):
+        if linear_index < self.start_frame_index or linear_index >= self._end_before_index:
+            raise ValueError(f"Provided linear_index not within frame range, {self.start_frame_index, self._end_before_index}")
         else:
-            self._next_frame_index = index
+            self._next_frame_index = linear_index
 
     def get_current_graph_name(self):
         if not self._loaded:
@@ -203,18 +203,18 @@ class FrameSequenceDataset(GenericDataset, typing.Sequence[SequenceFrameDataset]
     # TODO: fix regular for-loop iteration for sequences: why does the iteration not respect len(sequence)??! how to
     #  make it start from start_frame_index, not 0, every time?
 
-    def __getitem__(self, index):
+    def __getitem__(self, linear_index):
         """Get a list item"""
-        return self.get_frame_at(index)
+        return self.get_frame_at(linear_index)
 
 
 class StaticFrameSequenceDataset(FrameSequenceDataset):
-    def get_frame_at(self, index) -> SequenceFrameDataset:
+    def get_frame_at(self, linear_index) -> SequenceFrameDataset:
         if not self._loaded:
             raise ValueError("Before a dataset can be used, it has to be loaded with the .load() method.")
 
         mask_image_path = None if not self._has_masks else self._mask_image_filename_mask.format(0)
-        return SequenceFrameDataset(index,
+        return SequenceFrameDataset(linear_index,
                                     self._color_image_filename_mask.format(0),
                                     self._depth_image_filename_mask.format(0),
                                     mask_image_path)

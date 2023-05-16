@@ -188,13 +188,14 @@ o3c::Tensor FindMedianPointIndices(
 	return bin_median_point_indices;
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
-o3c::Tensor CollectUnsampledBinnedPointIndices(
+template<open3d::core::Device::DeviceType TDeviceType, typename TBinNodeIndex>
+o3c::Tensor CollectUnsampledBinnedPointIndices_Dispatched(
 		o3c::Device& device,
 		const o3c::Tensor& sample,
 		const o3c::Tensor& bin_point_counts,
 		const o3c::Tensor& point_bin_indices,
-		const o3c::Tensor& point_indices_bin_sorted
+		const o3c::Tensor& point_indices_bin_sorted,
+		o3c::Dtype dtype
 ) {
 	auto bin_count = static_cast<int32_t>(bin_point_counts.GetLength());
 	int max_bin_point_count = bin_point_counts.Max({0}).ToFlatVector<int32_t>()[0];
@@ -205,9 +206,10 @@ o3c::Tensor CollectUnsampledBinnedPointIndices(
 	auto sample_data = sample.GetDataPtr<int64_t>();
 
 	int bin_stride = max_bin_point_count - 1;
-	o3c::Tensor other_bin_point_indices({bin_count, bin_stride}, o3c::Int64, device);
+	o3c::Tensor other_bin_point_indices({bin_count, bin_stride}, dtype, device);
+	o3c::AssertTensorDtypes(other_bin_point_indices, { o3c::Int32, o3c::Int64 });
 	other_bin_point_indices.Fill(-1);
-	auto other_bin_point_index_data = other_bin_point_indices.GetDataPtr<int64_t>();
+	auto other_bin_point_index_data = other_bin_point_indices.GetDataPtr<TBinNodeIndex>();
 
 	core::AtomicCounterArray<TDeviceType> bin_filled_counts(bin_count);
 
@@ -218,12 +220,43 @@ o3c::Tensor CollectUnsampledBinnedPointIndices(
 				auto point_index = static_cast<int64_t>(point_indices_bin_sorted_data[workload_idx]);
 				int32_t bin_index = point_bin_index_data[point_index];
 				int64_t sample_point_index_for_bin = sample_data[bin_index];
-				if(point_index != sample_point_index_for_bin){
+				if (point_index != sample_point_index_for_bin) {
 					int32_t index_in_bin = bin_filled_counts.FetchAdd(bin_index, 1);
-					other_bin_point_index_data[bin_index * bin_stride + index_in_bin] = static_cast<int64_t>(point_index);
+					other_bin_point_index_data[bin_index * bin_stride + index_in_bin] = point_index;
 				}
 			}
 	);
+	return other_bin_point_indices;
+}
+
+#define DISPATCH_INT32_OR_INT64_DTYPE_TO_TEMPLATE(DTYPE, ...)    \
+    [&] {                                                        \
+        if (DTYPE == open3d::core::Int32) {                      \
+            using scalar_t = int32_t;                            \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::Int64) {               \
+            using scalar_t = int64_t;                            \
+            return __VA_ARGS__();                                \
+        } else {                                                 \
+            open3d::utility::LogError("Unsupported data type."); \
+        }                                                        \
+    }()
+
+template<open3d::core::Device::DeviceType TDeviceType>
+o3c::Tensor CollectUnsampledBinnedPointIndices(
+		o3c::Device& device,
+		const o3c::Tensor& sample,
+		const o3c::Tensor& bin_point_counts,
+		const o3c::Tensor& point_bin_indices,
+		const o3c::Tensor& point_indices_bin_sorted,
+		o3c::Dtype dtype
+) {
+	o3c::Tensor other_bin_point_indices;
+	DISPATCH_INT32_OR_INT64_DTYPE_TO_TEMPLATE(dtype, [&] {
+		other_bin_point_indices = CollectUnsampledBinnedPointIndices_Dispatched<TDeviceType, scalar_t>(
+				device, sample, bin_point_counts, point_bin_indices, point_indices_bin_sorted, dtype
+		);
+	});
 	return other_bin_point_indices;
 }
 
@@ -264,8 +297,14 @@ void MedianGridSamplePoints(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void MedianGridSamplePointsWithBinInfo(
-		open3d::core::Tensor& sample, open3d::core::Tensor& other_bin_point_indices, const open3d::core::Tensor& original_points, float grid_cell_size,
-		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
+		open3d::core::Tensor& sample,
+		open3d::core::Tensor& other_bin_point_indices,
+		const open3d::core::Tensor& original_points,
+		float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend,
+		o3c::Dtype out_bin_node_index_dtype = o3c::Int32,
+		const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()
+) {
 	auto device = original_points.GetDevice();
 
 	auto [point_bin_indices, bin_count, point_bin_coord_map] =
@@ -294,7 +333,10 @@ void MedianGridSamplePointsWithBinInfo(
 			device, bin_distance_matrices, bin_point_counts, bin_start_indices, bin_distance_matrix_start_indices,
 			point_bin_indices, point_indices_bin_sorted
 	);
-	other_bin_point_indices = CollectUnsampledBinnedPointIndices<TDeviceType>(device, sample, bin_point_counts, point_bin_indices, point_indices_bin_sorted);
+	other_bin_point_indices = CollectUnsampledBinnedPointIndices<TDeviceType>(
+			device, sample, bin_point_counts, point_bin_indices,
+			point_indices_bin_sorted, out_bin_node_index_dtype
+	);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>

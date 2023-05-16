@@ -22,7 +22,7 @@
 #include <open3d/t/geometry/RGBDImage.h>
 
 // local
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 #include "alignment/IterationMode.h"
 
 namespace nnrt::alignment {

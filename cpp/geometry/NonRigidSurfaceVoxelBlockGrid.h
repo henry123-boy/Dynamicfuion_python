@@ -20,7 +20,7 @@
 
 #include "geometry/VoxelBlockGrid.h"
 #include "geometry/functional/AnchorComputationMethod.h"
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 #include "io/VoxelBlockGridIO.h"
 
 namespace nnrt::geometry {

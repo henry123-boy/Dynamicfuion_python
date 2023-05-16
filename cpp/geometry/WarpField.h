@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/21.
-//  Copyright (c) 2021 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/16/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,22 +14,15 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// 3rd party
-#include <pybind11/pybind11.h>
+// third-party includes
+#include <open3d/core/CUDAUtils.h>
+#include <open3d/core/Tensor.h>
 #include <open3d/t/geometry/TriangleMesh.h>
-#include <open3d/t/geometry/PointCloud.h>
-#include <open3d/t/geometry/kernel/GeometryIndexer.h>
-
-// local
+// local includes
 #include "core/KdTree.h"
-#include "geometry/functional/Warping.h"
 #include "geometry/functional/kernel/WarpUtilities.h"
-#include "geometry/functional/AnchorComputationMethod.h"
-#include "RegularizationLayer.h"
-
 
 namespace nnrt::geometry {
-
 
 class WarpField {
 
@@ -74,6 +67,8 @@ public:
 		return Eigen::Map<const Eigen::Vector3f>(translations_data + i_node * 3);
 	}
 
+	// TODO: take these two (ComputeAnchorsForPoint and WarpPoint) outside of class and declare as friend functions here, to take in a WarpField
+	//  argument and perform the ops
 	template<open3d::core::Device::DeviceType TDeviceType, bool UseNodeDistanceThreshold>
 	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(
 			int32_t* anchor_indices, float* anchor_weights,
@@ -99,11 +94,11 @@ public:
 		functional::kernel::warp::BlendWarp(
 				warped_point, anchor_indices, anchor_weights, anchor_count, point, node_indexer,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
-					return GetRotationForNode(i_node);
-				},
-				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
-					return GetTranslationForNode(i_node);
-				}
+			return GetRotationForNode(i_node);
+		},
+		NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+			return GetTranslationForNode(i_node);
+		}
 		);
 		return warped_point;
 	}
@@ -111,6 +106,8 @@ public:
 	WarpField Clone();
 
 
+	//TODO: fix this mess, i.e. remove redundant methods, expose the direct const getter (and, if you still need, a setter) in python binding code
+	// instead. Reference: https://github.com/pybind/pybind11/issues/141
 	open3d::core::Tensor GetNodeRotations();
 	const open3d::core::Tensor& GetNodeRotations() const;
 	open3d::core::Tensor GetNodeTranslations();
@@ -148,71 +145,5 @@ protected:
 	float const* translations_data;
 
 };
-
-class PlanarGraphWarpField : public WarpField {
-public:
-	PlanarGraphWarpField(
-			open3d::core::Tensor nodes,
-			open3d::core::Tensor edges,
-			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights,
-			open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters,
-			float node_coverage = 0.05, // m
-			bool threshold_nodes_by_distance_by_default = false,
-			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0
-	);
-	PlanarGraphWarpField(const PlanarGraphWarpField& original) = default;
-	PlanarGraphWarpField(PlanarGraphWarpField&& other) = default;
-
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
-			const open3d::t::geometry::TriangleMesh& input_mesh,
-			AnchorComputationMethod anchor_computation_method
-	) const;
-
-	const open3d::core::Tensor edges;
-	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> edge_weights;
-	open3d::utility::optional<std::reference_wrapper<open3d::core::Tensor>> clusters;
-
-	PlanarGraphWarpField ApplyTransformations() const;
-
-protected:
-	PlanarGraphWarpField(const PlanarGraphWarpField& original, const core::KdTree& index);
-
-};
-
-
-class HierarchicalGraphWarpField : public WarpField {
-
-public:
-	HierarchicalGraphWarpField(
-			open3d::core::Tensor nodes,
-			float node_coverage = 0.05, // m
-			bool threshold_nodes_by_distance_by_default = false,
-			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0,
-			int layer_count = 4,
-			int max_vertex_degree = 4,
-			std::function<float(int, float)> compute_layer_decimation_radius =
-					[](int i_layer, float node_coverage){ return static_cast<float>(i_layer + 1) * node_coverage;}
-	);
-
-
-	void RebuildRegularizationLayers(int count, int max_vertex_degree);
-
-	const RegularizationLayer& GetRegularizationLevel(int i_layer) const;
-	int GetRegularizationLevelCount() const;
-
-	const o3c::Tensor& GetEdges() const;
-	const o3c::Tensor& GetEdgeWeights() const;
-	const o3c::Tensor& GetVirtualNodeIndices() const;
-
-private:
-	std::vector<RegularizationLayer> regularization_layers;
-	std::function<float(int, float)> compute_layer_decimation_radius;
-	o3c::Tensor edges;
-	o3c::Tensor edge_weights;
-	o3c::Tensor virtual_node_indices;
-};
-
 
 } // namespace nnrt::geometry

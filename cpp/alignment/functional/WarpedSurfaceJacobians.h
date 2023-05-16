@@ -20,7 +20,7 @@
 // third-party includes
 
 // local includes
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 
 namespace nnrt::alignment::functional {
 

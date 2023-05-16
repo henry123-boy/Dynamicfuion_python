@@ -21,7 +21,7 @@
 #include <open3d/t/geometry/TriangleMesh.h>
 
 // local includes
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 
 namespace nnrt::alignment::functional {
 /**

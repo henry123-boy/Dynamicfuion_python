@@ -9,4 +9,4 @@ To generate masks for a specific sequence within the DeepDeform dataset, run the
  python3 run_sod.py -sp "train" -si 70 -o "sod" -d "/mnt/Data/Reconstruction/real_data/deepdeform"
 ```
 
-Replace the split (-sp) & sequence index (-si) arguments above with those of the sequence you want to generate masks for, (-d) with the root directory of the DeepDeform dataset, and 'python3' with the name / path of your Python 3 executable. "-o" argument is the output folder and is "sod" by default.
+Replace the split (-sp) & sequence linear_index (-si) arguments above with those of the sequence you want to generate masks for, (-d) with the root directory of the DeepDeform dataset, and 'python3' with the name / path of your Python 3 executable. "-o" argument is the output folder and is "sod" by default.

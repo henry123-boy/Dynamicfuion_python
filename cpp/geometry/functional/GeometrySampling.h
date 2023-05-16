@@ -49,13 +49,18 @@ open3d::core::Tensor FastMeanRadiusDownsample3dPoints(
 		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
 
+//TODO write doc
 open3d::core::Tensor
-MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size,
-							const open3d::core::HashBackendType& hash_backend_type  = open3d::core::HashBackendType::Default);
+MedianGridSubsample3dPoints(
+		const open3d::core::Tensor& points, float grid_size,
+		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
+);
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-MedianGridSubsample3dPointsWithBinInfo(const open3d::core::Tensor& points, float grid_size,
-                                       const open3d::core::HashBackendType& hash_backend_type  = open3d::core::HashBackendType::Default
+MedianGridSubsample3dPointsWithBinInfo(
+		const open3d::core::Tensor& points, float grid_size,
+		open3d::core::Dtype bin_node_index_dtype = open3d::core::Int32,
+		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
 );
 
 /**
@@ -66,8 +71,10 @@ MedianGridSubsample3dPointsWithBinInfo(const open3d::core::Tensor& points, float
  * \return resulting sample of point indexes, in a 1D Int64 tensor, stored on the same device as the original points
  */
 open3d::core::Tensor
-RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius,
-							  const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default);
+RadiusMedianSubsample3dPoints(
+		const open3d::core::Tensor& points, float radius,
+		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
+);
 
 /**
  * \brief (Untested, most likely suffers heavily from race conditions) sub-sample a dense graph (can potentially be used for construction of the

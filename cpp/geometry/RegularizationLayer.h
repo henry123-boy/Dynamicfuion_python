@@ -23,7 +23,7 @@ namespace nnrt::geometry {
 
 struct RegularizationLayer {
 public:
-	float node_coverage; // m
+	float decimation_radius; // m
 	open3d::core::Tensor edges;
 	open3d::core::Tensor node_indices;
 };

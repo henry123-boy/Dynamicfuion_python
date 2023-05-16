@@ -60,6 +60,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MedianGridSubsample3dPointsWithBinInfo(
 		const open3d::core::Tensor& points,
 		float grid_size,
+		open3d::core::Dtype bin_node_index_dtype,
 		const open3d::core::HashBackendType& hash_backend_type
 ) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
@@ -67,8 +68,7 @@ MedianGridSubsample3dPointsWithBinInfo(
 	o3c::Tensor sample, other_bin_point_indices;
 	functional::kernel::sampling::GridMedianSubsample3dPointsWithBinInfo(
 			sample, other_bin_point_indices, points, grid_size,
-			hash_backend_type
-	);
+			hash_backend_type, bin_node_index_dtype);
 	return std::make_tuple(sample, other_bin_point_indices);
 }
 

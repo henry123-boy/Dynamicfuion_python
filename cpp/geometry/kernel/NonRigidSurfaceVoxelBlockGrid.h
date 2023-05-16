@@ -19,7 +19,7 @@
 #include "core/DeviceSelection.h"
 
 #include <open3d/core/Tensor.h>
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 
 
 namespace nnrt::geometry::kernel::voxel_grid {

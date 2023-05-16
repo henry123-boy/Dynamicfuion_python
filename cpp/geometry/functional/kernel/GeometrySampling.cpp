@@ -121,20 +121,21 @@ void GridMedianSubsample3dPointsWithBinInfo(
 		open3d::core::Tensor& other_bin_point_indices,
 		const open3d::core::Tensor& points,
 		float grid_cell_size,
-		const open3d::core::HashBackendType& hash_backend_type
+		const open3d::core::HashBackendType& hash_backend_type,
+		open3d::core::Dtype bin_node_index_dtype
 ) {
 	core::ExecuteOnDevice(
 			points.GetDevice(),
 			[&] {
 				GridMedianSubsample3dPointsWithBinInfo<o3c::Device::DeviceType::CPU>(sample, other_bin_point_indices, points,
 				                                                                     grid_cell_size,
-				                                                                     hash_backend_type);
+				                                                                     hash_backend_type, bin_node_index_dtype);
 			},
 			[&] {
 				NNRT_IF_CUDA(
 						GridMedianSubsample3dPointsWithBinInfo<o3c::Device::DeviceType::CUDA>(sample, other_bin_point_indices,
 						                                                                      points, grid_cell_size,
-						                                                                      hash_backend_type);
+						                                                                      hash_backend_type, bin_node_index_dtype);
 				);
 			}
 	);

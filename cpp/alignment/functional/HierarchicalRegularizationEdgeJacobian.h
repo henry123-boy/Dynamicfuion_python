@@ -18,7 +18,7 @@
 
 // third-party includes
 #include <open3d/core/Tensor.h>
-#include "geometry/GraphWarpField.h"
+#include "geometry/HierarchicalGraphWarpField.h"
 
 // local includes
 

@@ -159,8 +159,8 @@ set(
     geometry/kernel/instantiations/NonRigidSurfaceVoxelBlockGridCUDA.cu
     geometry/kernel/NonRigidSurfaceVoxelBlockGridImpl.h
 
-    geometry/GraphWarpField.h
-    geometry/GraphWarpField.cpp
+    geometry/HierarchicalGraphWarpField.h
+    geometry/HierarchicalGraphWarpField.cpp
 
     geometry/functional/kernel/WarpAnchorComputation.h
     geometry/functional/kernel/WarpAnchorComputation.cpp
@@ -381,7 +381,7 @@ set(
     geometry/kernel/HierarchicalGraphWarpFieldImpl.h
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCPU.cpp
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCUDA.cu
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/HierarchicalRegularizationEdgeJacobian.h)
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/HierarchicalRegularizationEdgeJacobian.h geometry/WarpField.cpp geometry/WarpField.h geometry/PlanarGraphWarpField.cpp geometry/PlanarGraphWarpField.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
