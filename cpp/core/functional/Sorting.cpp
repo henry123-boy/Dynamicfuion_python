@@ -40,14 +40,20 @@ open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, in
 }
 
 open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const o3c::SizeVector& columns) {
-	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
-		return unsorted;
-	}
 	o3c::Tensor sorted = unsorted.Clone();
 	for(const int64_t& column : columns){
 		kernel::SortTensorByColumn(sorted, sorted, static_cast<int32_t>(column), true);
 	}
 	return sorted;
+}
+
+open3d::core::Tensor ArgSortByColumn(const open3d::core::Tensor& unsorted, int column) {
+	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
+		return {};
+	}
+	o3c::Tensor index;
+	kernel::ArgSortTensorByColumn(index, unsorted, column);
+	return index;
 }
 
 } // nnrt::core::functional

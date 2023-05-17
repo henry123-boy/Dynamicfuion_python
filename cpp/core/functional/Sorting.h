@@ -24,4 +24,6 @@ open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& un
 open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column);
 open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const open3d::core::SizeVector& columns);
 
+open3d::core::Tensor ArgSortByColumn(const open3d::core::Tensor& unsorted, int column);
+
 } // nnrt::core::functional

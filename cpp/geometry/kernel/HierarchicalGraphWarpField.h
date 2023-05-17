@@ -44,7 +44,7 @@ void FlattenWarpField(
 		const open3d::core::Tensor& layer_virtual_node_count_inclusive_prefix_sum
 );
 
-void PrepareLayerEdges(
+void ReIndexLayerEdgeAdjacencyArray(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
@@ -52,7 +52,7 @@ void PrepareLayerEdges(
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void PrepareLayerEdges(
+void ReIndexLayerEdgeAdjacencyArray(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,

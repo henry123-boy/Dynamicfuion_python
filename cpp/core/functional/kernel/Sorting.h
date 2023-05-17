@@ -30,4 +30,9 @@ void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor
 template<open3d::core::Device::DeviceType TDeviceType>
 void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column, bool in_place = false);
 
+void ArgSortTensorByColumn(open3d::core::Tensor& index, const open3d::core::Tensor& unsorted, int column);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ArgSortTensorByColumn(open3d::core::Tensor& index, const open3d::core::Tensor& unsorted, int column);
+
 } // namespace nnrt::core::functional::kernel

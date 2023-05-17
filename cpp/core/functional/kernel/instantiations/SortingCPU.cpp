@@ -32,4 +32,10 @@ void SortTensorByColumn<open3d::core::Device::DeviceType::CPU>(
 		bool in_place
 );
 
+template
+void ArgSortTensorByColumn<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& index,
+		const open3d::core::Tensor& unsorted,
+		int column
+);
 } //  nnrt::core::functional::kernel

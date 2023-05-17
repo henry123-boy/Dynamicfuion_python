@@ -105,7 +105,7 @@ void FlattenWarpField(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void PrepareLayerEdges(
+void ReIndexLayerEdgeAdjacencyArray(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
@@ -141,10 +141,12 @@ void PrepareLayerEdges(
 	o3c::ParallelFor(
 			device, current_layer_node_count * max_vertex_degree_based_on_data,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t global_edge_index) {
+				int64_t i_source_vertex_in_layer = global_edge_index / max_vertex_degree_based_on_data;
+				int64_t i_target_vertex_in_layer = global_edge_index % max_vertex_degree_based_on_data;
 				auto local_target_index = target_local_index_data[global_edge_index];
 				if (local_target_index != -1) {
 					auto global_target_index = target_global_index_data[local_target_index];
-					edge_data[global_edge_index] = global_target_index;
+					edge_data[i_source_vertex_in_layer * max_vertex_degree + i_target_vertex_in_layer] = global_target_index;
 				}
 			}
 	);

@@ -34,4 +34,12 @@ void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor
 	);
 }
 
+void ArgSortTensorByColumn(open3d::core::Tensor& index, const open3d::core::Tensor& unsorted, int column) {
+	ExecuteOnDevice(
+			unsorted.GetDevice(),
+			[&]() { ArgSortTensorByColumn<open3d::core::Device::DeviceType::CPU>(index, unsorted, column); },
+			[&]() { NNRT_IF_CUDA(ArgSortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(index, unsorted, column);); }
+	);
+}
+
 } // namespace nnrt::core::functional::kernel

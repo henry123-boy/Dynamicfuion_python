@@ -133,25 +133,29 @@ void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::co
 }
 
 #define DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(SIZE, ELEMENT_TYPE, ...) \
-    [&]{                                                            \
-        switch(SIZE){                                               \
-        case 2:{                                                    \
-            using vector_t = Eigen::Vector<ELEMENT_TYPE, 2>;        \
-            return __VA_ARGS__();                                   \
-            }                                                       \
-        case 3:{                                                    \
-            using vector_t = Eigen::Vector<ELEMENT_TYPE, 3>;        \
-            return __VA_ARGS__();                                   \
-            }                                                       \
-        case 4:{                                                    \
-            using vector_t = Eigen::Vector<ELEMENT_TYPE, 4>;        \
-            return __VA_ARGS__();                                   \
-            }                                                       \
-        default:                                                    \
-            open3d::utility::LogError("Unsupported size, {}."       \
-            " Only sizes 2-4 are supported.", SIZE);                \
-            return;                                                 \
-        }                                                           \
+    [&]{                                                                   \
+        switch(SIZE){                                                      \
+         case 1:{                                                          \
+            using vector_t = Eigen::Vector<ELEMENT_TYPE, 1>;               \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        case 2:{                                                           \
+            using vector_t = Eigen::Vector<ELEMENT_TYPE, 2>;               \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        case 3:{                                                           \
+            using vector_t = Eigen::Vector<ELEMENT_TYPE, 3>;               \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        case 4:{                                                           \
+            using vector_t = Eigen::Vector<ELEMENT_TYPE, 4>;               \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        default:                                                           \
+            open3d::utility::LogError("Unsupported size, {}."              \
+            " Only sizes 2-4 are supported.", SIZE);                       \
+            return;                                                        \
+        }                                                                  \
     }()
 
 
@@ -190,14 +194,62 @@ void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor
 	//TODO a more-versatile d-type dispatching macro
 	if (unsorted.GetDtype() == o3c::Int32) {
 		DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
-			SortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(sorted, unsorted, column);
+			SortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(sorted, unsorted, column, in_place);
 		});
 	} else {
 		DISPATCH_FLOAT_DTYPE_TO_TEMPLATE(
 				unsorted.GetDtype(),
 				[&]() {
 					DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
-						SortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(sorted, unsorted, column);
+						SortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(sorted, unsorted, column, in_place);
+					});
+				}
+		);
+	}
+}
+
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement, typename TRow>
+void ArgSortTensorByColumn_Dispatched(open3d::core::Tensor& index, const open3d::core::Tensor& unsorted, int column) {
+	index = o3c::Tensor::Arange(0, unsorted.GetLength(), 1, o3c::Int64, unsorted.GetDevice());
+	o3c::Tensor sorted = unsorted.Clone();
+
+	TRow* data_start = reinterpret_cast<TRow*>(sorted.GetDataPtr());
+	auto index_start = index.GetDataPtr<int64_t>();
+#ifdef __CUDACC__
+	TRow* data_end = data_start + sorted.GetLength();
+	o3c::Device device = unsorted.GetDevice();
+	cudaSetDevice(device.GetID());
+	thrust::sort_by_key(thrust::device, data_start, data_end, index_start, [column] __device__ (const TRow& a, const TRow& b){
+		return a(column) < b(column);
+	});
+#else
+	auto index_end = index_start + index.GetLength();
+	std::sort(index_start, index_end, [&column, &data_start](const int64_t& a, const int64_t& b) {
+		return data_start[a].coeff(column) < data_start[b].coeff(column);
+	});
+#endif
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ArgSortTensorByColumn(open3d::core::Tensor& index, const open3d::core::Tensor& unsorted, int column) {
+	int64_t row_count = unsorted.GetLength();
+	int64_t column_count = unsorted.GetShape(1);
+	o3c::AssertTensorShape(unsorted, { row_count, column_count });
+	o3c::AssertTensorDtypes(unsorted, { o3c::Float32, o3c::Float64, o3c::Int32 });
+	if (column < 0 || column >= column_count) {
+		utility::LogError("Column index ({}) must be a non-zero value below column_count ({}).", column, column_count);
+	}
+	//TODO a more-versatile d-type dispatching macro
+	if (unsorted.GetDtype() == o3c::Int32) {
+		DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
+			ArgSortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(index, unsorted, column);
+		});
+	} else {
+		DISPATCH_FLOAT_DTYPE_TO_TEMPLATE(
+				unsorted.GetDtype(),
+				[&]() {
+					DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
+						ArgSortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(index, unsorted, column);
 					});
 				}
 		);

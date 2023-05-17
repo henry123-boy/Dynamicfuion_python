@@ -31,7 +31,7 @@ void FlattenWarpField<open3d::core::Device::DeviceType::CPU>(
 );
 
 template
-void PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(
+void ReIndexLayerEdgeAdjacencyArray<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,

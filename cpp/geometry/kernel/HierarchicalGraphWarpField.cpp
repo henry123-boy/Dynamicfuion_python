@@ -52,7 +52,7 @@ FlattenWarpField(
 	);
 }
 
-void PrepareLayerEdges(
+void ReIndexLayerEdgeAdjacencyArray(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
 		const open3d::core::Tensor& previous_layer_unfiltered_local_bin_node_indices,
@@ -61,12 +61,14 @@ void PrepareLayerEdges(
 	core::ExecuteOnDevice(
 			previous_layer_unfiltered_local_bin_node_indices.GetDevice(),
 			[&] {
-				PrepareLayerEdges<open3d::core::Device::DeviceType::CPU>(edges, max_vertex_degree, previous_layer_unfiltered_local_bin_node_indices,
-				                                                         previous_layer_unfiltered_global_node_indices);
+				ReIndexLayerEdgeAdjacencyArray<open3d::core::Device::DeviceType::CPU>(edges, max_vertex_degree,
+				                                                                      previous_layer_unfiltered_local_bin_node_indices,
+				                                                                      previous_layer_unfiltered_global_node_indices);
 			},
 			[&] {
-				NNRT_IF_CUDA(PrepareLayerEdges<open3d::core::Device::DeviceType::CUDA>(edges, max_vertex_degree, previous_layer_unfiltered_local_bin_node_indices,
-				                                                                       previous_layer_unfiltered_global_node_indices););
+				NNRT_IF_CUDA(ReIndexLayerEdgeAdjacencyArray<open3d::core::Device::DeviceType::CUDA>(edges, max_vertex_degree,
+				                                                                                    previous_layer_unfiltered_local_bin_node_indices,
+				                                                                                    previous_layer_unfiltered_global_node_indices););
 			}
 	);
 }
