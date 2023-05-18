@@ -224,78 +224,159 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 	REQUIRE(layer_2_nodes.AllEqual(ground_truth_layer_2));
 
 
-	open3d::core::Tensor edges = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetEdges(), true);;
+	const open3d::core::Tensor& edges = hgwf.GetEdges();
 	auto& virtual_node_indices = hgwf.GetVirtualNodeIndices();
 
-	o3c::Tensor edges_gt = nnrt::core::functional::SortTensorAlongLastDimension(
+	o3c::Tensor
+			edge_source_virtual_node_indices_gt = o3c::Tensor(
+			std::vector<int32_t>({28, 28, 28, 28, 27, 27, 27, 27, 26, 26, 26, 26, 25, 25, 25, 25, 24, 24, 24, 24, 23, 23, 23, 23, 22, 22, 22, 22, 21,
+			                      21, 21, 21, 20, 20, 20, 20, 19, 19, 19, 19, 18, 18, 18, 18, 17, 17, 17, 17, 16, 16, 16, 16, 15, 15, 15, 15, 14, 14,
+			                      14, 14, 13, 13, 13, 13, 12, 12, 12, 12, 11, 11, 11, 11, 10, 10, 10, 10, 9, 9, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 6, 6, 6,
+			                      6, 5, 5, 5, 5, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0}), {116}, o3c::Int32, device
+	);
+
+	o3c::Tensor edge_source_virtual_node_indices = edges.Slice(1, 0, 1).Contiguous().Flatten();
+
+	REQUIRE(edge_source_virtual_node_indices_gt.AllEqual(edge_source_virtual_node_indices));
+
+	o3c::Tensor edge_node_indices = nnrt::core::functional::SortTensorByColumns(
+			virtual_node_indices.GetItem(o3c::TensorKey::IndexTensor(edges.To(o3c::Int64))),
+			{1, 0}
+	);
+
+
+	o3c::Tensor edge_node_indices_gt =
 			o3c::Tensor(std::vector<int>{
-					1, 3, 4, 16,
-					-1, 3, 4, 10,
-					1, 3, 4, 10,
-					-1, 1, 10, 11,
-					-1, 1, 10, 16,
-					4, 10, 15, 16,
-					1, 4, 10, 16,
-					3, 4, 10, 31,
-					3, 10, 11, 31,
-					4, 10, 15, 16,
-					-1, 4, 15, 31,
-					-1, 3, 26, 31,
-					10, 13, 15, 31,
-					-1, 23, 29, 32,
-					10, 13, 15, 32,
-					-1, 10, 16, 19,
-					-1, 4, 15, 19,
-					4, 15, 16, 19,
-					4, 10, 15, 16,
-					-1, 15, 16, 32,
-					13, 23, 29, 32,
-					13, 23, 29, 32,
-					13, 23, 29, 32,
-					-1, 13, 29, 32,
-					13, 23, 29, 32,
-					11, 26, 29, 31,
-					-1, 11, 29, 31,
-					11, 26, 29, 31,
-					11, 26, 29, 31,
-					-1, 13, 26, 31,
-					13, 26, 29, 31,
-					-1, 10, 11, 29,
-					-1, 13, 15, 23,
-					4, 15, 31, 32,
-					4, 15, 31, 32,
-					-1, 4, 31, 32,
-					4, 15, 31, 32,
-					4, 15, 31, 32,
-					4, 15, 31, 32,
-					4, 15, 31, 32,
-					-1, 15, 31, 32,
-					4, 15, 31, 32,
-					-1, 4, 15, 32,
-					-1, 4, 15, 31,
-					4, 15, 31, 32,
-					4, 15, 31, 32,
-					4, 15, 31, 32
-			}, {47, 4}, o3c::Int32, device), true);
+					0, 1,
+					0, 3,
+					0, 10,
+					0, 16,
+					1, 4,
+					1, 15,
+					1, 31,
+					1, 32,
+					2, 1,
+					2, 3,
+					2, 10,
+					2, 11,
+					3, 4,
+					3, 15,
+					3, 31,
+					3, 32,
+					5, 1,
+					5, 3,
+					5, 10,
+					5, 16,
+					6, 1,
+					6, 3,
+					6, 10,
+					6, 16,
+					7, 1,
+					7, 3,
+					7, 10,
+					7, 11,
+					8, 3,
+					8, 10,
+					8, 11,
+					8, 29,
+					9, 1,
+					9, 3,
+					9, 10,
+					9, 16,
+					10, 4,
+					10, 15,
+					10, 31,
+					10, 32,
+					11, 4,
+					11, 15,
+					11, 31,
+					11, 32,
+					12, 10,
+					12, 13,
+					12, 23,
+					12, 29,
+					13, 4,
+					13, 15,
+					13, 31,
+					13, 32,
+					14, 10,
+					14, 13,
+					14, 19,
+					14, 23,
+					16, 4,
+					16, 15,
+					16, 31,
+					16, 32,
+					17, 10,
+					17, 13,
+					17, 16,
+					17, 19,
+					18, 10,
+					18, 13,
+					18, 16,
+					18, 19,
+					19, 4,
+					19, 15,
+					19, 31,
+					19, 32,
+					20, 10,
+					20, 13,
+					20, 23,
+					20, 29,
+					21, 10,
+					21, 13,
+					21, 23,
+					21, 29,
+					22, 10,
+					22, 13,
+					22, 23,
+					22, 29,
+					23, 4,
+					23, 15,
+					23, 31,
+					23, 32,
+					24, 10,
+					24, 13,
+					24, 23,
+					24, 29,
+					25, 3,
+					25, 11,
+					25, 26,
+					25, 29,
+					26, 4,
+					26, 15,
+					26, 31,
+					26, 32,
+					27, 11,
+					27, 13,
+					27, 26,
+					27, 29,
+					28, 11,
+					28, 13,
+					28, 26,
+					28, 29,
+					29, 4,
+					29, 15,
+					29, 31,
+					29, 32,
+					30, 13,
+					30, 23,
+					30, 26,
+					30, 29
+			}, {116, 2}, o3c::Int32, device);
+
+	REQUIRE(edge_node_indices_gt.AllEqual(edge_node_indices));
 
 	o3c::Tensor virtual_node_indices_gt(std::vector<int>{
-			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 26, 1, 10, 16,
-			29, 31, 32, 19, 23, 13, 15, 3,
-			4, 11, 31, 32, 4, 15
-	}, {51}, o3c::Int32, device);
+			0,  2,  5,  6,  7,  8,  9, 12, 14, 17, 18, 20, 21, 22, 24, 25, 27, 28, 30,  1, 23, 10,  3, 19, 13, 26, 16, 29, 11, 15,  4, 31, 32
+	}, {33}, o3c::Int32, device);
 
-	REQUIRE(edges.Slice(0, 0, 33).Contiguous().AllEqual(edges_gt.Slice(0, 0, 33).Contiguous()));
-	auto edges_l1 = nnrt::core::functional::SortTensorByColumns(edges.Slice(0, 33, 33+14).Contiguous(), {3, 2, 1, 0});
-	auto edges_l1_gt = nnrt::core::functional::SortTensorByColumns(edges_gt.Slice(0, 33, 33+14).Contiguous(), {3, 2, 1, 0});
-
-	REQUIRE(edges_l1.AllEqual(edges_l1_gt));
-
-	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 0, 33), false).AllEqual(
-			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 0, 33), false)));
-	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 33, 33 + 14), false).AllEqual(
-			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 33, 33 + 14), false)));
-	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 33 + 14, 33 + 14 + 4), false).AllEqual(
-			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 33 + 14, 33 + 14 + 4), false)));
+	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 0, 19), false).AllEqual(
+			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 0, 19), false)));
+	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 19, 19 + 10), false).AllEqual(
+			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 19, 19 + 10), false)));
+	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 19 + 10, 19 + 10 + 4), false).AllEqual(
+			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0,19 + 10, 19 + 10 + 4), false)));
 }
 
 TEST_CASE("Test Hierarchical Graph Warp Field Constructor CPU") {

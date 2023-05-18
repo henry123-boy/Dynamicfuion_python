@@ -21,7 +21,8 @@ template void
 SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& sorted,
 		const open3d::core::Tensor& unsorted,
-		bool positive_first
+		bool non_negative_first,
+		SortOrder order
 );
 
 

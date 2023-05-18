@@ -58,6 +58,8 @@ public:
 
 	const o3c::Tensor& GetEdges() const;
 	const o3c::Tensor& GetVirtualNodeIndices() const;
+	const o3c::Tensor& GetEdgeLayerIndices() const;
+	const o3c::Tensor& GetLayerDecimationRadii() const;
 
 private:
 	class ReindexedTensorWrapper{
@@ -75,6 +77,7 @@ private:
 	std::function<float(int, float)> compute_layer_decimation_radius;
 	o3c::Tensor edges;
 	o3c::Tensor node_indices;
+	o3c::Tensor layer_decimation_radii;
 	open3d::core::Tensor edge_layer_indices;
 	ReindexedTensorWrapper indexed_nodes;
 	ReindexedTensorWrapper indexed_rotations;

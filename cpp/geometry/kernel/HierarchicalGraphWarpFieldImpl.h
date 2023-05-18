@@ -185,7 +185,7 @@ void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
 	// === prepare output & locks
 	// If we just make edges of size {target_node_count, 2} and then fill in according to the target index,
 	// we mess up the ordering of the source nodes in the edge array.
-	// to prevent this, we first make an array of size {source_node_count * max_vertex_degree, 2}, and later
+	// To prevent this, we first make an array of size {source_node_count * max_vertex_degree, 2}, and later
 	// filter out the "empty" edges. This way, we can preserve edge ordering by source node in a parallel way.
 	edges = o3c::Tensor({source_node_count * max_vertex_degree, 2}, o3c::Int32);
 	auto edge_data = edges.GetDataPtr<int32_t>();
@@ -212,6 +212,88 @@ void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
 	// now we filter out the "empty" edges
 	o3c::Tensor negative_one_tensor(std::vector<int32_t>({-1, -1}), {2}, o3c::Int32, device);
 	edges = edges.GetItem(o3c::TensorKey::IndexTensor(edges != negative_one_tensor));
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void AdjacencyArrayToEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices,
+		bool flip_source_order
+) {
+	// counters & checks
+	o3c::Device device = adjacency_array.GetDevice();
+	int64_t source_node_count = adjacency_array.GetShape(0);
+	int64_t max_vertex_degree = adjacency_array.GetShape(1);
+	int64_t target_node_count = target_node_indices.GetShape(0);
+	o3c::AssertTensorShape(adjacency_array, { source_node_count, max_vertex_degree });
+	o3c::AssertTensorDtype(adjacency_array, o3c::Int32);
+
+	o3c::AssertTensorDevice(source_node_indices, device);
+	o3c::AssertTensorShape(source_node_indices, { source_node_count });
+	o3c::AssertTensorDtype(source_node_indices, o3c::Int32);
+
+	o3c::AssertTensorDevice(target_node_indices, device);
+	o3c::AssertTensorShape(target_node_indices, { target_node_count });
+	o3c::AssertTensorDtype(target_node_indices, o3c::Int32);
+
+	// prepare input
+	auto adjacency_data = adjacency_array.GetDataPtr<int32_t>();
+	auto source_index_data = source_node_indices.GetDataPtr<int32_t>();
+	auto target_index_data = target_node_indices.GetDataPtr<int32_t>();
+
+	// === prepare output
+	// If we just make edges of size {target_node_count, 2} and then fill in according to the target index,
+	// we mess up the ordering of the source nodes in the edge array and lose edges with different source but same target.
+	// To prevent this, we first make an array of size {source_node_count * max_vertex_degree, 2}, and later
+	// filter out the "empty" edges. This way, we can preserve edge ordering by source node in a parallel way.
+	edges = o3c::Tensor({source_node_count * max_vertex_degree, 2}, o3c::Int32, device);
+	auto edge_data = edges.GetDataPtr<int32_t>();
+
+	if (flip_source_order) {
+		o3c::ParallelFor(
+				device, source_node_count * max_vertex_degree,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t global_adjacency_index) {
+					int64_t i_source = global_adjacency_index / max_vertex_degree;
+					int64_t i_source_adjacency = global_adjacency_index % max_vertex_degree;
+
+					int32_t i_target = adjacency_data[max_vertex_degree * i_source + i_source_adjacency];
+					auto edge_out = edge_data + ((source_node_count - 1 - i_source) * max_vertex_degree + i_source_adjacency) * 2;
+					if (i_target != -1) {
+						edge_out[0] = source_index_data[i_source];
+						edge_out[1] = target_index_data[i_target];
+					} else {
+						edge_out[0] = -1;
+						edge_out[1] = -1;
+					}
+				}
+		);
+	} else {
+		o3c::ParallelFor(
+				device, source_node_count * max_vertex_degree,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t global_adjacency_index) {
+					int64_t i_source = global_adjacency_index / max_vertex_degree;
+					int64_t i_source_adjacency = global_adjacency_index % max_vertex_degree;
+
+					int32_t i_target = adjacency_data[max_vertex_degree * i_source + i_source_adjacency];
+					auto edge_out = edge_data + (i_source * max_vertex_degree + i_source_adjacency) * 2;
+					if (i_target != -1) {
+						edge_out[0] = source_index_data[i_source];
+						edge_out[1] = target_index_data[i_target];
+					} else {
+						edge_out[0] = -1;
+						edge_out[1] = -1;
+					}
+				}
+		);
+	}
+
+
+	// now we filter out the "empty" edges
+	o3c::Tensor negative_one_tensor(std::vector<int32_t>({-1}), {1}, o3c::Int32, device);
+	edges = edges.GetItem(o3c::TensorKey::IndexTensor(edges != negative_one_tensor)).Reshape({-1, 2});
 }
 
 } // namespace nnrt::geometry::kernel::warp_field

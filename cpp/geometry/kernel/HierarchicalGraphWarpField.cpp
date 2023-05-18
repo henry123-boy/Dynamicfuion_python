@@ -102,5 +102,37 @@ void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
 	);
 }
 
+void AdjacencyArrayToEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices,
+		bool flip_source_order
+) {
+	core::ExecuteOnDevice(
+			adjacency_array.GetDevice(),
+			[&] {
+				AdjacencyArrayToEdges<open3d::core::Device::DeviceType::CPU>(
+						edges,
+						adjacency_array,
+						source_node_indices,
+						target_node_indices,
+						flip_source_order
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						AdjacencyArrayToEdges<open3d::core::Device::DeviceType::CUDA>(
+								edges,
+								adjacency_array,
+								source_node_indices,
+								target_node_indices,
+								flip_source_order
+						);
+				);
+			}
+	);
+}
+
 
 } // namespace nnrt::geometry::kernel::warp_field

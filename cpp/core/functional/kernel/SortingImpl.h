@@ -38,8 +38,11 @@ namespace utility = open3d::utility;
 namespace nnrt::core::functional::kernel {
 
 
-template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
-void SortTensorAlongLastDimension_PositiveFirst_Dispatched(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement, typename TSortFunction>
+void SortTensorAlongLastDimension_Generic(
+		open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted,
+		TSortFunction&& sort
+) {
 	o3c::Device device = unsorted.GetDevice();
 	o3c::SizeVector shape = unsorted.GetShape();
 	sorted = unsorted.Clone();
@@ -47,49 +50,105 @@ void SortTensorAlongLastDimension_PositiveFirst_Dispatched(open3d::core::Tensor&
 	int64_t stride = shape[dimension_count - 1];
 	int64_t series_count = unsorted.NumElements() / stride;
 	TElement* sorted_data = sorted.template GetDataPtr<TElement>();
-
-	o3c::ParallelFor(
-			device, series_count,
-			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				TElement* series = sorted_data + workload_idx * stride;
-#ifdef __CUDACC__
-				BubbleSort_PositiveFirst(series, stride);
-#else
-				std::sort(series, series + stride, [](TElement a, TElement b) {
-					if (b >= 0) {
-						return a > 0 && a < b;
-					} else {
-						return a > 0 || a < b;
-					}
-				});
-#endif
-			}
-	);
+	sort(device, series_count, sorted_data, stride);
 
 }
 
+
 template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
 void SortTensorAlongLastDimension_Dispatched(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
-	o3c::Device device = unsorted.GetDevice();
-	o3c::SizeVector shape = unsorted.GetShape();
-	sorted = unsorted.Clone();
-	int dimension_count = static_cast<int>(shape.size());
-	int64_t stride = shape[dimension_count - 1];
-	int64_t series_count = unsorted.NumElements() / stride;
-	TElement* sorted_data = sorted.template GetDataPtr<TElement>();
-
-	o3c::ParallelFor(
-			device, series_count,
-			[=] OPEN3D_DEVICE(int64_t workload_idx) {
-				TElement* series = sorted_data + workload_idx * stride;
+	SortTensorAlongLastDimension_Generic<TDeviceType, TElement>(
+			sorted, unsorted,
+			[](o3c::Device device, int64_t series_count, TElement* sorted_data, int64_t stride) {
+				o3c::ParallelFor(
+						device, series_count,
+						[=] OPEN3D_DEVICE(int64_t workload_idx) {
+							TElement* series = sorted_data + workload_idx * stride;
 #ifdef __CUDACC__
-				BubbleSort(series, stride);
+							BubbleSort(series, stride);
 #else
-				std::sort(series, series + stride);
+							std::sort(series, series + stride);
 #endif
+						}
+				);
 			}
 	);
+}
 
+
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
+void SortTensorAlongLastDimension_PositiveFirst_Dispatched(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+	SortTensorAlongLastDimension_Generic<TDeviceType, TElement>(
+			sorted, unsorted,
+			[](o3c::Device device, int64_t series_count, TElement* sorted_data, int64_t stride) {
+				o3c::ParallelFor(
+						device, series_count,
+						NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+							TElement* series = sorted_data + workload_idx * stride;
+#ifdef __CUDACC__
+							BubbleSort_PositiveFirst(series, stride);
+#else
+							std::sort(series, series + stride, [](const TElement& a, const TElement& b) {
+								if (b >= 0) {
+									return a > 0 && a < b;
+								} else {
+									return a > 0 || a < b;
+								}
+							});
+#endif
+						}
+				);
+			}
+	);
+}
+
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
+void SortTensorAlongLastDimension_Descending_Dispatched(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+	SortTensorAlongLastDimension_Generic<TDeviceType, TElement>(
+			sorted, unsorted,
+			[](o3c::Device device, int64_t series_count, TElement* sorted_data, int64_t stride) {
+				o3c::ParallelFor(
+						device, series_count,
+						[=] OPEN3D_DEVICE(int64_t workload_idx) {
+							TElement* series = sorted_data + workload_idx * stride;
+#ifdef __CUDACC__
+							BubbleSort_Descending(series, stride);
+#else
+							std::sort(series, series + stride, [](const TElement& a, const TElement& b){
+								return a > b;
+							});
+#endif
+						}
+				);
+			}
+	);
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
+void SortTensorAlongLastDimension_Descending_NegativeFirst_Dispatched(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted) {
+	SortTensorAlongLastDimension_Generic<TDeviceType, TElement>(
+			sorted, unsorted,
+			[](o3c::Device device, int64_t series_count, TElement* sorted_data, int64_t stride) {
+				o3c::ParallelFor(
+						device, series_count,
+						NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+							TElement* series = sorted_data + workload_idx * stride;
+#ifdef __CUDACC__
+							BubbleSort_Descending_NegativeFirst(series, stride);
+#else
+							std::sort(series, series + stride, [](const TElement& a, const TElement& b) {
+								if (b < 0) {
+									return a < 0 && a > b;
+								} else {
+									return a < 0 || a > b;
+								}
+							});
+#endif
+						}
+				);
+			}
+	);
 }
 
 
@@ -120,16 +179,34 @@ void SortTensorAlongLastDimension_Dispatched(open3d::core::Tensor& sorted, const
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool positive_first) {
-	if (positive_first) {
-		DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
-			SortTensorAlongLastDimension_PositiveFirst_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
-		});
-	} else {
-		DISPATCH_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
-			SortTensorAlongLastDimension_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
-		});
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order) {
+	switch (order) {
+		case SortOrder::ASC:
+			if (non_negative_first) {
+				DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
+					SortTensorAlongLastDimension_PositiveFirst_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
+				});
+			} else {
+				DISPATCH_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
+					SortTensorAlongLastDimension_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
+				});
+			}
+			break;
+		case SortOrder::DESC:
+			if (non_negative_first) {
+				DISPATCH_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
+					SortTensorAlongLastDimension_Descending_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
+				});
+			} else {
+				DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(unsorted.GetDtype(), [&]() {
+					SortTensorAlongLastDimension_Descending_NegativeFirst_Dispatched<TDeviceType, scalar_t>(sorted, unsorted);
+				});
+			}
+			break;
+		default:
+			utility::LogError("Unsupported sort order constant: {}", order);
 	}
+
 }
 
 #define DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(SIZE, ELEMENT_TYPE, ...) \
@@ -172,11 +249,11 @@ void SortTensorByColumn_Dispatched(open3d::core::Tensor& sorted, const open3d::c
 #ifdef __CUDACC__
 	o3c::Device device = unsorted.GetDevice();
 	cudaSetDevice(device.GetID());
-	thrust::sort(thrust::device, data_start, data_end, [column] __device__ (const TRow& a, const TRow& b){
+	thrust::stable_sort(thrust::device, data_start, data_end, [column] __device__ (const TRow& a, const TRow& b){
 		return a(column) < b(column);
 	});
 #else
-	std::sort(data_start, data_end, [&column](const TRow& a, const TRow& b) {
+	std::stable_sort(data_start, data_end, [&column](const TRow& a, const TRow& b) {
 		return a.coeff(column) < b.coeff(column);
 	});
 #endif

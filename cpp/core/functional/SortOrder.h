@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 10/4/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/18/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -14,18 +14,16 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
+// stdlib includes
 
-// 3rd party
-#include <open3d/core/Tensor.h>
-// local
-#include "core/functional/SortOrder.h"
+// third-party includes
 
+// local includes
 namespace nnrt::core::functional {
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first, SortOrder order = SortOrder::ASC);
-open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column);
-open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const open3d::core::SizeVector& columns);
+enum class SortOrder : int{
+	ASC = 0,
+	DESC = 1
+};
 
-open3d::core::Tensor ArgSortByColumn(const open3d::core::Tensor& unsorted, int column);
-
-} // nnrt::core::functional
+} // namespace nnrt::core::functional

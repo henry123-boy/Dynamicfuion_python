@@ -76,4 +76,23 @@ void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
 		const open3d::core::Tensor& target_node_indices
 );
 
+void AdjacencyArrayToEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices,
+		bool flip_source_order
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void AdjacencyArrayToEdges(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices,
+		bool flip_source_order
+);
+
+
+
 } // namespace nnrt::geometry::kernel::warp_field

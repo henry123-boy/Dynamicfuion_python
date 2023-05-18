@@ -21,12 +21,12 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::functional {
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first) {
+open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first, SortOrder order) {
 	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
 		return unsorted;
 	}
 	o3c::Tensor sorted;
-	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), positive_first);
+	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), positive_first, order);
 	return sorted;
 }
 

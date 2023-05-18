@@ -14,16 +14,17 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-
-//3rd party
+// 3rd party
 #include <open3d/core/Tensor.h>
+// local
+#include "core/functional/SortOrder.h"
 
 namespace nnrt::core::functional::kernel {
 
-void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool positive_first);
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool positive_first);
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order);
 
 void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column, bool in_place = false);
 
