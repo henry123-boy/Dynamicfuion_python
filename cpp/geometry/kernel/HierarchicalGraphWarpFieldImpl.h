@@ -22,6 +22,7 @@
 // local includes
 #include "geometry/kernel/HierarchicalGraphWarpField.h"
 #include "core/platform_independence/Atomics.h"
+#include "core/platform_independence/AtomicCounterArray.h"
 
 namespace o3c = open3d::core;
 
@@ -154,36 +155,63 @@ void ReIndexLayerEdgeAdjacencyArray(
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ReindexNodeHierarchy(
-		open3d::core::Tensor& virtual_edges,
-		open3d::core::Tensor& virtual_node_by_node_index,
-		const open3d::core::Tensor& concatenated_node_by_virtual_node_index,
-		const open3d::core::Tensor& layer_node_count_inclusive_prefix_sum,
-		const open3d::core::Tensor& concatenated_layer_edges_using_node_indices
+void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices
 ) {
-	// counters and checks
-	o3c::Device device = concatenated_node_by_virtual_node_index.GetDevice();
-	int64_t virtual_edge_count = concatenated_layer_edges_using_node_indices.GetLength();
-	int64_t layer_count = layer_node_count_inclusive_prefix_sum.GetLength();
-	int64_t node_count = concatenated_node_by_virtual_node_index.GetLength();
-	int64_t max_vertex_degree = concatenated_layer_edges_using_node_indices.GetShape(1);
+	// counters & checks
+	o3c::Device device = adjacency_array.GetDevice();
+	int64_t source_node_count = adjacency_array.GetShape(0);
+	int64_t max_vertex_degree = adjacency_array.GetShape(1);
+	int64_t target_node_count = target_node_indices.GetShape(0);
+	o3c::AssertTensorShape(adjacency_array, { source_node_count, max_vertex_degree });
+	o3c::AssertTensorDtype(adjacency_array, o3c::Int32);
 
-	o3c::AssertTensorShape(concatenated_node_by_virtual_node_index, { node_count });
-	o3c::AssertTensorDtype(concatenated_node_by_virtual_node_index, o3c::Int64);
+	o3c::AssertTensorDevice(source_node_indices, device);
+	o3c::AssertTensorShape(source_node_indices, { source_node_count });
+	o3c::AssertTensorDtype(source_node_indices, o3c::Int32);
 
-	o3c::AssertTensorShape(layer_node_count_inclusive_prefix_sum, { layer_count });
-	o3c::AssertTensorDtype(layer_node_count_inclusive_prefix_sum, o3c::Int32);
-	o3c::AssertTensorDevice(layer_node_count_inclusive_prefix_sum, device);
+	o3c::AssertTensorDevice(target_node_indices, device);
+	o3c::AssertTensorShape(target_node_indices, { target_node_count });
+	o3c::AssertTensorDtype(target_node_indices, o3c::Int32);
 
-	o3c::AssertTensorShape(concatenated_layer_edges_using_node_indices, { virtual_edge_count, max_vertex_degree });
-	o3c::AssertTensorDtype(concatenated_layer_edges_using_node_indices, o3c::Int32);
-	o3c::AssertTensorDevice(concatenated_layer_edges_using_node_indices, device);
+	// prepare input
+	auto adjacency_data = adjacency_array.GetDataPtr<int32_t>();
+	auto source_index_data = source_node_indices.GetDataPtr<int32_t>();
+	auto target_index_data = target_node_indices.GetDataPtr<int32_t>();
 
-	virtual_edges = o3c::Tensor({virtual_edge_count, max_vertex_degree}, o3c::Int32, device);
+	// === prepare output & locks
+	// If we just make edges of size {target_node_count, 2} and then fill in according to the target index,
+	// we mess up the ordering of the source nodes in the edge array.
+	// to prevent this, we first make an array of size {source_node_count * max_vertex_degree, 2}, and later
+	// filter out the "empty" edges. This way, we can preserve edge ordering by source node in a parallel way.
+	edges = o3c::Tensor({source_node_count * max_vertex_degree, 2}, o3c::Int32);
+	auto edge_data = edges.GetDataPtr<int32_t>();
+	core::AtomicCounterArray<TDeviceType> target_fence(target_node_count);
 
-	//TODO: not sure that this reindexing even needs to exist. Remove or finish.
+	o3c::ParallelFor(
+			device, source_node_count * max_vertex_degree,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t global_adjacency_index) {
+				int64_t i_source = global_adjacency_index / max_vertex_degree;
+				int64_t i_source_adjacency = global_adjacency_index % max_vertex_degree;
 
+				int32_t i_target = adjacency_data[max_vertex_degree * i_source + i_source_adjacency];
+				auto edge_out = edge_data + (i_source * max_vertex_degree + i_source_adjacency) * 2;
+				if (i_target != -1 && target_fence.FetchAdd(i_target, 1) == 0) {
+					edge_out[0] = source_index_data[i_source];
+					edge_out[1] = target_index_data[i_target];
+				} else {
+					edge_out[0] = -1;
+					edge_out[1] = -1;
+				}
+			}
+	);
 
+	// now we filter out the "empty" edges
+	o3c::Tensor negative_one_tensor(std::vector<int32_t>({-1, -1}), {2}, o3c::Int32, device);
+	edges = edges.GetItem(o3c::TensorKey::IndexTensor(edges != negative_one_tensor));
 }
 
 } // namespace nnrt::geometry::kernel::warp_field

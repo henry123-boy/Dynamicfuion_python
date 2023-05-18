@@ -44,6 +44,7 @@ void FlattenWarpField(
 		const open3d::core::Tensor& layer_virtual_node_count_inclusive_prefix_sum
 );
 
+[[deprecated("Unused, will most likely be removed in the near future.")]]
 void ReIndexLayerEdgeAdjacencyArray(
 		open3d::core::Tensor& edges,
 		int32_t max_vertex_degree,
@@ -59,22 +60,20 @@ void ReIndexLayerEdgeAdjacencyArray(
 		const open3d::core::Tensor& previous_layer_unfiltered_virtual_node_indices
 );
 
-[[deprecated("Never fully implemented, will most likely be removed in the near future.")]]
-void ReindexNodeHierarchy(
-		open3d::core::Tensor& virtual_edges,
-		open3d::core::Tensor& virtual_node_by_node_index,
-		const open3d::core::Tensor& concatenated_node_by_virtual_node_index,
-		const open3d::core::Tensor& layer_node_count_inclusive_prefix_sum,
-		const open3d::core::Tensor& concatenated_layer_edges_using_node_indices
+
+void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ReindexNodeHierarchy(
-		open3d::core::Tensor& virtual_edges,
-		open3d::core::Tensor& virtual_node_by_node_index,
-		const open3d::core::Tensor& concatenated_node_by_virtual_node_index,
-		const open3d::core::Tensor& layer_node_count_inclusive_prefix_sum,
-		const open3d::core::Tensor& concatenated_layer_edges_using_node_indices
+void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices
 );
 
 } // namespace nnrt::geometry::kernel::warp_field

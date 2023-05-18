@@ -70,108 +70,96 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	finest_layer.decimation_radius = this->node_coverage;
 	o3c::Device device = this->GetDevice();
 	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int32, device);
-	o3c::Tensor previous_layer_nodes = this->nodes;
+	finest_layer.node_positions = this->nodes;
 
 	o3c::Tensor false_tensor(std::vector<bool>({false}), {1}, o3c::Bool, device);
-	o3c::Tensor negative_one_tensor(std::vector<int32_t>({-1}), {1}, o3c::Int32, device);
-	// build up node indices for each layer
+	// build up node indices for each coarser layer, while filtering them out of the finer layer
 	for (int i_layer = 1; i_layer < count; i_layer++) {
-		auto& previous_layer = this->regularization_layers[i_layer - 1];
+		auto& finer_layer = this->regularization_layers[i_layer - 1];
+		auto& current_layer = this->regularization_layers[i_layer];
 
 		// === find decimation "radius" and
-		float current_decimation_radius = this->compute_layer_decimation_radius(i_layer, node_coverage);
-		o3c::Tensor current_layer_node_index_sample, previous_layer_unfiltered_bin_node_indices;
+		current_layer.decimation_radius = this->compute_layer_decimation_radius(i_layer, node_coverage);
 
-		// median-grid-subsample the previous layer to find the indices of the previous layer nodes to use for the current layer, and the rest.
-		std::tie(current_layer_node_index_sample, previous_layer_unfiltered_bin_node_indices) =
-				geometry::functional::MedianGridSubsample3dPointsWithBinInfo(previous_layer_nodes, current_decimation_radius * 2,
-				                                                             open3d::core::Int32);
+		// median-grid-subsample the previous layer to find the indices of the previous layer nodes to use for the current layer
+		o3c::Tensor current_layer_node_index_sample =
+				geometry::functional::MedianGridSubsample3dPoints(finer_layer.node_positions, current_layer.decimation_radius * 2);
+
 		o3c::TensorKey current_layer_node_index_key = o3c::TensorKey::IndexTensor(current_layer_node_index_sample);
 
-		// Separate-out the current layer nodes from the previous layer nodes to avoid duplicates to the previous layer. We can do this in multiple
-		// ways, but a boolean mask seems to be the easiest to read and most efficient. Compute the mask first, based on the current layer sample.
-		o3c::Tensor previous_layer_node_mask = o3c::Tensor({previous_layer_nodes.GetLength()}, o3c::Bool, device);
-		previous_layer_node_mask.Fill(true);
-		previous_layer_node_mask.SetItem(current_layer_node_index_key, false_tensor);
-		o3c::TensorKey previous_layer_filter_key = o3c::TensorKey::IndexTensor(previous_layer_node_mask);
+		// Separate-out the current layer nodes from the previous layer nodes to avoid duplicates to the previous layer.
+		// Compute the mask first, based on the current layer sample.
+		o3c::Tensor finer_layer_node_mask = o3c::Tensor({finer_layer.node_indices.GetLength()}, o3c::Bool, device);
+		finer_layer_node_mask.Fill(true);
+		finer_layer_node_mask.SetItem(current_layer_node_index_key, false_tensor);
+		o3c::TensorKey previous_layer_filter_key = o3c::TensorKey::IndexTensor(finer_layer_node_mask);
 
-		o3c::Tensor previous_layer_filtered_node_indices = previous_layer.node_indices.GetItem(previous_layer_filter_key);
+		// We have to retrieve the current layer's node indices from finer layer's indices before we proceed with filtering the finter layer.
+		current_layer.node_indices = finer_layer.node_indices.GetItem(current_layer_node_index_key);
+		current_layer.node_positions = finer_layer.node_positions.GetItem(current_layer_node_index_key);
 
-		// We want to set edge target indices to the indices of the actual virtual nodes; we already know that the indices of these
-		// will go in increasing order and correspond to the span [running_node_count, running_node_count + updated_previous_layer_node_count).
-		// we need to generate a mapping between the filtered previous layer local indices (i.e. 0, 1, 2, 3, 4, ..., 32 ) and the
-		// embedding of the size of the unfiltered ones (i.e. 0, 0, 1, 0, 0, 2, 3, 0, ...., 30, when 1, 3, 4, )
-		int64_t updated_previous_layer_node_count = previous_layer_filtered_node_indices.GetShape(0);
-		o3c::Tensor previous_layer_filtered_virtual_node_indices = o3c::Tensor::Arange(0, updated_previous_layer_node_count, 1, o3c::Int32, device);
-		o3c::Tensor previous_layer_unfiltered_embedding(previous_layer.node_indices.GetShape(), o3c::Int32, device);
-		previous_layer_unfiltered_embedding.SetItem(previous_layer_filter_key, previous_layer_filtered_virtual_node_indices);
-
-		// We have to retrieve the current layer indices before we proceed with replacing them with the filtered ones of the previous (finer) layer
-		o3c::Tensor current_layer_indices = previous_layer.node_indices.GetItem(current_layer_node_index_key);
-		o3c::Tensor current_layer_nodes = previous_layer_nodes.GetItem(current_layer_node_index_key);
-		// Compile edge information based on which previous-layer nodes landed into the same bins as the sampled median ones.
-		// This ensures that when we do coarse-to-fine ordering of the edges when laying out the Jacobian matrix for regularization residuals,
-		// we get non-zero values exactly along the diagonal.
-		o3c::Tensor layer_edges;
-		kernel::warp_field::ReIndexLayerEdgeAdjacencyArray(layer_edges, max_vertex_degree, previous_layer_unfiltered_bin_node_indices,
-		                                                   previous_layer_unfiltered_embedding);
-		layer_edges = core::functional::SortTensorAlongLastDimension(layer_edges, true);
-
-		// Safely update the previous layer with the filtered data now
-		previous_layer.node_indices = previous_layer_filtered_node_indices;
-
-		auto& current_layer = this->regularization_layers[i_layer];
-		current_layer.decimation_radius = current_decimation_radius;
-		current_layer.node_indices = current_layer_indices;
-		current_layer.edges = layer_edges;
-
-		previous_layer_nodes = current_layer_nodes;
+		// Safely filter the finer layer's nodes now
+		finer_layer.node_indices = finer_layer.node_indices.GetItem(previous_layer_filter_key);
+		finer_layer.node_positions = finer_layer.node_positions.GetItem(previous_layer_filter_key);
 	}
+	// count up the nodes in each layer
 	int32_t virtual_node_count = 0;
-	std::vector<int32_t> layer_node_count_inclusive_prefix_sum_data = {};
-	for (int32_t i_layer = 0; i_layer < count - 1; i_layer++) {
+	std::vector<int32_t> layer_node_count_exclusive_prefix_sum_data = {};
+	for (int32_t i_layer = 0; i_layer < count; i_layer++) {
 		const auto& source_layer = this->regularization_layers[i_layer];
+		layer_node_count_exclusive_prefix_sum_data.push_back(virtual_node_count);
 		virtual_node_count += static_cast<int32_t>(source_layer.node_indices.GetShape(0));
-		layer_node_count_inclusive_prefix_sum_data.push_back(virtual_node_count);
 	}
-
-	// reorder layer nodes in edge order, proceed in reverse layer order
-	for (int i_layer = count - 1; i_layer >= 1; i_layer--) {
-		int32_t start_virtual_node_index = layer_node_count_inclusive_prefix_sum_data[i_layer - 1];
+	// Now that we have precise node sets ready, in the next pass, connect each successive pair of layers with edges.
+	// Since we'll need to reshuffle the finer layer indices (and edges) as we proceed, we'll need to do this in top-down, coarsest-to-finest layer
+	// order.
+	for (int32_t i_layer = count - 1; i_layer >= 1; i_layer--) {
+		int32_t finer_layer_first_virtual_node_index = layer_node_count_exclusive_prefix_sum_data[i_layer - 1];
+		int32_t current_layer_first_virtual_node_index = layer_node_count_exclusive_prefix_sum_data[i_layer];
 		auto& current_layer = this->regularization_layers[i_layer];
 		auto& finer_layer = this->regularization_layers[i_layer - 1];
-		o3c::Tensor finer_layer_local_edges_flattened = finest_layer.edges.Flatten();
-		// // filter out -1 values
-		o3c::Tensor negative_ones(finer_layer_local_edges_flattened.GetShape(), o3c::Int32, device);
-		negative_ones.Fill(-1);
-		o3c::TensorKey previous_layer_edge_mask = o3c::TensorKey::IndexTensor(
-				finer_layer_local_edges_flattened.IsClose(negative_ones).LogicalNot());
-		o3c::Tensor ordered_finer_layer_local_indices =
-				finer_layer_local_edges_flattened.GetItem(previous_layer_edge_mask).To(o3c::Int64);
-		o3c::TensorKey finer_layer_index = o3c::TensorKey::IndexTensor(ordered_finer_layer_local_indices);
-		finer_layer.node_indices = finer_layer.node_indices.GetItem(finer_layer_index);
-		if(i_layer > 1){
-			finer_layer.edges = finer_layer.node_indices.GetItem(finer_layer_index);
+
+		// find K nearest neighbors in the finer level for each source node
+		o3c::Tensor finer_layer_adjacency_array, squared_distances;
+		core::KdTree finer_layer_node_tree(finer_layer.node_positions);
+		finer_layer_node_tree.FindKNearestToPoints(finer_layer_adjacency_array, squared_distances,
+		                                           current_layer.node_positions, max_vertex_degree, true);
+		if(finer_layer_adjacency_array.NumElements() < finer_layer.node_indices.GetLength()){
+			utility::LogError("Count of edges constructed ({}) falls below the number of nodes in previous layer ({}). This points"
+							  "to an incomplete edge set. Try increasing the max_vertex_degree limit.",
+							  finer_layer_adjacency_array.NumElements(), finer_layer.node_indices.GetLength());
 		}
-		int64_t edge_count = ordered_finer_layer_local_indices.GetLength();
-		finer_layer_local_edges_flattened.SetItem(
-				previous_layer_edge_mask,
-				o3c::Tensor::Arange(start_virtual_node_index, start_virtual_node_index + edge_count, 1, o3c::Int32, device)
+		// our goal now is to reorder nodes in the finer layer such that:
+		//  1) the targets of consecutive edges are ascending indices, starting from the first virtual node index in layer
+		//  2) consecutive edges are laid out as if grouped by their source node index
+		// in our edge definitions, we need to use virtual node indices for both source and target nodes
+		o3c::Tensor finer_layer_edges;
+		o3c::Tensor finter_layer_virtual_node_indices =
+				o3c::Tensor::Arange(finer_layer_first_virtual_node_index, finer_layer_first_virtual_node_index + finer_layer.node_indices.GetLength(),
+				                    1, o3c::Int32, device);
+		o3c::Tensor current_layer_virtual_node_indices =
+				o3c::Tensor::Arange(finer_layer_first_virtual_node_index,
+				                    current_layer_first_virtual_node_index + current_layer.node_indices.GetLength(),
+				                    1, o3c::Int32, device);
+		kernel::warp_field::AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
+				finer_layer_edges, finer_layer_adjacency_array, current_layer_virtual_node_indices, finter_layer_virtual_node_indices
 		);
-		current_layer.edges = finer_layer_local_edges_flattened.Reshape({-1, max_vertex_degree});
-		current_layer.edge_count = edge_count;
+		// now we have a good idea of what order the finer nodes should appear in -- edge target order.
+		o3c::TensorKey virtual_node_ordering = o3c::TensorKey::IndexTensor(core::functional::ArgSortByColumn(finer_layer_edges, 1));
+		finer_layer.node_indices = finer_layer.node_indices.GetItem(virtual_node_ordering);
+		finer_layer.node_positions = finer_layer.node_positions.GetItem(virtual_node_ordering);
+		finer_layer.edges = finer_layer_edges;
 	}
 
-	// convert array of structs to arrays of tensors, compute counts, layer weights, prefix sum
+	// convert array of structs to arrays of tensors, compute counts, edge layer indices, decimation radii
 	std::vector<o3c::Tensor> layer_edge_sets_coarse_to_fine = {};
 	std::vector<o3c::Tensor> layer_edge_layer_indices_coarse_to_fine = {};
 	std::vector<o3c::Tensor> layer_node_index_sets_coarse_to_fine = {};
 	std::vector<float> layer_decimation_radius_data = {};
 
-
 	for (int32_t i_layer = 0; i_layer < count - 1; i_layer++) {
 		const auto& source_layer = this->regularization_layers[i_layer];
-		if (i_layer > 0) {
+		if (i_layer < count - 1) {
 			layer_edge_sets_coarse_to_fine.push_back(source_layer.edges);
 			const auto& target_layer = this->regularization_layers[i_layer + 1];
 			layer_decimation_radius_data.push_back(target_layer.decimation_radius);
@@ -182,17 +170,9 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		layer_node_index_sets_coarse_to_fine.push_back(source_layer.node_indices);
 	}
 
-	this->virtual_node_index = o3c::Concatenate(layer_node_index_sets_coarse_to_fine);
+	this->node_indices = o3c::Concatenate(layer_node_index_sets_coarse_to_fine);
 	this->edges = o3c::Concatenate(layer_edge_sets_coarse_to_fine);
 	this->edge_layer_indices = o3c::Concatenate(layer_edge_layer_indices_coarse_to_fine);
-
-	o3c::Tensor layer_node_count_inclusive_prefix_sum(
-			layer_node_count_inclusive_prefix_sum_data,
-			{
-					static_cast<int64_t>(layer_node_count_inclusive_prefix_sum_data.size())
-			},
-			o3c::Int32, device
-	);
 
 	o3c::Tensor layer_edge_weights =
 			o3c::Tensor(layer_decimation_radius_data, {static_cast<int64_t>(layer_decimation_radius_data.size())}, o3c::Float32, device);
@@ -204,19 +184,19 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetEdges() const {
 
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetVirtualNodeIndices() const {
-	return this->virtual_node_index;
+	return this->node_indices;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodes(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_nodes.Get(&this->virtual_node_index) : this->nodes;
+	return use_virtual_ordering ? this->indexed_nodes.Get(&this->node_indices) : this->nodes;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetTranslations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_translations.Get(&this->virtual_node_index) : this->nodes;
+	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetRotations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_translations.Get(&this->virtual_node_index) : this->nodes;
+	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
 }
 
 

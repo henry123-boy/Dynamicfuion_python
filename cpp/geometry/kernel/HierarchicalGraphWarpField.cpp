@@ -73,31 +73,30 @@ void ReIndexLayerEdgeAdjacencyArray(
 	);
 }
 
-void ReindexNodeHierarchy(
-		open3d::core::Tensor& virtual_edges,
-		open3d::core::Tensor& node_by_virtual_node_index,
-		const open3d::core::Tensor& virtual_node_by_node_index,
-		const open3d::core::Tensor& layer_node_count_inclusive_prefix_sum,
-		const open3d::core::Tensor& layer_edges_using_node_indices
+void AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut(
+		open3d::core::Tensor& edges,
+		const open3d::core::Tensor& adjacency_array,
+		const open3d::core::Tensor& source_node_indices,
+		const open3d::core::Tensor& target_node_indices
 ) {
 	core::ExecuteOnDevice(
-			virtual_node_by_node_index.GetDevice(),
+			adjacency_array.GetDevice(),
 			[&] {
-				ReindexNodeHierarchy<open3d::core::Device::DeviceType::CPU>(
-						virtual_edges,
-						node_by_virtual_node_index,
-						virtual_node_by_node_index,
-						layer_node_count_inclusive_prefix_sum,
-						layer_edges_using_node_indices);
+				AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut<open3d::core::Device::DeviceType::CPU>(
+						edges,
+						adjacency_array,
+						source_node_indices,
+						target_node_indices
+				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ReindexNodeHierarchy<open3d::core::Device::DeviceType::CPU>(
-								virtual_edges,
-								node_by_virtual_node_index,
-								virtual_node_by_node_index,
-								layer_node_count_inclusive_prefix_sum,
-								layer_edges_using_node_indices);
+						AdjacencyArrayToEdgesWithDuplicateTargetFilteredOut<open3d::core::Device::DeviceType::CUDA>(
+								edges,
+								adjacency_array,
+								source_node_indices,
+								target_node_indices
+						);
 				);
 			}
 	);

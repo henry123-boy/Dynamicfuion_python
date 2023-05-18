@@ -26,7 +26,7 @@ public:
 	float decimation_radius; // m
 	open3d::core::Tensor edges;
 	open3d::core::Tensor node_indices;
-	int64_t edge_count;
+	open3d::core::Tensor node_positions;
 };
 
 } // namespace nnrt::geometry

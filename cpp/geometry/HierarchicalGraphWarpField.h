@@ -74,7 +74,7 @@ private:
 	std::vector<RegularizationLayer> regularization_layers;
 	std::function<float(int, float)> compute_layer_decimation_radius;
 	o3c::Tensor edges;
-	o3c::Tensor virtual_node_index;
+	o3c::Tensor node_indices;
 	open3d::core::Tensor edge_layer_indices;
 	ReindexedTensorWrapper indexed_nodes;
 	ReindexedTensorWrapper indexed_rotations;
