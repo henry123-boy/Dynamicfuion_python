@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/12/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/18/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -17,17 +17,10 @@
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
-#include "geometry/HierarchicalGraphWarpField.h"
 
 // local includes
 
-namespace nnrt::alignment::functional {
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
-		nnrt::geometry::HierarchicalGraphWarpField& warp_field
-);
+namespace nnrt::alignment::functional::kernel {
 
 
-} // namespace nnrt::alignment::functional
+} // namespace nnrt::alignment::functional::kernel

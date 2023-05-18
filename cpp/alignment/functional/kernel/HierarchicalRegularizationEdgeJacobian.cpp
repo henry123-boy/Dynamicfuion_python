@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/12/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/18/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,22 +13,14 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// stdlib includes
+
 // third-party includes
 
 // local includes
-#include "alignment/functional/HierarchicalRegularizationEdgeJacobian.h"
 #include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
 
-namespace o3c = open3d::core;
-namespace nnrt::alignment::functional {
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field) {
-	const o3c::Tensor& nodes = warp_field.GetNodePositions(true);
-	const o3c::Tensor& edges = warp_field.GetEdges();
+namespace nnrt::alignment::functional::kernel {
 
-	o3c::Tensor edge_node_jacobians, edge_node_jacobian_counts, edge_jacobian_node_indices;
 
-	//TODO:
-	open3d::utility::LogError("Not fully implemented");
-}
-} // namespace nnrt::alignment::functional
+} // namespace nnrt::alignment::functional::kernel

@@ -52,7 +52,7 @@ public:
 	const RegularizationLayer& GetRegularizationLevel(int i_layer) const;
 	int GetRegularizationLevelCount() const;
 
-	const o3c::Tensor& GetNodes(bool use_virtual_ordering = false);
+	const o3c::Tensor& GetNodePositions(bool use_virtual_ordering = false);
 	const o3c::Tensor& GetRotations(bool use_virtual_ordering = false);
 	const o3c::Tensor& GetTranslations(bool use_virtual_ordering = false);
 

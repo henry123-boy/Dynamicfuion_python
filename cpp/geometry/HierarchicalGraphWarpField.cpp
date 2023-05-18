@@ -181,7 +181,7 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetVirtualNodeIndices() const {
 	return this->node_indices;
 }
 
-const o3c::Tensor& HierarchicalGraphWarpField::GetNodes(bool use_virtual_ordering) {
+const o3c::Tensor& HierarchicalGraphWarpField::GetNodePositions(bool use_virtual_ordering) {
 	return use_virtual_ordering ? this->indexed_nodes.Get(&this->node_indices) : this->nodes;
 }
 
