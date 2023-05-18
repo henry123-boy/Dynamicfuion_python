@@ -73,7 +73,7 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	o3c::Tensor previous_layer_nodes = this->nodes;
 
 	o3c::Tensor false_tensor(std::vector<bool>({false}), {1}, o3c::Bool, device);
-	o3c::Tensor negative_one_tensor(std::vector<int32_t>(-1), {1}, o3c::Int32, device);
+	o3c::Tensor negative_one_tensor(std::vector<int32_t>({-1}), {1}, o3c::Int32, device);
 	// build up node indices for each layer
 	for (int i_layer = 1; i_layer < count; i_layer++) {
 		auto& previous_layer = this->regularization_layers[i_layer - 1];
@@ -99,8 +99,8 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 
 		// We want to set edge target indices to the indices of the actual virtual nodes; we already know that the indices of these
 		// will go in increasing order and correspond to the span [running_node_count, running_node_count + updated_previous_layer_node_count).
-		// we need to generate a mapping between the filtered previous layer local indices (i.e. 0, 1, 2, 3, 4 ... ) and the
-		// embedding of the size of the unfiltered ones (i.e. 0, 0, 1, 0, 0, 2, 3, 0, ....)
+		// we need to generate a mapping between the filtered previous layer local indices (i.e. 0, 1, 2, 3, 4, ..., 32 ) and the
+		// embedding of the size of the unfiltered ones (i.e. 0, 0, 1, 0, 0, 2, 3, 0, ...., 30, when 1, 3, 4, )
 		int64_t updated_previous_layer_node_count = previous_layer_filtered_node_indices.GetShape(0);
 		o3c::Tensor previous_layer_filtered_virtual_node_indices = o3c::Tensor::Arange(0, updated_previous_layer_node_count, 1, o3c::Int32, device);
 		o3c::Tensor previous_layer_unfiltered_embedding(previous_layer.node_indices.GetShape(), o3c::Int32, device);
