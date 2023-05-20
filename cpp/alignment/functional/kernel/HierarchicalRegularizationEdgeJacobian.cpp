@@ -31,7 +31,9 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& node_translations,
-		const open3d::core::Tensor& edges
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layer_indices,
+		const open3d::core::Tensor& layer_decimation_radii
 ) {
 	core::ExecuteOnDevice(
 			node_positions.GetDevice(),
@@ -43,19 +45,20 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 						node_positions,
 						node_rotations,
 						node_translations,
-						edges
-				);
+						edges, edge_layer_indices, layer_decimation_radii);
 			},
 			[&] {
-				NNRT_IF_CUDA (HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
-						edge_jacobians,
-						node_edge_jacobian_indices_jagged,
-						node_edge_jacobian_counts,
-						node_positions,
-						node_rotations,
-						node_translations,
-						edges
-				); );
+				NNRT_IF_CUDA (
+						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
+								edge_jacobians,
+								node_edge_jacobian_indices_jagged,
+								node_edge_jacobian_counts,
+								node_positions,
+								node_rotations,
+								node_translations,
+								edges, edge_layer_indices, layer_decimation_radii
+						);
+				);
 			}
 
 }

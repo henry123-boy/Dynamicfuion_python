@@ -27,6 +27,8 @@ HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::Hierarchica
 	const o3c::Tensor& node_translations = warp_field.GetNodeTranslations(true);
 	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
 	const o3c::Tensor& edges = warp_field.GetEdges();
+	const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
+	const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
 
 	o3c::Tensor edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts;
 	kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
@@ -34,9 +36,11 @@ HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::Hierarchica
 			node_edge_jacobian_indices_jagged,
 			node_edge_jacobian_counts,
 			node_positions,
-			node_translations,
 			node_rotations,
-			edges
+			node_translations,
+			edges,
+			edge_layer_indices,
+			layer_decimation_radii
 	);
 	return std::make_tuple(edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts);
 }
