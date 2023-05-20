@@ -21,14 +21,23 @@
 
 namespace o3c = open3d::core;
 namespace nnrt::alignment::functional {
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field) {
-	const o3c::Tensor& nodes = warp_field.GetNodePositions(true);
+	const o3c::Tensor& node_positions = warp_field.GetNodePositions(true);
+	const o3c::Tensor& node_translations = warp_field.GetNodeTranslations(true);
+	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
 	const o3c::Tensor& edges = warp_field.GetEdges();
 
-	o3c::Tensor edge_node_jacobians, edge_node_jacobian_counts, edge_jacobian_node_indices;
-
-	//TODO:
-	open3d::utility::LogError("Not fully implemented");
+	o3c::Tensor edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts;
+	kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+			edge_jacobians,
+			node_edge_jacobian_indices_jagged,
+			node_edge_jacobian_counts,
+			node_positions,
+			node_translations,
+			node_rotations,
+			edges
+	);
+	return std::make_tuple(edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts);
 }
 } // namespace nnrt::alignment::functional

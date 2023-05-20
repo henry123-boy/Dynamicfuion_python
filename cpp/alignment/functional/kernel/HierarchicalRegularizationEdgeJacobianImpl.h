@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/18/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 5/20/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -17,21 +17,13 @@
 // stdlib includes
 
 // third-party includes
+#include <open3d/core/Device.h>
 #include <open3d/core/Tensor.h>
 
 // local includes
+#include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
 
 namespace nnrt::alignment::functional::kernel {
-
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
-		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_jacobian_indices_jagged,
-		open3d::core::Tensor& node_edge_jacobian_counts,
-		const open3d::core::Tensor& node_positions,
-		const open3d::core::Tensor& node_rotations,
-		const open3d::core::Tensor& node_translations,
-		const open3d::core::Tensor& edges
-);
 
 template <open3d::core::Device::DeviceType TDeviceType>
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
@@ -42,6 +34,8 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& edges
-);
+){
+
+}
 
 } // namespace nnrt::alignment::functional::kernel

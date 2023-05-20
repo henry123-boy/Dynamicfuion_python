@@ -53,8 +53,8 @@ public:
 	int GetRegularizationLevelCount() const;
 
 	const o3c::Tensor& GetNodePositions(bool use_virtual_ordering = false);
-	const o3c::Tensor& GetRotations(bool use_virtual_ordering = false);
-	const o3c::Tensor& GetTranslations(bool use_virtual_ordering = false);
+	const o3c::Tensor& GetNodeRotations(bool use_virtual_ordering = false);
+	const o3c::Tensor& GetNodeTranslations(bool use_virtual_ordering = false);
 
 	const o3c::Tensor& GetEdges() const;
 	const o3c::Tensor& GetVirtualNodeIndices() const;

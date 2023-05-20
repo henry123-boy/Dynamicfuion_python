@@ -381,7 +381,7 @@ set(
     geometry/kernel/HierarchicalGraphWarpFieldImpl.h
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCPU.cpp
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCUDA.cu
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/HierarchicalRegularizationEdgeJacobian.h geometry/WarpField.cpp geometry/WarpField.h geometry/PlanarGraphWarpField.cpp geometry/PlanarGraphWarpField.h core/functional/SortOrder.h alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h)
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/HierarchicalRegularizationEdgeJacobian.h geometry/WarpField.cpp geometry/WarpField.h geometry/PlanarGraphWarpField.cpp geometry/PlanarGraphWarpField.h core/functional/SortOrder.h alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

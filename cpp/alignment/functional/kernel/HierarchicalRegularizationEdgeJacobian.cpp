@@ -16,11 +16,48 @@
 // stdlib includes
 
 // third-party includes
+#include <open3d/core/Tensor.h>
 
 // local includes
 #include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
+#include "core/DeviceSelection.h"
 
 namespace nnrt::alignment::functional::kernel {
 
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+		open3d::core::Tensor& edge_jacobians,
+		open3d::core::Tensor& node_edge_jacobian_indices_jagged,
+		open3d::core::Tensor& node_edge_jacobian_counts,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& edges
+) {
+	core::ExecuteOnDevice(
+			node_positions.GetDevice(),
+			[&] {
+				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
+						edge_jacobians,
+						node_edge_jacobian_indices_jagged,
+						node_edge_jacobian_counts,
+						node_positions,
+						node_rotations,
+						node_translations,
+						edges
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA (HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
+						edge_jacobians,
+						node_edge_jacobian_indices_jagged,
+						node_edge_jacobian_counts,
+						node_positions,
+						node_rotations,
+						node_translations,
+						edges
+				); );
+			}
+
+}
 
 } // namespace nnrt::alignment::functional::kernel

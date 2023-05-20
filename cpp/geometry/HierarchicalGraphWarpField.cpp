@@ -185,11 +185,11 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetNodePositions(bool use_virtual
 	return use_virtual_ordering ? this->indexed_nodes.Get(&this->node_indices) : this->nodes;
 }
 
-const o3c::Tensor& HierarchicalGraphWarpField::GetTranslations(bool use_virtual_ordering) {
+const o3c::Tensor& HierarchicalGraphWarpField::GetNodeTranslations(bool use_virtual_ordering) {
 	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
 }
 
-const o3c::Tensor& HierarchicalGraphWarpField::GetRotations(bool use_virtual_ordering) {
+const o3c::Tensor& HierarchicalGraphWarpField::GetNodeRotations(bool use_virtual_ordering) {
 	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
 }
 
