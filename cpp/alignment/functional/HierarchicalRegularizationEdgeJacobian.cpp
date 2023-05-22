@@ -22,26 +22,25 @@
 namespace o3c = open3d::core;
 namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field) {
+HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field, float regularization_weight) {
 	const o3c::Tensor& node_positions = warp_field.GetNodePositions(true);
-	const o3c::Tensor& node_translations = warp_field.GetNodeTranslations(true);
 	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
 	const o3c::Tensor& edges = warp_field.GetEdges();
 	const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
 	const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
 
-	o3c::Tensor edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts;
+	o3c::Tensor edge_jacobians, node_edge_indices_jagged, node_edge_counts;
 	kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 			edge_jacobians,
-			node_edge_jacobian_indices_jagged,
-			node_edge_jacobian_counts,
+			node_edge_indices_jagged,
+			node_edge_counts,
 			node_positions,
 			node_rotations,
-			node_translations,
 			edges,
 			edge_layer_indices,
-			layer_decimation_radii
+			layer_decimation_radii,
+			regularization_weight
 	);
-	return std::make_tuple(edge_jacobians, node_edge_jacobian_indices_jagged, node_edge_jacobian_counts);
+	return std::make_tuple(edge_jacobians, node_edge_indices_jagged, node_edge_counts);
 }
 } // namespace nnrt::alignment::functional

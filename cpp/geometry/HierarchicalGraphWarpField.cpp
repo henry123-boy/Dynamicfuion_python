@@ -160,7 +160,8 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 			const auto& target_layer = this->regularization_layers[i_layer + 1];
 			layer_decimation_radius_data.push_back(target_layer.decimation_radius);
 			o3c::Tensor layer_edge_layer_indices({source_layer.edges.GetShape(0)}, o3c::Int8, device);
-			layer_edge_layer_indices.Fill(i_layer);
+			// we record the layer of the "targets" as the official edge layer
+			layer_edge_layer_indices.Fill(i_layer + 1);
 			layer_edge_layer_indices_coarse_to_fine.push_back(layer_edge_layer_indices);
 		}
 	}

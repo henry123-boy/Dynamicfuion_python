@@ -25,27 +25,27 @@ namespace nnrt::alignment::functional::kernel {
 
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_jacobian_indices_jagged,
-		open3d::core::Tensor& node_edge_jacobian_counts,
+		open3d::core::Tensor& node_edge_indices_jagged,
+		open3d::core::Tensor& node_edge_counts,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
-		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
-		const open3d::core::Tensor& layer_decimation_radii
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
 );
 
 template <open3d::core::Device::DeviceType TDeviceType>
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_jacobian_indices_jagged,
-		open3d::core::Tensor& node_edge_jacobian_counts,
+		open3d::core::Tensor& node_edge_indices_jagged,
+		open3d::core::Tensor& node_edge_counts,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
-		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
-		const open3d::core::Tensor& layer_decimation_radii
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
 );
 
 } // namespace nnrt::alignment::functional::kernel

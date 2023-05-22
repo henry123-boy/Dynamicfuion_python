@@ -470,13 +470,14 @@ class PointCloudAlignmentOptimizer:
 
         # Compute jacobian wrt. translations.
         dt_start_index = 3 * opt_num_nodes_i
+        # derivatives of edges ij w.r.t. node i
         jacobian_arap[every_third_starting_with_0, dt_start_index + 3 * node_idxs_0 + 0] += \
             lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
         jacobian_arap[every_third_starting_with_1, dt_start_index + 3 * node_idxs_0 + 1] += \
             lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
         jacobian_arap[every_third_starting_with_2, dt_start_index + 3 * node_idxs_0 + 2] += \
             lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
-
+        # derivatives of edges ij w.r.t. node j
         jacobian_arap[every_third_starting_with_0, dt_start_index + 3 * node_idxs_1 + 0] += \
             -lambda_arap * w * ones_for_every_edge  # (batch_edge_count)
         jacobian_arap[every_third_starting_with_1, dt_start_index + 3 * node_idxs_1 + 1] += \
