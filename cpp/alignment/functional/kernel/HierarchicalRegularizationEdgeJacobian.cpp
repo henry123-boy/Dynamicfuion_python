@@ -64,6 +64,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 						);
 				);
 			}
+	);
 
 }
 

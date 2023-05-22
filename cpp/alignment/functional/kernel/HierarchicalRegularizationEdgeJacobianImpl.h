@@ -99,7 +99,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 				int64_t i_jacobian_address;
 				int i_edge_for_node = node_edge_counters.FetchAdd(node_index, 1);
 				if (i_edge_for_node > MAX_EDGES_PER_NODE) {
-					printf("Warning: too many edges for node %ll in hierarchy, %d. The allowed maximum is %d. Jacobians will be incomplete.\n",
+					printf("Warning: too many edges for node %li in hierarchy, %i. The allowed maximum is %i. Jacobians will be incomplete.\n",
 					       node_index, i_edge_for_node, MAX_EDGES_PER_NODE);
 				} else {
 					node_edge_data[node_index * MAX_EDGES_PER_NODE + i_edge_for_node] = static_cast<int32_t>(i_edge);
