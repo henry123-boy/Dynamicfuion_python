@@ -94,11 +94,11 @@ private:
     float min_update_threshold;
     float max_depth;
     bool use_perspective_correction;
-	bool use_tukey_penalty;
+	bool use_tukey_penalty_for_data_term;
 	float tukey_penalty_cutoff_cm;
 	float preconditioning_dampening_factor;
 
-    open3d::core::Tensor ComputeResiduals(
+    open3d::core::Tensor ComputeDepthResiduals(
             open3d::t::geometry::PointCloud& rasterized_point_cloud,
             open3d::core::Tensor& residual_mask,
             const open3d::t::geometry::TriangleMesh& warped_mesh,
