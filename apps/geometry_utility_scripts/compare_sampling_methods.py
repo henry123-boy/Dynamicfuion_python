@@ -16,8 +16,21 @@
 
 import sys
 import nnrt.geometry
+import open3d as o3d
+import open3d.core as o3c
+import image_processing
+
+import camera
 from data import StandaloneFrameDataset
 from frame import DataSplit
+from collections import namedtuple
+
+
+class SamplingResult:
+    def __init__(self):
+        self.minimum_distances = []
+        self.sample_point_counts = []
+        self.runtimes = []
 
 
 def main():
@@ -44,7 +57,29 @@ def main():
     all_frame_sets = [DOG_TRAINING_0, DOG_TRAINING_1, DOG_TRAINING_3, DOG_0, DOG_1, DOG_TREAT_0, DOG_2, DOG_TREAT_1,
                       LITTLE_GIRL_0, LITTLE_GIRL_1, LITTLE_GIRL_2, LITTLE_GIRL_3, DOG_TREAT_2, WACK_0, NECK_PILLOW_0,
                       BLUE_SWEATER_GUY_0, BACKPACK_0, BERLIN_0, BLUE_SHIRT_GUY_0]
-    nnrt.geometry.functional.
+
+    sequential_epsilon_sampling_result = SamplingResult()
+    mean_grid_downsampling_result = SamplingResult()
+    fast_radius_mean_grid_downsampling_result = SamplingResult()
+    median_grid_downsampling_result = SamplingResult()
+    fast_radius_median_grid_downsampling_result = SamplingResult()
+
+    for frame_set in all_frame_sets:
+        depth_image: o3d.t.geometry.Image = o3d.t.io.read_image(frame_set.get_depth_image_path())
+        mask_image: o3d.t.geometry.Image = o3d.t.io.read_image(frame_set.get_mask_image_path())
+        fx, fy, cx, cy = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(frame_set.get_intrinsics_path())
+
+        # sequential epsilon sampling
+        depth_image_np = depth_image.as_tensor().numpy()
+        mask_image_np = mask_image.as_tensor().numpy()
+        point_image = image_processing.backproject_depth(depth_image_np, fx, fy, cx, cy, depth_scale=1000.0)
+        max_triangle_distance: float = 0.05
+
+        vertices, vertex_pixels, faces = nnrt.compute_mesh_from_depth(point_image, max_triangle_distance)
+        non_eroded_vertices = nnrt.get_vertex_erosion_mask(point_image, faces, 4, 4)
+        node_coverage = 0.05
+
+        node_coords, node_point_indices = nnrt.sample_nodes(point_image, non_eroded_vertices, node_coverage, True, False)
 
 
     return 0
