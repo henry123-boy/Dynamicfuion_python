@@ -46,7 +46,7 @@ namespace nnrt::geometry::functional::kernel::sampling {
 
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GridDownsamplePoints(
+void GridMeanDownsamplePoints(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend
 ) {
@@ -54,7 +54,7 @@ void GridDownsamplePoints(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void FastRadiusDownsamplePoints(
+void FastMeanRadiusDownsamplePoints(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float radius,
 		const open3d::core::HashBackendType& hash_backend
 ) {
@@ -92,15 +92,13 @@ void GridMedianSubsample3dPointsWithBinInfo(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RadiusMedianSubsample3dPoints(
+void FastMedianRadiusSubsample3dPoints(
 		open3d::core::Tensor& sample,
 		const open3d::core::Tensor& points,
 		float radius,
 		const open3d::core::HashBackendType& hash_backend_type
 ) {
-	// TODO: need to reject >radius points from cluster instead
-	// float extended_radius = sqrtf(2 * (radius * radius));
-	float extended_radius = radius;
+	float extended_radius = sqrtf(2 * (radius * radius));
 	o3c::Tensor median_point_indices_stage1, median_point_indices_stage2;
 	median::MedianGridSamplePoints<TDeviceType>(median_point_indices_stage1, points, extended_radius * 2, hash_backend_type);
 	o3c::Tensor points_stage_1 = points.GetItem(o3c::TensorKey::IndexTensor(median_point_indices_stage1));

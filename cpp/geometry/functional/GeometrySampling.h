@@ -49,18 +49,33 @@ open3d::core::Tensor FastMeanRadiusDownsample3dPoints(
 		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
 
+/**
+ * \brief median-sample points within each grid cell of a uniform cubic grid
+ * \param points original points in open3d::core::Float32 format, tensor of size Nx3
+ * \param grid_cell_size side length of each (cubic) grid cell
+ * \param hash_backend hash backend to use for the operation
+ * \return resulting point indices as N-sized open3d::core::Float32 tensor, stored on same device as the point input tensor
+ */
 //TODO write doc
 open3d::core::Tensor
 MedianGridSubsample3dPoints(
-		const open3d::core::Tensor& points, float grid_size,
-		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
+		const open3d::core::Tensor& points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
 
+/**
+ * \brief median-sample points within each grid cell of a uniform cubic grid and compute the difference sets for each cell
+ * \param points original points in open3d::core::Float32 format, tensor of size Nx3
+ * \param grid_cell_size side length of each (cubic) grid cell
+ * \param hash_backend hash backend to use for the operation
+ * \return returns <medians,bin_points>, where "medians" is an N-sized open3d::core::Float32 tensor containing the medians,
+ * while bin_points is a -1-padded 2D array with indices of the non-sampled points remaining in each bin
+ */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MedianGridSubsample3dPointsWithBinInfo(
-		const open3d::core::Tensor& points, float grid_size,
+		const open3d::core::Tensor& points, float grid_cell_size,
 		open3d::core::Dtype bin_node_index_dtype = open3d::core::Int32,
-		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
+		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
 
 /**
@@ -71,7 +86,7 @@ MedianGridSubsample3dPointsWithBinInfo(
  * \return resulting sample of point indexes, in a 1D Int64 tensor, stored on the same device as the original points
  */
 open3d::core::Tensor
-RadiusMedianSubsample3dPoints(
+FastMedianRadiusSubsample3dPoints(
 		const open3d::core::Tensor& points, float radius,
 		const open3d::core::HashBackendType& hash_backend_type = open3d::core::HashBackendType::Default
 );

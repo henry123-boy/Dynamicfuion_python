@@ -37,9 +37,10 @@ public:
 			float minimal_update_threshold = 1e-6f,
 			bool use_perspective_correction = true,
 			float max_depth = 10.f,
-			bool use_tukey_penalty = false,
+			bool use_tukey_penalty_for_data_term = false,
 			float tukey_penalty_cutoff_cm = 0.01f,
-			float preconditioning_dampening_factor = 0.0f
+			float preconditioning_dampening_factor = 0.0f,
+			float regularization_term_weight = 0.1f
 	);
 
     /**
@@ -97,6 +98,7 @@ private:
 	bool use_tukey_penalty_for_data_term;
 	float tukey_penalty_cutoff_cm;
 	float preconditioning_dampening_factor;
+	float regularization_term_weight;
 
     open3d::core::Tensor ComputeDepthResiduals(
             open3d::t::geometry::PointCloud& rasterized_point_cloud,

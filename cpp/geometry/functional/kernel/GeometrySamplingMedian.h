@@ -339,39 +339,5 @@ void MedianGridSamplePointsWithBinInfo(
 	);
 }
 
-template<open3d::core::Device::DeviceType TDeviceType>
-void MedianGridRadiusSamplePoints(
-		open3d::core::Tensor& sample, const open3d::core::Tensor& original_points, float grid_cell_size,
-		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
-	auto device = original_points.GetDevice();
-
-	auto [point_bin_indices, bin_count, point_bin_coord_map] =
-			GridBinPoints<TDeviceType, int32_t>(original_points, grid_cell_size, hash_backend, grid_offset);
-
-	o3c::Tensor bin_point_counts = median::ComputeBinPointCounts<TDeviceType>(device, point_bin_indices, bin_count);
-	o3c::Tensor bin_start_indices = core::functional::ExclusiveParallelPrefixSum1D(bin_point_counts);
-
-	o3c::Tensor point_indices_bin_sorted = median::SortPointIndicesByBins<TDeviceType>(device, point_bin_indices, bin_start_indices, bin_count);
-
-	o3c::Tensor point_counts_squared = bin_point_counts * bin_point_counts;
-
-	//TODO: optimize: no need to do two separate scans here -- do an exclusive scan on a sub-tensor starting at 1, fill element 0 with 0 manually.
-	o3c::Tensor bin_distance_matrix_start_indices = core::functional::ExclusiveParallelPrefixSum1D(point_counts_squared);
-	o3c::Tensor bin_distance_matrix_end_indices = core::functional::InclusiveParallelPrefixSum1D(point_counts_squared);
-
-
-	int64_t distance_matrix_set_element_count = point_counts_squared.Sum({0}).ToFlatVector<int32_t>()[0];
-	// represent a ragged 3D tensor using a 1D tensor
-	o3c::Tensor bin_distance_matrices = median::ComputeBinDistanceMatrices<TDeviceType>(
-			device, bin_point_counts, bin_start_indices, bin_distance_matrix_end_indices, original_points,
-			point_indices_bin_sorted, distance_matrix_set_element_count
-	);
-
-	sample = median::FindMedianPointIndices<TDeviceType>(
-			device, bin_distance_matrices, bin_point_counts, bin_start_indices, bin_distance_matrix_start_indices,
-			point_bin_indices, point_indices_bin_sorted
-	);
-}
-
 
 } // namespace  nnrt::geometry::functional::kernel::sampling::median

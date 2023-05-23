@@ -30,7 +30,7 @@ MeanGridDownsample3dPoints(const open3d::core::Tensor& original_points, float gr
 
 
 	o3c::Tensor downsampled_points;
-	functional::kernel::sampling::GridDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
+	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
 	return downsampled_points;
 }
 
@@ -42,16 +42,16 @@ FastMeanRadiusDownsample3dPoints(const open3d::core::Tensor& original_points, fl
 
 
 	o3c::Tensor downsampled_points;
-	functional::kernel::sampling::FastRadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
+	functional::kernel::sampling::FastMeanRadiusDownsamplePoints(downsampled_points, original_points, radius, hash_backend);
 	return downsampled_points;
 }
 
 open3d::core::Tensor
-MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size, const open3d::core::HashBackendType& hash_backend_type) {
+MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
 	o3c::Tensor sample;
-	functional::kernel::sampling::GridMedianSubsample3dPoints(sample, points, grid_size, hash_backend_type);
+	functional::kernel::sampling::GridMedianSubsample3dPoints(sample, points, grid_cell_size, hash_backend);
 	return sample;
 }
 
@@ -59,25 +59,25 @@ MedianGridSubsample3dPoints(const open3d::core::Tensor& points, float grid_size,
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MedianGridSubsample3dPointsWithBinInfo(
 		const open3d::core::Tensor& points,
-		float grid_size,
+		float grid_cell_size,
 		open3d::core::Dtype bin_node_index_dtype,
-		const open3d::core::HashBackendType& hash_backend_type
+		const open3d::core::HashBackendType& hash_backend
 ) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
 	o3c::Tensor sample, other_bin_point_indices;
 	functional::kernel::sampling::GridMedianSubsample3dPointsWithBinInfo(
-			sample, other_bin_point_indices, points, grid_size,
-			hash_backend_type, bin_node_index_dtype);
+			sample, other_bin_point_indices, points, grid_cell_size,
+			hash_backend, bin_node_index_dtype);
 	return std::make_tuple(sample, other_bin_point_indices);
 }
 
 open3d::core::Tensor
-RadiusMedianSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type) {
+FastMedianRadiusSubsample3dPoints(const open3d::core::Tensor& points, float radius, const open3d::core::HashBackendType& hash_backend_type) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
 	o3c::Tensor sample;
-	functional::kernel::sampling::RadiusMedianSubsample3dPoints(sample, points, radius, hash_backend_type);
+	functional::kernel::sampling::FastMedianRadiusSubsample3dPoints(sample, points, radius, hash_backend_type);
 	return sample;
 }
 

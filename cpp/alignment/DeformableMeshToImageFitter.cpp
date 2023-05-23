@@ -55,17 +55,19 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 		float minimal_update_threshold /* = 1e-6f*/,
 		bool use_perspective_correction /* = true*/,
 		float max_depth /* = 10.0f*/,
-		bool use_tukey_penalty /* = false*/,
+		bool use_tukey_penalty_for_data_term /* = false*/,
 		float tukey_penalty_cutoff_cm /* = 0.01f*/,
-		float preconditioning_dampening_factor /* = 0.0f*/
+		float preconditioning_dampening_factor /* = 0.0f*/,
+		float regularization_term_weight /*= 0.1f*/
 ) : max_iteration_count(max_iteration_count),
     iteration_mode_sequence(std::move(iteration_mode_sequence)),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
     use_perspective_correction(use_perspective_correction),
-    use_tukey_penalty_for_data_term(use_tukey_penalty),
+    use_tukey_penalty_for_data_term(use_tukey_penalty_for_data_term),
     tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm),
-    preconditioning_dampening_factor(preconditioning_dampening_factor) {
+    preconditioning_dampening_factor(preconditioning_dampening_factor),
+    regularization_term_weight(regularization_term_weight) {
 	if (preconditioning_dampening_factor < 0.0f || preconditioning_dampening_factor > 1.0f) {
 		utility::LogError("`preconditioning_dampening_factor` should be a small non-negative value between 0 and 1. Got: {}",
 		                  preconditioning_dampening_factor);
@@ -94,6 +96,8 @@ void DeformableMeshToImageFitter::FitToImage(
 
 	auto [face_node_anchors, face_node_anchor_counts] =
 			functional::AssociateFacesWithAnchors(canonical_mesh.GetTriangleIndices(), warp_anchors);
+
+	bool use_regularization_term = warp_field.GetEdges().GetLength() > 0;
 
 	//TODO: fix second termination condition -- probably, better to use overall energy or residual sum.
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
@@ -152,7 +156,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				);
 
 
-		// compute J, i.e. sparse Jacobian at every pixel w.r.t. every node delta
+		// compute J_d, i.e. sparse Jacobian at every pixel w.r.t. every node delta
 		o3c::Tensor point_map_vectors = rasterized_point_cloud.GetPointPositions() - reference_point_cloud.GetPointPositions();
 		o3c::Tensor rasterized_normals = rasterized_point_cloud.GetPointNormals();
 
@@ -166,28 +170,29 @@ void DeformableMeshToImageFitter::FitToImage(
 						use_tukey_penalty_for_data_term, tukey_penalty_cutoff_cm, current_mode
 				);
 
-		// auto [edge_jacobians, edge_jacobian_counts,
-		// 	  node_edge_jacobian_indices_jagged, node_edge_jacobian_counts ] =
-		o3c::Tensor edge_jacobians, node_edge_indices_jagged, node_edge_counts;
-		std::tie(edge_jacobians, node_edge_indices_jagged, node_edge_counts) =
-				functional::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(warp_field,)
 
-
-
-		// compute (J^T)J, i.e. hessian approximation
+		// compute (J_d^T)J_d, i.e. hessian approximation for the data term
 		open3d::core::Tensor hessian_approximation_blocks_data;
 		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
 				hessian_approximation_blocks_data, pixel_jacobians,
 				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode
 		);
 
-		// compute -(J^T)r for the data term
+
+		// compute -(J_d^T)r_d (negative gradient for the data term)
 		o3c::Tensor negative_gradient_data;
 		int max_anchor_count_per_vertex = static_cast<int32_t>(warp_anchors.GetShape(1));
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
 				negative_gradient_data, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
 		);
+
+		o3c::Tensor edge_jacobians, node_edge_indices_jagged, node_edge_counts;
+		if (use_regularization_term) {
+			// compute J_r
+			std::tie(edge_jacobians, node_edge_indices_jagged, node_edge_counts) =
+					functional::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(warp_field, this->regularization_term_weight);
+		}
 
 
 		if (preconditioning_dampening_factor > 0.0) {
@@ -316,13 +321,14 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeDepthResiduals(
 
 	if (this->use_tukey_penalty_for_data_term) {
 		float c = this->tukey_penalty_cutoff_cm;
-		float c_squared_over_six = (c*c / 6.f);
+		float c_squared_over_six = (c * c / 6.f);
 		o3c::Tensor c_squared_over_six_tensor(std::vector<float>{c_squared_over_six}, {1}, o3c::Float32, triangle_indices.GetDevice());
 		o3c::Tensor distances_over_c = distances / c;
 		o3c::Tensor left_operand = 1.f - (distances_over_c * distances_over_c);
-		o3c::Tensor residuals = c_squared_over_six  * (1.f - left_operand * left_operand * left_operand);
+		o3c::Tensor residuals = c_squared_over_six * (1.f - left_operand * left_operand * left_operand);
 		o3c::Tensor locations_of_residuals_below_c = distances <= c_squared_over_six_tensor;
 		residuals.SetItem(o3c::TensorKey::IndexTensor(locations_of_residuals_below_c), c_squared_over_six_tensor);
+		return residuals;
 	} else {
 		return distances;
 	}

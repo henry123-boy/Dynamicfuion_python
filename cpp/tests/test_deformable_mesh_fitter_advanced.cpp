@@ -120,7 +120,7 @@ void TestDeformableImageFitter_25NodeSurface(
 	o3c::Tensor edges = o3c::Tensor::Load(
 			test::static_array_test_data_directory.ToString() + "/edges_25-node_plane.npy").To(device);
 
-	nnrt::geometry::WarpField warp_field(node_positions, edges, o3u::nullopt, o3u::nullopt, node_coverage);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 														use_perspective_correction, 10.f, false, 0.01, 0.001);
@@ -157,3 +157,6 @@ TEST_CASE("Test DMI Fitter -  TRANSLATION-ONLY MODE - 25 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
 }
+
+
+

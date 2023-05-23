@@ -19,7 +19,7 @@
 namespace nnrt::geometry::functional::kernel::sampling {
 
 template
-void GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+void GridMeanDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& downsampled_points,
 		const open3d::core::Tensor& original_points,
 		float grid_cell_size,
@@ -27,7 +27,7 @@ void GridDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
 );
 
 template
-void FastRadiusDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
+void FastMeanRadiusDownsamplePoints<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& downsampled_points,
 		const open3d::core::Tensor& original_points,
 		float min_distance,
@@ -53,7 +53,7 @@ void GridMedianSubsample3dPointsWithBinInfo<open3d::core::Device::DeviceType::CP
 );
 
 template
-void RadiusMedianSubsample3dPoints<open3d::core::Device::DeviceType::CPU>(
+void FastMedianRadiusSubsample3dPoints<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& sample, const open3d::core::Tensor& points, float min_distance,
 		const open3d::core::HashBackendType& hash_backend
 );

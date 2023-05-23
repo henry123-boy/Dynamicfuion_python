@@ -282,8 +282,8 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 			"the graph nodes within the proximity of this point. Currently, only supports linear & rotational node motion "
 			"for a single transformation (not suitable for storing animation data all by itself)."
 	);
-	graph_warp_field.def(py::init<o3c::Tensor&, o3c::Tensor&, o3c::Tensor&, o3c::Tensor&, float, bool, int, int>(),
-	                     "nodes"_a, "edges"_a, "edge_weights"_a, "clusters"_a,
+	graph_warp_field.def(py::init<o3c::Tensor&, float, bool, int, int>(),
+	                     "nodes"_a,
 	                     "node_coverage"_a = 0.05, "threshold_nodes_by_distance"_a = false,
 	                     "anchor_count"_a = 4, "minimum_valid_anchor_count"_a = 0);
 	graph_warp_field.def("get_warped_nodes", &WarpField::GetWarpedNodes);
@@ -311,9 +311,10 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("rotate_nodes", &WarpField::RotateNodes, "node_rotation_deltas"_a);
 
 	graph_warp_field.def_readonly("nodes", &WarpField::nodes);
-	graph_warp_field.def_readonly("edges", &WarpField::edges);
-	graph_warp_field.def_readonly("edge_weights", &WarpField::edge_weights);
-	graph_warp_field.def_readonly("clusters", &WarpField::clusters);
+	//TODO: expose ~_graph_warp_field classes
+	// graph_warp_field.def_readonly("edges", &WarpField::edges);
+	// graph_warp_field.def_readonly("edge_weights", &WarpField::edge_weights);
+	// graph_warp_field.def_readonly("clusters", &WarpField::clusters);
 }
 
 } // namespace nnrt

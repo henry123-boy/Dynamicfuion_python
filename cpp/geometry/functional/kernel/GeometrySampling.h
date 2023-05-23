@@ -20,20 +20,20 @@
 namespace nnrt::geometry::functional::kernel::sampling {
 
 
-void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
-                          const open3d::core::HashBackendType& hash_backend);
+void GridMeanDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+                              const open3d::core::HashBackendType& hash_backend);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GridDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
-                          const open3d::core::HashBackendType& hash_backend);
+void GridMeanDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
+                              const open3d::core::HashBackendType& hash_backend);
 
 
-void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
-                                const open3d::core::HashBackendType& hash_backend);
+void FastMeanRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
+                                    const open3d::core::HashBackendType& hash_backend);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void FastRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
-                                const open3d::core::HashBackendType& hash_backend);
+void FastMeanRadiusDownsamplePoints(open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
+                                    const open3d::core::HashBackendType& hash_backend);
 
 
 void GridMedianSubsample3dPoints(
@@ -71,7 +71,7 @@ void GridMedianSubsample3dPointsWithBinInfo(
 );
 
 
-void RadiusMedianSubsample3dPoints(
+void FastMedianRadiusSubsample3dPoints(
 		open3d::core::Tensor& sample,
 		const open3d::core::Tensor& points,
 		float radius,
@@ -79,7 +79,7 @@ void RadiusMedianSubsample3dPoints(
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void RadiusMedianSubsample3dPoints(
+void FastMedianRadiusSubsample3dPoints(
 		open3d::core::Tensor& sample,
 		const open3d::core::Tensor& points,
 		float radius,

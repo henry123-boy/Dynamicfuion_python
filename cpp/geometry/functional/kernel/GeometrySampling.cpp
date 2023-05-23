@@ -21,37 +21,37 @@ namespace o3c = open3d::core;
 namespace nnrt::geometry::functional::kernel::sampling {
 
 
-void GridDownsamplePoints(
+void GridMeanDownsamplePoints(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend
 ) {
 	core::ExecuteOnDevice(
 			original_points.GetDevice(),
 			[&] {
-				GridDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, grid_cell_size, hash_backend);
+				GridMeanDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, grid_cell_size, hash_backend);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						GridDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, grid_cell_size,
-						                                                    hash_backend);
+						GridMeanDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, grid_cell_size,
+						                                                        hash_backend);
 				);
 			}
 	);
 }
 
-void FastRadiusDownsamplePoints(
+void FastMeanRadiusDownsamplePoints(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points, float min_distance,
 		const open3d::core::HashBackendType& hash_backend
 ) {
 	core::ExecuteOnDevice(
 			original_points.GetDevice(),
 			[&] {
-				FastRadiusDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, min_distance, hash_backend);
+				FastMeanRadiusDownsamplePoints<o3c::Device::DeviceType::CPU>(downsampled_points, original_points, min_distance, hash_backend);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						FastRadiusDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, min_distance,
-						                                                          hash_backend);
+						FastMeanRadiusDownsamplePoints<o3c::Device::DeviceType::CUDA>(downsampled_points, original_points, min_distance,
+						                                                              hash_backend);
 				);
 			}
 	);
@@ -76,7 +76,7 @@ void GridMedianSubsample3dPoints(
 	);
 }
 
-void RadiusMedianSubsample3dPoints(
+void FastMedianRadiusSubsample3dPoints(
 		open3d::core::Tensor& sample,
 		const open3d::core::Tensor& points,
 		float radius,
@@ -85,11 +85,11 @@ void RadiusMedianSubsample3dPoints(
 	core::ExecuteOnDevice(
 			points.GetDevice(),
 			[&] {
-				RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CPU>(sample, points, radius, hash_backend_type);
+				FastMedianRadiusSubsample3dPoints<o3c::Device::DeviceType::CPU>(sample, points, radius, hash_backend_type);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						RadiusMedianSubsample3dPoints<o3c::Device::DeviceType::CUDA>(sample, points, radius, hash_backend_type);
+						FastMedianRadiusSubsample3dPoints<o3c::Device::DeviceType::CUDA>(sample, points, radius, hash_backend_type);
 				);
 			}
 	);
