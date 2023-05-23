@@ -86,9 +86,8 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 			                                                               image_resolution, 0.0, max_depth);
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
-			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.5f,
-			                                       1,
-			                                       -1, -1, use_perspective_correction, false, true);
+			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.5f, 1, -1, -1,
+												   use_perspective_correction, false, true);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
 	pixel_depths = pixel_depths.Reshape(image_resolution);
@@ -106,15 +105,13 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 	o3c::Tensor node_positions = o3c::Tensor(std::vector<float>{0.0, 0.0, 1.2}, {1, 3}, o3c::Float32, device);
 
 
-	o3c::Tensor expected_node_translations = o3c::Tensor(std::vector<float>{0.0, 0.0, 0.2}, {1, 3}, o3c::Float32,
-	                                                     device);
+	o3c::Tensor expected_node_translations = o3c::Tensor(std::vector<float>{0.0, 0.0, 0.2}, {1, 3}, o3c::Float32, device);
 	o3c::Tensor expected_node_rotations = o3c::Tensor(std::vector<float>{1.0, 0.0, 0.0,
 	                                                                     0.0, 1.0, 0.0,
-	                                                                     0.0, 0.0, 1.0}, {1, 3, 3}, o3c::Float32,
-	                                                  device);
+	                                                                     0.0, 0.0, 1.0}, {1, 3, 3}, o3c::Float32, device);
 
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 	                                                    use_perspective_correction, 10.f, false, 0.01, 0.001);

@@ -53,6 +53,9 @@ HierarchicalGraphWarpField::HierarchicalGraphWarpField(
     indexed_nodes(this->nodes),
     indexed_rotations(this->rotations),
     indexed_translations(this->translations) {
+	if (layer_count < 1) {
+		utility::LogError("layer_count must be a positive integer, got {}.", layer_count);
+	}
 	this->RebuildRegularizationLayers(layer_count, max_vertex_degree);
 }
 
@@ -71,7 +74,7 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	// use all nodes at first for finest layer
 	finest_layer.decimation_radius = this->node_coverage;
 	o3c::Device device = this->GetDevice();
-	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int32, device);
+	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int64, device);
 	finest_layer.node_positions = this->nodes;
 
 	o3c::Tensor false_tensor(std::vector<bool>({false}), {1}, o3c::Bool, device);
@@ -86,6 +89,13 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		// median-grid-subsample the previous layer to find the indices of the previous layer nodes to use for the current layer
 		o3c::Tensor current_layer_node_index_sample =
 				geometry::functional::MedianGridSubsample3dPoints(finer_layer.node_positions, current_layer.decimation_radius * 2);
+
+		if (current_layer_node_index_sample.GetLength() == finer_layer.node_indices.GetLength()) {
+			utility::LogError("Attempting to generate a coarser layer of size {} out of a finer layer of the same size, which is not possible."
+			                  "Please either reduce the layer count, or, if applicable, increase the node_coverage parameter or "
+			                  "change the compute_layer_decimation_radius passed-in function to decrease the node density in the finer layer.",
+			                  current_layer_node_index_sample.GetLength());
+		}
 
 		o3c::TensorKey current_layer_node_index_key = o3c::TensorKey::IndexTensor(current_layer_node_index_sample);
 
@@ -169,9 +179,19 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		}
 	}
 
-	this->node_indices = o3c::Concatenate(layer_node_index_sets_fine_to_coarse);
-	this->edges = o3c::Concatenate(layer_edge_sets_coarse_to_fine);
-	this->edge_layer_indices = o3c::Concatenate(layer_edge_layer_indices_coarse_to_fine);
+	// account for corner cases with only one or few layers
+	this->node_indices = layer_node_index_sets_fine_to_coarse.size() == 1 ? layer_node_index_sets_fine_to_coarse[0] :
+	                     o3c::Concatenate(layer_node_index_sets_fine_to_coarse);
+	if (!layer_edge_sets_coarse_to_fine.empty()) {
+		if (layer_edge_sets_coarse_to_fine.size() == 1) {
+			this->edges = layer_edge_sets_coarse_to_fine[0];
+			this->edge_layer_indices = layer_edge_layer_indices_coarse_to_fine[0];
+		} else {
+			this->edges = o3c::Concatenate(layer_edge_sets_coarse_to_fine);
+			this->edge_layer_indices = o3c::Concatenate(layer_edge_layer_indices_coarse_to_fine);
+		}
+	}
+
 	this->layer_decimation_radii =
 			o3c::Tensor(layer_decimation_radius_data, {static_cast<int64_t>(layer_decimation_radius_data.size())}, o3c::Float32, device);
 }
@@ -190,11 +210,11 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetNodePositions(bool use_virtual
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodeTranslations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
+	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->translations;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodeRotations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->nodes;
+	return use_virtual_ordering ? this->indexed_rotations.Get(&this->node_indices) : this->rotations;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetEdgeLayerIndices() const {
@@ -258,7 +278,7 @@ void HierarchicalGraphWarpField::ReindexedTensorWrapper::Reindex() {
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::ReindexedTensorWrapper::Get(const o3c::Tensor* index) {
-	if (!this->linear_index->IsSame(*index)) {
+	if (this->linear_index == nullptr || !this->linear_index->IsSame(*index)) {
 		this->linear_index = index;
 		Reindex();
 	}
