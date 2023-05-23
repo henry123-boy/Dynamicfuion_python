@@ -25,6 +25,8 @@
 
 
 #include "core/functional/Sorting.h"
+#include "geometry/functional/WarpAnchorComputation.h"
+#include "core/linalg/Matmul3D.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -127,7 +129,8 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		core::KdTree current_layer_node_tree(current_layer.node_positions);
 		current_layer_node_tree.FindKNearestToPoints(finer_layer_adjacency_array, squared_distances,
 		                                             finer_layer.node_positions, max_vertex_degree, false);
-		finer_layer_adjacency_array = core::functional::SortTensorAlongLastDimension(finer_layer_adjacency_array, true, core::functional::SortOrder::DESC);
+		finer_layer_adjacency_array = core::functional::SortTensorAlongLastDimension(finer_layer_adjacency_array, true,
+		                                                                             core::functional::SortOrder::DESC);
 
 		// our goal now is to reorder nodes in the finer layer such that:
 		//  1) consecutive edges are laid out as if grouped by their source node index, in descending source node index order ("coarse-to-fine")
@@ -200,6 +203,44 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetEdgeLayerIndices() const {
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetLayerDecimationRadii() const {
 	return this->layer_decimation_radii;
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+HierarchicalGraphWarpField::PrecomputeAnchorsAndWeights(const open3d::t::geometry::TriangleMesh& input_mesh, bool use_virtual_ordering) {
+	if (!input_mesh.HasVertexPositions()) {
+		utility::LogError("Input mesh doesn't have vertex positions defined, which are required for computing warp field anchors & weights.");
+	}
+	o3c::Tensor anchors, weights;
+	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
+	functional::ComputeAnchorsAndWeightsEuclidean(
+			anchors, weights, vertex_positions, this->GetNodePositions(use_virtual_ordering), this->anchor_count,
+			this->minimum_valid_anchor_count, this->node_coverage
+	);
+	return std::make_tuple(anchors, weights);
+}
+
+void HierarchicalGraphWarpField::TranslateNodes(const o3c::Tensor& node_translation_deltas, bool use_virtual_ordering) {
+	o3c::Tensor new_translations;
+	o3c::Tensor old_translations = this->GetNodeTranslations(use_virtual_ordering);
+	new_translations = old_translations + node_translation_deltas;
+	if (use_virtual_ordering) {
+		this->translations.SetItem(o3c::TensorKey::IndexTensor(this->node_indices), new_translations);
+	} else {
+		this->translations.CopyFrom(new_translations);
+	}
+}
+
+void HierarchicalGraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_deltas, bool use_virtual_ordering) {
+	o3c::Tensor new_rotations;
+	o3c::Tensor old_rotations = this->GetNodeRotations(use_virtual_ordering);
+	core::linalg::Matmul3D(new_rotations, old_rotations, node_rotation_deltas);
+	if (use_virtual_ordering) {
+		this->rotations.SetItem(o3c::TensorKey::IndexTensor(this->node_indices), new_rotations);
+	} else {
+		this->rotations.CopyFrom(new_rotations);
+	}
+	//TODO: probably unnecessary, check & remove
+	this->rotations_data = this->rotations.GetDataPtr<float>();
 }
 
 

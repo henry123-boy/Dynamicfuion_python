@@ -60,6 +60,12 @@ public:
 	const o3c::Tensor& GetVirtualNodeIndices() const;
 	const o3c::Tensor& GetEdgeLayerIndices() const;
 	const o3c::Tensor& GetLayerDecimationRadii() const;
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
+			const open3d::t::geometry::TriangleMesh& input_mesh,
+			bool use_virtual_ordering = false
+	);
+	void TranslateNodes(const o3c::Tensor& node_translation_deltas, bool use_virtual_ordering = false);
+	void RotateNodes(const o3c::Tensor& node_rotation_deltas, bool use_virtual_ordering = false);
 
 private:
 	class ReindexedTensorWrapper{

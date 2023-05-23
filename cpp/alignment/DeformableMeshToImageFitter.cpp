@@ -83,7 +83,7 @@ void DeformableMeshToImageFitter::FitToImage(
 ) const {
 	//TODO: make parameter EUCLIDEAN/SHORTEST_PATH, optionally set in constructor
 	auto [warp_anchors, warp_anchor_weights] =
-			warp_field.PrecomputeAnchorsAndWeights(canonical_mesh);
+			warp_field.PrecomputeAnchorsAndWeights(canonical_mesh, true);
 
 	int iteration = 0;
 	float maximum_update = std::numeric_limits<float>::max();
@@ -131,7 +131,7 @@ void DeformableMeshToImageFitter::FitToImage(
 			// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 			// [V X A/V X 4], [V X A/V X 3]
 			std::tie(warped_vertex_position_jacobians, warped_vertex_normal_jacobians) =
-					functional::WarpedSurfaceJacobians(canonical_mesh, warp_field, warp_anchors, warp_anchor_weights);
+					functional::WarpedSurfaceJacobians(canonical_mesh, warp_field, warp_anchors, warp_anchor_weights, true);
 		} else {
 			warped_vertex_position_jacobians = warp_anchor_weights;
 		}
@@ -178,7 +178,7 @@ void DeformableMeshToImageFitter::FitToImage(
 
 		// compute -(J^T)r for the data term
 		o3c::Tensor negative_gradient_data;
-		int max_anchor_count_per_vertex = warp_anchors.GetShape(1);
+		int max_anchor_count_per_vertex = static_cast<int32_t>(warp_anchors.GetShape(1));
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
 				negative_gradient_data, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
@@ -201,15 +201,15 @@ void DeformableMeshToImageFitter::FitToImage(
 				// convert rotation axis-angle vectors to matrices
 				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3).Contiguous());
 				// apply motion updates
-				warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6));
-				warp_field.RotateNodes(rotation_matrix_updates);
+				warp_field.TranslateNodes(motion_updates.Slice(1, 3, 6), true);
+				warp_field.RotateNodes(rotation_matrix_updates, true);
 				break;
 			case TRANSLATION_ONLY: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
-				warp_field.TranslateNodes(motion_updates);
+				warp_field.TranslateNodes(motion_updates, true);
 				break;
 			case ROTATION_ONLY: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 3, 3});
 				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates);
-				warp_field.RotateNodes(rotation_matrix_updates);
+				warp_field.RotateNodes(rotation_matrix_updates, true);
 				break;
 		}
 		iteration++;
