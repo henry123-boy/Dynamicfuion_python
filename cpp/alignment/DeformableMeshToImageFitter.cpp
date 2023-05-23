@@ -94,6 +94,7 @@ void DeformableMeshToImageFitter::FitToImage(
 	auto [face_node_anchors, face_node_anchor_counts] =
 			functional::AssociateFacesWithAnchors(canonical_mesh.GetTriangleIndices(), warp_anchors);
 
+	//TODO: fix second termination condition -- probably, better to use overall energy or residual sum.
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
 		IterationMode current_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
 

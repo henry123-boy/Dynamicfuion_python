@@ -70,13 +70,14 @@ public:
 private:
 	class ReindexedTensorWrapper{
 	public:
-		explicit ReindexedTensorWrapper(const o3c::Tensor& source_tensor);
-		ReindexedTensorWrapper(const o3c::Tensor* index,  const o3c::Tensor& source_tensor);
+		explicit ReindexedTensorWrapper(o3c::Tensor& source_tensor);
+		ReindexedTensorWrapper(const o3c::Tensor* index,  o3c::Tensor& source_tensor);
 		const o3c::Tensor& Get(const o3c::Tensor* index);
+		void Set(const o3c::Tensor& indexed_tensor);
 	private:
 		void Reindex();
 		const o3c::Tensor* linear_index;
-		const o3c::Tensor& source_tensor;
+		o3c::Tensor& source_tensor;
 		o3c::Tensor reindexed_tensor;
 	};
 	std::vector<RegularizationLayer> regularization_layers;

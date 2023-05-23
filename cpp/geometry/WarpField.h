@@ -121,7 +121,7 @@ public:
 	void TranslateNodes(const o3c::Tensor& node_translation_deltas);
 	void RotateNodes(const o3c::Tensor& node_rotation_deltas);
 
-	const open3d::core::Tensor nodes;
+	open3d::core::Tensor nodes;
 
 	const float node_coverage;
 	const int anchor_count;

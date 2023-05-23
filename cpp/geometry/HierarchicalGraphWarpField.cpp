@@ -240,36 +240,35 @@ HierarchicalGraphWarpField::PrecomputeAnchorsAndWeights(const open3d::t::geometr
 }
 
 void HierarchicalGraphWarpField::TranslateNodes(const o3c::Tensor& node_translation_deltas, bool use_virtual_ordering) {
-	o3c::Tensor new_translations;
-	o3c::Tensor old_translations = this->GetNodeTranslations(use_virtual_ordering);
-	new_translations = old_translations + node_translation_deltas;
 	if (use_virtual_ordering) {
-		this->translations.SetItem(o3c::TensorKey::IndexTensor(this->node_indices), new_translations);
+		o3c::Tensor old_translations = this->GetNodeTranslations(use_virtual_ordering);
+		this->indexed_translations.Set(old_translations + node_translation_deltas);
 	} else {
-		this->translations.CopyFrom(new_translations);
+		this->translations += node_translation_deltas;
+		this->translations_data = this->translations.GetDataPtr<float>();
 	}
 }
 
 void HierarchicalGraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_deltas, bool use_virtual_ordering) {
 	o3c::Tensor new_rotations;
-	o3c::Tensor old_rotations = this->GetNodeRotations(use_virtual_ordering);
-	core::linalg::Matmul3D(new_rotations, old_rotations, node_rotation_deltas);
 	if (use_virtual_ordering) {
-		this->rotations.SetItem(o3c::TensorKey::IndexTensor(this->node_indices), new_rotations);
+		o3c::Tensor old_rotations = this->GetNodeRotations(use_virtual_ordering);
+		core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
+		this->indexed_rotations.Set(new_rotations);
 	} else {
-		this->rotations.CopyFrom(new_rotations);
+		core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
+		this->rotations = new_rotations;
+		this->rotations_data = this->rotations.GetDataPtr<float>();
 	}
-	//TODO: probably unnecessary, check & remove
-	this->rotations_data = this->rotations.GetDataPtr<float>();
 }
 
 
-HierarchicalGraphWarpField::ReindexedTensorWrapper::ReindexedTensorWrapper(const o3c::Tensor* index, const o3c::Tensor& source_tensor) :
+HierarchicalGraphWarpField::ReindexedTensorWrapper::ReindexedTensorWrapper(const o3c::Tensor* index, o3c::Tensor& source_tensor) :
 		linear_index(index), source_tensor(source_tensor) {
 	Reindex();
 }
 
-HierarchicalGraphWarpField::ReindexedTensorWrapper::ReindexedTensorWrapper(const o3c::Tensor& source_tensor) :
+HierarchicalGraphWarpField::ReindexedTensorWrapper::ReindexedTensorWrapper(o3c::Tensor& source_tensor) :
 		linear_index(nullptr), source_tensor(source_tensor) {
 }
 
@@ -283,6 +282,11 @@ const o3c::Tensor& HierarchicalGraphWarpField::ReindexedTensorWrapper::Get(const
 		Reindex();
 	}
 	return this->reindexed_tensor;
+}
+
+void HierarchicalGraphWarpField::ReindexedTensorWrapper::Set(const o3c::Tensor& indexed_tensor) {
+	this->reindexed_tensor = indexed_tensor;
+	this->source_tensor.SetItem(o3c::TensorKey::IndexTensor(*this->linear_index), indexed_tensor);
 }
 
 
