@@ -44,9 +44,8 @@ ClosestToGridMeanSubsample3dPoints(const open3d::core::Tensor& points, float gri
 	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, points, grid_cell_size, hash_backend);
 	core::KdTree index(points);
 	o3c::Tensor nearest_indices, squared_distances;
-	index.FindKNearestToPoints(nearest_indices, squared_distances, downsampled_points, 4, true);
-
-
+	index.FindKNearestToPoints(nearest_indices, squared_distances, downsampled_points, 1, true);
+	return nearest_indices.Flatten().To(o3c::Int64);
 }
 
 
