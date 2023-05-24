@@ -38,7 +38,7 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	if (dimensions.size() != 2) {
 		utility::LogError("KdTree index currently only supports indexing of two-dimensional tensors. "
-		              "Provided tensor has dimensions: {}", dimensions);
+		                  "Provided tensor has dimensions: {}", dimensions);
 	}
 	if (points.GetLength() > std::numeric_limits<int32_t>::max() || points.GetLength() < 1) {
 		utility::LogError("KdTree index currently cannot support less than 1 or more than {} points. Got: {} points.",
@@ -49,14 +49,16 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 }
 
 
-void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
-                                  const open3d::core::Tensor& query_points, int32_t k, bool sort_output) const {
+void KdTree::FindKNearestToPoints(
+		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+		const open3d::core::Tensor& query_points, int32_t k, bool sort_output
+) const {
 	o3c::AssertTensorDevice(query_points, this->points.GetDevice());
 	o3c::AssertTensorDtype(query_points, o3c::Dtype::Float32);
 	if (query_points.GetShape().size() != 2 ||
 	    query_points.GetShape(1) != this->points.GetShape(1)) {
 		utility::LogError("Query point array of shape {} is incompatible to the set of points being indexed by the KD Tree (reference points), which"
-		              "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
+		                  "has shape {}. Both arrays should be two-dimensional and have matching axis 1 length (i.e. point dimensions).",
 		                  query_points.GetShape(), this->points.GetShape());
 	}
 	if (sort_output) {
@@ -67,7 +69,9 @@ void KdTree::FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
 			//TODO: this is wrong, sort by distance, not index!
-			nearest_neighbor_indices = core::functional::SortTensorAlongLastDimension(nearest_neighbor_indices, true, core::functional::SortOrder::ASC);
+			std::tie(nearest_neighbor_indices, squared_distances) =
+					core::functional::SortTensorAlongLastDimensionByKey(nearest_neighbor_indices, squared_distances, false,
+					                                                    core::functional::SortOrder::ASC);
 		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
