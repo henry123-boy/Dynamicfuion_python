@@ -26,6 +26,19 @@ void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::co
 template<open3d::core::Device::DeviceType TDeviceType>
 void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order);
 
+void SortTensorAlongLastDimensionByKey(
+		open3d::core::Tensor& sorted_values, open3d::core::Tensor& sorted_keys,
+		const open3d::core::Tensor& unsorted_values, const open3d::core::Tensor& unsorted_keys,
+		bool non_negative_first, SortOrder order
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void SortTensorAlongLastDimensionByKey(
+		open3d::core::Tensor& sorted_values, open3d::core::Tensor& sorted_keys,
+		const open3d::core::Tensor& unsorted_values, const open3d::core::Tensor& unsorted_keys,
+		bool non_negative_first, SortOrder order
+);
+
 void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, int column, bool in_place = false);
 
 template<open3d::core::Device::DeviceType TDeviceType>

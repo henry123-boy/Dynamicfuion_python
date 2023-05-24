@@ -17,6 +17,7 @@
 #include <open3d/core/TensorCheck.h>
 #include "geometry/functional/kernel/GeometrySampling.h"
 #include <open3d/core/hashmap/HashSet.h>
+#include "core/KdTree.h"
 
 namespace o3c = open3d::core;
 
@@ -24,15 +25,30 @@ namespace nnrt::geometry::functional {
 
 
 open3d::core::Tensor
-MeanGridDownsample3dPoints(const open3d::core::Tensor& original_points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
-	o3c::AssertTensorDtype(original_points, o3c::Dtype::Float32);
-	o3c::AssertTensorShape(original_points, { original_points.GetLength(), 3 });
+MeanGridDownsample3dPoints(const open3d::core::Tensor& points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
+	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
 
 
 	o3c::Tensor downsampled_points;
-	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, original_points, grid_cell_size, hash_backend);
+	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, points, grid_cell_size, hash_backend);
 	return downsampled_points;
 }
+
+
+open3d::core::Tensor
+ClosestToGridMeanSubsample3dPoints(const open3d::core::Tensor& points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
+	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
+	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
+	o3c::Tensor downsampled_points;
+	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, points, grid_cell_size, hash_backend);
+	core::KdTree index(points);
+	o3c::Tensor nearest_indices, squared_distances;
+	index.FindKNearestToPoints(nearest_indices, squared_distances, downsampled_points, 4, true);
+
+
+}
+
 
 
 open3d::core::Tensor
@@ -87,6 +103,7 @@ RadiusSubsampleGraph(const open3d::core::Tensor& vertices, const open3d::core::T
 	functional::kernel::sampling::RadiusSubsampleGraph(sample, resampled_edges, vertices, edges, radius);
 	return std::make_tuple(sample, resampled_edges);
 }
+
 
 
 } // namespace nnrt::geometry::functional

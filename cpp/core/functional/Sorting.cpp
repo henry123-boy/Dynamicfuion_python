@@ -21,13 +21,26 @@ namespace o3c = open3d::core;
 
 namespace nnrt::core::functional {
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first, SortOrder order) {
+open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order) {
 	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
 		return unsorted;
 	}
 	o3c::Tensor sorted;
-	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), positive_first, order);
+	kernel::SortTensorAlongLastDimension(sorted, unsorted.Contiguous(), non_negative_first, order);
 	return sorted;
+}
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+SortTensorAlongLastDimensionByKey(const open3d::core::Tensor& values, const open3d::core::Tensor& keys, bool non_negative_first, SortOrder order) {
+	if (values.NumDims() == 0 || values.NumElements() == 0) {
+		return {};
+	}
+	o3c::AssertTensorShape(values, keys.GetShape());
+	o3c::AssertTensorDevice(values, keys.GetDevice());
+
+	o3c::Tensor sorted_values, sorted_keys;
+	kernel::SortTensorAlongLastDimensionByKey(sorted_values, sorted_keys, values.Contiguous(), keys.Contiguous(), non_negative_first, order);
+	return std::make_tuple(sorted_values, sorted_keys);
 }
 
 open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column) {
@@ -55,5 +68,6 @@ open3d::core::Tensor ArgSortByColumn(const open3d::core::Tensor& unsorted, int c
 	kernel::ArgSortTensorByColumn(index, unsorted, column);
 	return index;
 }
+
 
 } // nnrt::core::functional

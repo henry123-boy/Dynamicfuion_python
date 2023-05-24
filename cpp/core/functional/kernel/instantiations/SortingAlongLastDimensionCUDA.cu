@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "core/functional/kernel/SortingImpl.h"
+#include "core/functional/kernel/SortingAlongLastDimensionImpl.h"
 
 namespace nnrt::core::functional::kernel {
 
@@ -26,18 +26,4 @@ SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(
 );
 
 
-template
-void SortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& sorted,
-		const open3d::core::Tensor& unsorted,
-		int column,
-		bool in_place
-);
-
-template
-void ArgSortTensorByColumn<open3d::core::Device::DeviceType::CUDA>(
-		open3d::core::Tensor& index,
-		const open3d::core::Tensor& unsorted,
-		int column
-);
 } //  nnrt::core::functional::kernel

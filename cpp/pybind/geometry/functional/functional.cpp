@@ -44,7 +44,7 @@ void pybind_geometry_functional(pybind11::module& m) {
 	pybind_geometry_functional_warping(m_submodule);
 	pybind_geometry_functional_normals_operations(m_submodule);
 	pybind_geometry_functional_comparison(m_submodule);
-    pybind_geometry_functional_pointcloud(m_submodule);
+	pybind_geometry_functional_pointcloud(m_submodule);
 	pybind_geometry_downsampling(m_submodule);
 }
 
@@ -111,11 +111,13 @@ void pybind_geometry_functional_comparison(pybind11::module& m) {
 
 void pybind_geometry_functional_pointcloud(pybind11::module& m) {
 	m.def("unproject_raster_depth_without_filtering",
-	      [](const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
-	         float depth_scale, float depth_max, bool preserve_pixel_layout) {
+	      [](
+			      const open3d::t::geometry::Image& depth, const open3d::core::Tensor& intrinsics, const open3d::core::Tensor& extrinsics,
+			      float depth_scale, float depth_max, bool preserve_pixel_layout
+	      ) {
 		      o3c::Tensor points, mask;
-              UnprojectDepthImageWithoutFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale,
-                                                  depth_max, preserve_pixel_layout);
+		      UnprojectDepthImageWithoutFiltering(points, mask, depth, intrinsics, extrinsics, depth_scale,
+		                                          depth_max, preserve_pixel_layout);
 		      return py::make_tuple(points, mask);
 	      }, "depth"_a, "intrinsics"_a, "extrinsics"_a = open3d::core::Tensor::Eye(4, open3d::core::Float32, open3d::core::Device("CPU:0")),
 	      "depth_scale"_a = 1000.0f, "depth_max"_a = 3.0f, "preserve_pixel_layout"_a = false);
@@ -123,10 +125,18 @@ void pybind_geometry_functional_pointcloud(pybind11::module& m) {
 
 
 void pybind_geometry_downsampling(pybind11::module& m) {
-	m.def("mean_grid_downsample_3d_points", &MeanGridDownsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("fast_mean_radius_downsample_3d_points", &FastMeanRadiusDownsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
-	m.def("median_grid_subsample_3d_points", &MedianGridSubsample3dPoints, "points"_a, "grid_cell_size"_a, "hash_backend"_a);
-	m.def("fast_median_radius_subsample_3d_points", &FastMedianRadiusSubsample3dPoints, "points"_a, "radius"_a, "hash_backend"_a);
+	m.def("mean_grid_downsample_3d_points", [](const open3d::core::Tensor& points, float grid_cell_size) {
+		return MeanGridDownsample3dPoints(points, grid_cell_size);
+	}, "points"_a, "grid_cell_size"_a);
+	m.def("fast_mean_radius_downsample_3d_points", [](const open3d::core::Tensor& points, float radius) {
+		return FastMeanRadiusDownsample3dPoints(points, radius);
+	}, "points"_a, "grid_cell_size"_a);
+	m.def("median_grid_subsample_3d_points", [](const open3d::core::Tensor& points, float grid_cell_size) {
+		return MedianGridSubsample3dPoints(points, grid_cell_size);
+	}, "points"_a, "grid_cell_size"_a);
+	m.def("fast_median_radius_subsample_3d_points", [](const open3d::core::Tensor& points, float radius) {
+		return FastMedianRadiusSubsample3dPoints(points, radius);
+	}, "points"_a, "grid_cell_size"_a);
 }
 
 } // namespace nnrt::geometry::functional

@@ -127,9 +127,10 @@ set(
     core/functional/kernel/BubbleSort.h
     core/functional/kernel/Sorting.cpp
     core/functional/kernel/Sorting.h
-    core/functional/kernel/SortingImpl.h
-    core/functional/kernel/instantiations/SortingCPU.cpp
-    core/functional/kernel/instantiations/SortingCUDA.cu
+    core/functional/kernel/SortingAlongLastDimensionImpl.h
+    core/functional/kernel/SortingByColumnImpl.h
+    core/functional/kernel/instantiations/SortingAlongLastDimensionCPU.cpp
+    core/functional/kernel/instantiations/SortingAlongLastDimensionCUDA.cu
 
     core/functional/Comparisons.cpp
     core/functional/Comparisons.h
@@ -381,7 +382,20 @@ set(
     geometry/kernel/HierarchicalGraphWarpFieldImpl.h
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCPU.cpp
     geometry/kernel/instantiations/HierarchicalGraphWarpFieldCUDA.cu
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/HierarchicalRegularizationEdgeJacobian.h geometry/WarpField.cpp geometry/WarpField.h geometry/PlanarGraphWarpField.cpp geometry/PlanarGraphWarpField.h core/functional/SortOrder.h alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu)
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.h
+    geometry/WarpField.cpp
+    geometry/WarpField.h
+    geometry/PlanarGraphWarpField.cpp
+    geometry/PlanarGraphWarpField.h
+    core/functional/SortOrder.h
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h
+    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp
+    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu
+
+    core/functional/kernel/instantiations/SortingByColumnCPU.cpp core/functional/kernel/instantiations/SortingByColumnCUDA.cu core/functional/kernel/SortingAlongLastDimensionByKeyImpl.h core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCUDA.cu core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCPU.cpp core/Dispatch.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

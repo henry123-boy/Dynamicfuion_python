@@ -18,11 +18,31 @@
 
 namespace nnrt::core::functional::kernel {
 
-void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool positive_first, SortOrder order) {
+void SortTensorAlongLastDimension(open3d::core::Tensor& sorted, const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order) {
 	ExecuteOnDevice(
 			unsorted.GetDevice(),
-			[&]() { SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(sorted, unsorted, positive_first, order); },
-			[&]() { NNRT_IF_CUDA(SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted, positive_first, order);); }
+			[&]() { SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CPU>(sorted, unsorted, non_negative_first, order); },
+			[&]() {
+				NNRT_IF_CUDA(SortTensorAlongLastDimension<open3d::core::Device::DeviceType::CUDA>(sorted, unsorted, non_negative_first, order););
+			}
+	);
+}
+
+void SortTensorAlongLastDimensionByKey(
+		open3d::core::Tensor& sorted_values, open3d::core::Tensor& sorted_keys,
+		const open3d::core::Tensor& unsorted_values, const open3d::core::Tensor& unsorted_keys,
+		bool non_negative_first, SortOrder order
+) {
+	ExecuteOnDevice(
+			unsorted_values.GetDevice(),
+			[&]() {
+				SortTensorAlongLastDimensionByKey<open3d::core::Device::DeviceType::CPU>(sorted_values, sorted_keys, unsorted_values, unsorted_keys,
+				                                                                         non_negative_first, order);
+			},
+			[&]() {
+				NNRT_IF_CUDA(SortTensorAlongLastDimensionByKey<open3d::core::Device::DeviceType::CUDA>(sorted_values, sorted_keys, unsorted_values,
+				                                                                                       unsorted_keys, non_negative_first, order););
+			}
 	);
 }
 

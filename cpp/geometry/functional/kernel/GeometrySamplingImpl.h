@@ -67,6 +67,7 @@ void FastMeanRadiusDownsamplePoints(
 }
 
 
+
 template<open3d::core::Device::DeviceType TDeviceType>
 void GridMedianSubsample3dPoints(
 		open3d::core::Tensor& sample,

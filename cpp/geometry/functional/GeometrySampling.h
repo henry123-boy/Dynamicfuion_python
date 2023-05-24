@@ -24,15 +24,22 @@ namespace nnrt::geometry::functional {
 /**
  * \brief average-downsample points within each grid cell of a uniform cubic grid
  * \param downsampled_points resulting points
- * \param original_points original points in open3d::core::Float32 format
+ * \param points original points in open3d::core::Float32 format
  * \param grid_cell_size side length of each (cubic) grid cell
  * \param hash_backend hash backend to use for the operation
  * \return resulting point set as Nx3 open3d::core::Float32 tensor, stored on same device as the point input tensor
  */
 open3d::core::Tensor MeanGridDownsample3dPoints(
-		const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::Tensor& points, float grid_cell_size,
 		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
 );
+
+open3d::core::Tensor
+ClosestToGridMeanSubsample3dPoints(
+		const open3d::core::Tensor& points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend = open3d::core::HashBackendType::Default
+);
+
 
 /**
  * \brief average-downsample points such that resulting points are at least at `radius` apart.

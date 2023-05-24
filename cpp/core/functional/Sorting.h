@@ -22,7 +22,8 @@
 
 namespace nnrt::core::functional {
 
-open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool positive_first, SortOrder order = SortOrder::ASC);
+open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order = SortOrder::ASC);
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> SortTensorAlongLastDimensionByKey(const open3d::core::Tensor& values, const open3d::core::Tensor& keys, bool non_negative_first, SortOrder order = SortOrder::ASC);
 open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column);
 open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const open3d::core::SizeVector& columns);
 
