@@ -48,7 +48,7 @@ TEST_CASE("Test Device Heap CPU") {
 	}
 	auto min_pair1 = heap.Pop();
 	REQUIRE(min_pair1.key == 20.0f);
-	REQUIRE(min_pair1.value == 2);
+	REQUIRE(min_pair1.index == 2);
 	for(int i_item = first_batch_size; i_item < 6; i_item++){
 		heap.Insert(queue_data_insert_order[i_item]);
 	}
@@ -63,7 +63,7 @@ TEST_CASE("Test Device Heap CPU") {
 	for(int i_item = 0; i_item < 5; i_item++){
 		auto current_head = heap.Pop();
 		REQUIRE(current_head.key == expected_output_order[i_item].key);
-		REQUIRE(current_head.value == expected_output_order[i_item].value);
+		REQUIRE(current_head.index == expected_output_order[i_item].index);
 	}
 }
 

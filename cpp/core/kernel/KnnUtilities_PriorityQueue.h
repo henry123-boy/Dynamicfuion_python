@@ -130,7 +130,7 @@ inline void FindShortestPathKnn_PriorityQueue(int32_t* nearest_neighbor_indices,
 			auto source_pair = priority_queue.Pop();
 			bool node_already_processed = false;
 			for (int i_neighbor = 0; i_neighbor < discovered_k && !node_already_processed; i_neighbor++) {
-				if (nearest_neighbor_indices[i_neighbor] == source_pair.value) {
+				if (nearest_neighbor_indices[i_neighbor] == source_pair.index) {
 					node_already_processed = true;
 				}
 			}
@@ -138,15 +138,15 @@ inline void FindShortestPathKnn_PriorityQueue(int32_t* nearest_neighbor_indices,
 				continue;
 			}
 			distances[discovered_k] = source_pair.key;
-			nearest_neighbor_indices[discovered_k] = source_pair.value;
+			nearest_neighbor_indices[discovered_k] = source_pair.index;
 			discovered_k++;
 			if (discovered_k >= k) break;
 
-			auto source_pointer = reference_point_indexer.template GetDataPtr<float>(source_pair.value);
+			auto source_pointer = reference_point_indexer.template GetDataPtr<float>(source_pair.index);
 			Eigen::Map<const Eigen::Vector3f> source_node(source_pointer);
 
 			for (int i_edge = 0; i_edge < graph_degree; i_edge++) {
-				auto target_index_pointer = edge_indexer.template GetDataPtr<int32_t>(source_pair.value);
+				auto target_index_pointer = edge_indexer.template GetDataPtr<int32_t>(source_pair.index);
 				int target_node_index = target_index_pointer[i_edge];
 				if (target_node_index > -1) {
 					auto target_pointer = reference_point_indexer.template GetDataPtr<float>(target_node_index);

@@ -24,11 +24,13 @@ namespace o3c = open3d::core;
 namespace nnrt::core {
 
 HostHeap<open3d::core::Device::DeviceType::CPU>::
-HostHeap(int32_t capacity,
-         const open3d::core::Dtype& key_data_type,
-         const open3d::core::Dtype& value_data_type,
-         const open3d::core::Device& device,
-         HeapType heap_type) :
+HostHeap(
+		int32_t capacity,
+		const open3d::core::Dtype& key_data_type,
+		const open3d::core::Dtype& value_data_type,
+		const open3d::core::Device& device,
+		HeapType heap_type
+) :
 		key_data_type(key_data_type),
 		value_data_type(value_data_type),
 		device(device) {
@@ -40,29 +42,32 @@ HostHeap(int32_t capacity,
 
 				case HeapType::MIN:
 
-					device_heap = std::make_shared<DeviceHeap<
-							open3d::core::Device::DeviceType::CPU,
-							KeyValuePair<float, int32_t>,
-							decltype(MinHeapKeyCompare<KeyValuePair<float, int32_t>>)
-					>>(
+					device_heap = std::make_shared<
+							DeviceHeap<
+									open3d::core::Device::DeviceType::CPU,
+									KeyValuePair<float, int32_t>,
+									decltype(MinHeapKeyCompare<KeyValuePair<float, int32_t>>)
+							>
+					>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
 							MinHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 					break;
 				case HeapType::MAX:
-					device_heap = std::make_shared<DeviceHeap<
-							open3d::core::Device::DeviceType::CPU,
-							KeyValuePair<float, int32_t>,
-							decltype(MaxHeapKeyCompare<KeyValuePair<float, int32_t>>)
-					>>(
+					device_heap = std::make_shared<
+							DeviceHeap<
+									open3d::core::Device::DeviceType::CPU,
+									KeyValuePair<float, int32_t>,
+									decltype(MaxHeapKeyCompare<KeyValuePair<float, int32_t>>)
+							>
+					>(
 							reinterpret_cast<KeyValuePair<float, int32_t>*>(storage),
 							capacity,
 							MaxHeapKeyCompare<KeyValuePair<float, int32_t>>
 					);
 					break;
-				default:
-					open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
+				default: open3d::utility::LogError("Unsupported heap type, {}.", heap_type);
 			}
 
 		}
@@ -82,9 +87,9 @@ void HostHeap<open3d::core::Device::DeviceType::CPU>::Insert(const open3d::core:
 	o3c::AssertTensorDevice(input_values, this->device);
 	auto input_keys_data = reinterpret_cast<const uint8_t*>(input_keys.GetDataPtr());
 	auto input_values_data = reinterpret_cast<const uint8_t*>(input_values.GetDataPtr());
-	for(int64_t i_pair = 0; i_pair < input_keys.GetLength(); i_pair++){
+	for (int64_t i_pair = 0; i_pair < input_keys.GetLength(); i_pair++) {
 		device_heap->InsertInternal(reinterpret_cast<const void*>(input_keys_data + key_data_type.ByteSize() * i_pair),
-		                    input_values_data + value_data_type.ByteSize() * i_pair);
+		                            input_values_data + value_data_type.ByteSize() * i_pair);
 	}
 }
 

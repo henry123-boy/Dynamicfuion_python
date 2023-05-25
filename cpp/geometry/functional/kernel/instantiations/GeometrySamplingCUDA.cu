@@ -26,6 +26,12 @@ void GridMeanDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
 );
 
 template
+void SampleClosestToGridMeanPoints<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& closest_to_mean_indices, const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend
+);
+
+template
 void FastMeanRadiusDownsamplePoints<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& downsampled_points, const open3d::core::Tensor& original_points,
 		float min_distance,

@@ -394,7 +394,7 @@ TEST_CASE("Test 3D KDTree Search CPU - Plain") {
 // 	Test3DKnnSearch<core::KdTree>(device, true);
 // }
 
-TEST_CASE("Test 3D KDTree Search CUDA - Plain") {
+TEST_CASE("Test 3D KDTree Search CUDA - Plain - Unsorted") {
 	auto device = o3c::Device("CUDA:0");
 	Test3DKnnSearch<core::KdTree>(device, false);
 }

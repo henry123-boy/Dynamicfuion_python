@@ -117,8 +117,8 @@ def main():
     sequential_epsilon_sampling_results = SamplingMethodResults()
     mean_grid_downsampling_results = SamplingMethodResults()
     fast_radius_mean_grid_downsampling_results = SamplingMethodResults()
-    median_grid_subsampling_results = SamplingMethodResults()
-    fast_radius_median_grid_subsampling_results = SamplingMethodResults()
+    closest_to_mean_grid_subsampling_results = SamplingMethodResults()
+
     path_params = Parameters.path
     output_directory = Path(path_params.output_directory.value) / Path("sampling_method_comparison")
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -140,6 +140,7 @@ def main():
 
         vertices_np, vertex_pixels, faces = nnrt.compute_mesh_from_depth(point_image, max_triangle_distance)
         vertex_counts.append(len(vertices_np))
+        print(f"Vertex count: {len(vertices_np)}.")
         non_eroded_vertices = nnrt.get_vertex_erosion_mask(vertices_np, faces, 4, 4)
         node_coverage = 0.05
 
@@ -152,51 +153,42 @@ def main():
 
         vertices = o3c.Tensor(vertices_np, device=o3c.Device("CUDA:0"))
 
-        # start = timer()
-        # sampled_vertices_mean_grid = \
-        #     nnrt.geometry.functional.mean_grid_downsample_3d_points(vertices, node_coverage)
-        # end = timer()
-        # mean_grid_runtime = start - end
-        # process_sampling_result(sampled_vertices_mean_grid.cpu().numpy(), mean_grid_runtime,
-        #                         mean_grid_downsampling_results)
-        #
-        # start = timer()
-        # sampled_vertices_fast_mean_radius = \
-        #     nnrt.geometry.functional.fast_mean_radius_downsample_3d_points(vertices, node_coverage)
-        # end = timer()
-        # fast_mean_radius_runtime = start - end
-        # process_sampling_result(sampled_vertices_fast_mean_radius.cpu().numpy(), fast_mean_radius_runtime,
-        #                         fast_radius_mean_grid_downsampling_results)
+        print("Mean grid downsampling...")
+        start = timer()
+        sampled_vertices_mean_grid = \
+            nnrt.geometry.functional.mean_grid_downsample_3d_points(vertices, node_coverage)
+        end = timer()
+        mean_grid_runtime = start - end
+        process_sampling_result(sampled_vertices_mean_grid.cpu().numpy(), mean_grid_runtime,
+                                mean_grid_downsampling_results)
 
-        # start = timer()
-        # sampled_indices_median_grid = \
-        #     nnrt.geometry.functional.median_grid_subsample_3d_points(vertices, node_coverage)
-        # end = timer()
-        # median_grid_runtime = start - end
-        # process_sampling_result(vertices[sampled_indices_median_grid.cpu().numpy()], median_grid_runtime,
-        #                         median_grid_subsampling_results)
+        print("Fast mean radius downsampling...")
+        start = timer()
+        sampled_vertices_fast_mean_radius = \
+            nnrt.geometry.functional.fast_mean_radius_downsample_3d_points(vertices, node_coverage)
+        end = timer()
+        fast_mean_radius_runtime = start - end
+        process_sampling_result(sampled_vertices_fast_mean_radius.cpu().numpy(), fast_mean_radius_runtime,
+                                fast_radius_mean_grid_downsampling_results)
 
-        # start = timer()
-        # sampled_indices_fast_median_radius = \
-        #     nnrt.geometry.functional.fast_median_radius_subsample_3d_points(vertices, node_coverage)
-        # end = timer()
-        # fast_median_radius_runtime = start - end
-        # process_sampling_result(vertices[sampled_indices_fast_median_radius.cpu().numpy()], fast_median_radius_runtime,
-        #                         fast_radius_median_grid_subsampling_results)
+        print("Closest-to-mean-grid subsampling...")
+        start = timer()
+        sampled_indices_closest_to_mean_grid = \
+            nnrt.geometry.functional.closest_to_mean_grid_subsample_3d_points(vertices, node_coverage)
+        end = timer()
+        closest_to_mean_grid_runtime = start - end
+        process_sampling_result(vertices[sampled_indices_closest_to_mean_grid.cpu().numpy()], closest_to_mean_grid_runtime,
+                                closest_to_mean_grid_subsampling_results)
 
     print("Done.")
     np.save(str(output_directory / "vertex_counts.npy"), np.array(vertex_counts))
     if use_sequential_epsilon_sampling:
         sequential_epsilon_sampling_results.save_to_file(output_directory / "sequential_epsilon_sampling_results.npz")
 
-    # mean_grid_downsampling_results.save_to_file(
-    #     output_directory / "mean_grid_downsampling_results.npz")
-    # fast_radius_mean_grid_downsampling_results.save_to_file(
-    #     output_directory / "fast_radius_mean_grid_downsampling_results.npz")
-    median_grid_subsampling_results.save_to_file(
-        output_directory / "median_grid_subsampling_results.npz")
-    # fast_radius_median_grid_subsampling_results.save_to_file(
-    #     output_directory / "fast_radius_median_grid_subsampling_results.npz")
+    mean_grid_downsampling_results.save_to_file(
+        output_directory / "mean_grid_downsampling_results.npz")
+    fast_radius_mean_grid_downsampling_results.save_to_file(
+        output_directory / "fast_radius_mean_grid_downsampling_results.npz")
 
     return 0
 

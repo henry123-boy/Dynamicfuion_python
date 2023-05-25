@@ -128,6 +128,9 @@ void pybind_geometry_downsampling(pybind11::module& m) {
 	m.def("mean_grid_downsample_3d_points", [](const open3d::core::Tensor& points, float grid_cell_size) {
 		return MeanGridDownsample3dPoints(points, grid_cell_size);
 	}, "points"_a, "grid_cell_size"_a);
+	m.def("closest_to_mean_grid_subsample_3d_points", [](const open3d::core::Tensor& points, float grid_cell_size) {
+		return ClosestToGridMeanSubsample3dPoints(points, grid_cell_size);
+	}, "points"_a, "grid_cell_size"_a);
 	m.def("fast_mean_radius_downsample_3d_points", [](const open3d::core::Tensor& points, float radius) {
 		return FastMeanRadiusDownsample3dPoints(points, radius);
 	}, "points"_a, "grid_cell_size"_a);
@@ -137,6 +140,7 @@ void pybind_geometry_downsampling(pybind11::module& m) {
 	m.def("fast_median_radius_subsample_3d_points", [](const open3d::core::Tensor& points, float radius) {
 		return FastMedianRadiusSubsample3dPoints(points, radius);
 	}, "points"_a, "grid_cell_size"_a);
+
 }
 
 } // namespace nnrt::geometry::functional

@@ -184,3 +184,42 @@ TEST_CASE("Test Median Grid Downsampling - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestGridMedianDownsampling(device);
 }
+
+void TestClosestToMeanSampling(const o3c::Device& device){
+	std::vector<float> point_data = {
+			// 0-2, 0-2; mean: 1.01428571, 0.9, 1.
+			0.15, 0.3, 1 , // 0
+			1.25, 0.35, 1,
+			0.5, 0.8, 1  , // 2 - closest to mean
+			0.4, 1.7, 1  ,
+			1.45, 1.65, 1,
+			1.65, 1.15, 1,
+			1.7, 0.35, 1 , // 6
+
+			// 2-4, 0-2; mean: 3.08 , 1.045, 1.
+			2.45, 0.35, 1, // 7
+			3.1, 0.25, 1 , // 8
+			3.7, 0.4, 1  ,
+			3.8, 1.05, 1 ,
+			3.8, 1.7, 1  ,
+			3.2, 1.65, 1 ,
+			3.2, 1.05, 1 , // 13 - closest to mean
+			2.55, 1.3, 1 ,
+			2.55, 1.75, 1,
+			2.45, 0.95, 1 // 16
+	};
+	o3c::Tensor points(point_data, {17, 3}, o3c::Dtype::Float32, device);
+	o3c::Tensor sample = geometry::functional::ClosestToGridMeanSubsample3dPoints(points, 2.0f);
+	o3c::Tensor sample_gt(std::vector<int64_t>{2, 13}, {2}, o3c::Int64, device);
+	REQUIRE(sample.AllEqual(sample_gt));
+}
+
+TEST_CASE("Test Closest To Grid Mean Sampling - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestClosestToMeanSampling(device);
+}
+
+TEST_CASE("Test Closest To Grid Mean Sampling - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestClosestToMeanSampling(device);
+}

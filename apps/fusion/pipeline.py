@@ -56,34 +56,34 @@ class FusionPipeline:
         # TODO: this logic needs to be handled in the TelemetryGenerator constructor. The flags from it can be checked
         #  here to see if certain operations will need to be done to produce input for the telemetry generator.
         self.extracted_framewise_canonical_mesh_needed = \
-            tracking_parameters.source_image_mode.value != SourceImageMode.IMAGE_ONLY or \
-            viz_parameters.visualization_mode.value in [VisualizationMode.CANONICAL_MESH,
+            tracking_parameters.source_image_mode.index != SourceImageMode.IMAGE_ONLY or \
+            viz_parameters.visualization_mode.index in [VisualizationMode.CANONICAL_MESH,
                                                         VisualizationMode.WARPED_MESH] or \
-            log_parameters.record_canonical_meshes_to_disk.value
+            log_parameters.record_canonical_meshes_to_disk.index
 
         self.framewise_warped_mesh_needed = \
-            (tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT
-             and tracking_parameters.source_image_mode.value != SourceImageMode.IMAGE_ONLY) or \
-            viz_parameters.visualization_mode.value == VisualizationMode.WARPED_MESH or \
-            log_parameters.record_warped_meshes_to_disk.value or log_parameters.record_rendered_warped_mesh.value
+            (tracking_parameters.tracking_span_mode.index == TrackingSpanMode.PREVIOUS_TO_CURRENT
+             and tracking_parameters.source_image_mode.index != SourceImageMode.IMAGE_ONLY) or \
+            viz_parameters.visualization_mode.index == VisualizationMode.WARPED_MESH or \
+            log_parameters.record_warped_meshes_to_disk.index or log_parameters.record_rendered_warped_mesh.index
 
-        self.telemetry_generator = TelemetryGenerator(log_parameters.record_visualization_to_disk.value,
-                                                      log_parameters.record_canonical_meshes_to_disk.value,
-                                                      log_parameters.record_warped_meshes_to_disk.value,
-                                                      log_parameters.record_rendered_warped_mesh.value,
-                                                      log_parameters.record_gn_point_clouds.value,
-                                                      log_parameters.record_source_and_target_point_clouds.value,
-                                                      log_parameters.record_correspondences.value,
-                                                      log_parameters.record_graph_transformations.value,
-                                                      log_parameters.record_frameviewer_metadata.value,
-                                                      verbosity_parameters.print_cuda_memory_info.value,
-                                                      verbosity_parameters.print_frame_info.value,
-                                                      viz_parameters.visualization_mode.value,
-                                                      Parameters.path.output_directory.value)
+        self.telemetry_generator = TelemetryGenerator(log_parameters.record_visualization_to_disk.index,
+                                                      log_parameters.record_canonical_meshes_to_disk.index,
+                                                      log_parameters.record_warped_meshes_to_disk.index,
+                                                      log_parameters.record_rendered_warped_mesh.index,
+                                                      log_parameters.record_gn_point_clouds.index,
+                                                      log_parameters.record_source_and_target_point_clouds.index,
+                                                      log_parameters.record_correspondences.index,
+                                                      log_parameters.record_graph_transformations.index,
+                                                      log_parameters.record_frameviewer_metadata.index,
+                                                      verbosity_parameters.print_cuda_memory_info.index,
+                                                      verbosity_parameters.print_frame_info.index,
+                                                      viz_parameters.visualization_mode.index,
+                                                      Parameters.path.output_directory.index)
 
         # === load alignment network, configure device ===
         self.deform_net: DeformNet = load_default_nnrt_network(o3c.Device.CUDA,
-                                                               log_parameters.record_gn_point_clouds.value)
+                                                               log_parameters.record_gn_point_clouds.index)
         self.device = o3c.Device("cuda:0")
         self.host = o3c.Device("cpu:0")
 
@@ -95,10 +95,10 @@ class FusionPipeline:
         #####################################################################################################
         # region === dataset, intrinsics & extrinsics in various shapes, sizes, and colors ===
         #####################################################################################################
-        self.sequence: FrameSequenceDataset = Parameters.fusion.input_data.sequence_preset.value.value
+        self.sequence: FrameSequenceDataset = Parameters.fusion.input_data.sequence_preset.index.index
         self.sequence.load()
         self.start_at_frame_index = max(self.sequence.start_frame_index,
-                                        Parameters.fusion.input_data.start_at_frame.value)
+                                        Parameters.fusion.input_data.start_at_frame.index)
         first_frame = self.sequence.get_frame_at(self.start_at_frame_index)
 
         intrinsic_open3d_legacy, self.intrinsic_matrix_np = \
@@ -107,7 +107,7 @@ class FusionPipeline:
         self.fx, self.fy, self.cx, self.cy = camera.extract_intrinsic_projection_parameters(intrinsic_open3d_legacy)
         self.intrinsics_dict = camera.intrinsic_projection_parameters_as_dict(intrinsic_open3d_legacy)
 
-        if verbosity_parameters.print_intrinsics.value:
+        if verbosity_parameters.print_intrinsics.index:
             camera.print_intrinsic_projection_parameters(intrinsic_open3d_legacy)
 
         self.intrinsics = o3c.Tensor(intrinsic_open3d_legacy.intrinsic_matrix,
@@ -124,14 +124,14 @@ class FusionPipeline:
         start_time = timeit.default_timer()
 
         # these parameters are stored as local variables for easy access
-        truncation_distance_factor = Parameters.tsdf.sdf_truncation_distance.value / Parameters.tsdf.voxel_size.value
+        truncation_distance_factor = Parameters.tsdf.sdf_truncation_distance.index / Parameters.tsdf.voxel_size.index
         verbosity_parameters = Parameters.fusion.telemetry.verbosity
         tracking_parameters = Parameters.fusion.tracking
         deform_net_parameters = Parameters.deform_net
         alignment_parameters = Parameters.alignment
-        depth_scale = deform_net_parameters.depth_scale.value
-        alignment_image_width = alignment_parameters.image_width.value
-        alignment_image_height = alignment_parameters.image_height.value
+        depth_scale = deform_net_parameters.depth_scale.index
+        alignment_image_width = alignment_parameters.image_width.index
+        alignment_image_height = alignment_parameters.image_height.index
 
         telemetry_generator = self.telemetry_generator
         device = self.device
@@ -157,10 +157,10 @@ class FusionPipeline:
         saved_pixel_weights: Union[None, o3d.core.Tensor] = None
 
         # process sequence start/end bound parameters
-        check_for_end_frame = Parameters.fusion.input_data.run_until_frame.value != -1
+        check_for_end_frame = Parameters.fusion.input_data.run_until_frame.index != -1
         start_frame_index = sequence.start_frame_index
-        if Parameters.fusion.input_data.start_at_frame.value != -1:
-            start_frame_index = Parameters.fusion.input_data.start_at_frame.value
+        if Parameters.fusion.input_data.start_at_frame.index != -1:
+            start_frame_index = Parameters.fusion.input_data.start_at_frame.index
             sequence.advance_to_frame(start_frame_index)
 
         # save info into file in output in order to sync a frameviewer when viewing results in visualizer --
@@ -169,7 +169,7 @@ class FusionPipeline:
 
         while sequence.has_more_frames():
             current_frame = sequence.get_next_frame()
-            if check_for_end_frame and current_frame.frame_index >= Parameters.fusion.input_data.run_until_frame.value:
+            if check_for_end_frame and current_frame.frame_index >= Parameters.fusion.input_data.run_until_frame.index:
                 break
             self.telemetry_generator.set_frame_index(current_frame.frame_index)
             #####################################################################################################
@@ -249,14 +249,14 @@ class FusionPipeline:
                 # TODO: outsource source_depth and source_color prep to another method
                 # when we track first-to-current, we force reusing original frame for the source.
                 # when we track keyframe-to-current, we force reusing keyframe for the source.
-                if tracking_parameters.source_image_mode.value is SourceImageMode.IMAGE_ONLY:
+                if tracking_parameters.source_image_mode.index is SourceImageMode.IMAGE_ONLY:
                     source_depth = saved_depth_image_np
                     source_color = saved_color_image_np
                 else:
                     # @formatter:off
                     source_mesh = warped_mesh \
-                        if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT else (
-                        keyframe_mesh if tracking_parameters.tracking_span_mode.value is
+                        if tracking_parameters.tracking_span_mode.index is TrackingSpanMode.PREVIOUS_TO_CURRENT else (
+                        keyframe_mesh if tracking_parameters.tracking_span_mode.index is
                                          TrackingSpanMode.KEYFRAME_TO_CURRENT else canonical_mesh
                     )
                     # @formatter:on
@@ -265,7 +265,7 @@ class FusionPipeline:
 
                     # flip channels, i.e. RGB<-->BGR
                     source_color = cv2.cvtColor(source_color, cv2.COLOR_BGR2RGB)
-                    if tracking_parameters.source_image_mode.value == \
+                    if tracking_parameters.source_image_mode.index == \
                             SourceImageMode.RENDERED_WITH_PREVIOUS_FRAME_OVERLAY:
                         # re-use pixel data from previous frame
                         source_depth[saved_mask_image_np] = saved_depth_image_np[saved_mask_image_np]
@@ -301,7 +301,7 @@ class FusionPipeline:
                 ########################################################################################################
                 # region prepare pixel anchors, and pixel weights
                 ########################################################################################################
-                if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
+                if tracking_parameters.tracking_span_mode.index is TrackingSpanMode.PREVIOUS_TO_CURRENT:
                     pixel_anchors, pixel_weights = \
                         self.compute_pixel_anchors(source_point_image_np, device, use_warped_nodes=True)
                 else:
@@ -359,9 +359,9 @@ class FusionPipeline:
                     pixel_weights, self.active_graph, cropped_intrinsics_numpy,
                     device,
                     use_graph_rotations_and_translations_as_estimates=
-                    tracking_parameters.tracking_span_mode.value != TrackingSpanMode.PREVIOUS_TO_CURRENT,
+                    tracking_parameters.tracking_span_mode.index != TrackingSpanMode.PREVIOUS_TO_CURRENT,
                     use_warped_nodes=
-                    tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT,
+                    tracking_parameters.tracking_span_mode.index == TrackingSpanMode.PREVIOUS_TO_CURRENT,
                 )
 
                 telemetry_generator.process_gn_point_clouds(deform_net_data["gn_point_clouds"])
@@ -424,13 +424,13 @@ class FusionPipeline:
 
             # ==== determine if we need to cache the current color & depth image
             # TODO: optimize by caching projected point cloud as well
-            if tracking_parameters.tracking_span_mode.value == TrackingSpanMode.PREVIOUS_TO_CURRENT \
+            if tracking_parameters.tracking_span_mode.index == TrackingSpanMode.PREVIOUS_TO_CURRENT \
                     or current_frame_is_keyframe:
                 saved_color_image_np = color_image_np
                 saved_depth_image_np = depth_image_np
                 saved_mask_image_np = mask_image_np
 
-        if verbosity_parameters.print_total_runtime.value:
+        if verbosity_parameters.print_total_runtime.index:
             end_time = timeit.default_timer()
             print(f"Total runtime (in seconds, with graph generation, "
                   f"without model + TSDF grid initialization): {end_time - start_time}")
@@ -450,20 +450,20 @@ class FusionPipeline:
     def determine_mesh_extraction_threshold(self, frame_index: int) -> int:
         frame_count = frame_index - self.start_at_frame_index
         tracking_parameters = Parameters.fusion.tracking
-        if tracking_parameters.mesh_extraction_weight_thresholding_mode.value == \
+        if tracking_parameters.mesh_extraction_weight_thresholding_mode.index == \
                 MeshExtractionWeightThresholdingMode.CONSTANT:
-            return tracking_parameters.mesh_extraction_weight_threshold.value
+            return tracking_parameters.mesh_extraction_weight_threshold.index
         else:
-            if frame_count < tracking_parameters.mesh_extraction_weight_threshold.value:
+            if frame_count < tracking_parameters.mesh_extraction_weight_threshold.index:
                 return frame_count
             else:
-                return tracking_parameters.mesh_extraction_weight_threshold.value
+                return tracking_parameters.mesh_extraction_weight_threshold.index
 
     def frame_is_keyframe(self, frame_index: int) -> bool:
         frame_count = frame_index - self.start_at_frame_index
         tracking_parameters = Parameters.fusion.tracking
-        return tracking_parameters.tracking_span_mode.value == TrackingSpanMode.KEYFRAME_TO_CURRENT and \
-               frame_count % tracking_parameters.keyframe_interval.value == 0
+        return tracking_parameters.tracking_span_mode.index == TrackingSpanMode.KEYFRAME_TO_CURRENT and \
+               frame_count % tracking_parameters.keyframe_interval.index == 0
 
     def prepare_motion_graph_for_integration(self,
                                              node_rotation_predictions: o3c.Tensor,
@@ -473,15 +473,15 @@ class FusionPipeline:
         graph_for_integration = None
         need_to_recompute_saved_anchors = False
 
-        if tracking_parameters.tracking_span_mode.value is TrackingSpanMode.FIRST_TO_CURRENT:
+        if tracking_parameters.tracking_span_mode.index is TrackingSpanMode.FIRST_TO_CURRENT:
             self.active_graph.set_node_rotations(node_rotation_predictions)
             self.active_graph.set_node_translations(node_translation_predictions)
             graph_for_integration = self.active_graph
-        elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.PREVIOUS_TO_CURRENT:
+        elif tracking_parameters.tracking_span_mode.index is TrackingSpanMode.PREVIOUS_TO_CURRENT:
             self.active_graph.rotate_nodes(node_rotation_predictions)
             self.active_graph.translate_nodes(node_translation_predictions)
             graph_for_integration = self.active_graph
-        elif tracking_parameters.tracking_span_mode.value is TrackingSpanMode.KEYFRAME_TO_CURRENT:
+        elif tracking_parameters.tracking_span_mode.index is TrackingSpanMode.KEYFRAME_TO_CURRENT:
             self.active_graph.set_node_rotations(node_rotation_predictions)
             self.active_graph.set_node_translations(node_translation_predictions)
             if len(self.keyframe_graphs) == 0:
@@ -507,48 +507,48 @@ class FusionPipeline:
         tracking_parameters = Parameters.fusion.tracking
         integration_parameters = Parameters.fusion.integration
         graph_parameters = Parameters.graph
-        node_coverage = Parameters.graph.node_coverage.value
+        node_coverage = Parameters.graph.node_coverage.index
         deform_net_parameters = Parameters.deform_net
         precomputed_pixel_anchors = None
         precomputed_pixel_weights = None
-        if tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
+        if tracking_parameters.graph_generation_mode.index == GraphGenerationMode.FIRST_FRAME_EXTRACTED_MESH:
             canonical_mesh_legacy: o3d.geometry.TriangleMesh = volume.extract_triangle_mesh(0, -1).to_legacy()
             canonical_mesh = o3d.t.geometry.TriangleMesh.from_legacy(canonical_mesh_legacy, device=device)
             self.active_graph = build_deformation_graph_from_mesh(
                 canonical_mesh, node_coverage, erosion_iteration_count=10, neighbor_count=8,
-                minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value
+                minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.index
             )
-        elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
+        elif tracking_parameters.graph_generation_mode.index == GraphGenerationMode.FIRST_FRAME_LOADED_GRAPH:
             self.active_graph = sequence.get_current_frame_graph_warp_field(device)
             if self.active_graph is None:
                 raise ValueError(f"Could not load graph for frame {frame_index}.")
-        elif tracking_parameters.graph_generation_mode.value == GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
+        elif tracking_parameters.graph_generation_mode.index == GraphGenerationMode.FIRST_FRAME_DEPTH_IMAGE:
             self.active_graph, _, precomputed_pixel_anchors, precomputed_pixel_weights = \
                 build_graph_warp_field_from_depth_image(
                     depth_image_np, mask_image_np,
                     intrinsic_matrix=self.intrinsic_matrix_np, device=device,
-                    max_triangle_distance=graph_parameters.graph_max_triangle_distance.value,
-                    depth_scale_reciprocal=deform_net_parameters.depth_scale.value,
-                    erosion_num_iterations=graph_parameters.graph_erosion_num_iterations.value,
-                    erosion_min_neighbors=graph_parameters.graph_erosion_min_neighbors.value,
-                    remove_nodes_with_too_few_neighbors=graph_parameters.graph_remove_nodes_with_too_few_neighbors.value,
-                    use_only_valid_vertices=graph_parameters.graph_use_only_valid_vertices.value,
-                    sample_random_shuffle=graph_parameters.graph_sample_random_shuffle.value,
-                    neighbor_count=graph_parameters.graph_neighbor_count.value,
-                    enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.value,
+                    max_triangle_distance=graph_parameters.graph_max_triangle_distance.index,
+                    depth_scale_reciprocal=deform_net_parameters.depth_scale.index,
+                    erosion_num_iterations=graph_parameters.graph_erosion_num_iterations.index,
+                    erosion_min_neighbors=graph_parameters.graph_erosion_min_neighbors.index,
+                    remove_nodes_with_too_few_neighbors=graph_parameters.graph_remove_nodes_with_too_few_neighbors.index,
+                    use_only_valid_vertices=graph_parameters.graph_use_only_valid_vertices.index,
+                    sample_random_shuffle=graph_parameters.graph_sample_random_shuffle.index,
+                    neighbor_count=graph_parameters.graph_neighbor_count.index,
+                    enforce_neighbor_count=graph_parameters.graph_enforce_neighbor_count.index,
                     node_coverage=node_coverage,
-                    minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.value
+                    minimum_valid_anchor_count=integration_parameters.fusion_minimum_valid_anchor_count.index
                 )
         else:
             raise NotImplementedError(
-                f"graph generation mode {tracking_parameters.graph_generation_mode.value.name} not implemented.")
+                f"graph generation mode {tracking_parameters.graph_generation_mode.index.name} not implemented.")
 
-        if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED:
+        if tracking_parameters.pixel_anchor_computation_mode.index == AnchorComputationMode.PRECOMPUTED:
             precomputed_pixel_anchors, precomputed_pixel_weights = sequence.get_current_pixel_anchors_and_weights()
 
-        if tracking_parameters.tracking_span_mode.value != TrackingSpanMode.PREVIOUS_TO_CURRENT and \
+        if tracking_parameters.tracking_span_mode.index != TrackingSpanMode.PREVIOUS_TO_CURRENT and \
                 (precomputed_pixel_anchors is None or precomputed_pixel_weights is None):
-            depth_scale = deform_net_parameters.depth_scale.value
+            depth_scale = deform_net_parameters.depth_scale.index
             source_point_image = image_processing.backproject_depth(depth_image_np, self.fx, self.fy, self.cx, self.cy,
                                                                     depth_scale=depth_scale)  # (h, w, 3)
             return self.compute_pixel_anchors(source_point_image, device, use_warped_nodes=False)
@@ -562,19 +562,19 @@ class FusionPipeline:
                               use_warped_nodes=False) \
             -> Tuple[o3c.Tensor, o3c.Tensor]:
         tracking_parameters = Parameters.fusion.tracking
-        node_coverage = Parameters.graph.node_coverage.value
+        node_coverage = Parameters.graph.node_coverage.index
         source_point_image_o3d = o3c.Tensor(source_point_image, device=device)
         if use_warped_nodes:
             nodes = self.active_graph.get_warped_nodes()
         else:
             nodes = self.active_graph.nodes
 
-        if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.EUCLIDEAN:
+        if tracking_parameters.pixel_anchor_computation_mode.index == AnchorComputationMode.EUCLIDEAN:
             pixel_anchors, pixel_weights = \
                 nnrt.geometry.functional.compute_anchors_and_weights_euclidean(
                     source_point_image_o3d, nodes, 4, 0, node_coverage
                 )
-        elif tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.SHORTEST_PATH:
+        elif tracking_parameters.pixel_anchor_computation_mode.index == AnchorComputationMode.SHORTEST_PATH:
             pixel_anchors, pixel_weights = \
                 nnrt.geometry.functional.compute_anchors_and_weights_shortest_path(
                     source_point_image_o3d, nodes, self.active_graph.edges, 4,
@@ -593,8 +593,8 @@ class FusionPipeline:
     @staticmethod
     def perform_complex_logic_parameter_validation():
         tracking_parameters = Parameters.fusion.tracking
-        if tracking_parameters.pixel_anchor_computation_mode.value == AnchorComputationMode.PRECOMPUTED and \
-                tracking_parameters.tracking_span_mode.value is not TrackingSpanMode.FIRST_TO_CURRENT:
-            raise ValueError(f"Illegal value: {AnchorComputationMode.__name__:s} "
+        if tracking_parameters.pixel_anchor_computation_mode.index == AnchorComputationMode.PRECOMPUTED and \
+                tracking_parameters.tracking_span_mode.index is not TrackingSpanMode.FIRST_TO_CURRENT:
+            raise ValueError(f"Illegal index: {AnchorComputationMode.__name__:s} "
                              f"{AnchorComputationMode.PRECOMPUTED} for pixel anchors is only allowed when "
                              f"{TrackingSpanMode.__name__} is set to {TrackingSpanMode.FIRST_TO_CURRENT}")

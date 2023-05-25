@@ -40,12 +40,9 @@ open3d::core::Tensor
 ClosestToGridMeanSubsample3dPoints(const open3d::core::Tensor& points, float grid_cell_size, const open3d::core::HashBackendType& hash_backend) {
 	o3c::AssertTensorDtype(points, o3c::Dtype::Float32);
 	o3c::AssertTensorShape(points, { points.GetLength(), 3 });
-	o3c::Tensor downsampled_points;
-	functional::kernel::sampling::GridMeanDownsamplePoints(downsampled_points, points, grid_cell_size, hash_backend);
-	core::KdTree index(points);
-	o3c::Tensor nearest_indices, squared_distances;
-	index.FindKNearestToPoints(nearest_indices, squared_distances, downsampled_points, 1, true);
-	return nearest_indices.Flatten().To(o3c::Int64);
+	o3c::Tensor nearest_indices;
+	functional::kernel::sampling::SampleClosestToGridMeanPoints(nearest_indices, points, grid_cell_size, hash_backend);
+	return nearest_indices.To(o3c::Int64);
 }
 
 

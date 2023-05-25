@@ -32,12 +32,16 @@ file(MAKE_DIRECTORY ${PIP_PACKAGE_DST_DIR})
 set(
     NNRT_SOURCE_FILES
 
+    # legacy NNRT code
     cpu/graph_proc.h
     cpu/image_proc.h
     cpu/graph_proc.cpp
     cpu/image_proc.cpp
 
-    debugging/debugging.hpp
+    # new library code (Greg Kramida)
+
+    core/Dispatch.h
+    core/PreprocessorStrings.h
 
     core/platform_independence/Qualifiers.h
     core/platform_independence/Atomics.h
@@ -45,11 +49,26 @@ set(
     core/platform_independence/Algorithm.h
     core/platform_independence/Array.h
     core/platform_independence/Tuple.h
+    core/platform_independence/Macros.h
+
+
+    core/KdTree.h
+    core/KdTree.cpp
 
     core/kernel/KnnUtilities.h
     core/kernel/KnnUtilities_PriorityQueue.h
+    core/kernel/KdTreeUtilities.cpp
+
+    core/kernel/KdTreeNodeTypes.h
+    core/kernel/KdTree.h
+    core/kernel/KdTree.cpp
+    core/kernel/BuildKdTreeImpl.h
+    core/kernel/SearchKdTreeImpl.h
+    core/kernel/instantiations/KdTreeCPU.cpp
+    core/kernel/instantiations/KdTreeCUDA.cu
 
     core/KeyValuePair.h
+
     core/heap/DeviceHeap.h
     core/heap/CPU/DeviceHeapCPU.cpp
     core/heap/CUDA/DeviceHeapCUDA.cu
@@ -69,18 +88,6 @@ set(
     core/functional/Masking.h
     core/functional/instantiations/Masking.cpp
 
-    core/KdTree.h
-    core/KdTree.cpp
-    core/kernel/KdTree.h
-    core/kernel/KdTree.cpp
-    core/kernel/BuildKdTreeImpl.h
-    core/kernel/SearchKdTreeImpl.h
-    core/kernel/instantiations/KdTreeCPU.cpp
-    core/kernel/instantiations/KdTreeCUDA.cu
-
-    core/kernel/KdTreeUtilities.cpp
-    core/kernel/KdTreeNodeTypes.h
-
     core/LinearIndex.cpp
     core/LinearIndex.h
     core/kernel/LinearIndex.cpp
@@ -96,6 +103,8 @@ set(
     core/TensorManipulationRoutines.cpp
 
     core/kernel/HashTableUtilities.h
+
+    core/kernel/MathTypedefs.h
 
     core/linalg/Matmul3D.cpp
     core/linalg/Matmul3D.h
@@ -120,17 +129,25 @@ set(
     core/linalg/instantiations/RodriguesCUDA.cu
     core/linalg/KroneckerTensorProduct.h
 
-    core/PreprocessorStrings.h
-
+    core/functional/SortOrder.h
     core/functional/Sorting.cpp
     core/functional/Sorting.h
+
+    core/functional/kernel/SortingAlongLastDimensionByKeyImpl.h
+    core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCUDA.cu
+    core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCPU.cpp
+
     core/functional/kernel/BubbleSort.h
     core/functional/kernel/Sorting.cpp
     core/functional/kernel/Sorting.h
+
     core/functional/kernel/SortingAlongLastDimensionImpl.h
-    core/functional/kernel/SortingByColumnImpl.h
     core/functional/kernel/instantiations/SortingAlongLastDimensionCPU.cpp
     core/functional/kernel/instantiations/SortingAlongLastDimensionCUDA.cu
+
+    core/functional/kernel/SortingByColumnImpl.h
+    core/functional/kernel/instantiations/SortingByColumnCPU.cpp
+    core/functional/kernel/instantiations/SortingByColumnCUDA.cu
 
     core/functional/Comparisons.cpp
     core/functional/Comparisons.h
@@ -140,10 +157,25 @@ set(
     core/functional/kernel/instantiations/ComparisonsCPU.cpp
     core/functional/kernel/instantiations/ComparisonsCUDA.cu
 
-    core/kernel/MathTypedefs.h
+    core/functional/ParallelPrefixScan.cpp
+    core/functional/ParallelPrefixScan.h
+    core/functional/kernel/ParallelPrefixScanImpl.h
+    core/functional/kernel/ParallelPrefixScan.h
+    core/functional/kernel/ParallelPrefixScan.cpp
+
     core/TensorRepresentationConversion.h
     core/GetDType.cpp
     core/GetDType.h
+
+    core/linalg/SolveBlockDiagonalQR.cpp
+    core/linalg/SolveBlockDiagonalQR.h
+    core/linalg/SolveBlockDiagonalGeneric.h
+
+    core/linalg/SolveBlockDiagonalQR_CPU.cpp
+    core/linalg/SolveBlockDiagonalQR_CUDA.cpp
+
+    core/functional/kernel/instantiations/ParallelPrefixScanCPU.cpp
+    core/functional/kernel/instantiations/ParallelPrefixScanCUDA.cu
 
     string/split_string.h
     string/split_string.cpp
@@ -191,8 +223,14 @@ set(
     geometry/functional/kernel/GeometrySampling.cpp
     geometry/functional/kernel/GeometrySampling.h
     geometry/functional/kernel/GeometrySamplingImpl.h
+    geometry/functional/kernel/GeometrySamplingMean.h
+    geometry/functional/kernel/GeometrySamplingMean.h
+    geometry/functional/kernel/GeometrySamplingMedian.h
+    geometry/functional/kernel/GeometrySamplingMedian.h
+    geometry/functional/kernel/GeometrySamplingGridBinning.h
     geometry/functional/kernel/instantiations/GeometrySamplingCPU.cpp
     geometry/functional/kernel/instantiations/GeometrySamplingCUDA.cu
+
 
     geometry/VoxelBlockGrid.h
     geometry/VoxelBlockGrid.cpp
@@ -231,11 +269,17 @@ set(
     geometry/functional/WarpAnchorComputation.cpp
     geometry/functional/WarpAnchorComputation.h
 
-
     geometry/functional/MeshFrom2dTriangle.cpp
     geometry/functional/MeshFrom2dTriangle.h
     geometry/functional/JoinTriangleMeshes.cpp
     geometry/functional/JoinTriangleMeshes.h
+
+    geometry/kernel/HierarchicalGraphWarpField.cpp
+    geometry/kernel/HierarchicalGraphWarpField.h
+    geometry/RegularizationLayer.h
+    geometry/kernel/HierarchicalGraphWarpFieldImpl.h
+    geometry/kernel/instantiations/HierarchicalGraphWarpFieldCPU.cpp
+    geometry/kernel/instantiations/HierarchicalGraphWarpFieldCUDA.cu
 
     io/TensorIO.cpp
     io/TensorIO.h
@@ -265,7 +309,6 @@ set(
     rendering/kernel/instantiations/FlatEdgeShaderCPU.cpp
     rendering/kernel/instantiations/FlatEdgeShaderCUDA.cu
 
-
     rendering/kernel/RasterizeNdcTriangles.cpp
     rendering/kernel/RasterizeNdcTriangles.h
     rendering/kernel/RasterizeNdcTrianglesImpl.h
@@ -277,7 +320,6 @@ set(
     rendering/kernel/RasterizeNdcTrianglesCUDA.cuh
     rendering/kernel/GridBitMask.cuh
     rendering/kernel/RasterizeNdcTrianglesImplCPU.h
-
 
     rendering/functional/InterpolateVertexAttributes.cpp
     rendering/functional/InterpolateVertexAttributes.h
@@ -336,20 +378,26 @@ set(
     alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCPU.cpp
     alignment/functional/kernel/instantiations/PixelVertexAnchorJacobiansCUDA.cu
     alignment/IterationMode.h
-    core/linalg/SolveBlockDiagonalQR.cpp
-    core/linalg/SolveBlockDiagonalQR.h
-    core/linalg/SolveBlockDiagonalGeneric.h
-    core/platform_independence/Macros.h
-    core/linalg/SolveBlockDiagonalQR_CPU.cpp
-    core/linalg/SolveBlockDiagonalQR_CUDA.cpp
+
     alignment/functional/AssociateFacesWithAnchors.cpp
     alignment/functional/AssociateFacesWithAnchors.h
     alignment/functional/FaceNodeAnchors.h
+
     alignment/functional/kernel/AssociateFacesWithAnchors.cpp
     alignment/functional/kernel/AssociateFacesWithAnchors.h
     alignment/functional/kernel/instantiations/AssociateFacesWithAnchorsCPU.cpp
     alignment/functional/kernel/instantiations/AssociateFacesWithAnchorsCUDA.cu
     alignment/functional/kernel/AssociateFacesWithAnchorsImpl.h
+
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp
+    alignment/functional/HierarchicalRegularizationEdgeJacobian.h
+
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h
+    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h
+    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp
+    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu
+
     geometry/functional/ComputeDistanceMatrix.cpp
     geometry/functional/ComputeDistanceMatrix.h
     geometry/functional/kernel/ComputeDistanceMatrix.cpp
@@ -357,45 +405,21 @@ set(
     geometry/functional/kernel/ComputeDistanceMatrixImpl.h
     geometry/functional/kernel/instantiations/ComputeDistanceMatrixCPU.cpp
     geometry/functional/kernel/instantiations/ComputeDistanceMatrixCUDA.cu
-    core/functional/kernel/ParallelPrefixScanImpl.h
-    core/functional/ParallelPrefixScan.cpp
-    core/functional/ParallelPrefixScan.h
-    core/functional/kernel/ParallelPrefixScan.h
-    core/functional/kernel/ParallelPrefixScan.cpp
+
     geometry/functional/TopologicalConversions.cpp
     geometry/functional/TopologicalConversions.h
     geometry/functional/kernel/TopologicalConversions.cpp
     geometry/functional/kernel/TopologicalConversions.h
+    geometry/functional/kernel/TopologicalConversionsImpl.h
     geometry/functional/kernel/instantiations/TopologicalConversionsCPU.cpp
     geometry/functional/kernel/instantiations/TopologicalConversionsCUDA.cu
-    geometry/functional/kernel/TopologicalConversionsImpl.h
-    core/functional/kernel/instantiations/ParallelPrefixScanCPU.cpp
-    core/functional/kernel/instantiations/ParallelPrefixScanCUDA.cu
-    geometry/functional/kernel/GeometrySamplingMean.h
-    geometry/functional/kernel/GeometrySamplingMean.h
-    geometry/functional/kernel/GeometrySamplingMedian.h
-    geometry/functional/kernel/GeometrySamplingMedian.h
-    geometry/functional/kernel/GeometrySamplingGridBinning.h
-    geometry/kernel/HierarchicalGraphWarpField.cpp
-    geometry/kernel/HierarchicalGraphWarpField.h
-    geometry/RegularizationLayer.h
-    geometry/kernel/HierarchicalGraphWarpFieldImpl.h
-    geometry/kernel/instantiations/HierarchicalGraphWarpFieldCPU.cpp
-    geometry/kernel/instantiations/HierarchicalGraphWarpFieldCUDA.cu
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.h
+
     geometry/WarpField.cpp
     geometry/WarpField.h
     geometry/PlanarGraphWarpField.cpp
     geometry/PlanarGraphWarpField.h
-    core/functional/SortOrder.h
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h
-    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp
-    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu
-
-    core/functional/kernel/instantiations/SortingByColumnCPU.cpp core/functional/kernel/instantiations/SortingByColumnCUDA.cu core/functional/kernel/SortingAlongLastDimensionByKeyImpl.h core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCUDA.cu core/functional/kernel/instantiations/SortingAlongLastDimensionByKeyCPU.cpp core/Dispatch.h)
+    core/platform_independence/AtomicKeyIndexArray.cuh
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

@@ -22,6 +22,7 @@
 // local includes
 #include "geometry/functional/kernel/PointAggregationBins.h"
 #include "geometry/functional/kernel/GeometrySamplingGridBinning.h"
+#include "core/platform_independence/AtomicKeyIndexArray.cuh"
 
 
 //*** === header for kernel usage only. === ***
@@ -41,12 +42,12 @@ void InitializeAveragingBins(
 	o3c::ParallelFor(
 			device, bin_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-		PointMeanAggregationBin& bin = bins[workload_idx];
-		bin.x = 0.f;
-		bin.y = 0.f;
-		bin.z = 0.f;
-		bin.count = 0;
-	}
+				PointMeanAggregationBin& bin = bins[workload_idx];
+				bin.x = 0.f;
+				bin.y = 0.f;
+				bin.z = 0.f;
+				bin.count = 0;
+			}
 	);
 }
 
@@ -61,21 +62,21 @@ void ComputeBinAverageAggregates(
 	o3c::ParallelFor(
 			device, original_point_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-		Eigen::Map<Eigen::Vector3f> point(original_point_indexer.GetDataPtr<float>(workload_idx));
-		auto bin_index = bin_indices[workload_idx];
-		PointMeanAggregationBin& bin = bins[bin_index];
+				Eigen::Map<Eigen::Vector3f> point(original_point_indexer.GetDataPtr<float>(workload_idx));
+				auto bin_index = bin_indices[workload_idx];
+				PointMeanAggregationBin& bin = bins[bin_index];
 #ifdef __CUDACC__
-		atomicAdd(&bin.x, point.x());
-				atomicAdd(&bin.y, point.y());
-				atomicAdd(&bin.z, point.z());
-				atomicAdd(&bin.count, 1);
+				atomicAdd(&bin.x, point.x());
+						atomicAdd(&bin.y, point.y());
+						atomicAdd(&bin.z, point.z());
+						atomicAdd(&bin.count, 1);
 #else
-		atomicAdd_CPU(bin.x, point.x());
-		atomicAdd_CPU(bin.y, point.y());
-		atomicAdd_CPU(bin.z, point.z());
-		bin.count++;
+				atomicAdd_CPU(bin.x, point.x());
+				atomicAdd_CPU(bin.y, point.y());
+				atomicAdd_CPU(bin.z, point.z());
+				bin.count++;
 #endif
-	}
+			}
 	);
 }
 
@@ -91,18 +92,18 @@ void ComputeBinAverages(
 	o3c::ParallelFor(
 			device, bin_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-		PointMeanAggregationBin& bin = bins[workload_idx];
+				PointMeanAggregationBin& bin = bins[workload_idx];
 #ifdef __CUDACC__
-		bin.x /= static_cast<float>(bin.count);
-				bin.y /= static_cast<float>(bin.count);
-				bin.z /= static_cast<float>(bin.count);
+				bin.x /= static_cast<float>(bin.count);
+						bin.y /= static_cast<float>(bin.count);
+						bin.z /= static_cast<float>(bin.count);
 #else
-		int bin_point_count = bin.count.load();
-		bin.x.store(bin.x.load() / static_cast<float>(bin_point_count));
-		bin.y.store(bin.y.load() / static_cast<float>(bin_point_count));
-		bin.z.store(bin.z.load() / static_cast<float>(bin_point_count));
+				int bin_point_count = bin.count.load();
+				bin.x.store(bin.x.load() / static_cast<float>(bin_point_count));
+				bin.y.store(bin.y.load() / static_cast<float>(bin_point_count));
+				bin.z.store(bin.z.load() / static_cast<float>(bin_point_count));
 #endif
-	}
+			}
 	);
 }
 
@@ -119,20 +120,20 @@ void TransferFromMeanBinsToTensor_NoCountCheck(
 	o3c::ParallelFor(
 			device, bin_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-		PointMeanAggregationBin& bin = bins[workload_idx];
-		float x, y, z;
+				PointMeanAggregationBin& bin = bins[workload_idx];
+				float x, y, z;
 #ifdef __CUDACC__
-		x = bin.x; y = bin.y; z = bin.z;
+				x = bin.x; y = bin.y; z = bin.z;
 #else
-		x = bin.x.load();
-		y = bin.y.load();
-		z = bin.z.load();
+				x = bin.x.load();
+				y = bin.y.load();
+				z = bin.z.load();
 #endif
-		Eigen::Map<Eigen::Vector3f> downsampled_point(downsampled_point_indexer.GetDataPtr<float>(workload_idx));
-		downsampled_point.x() = x;
-		downsampled_point.y() = y;
-		downsampled_point.z() = z;
-	}
+				Eigen::Map<Eigen::Vector3f> downsampled_point(downsampled_point_indexer.GetDataPtr<float>(workload_idx));
+				downsampled_point.x() = x;
+				downsampled_point.y() = y;
+				downsampled_point.z() = z;
+			}
 	);
 }
 
@@ -150,33 +151,33 @@ void TransferFromMeanBinsToTensor_CountCheck(
 	o3c::ParallelFor(
 			device, bin_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-		PointMeanAggregationBin& bin = bins[workload_idx];
-		int64_t downsampled_point_index;
-		bool has_point = false;
-		float x, y, z;
+				PointMeanAggregationBin& bin = bins[workload_idx];
+				int64_t downsampled_point_index;
+				bool has_point = false;
+				float x, y, z;
 #ifdef __CUDACC__
-		if(bin.count != 0){
-					has_point = true;
-					x = bin.x; y = bin.y; z = bin.z;
-				}
+				if(bin.count != 0){
+							has_point = true;
+							x = bin.x; y = bin.y; z = bin.z;
+						}
 #else
-		if (bin.count.load() != 0) {
-			has_point = true;
-			x = bin.x.load();
-			y = bin.y.load();
-			z = bin.z.load();
-		}
+				if (bin.count.load() != 0) {
+					has_point = true;
+					x = bin.x.load();
+					y = bin.y.load();
+					z = bin.z.load();
+				}
 #endif
-		if (!has_point)
-			return;
+				if (!has_point)
+					return;
 
-		downsampled_point_index = NNRT_ATOMIC_ADD(downsampled_point_count_atomic, (uint32_t) 1);
-		Eigen::Map<Eigen::Vector3f> downsampled_point(downsampled_point_indexer.GetDataPtr<float>(downsampled_point_index));
-		downsampled_point.x() = x;
-		downsampled_point.y() = y;
-		downsampled_point.z() = z;
+				downsampled_point_index = NNRT_ATOMIC_ADD(downsampled_point_count_atomic, (uint32_t) 1);
+				Eigen::Map<Eigen::Vector3f> downsampled_point(downsampled_point_indexer.GetDataPtr<float>(downsampled_point_index));
+				downsampled_point.x() = x;
+				downsampled_point.y() = y;
+				downsampled_point.z() = z;
 
-	}
+			}
 	);NNRT_CLEAN_UP_ATOMIC(downsampled_point_count_atomic);
 }
 
@@ -204,6 +205,61 @@ void ComputeMeanOfPointsInGridCells(
 	o3gk::NDArrayIndexer downsampled_point_indexer(downsampled_points, 1);
 
 	TransferFromMeanBinsToTensor_NoCountCheck<TDeviceType>(downsampled_point_indexer, device, bin_count, bins);
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType>
+o3c::Tensor FindClosestInBins(const o3c::Tensor& original_points, const o3c::Tensor& bin_indices, const o3c::Tensor& downsampled_points) {
+	int64_t original_point_count = original_points.GetLength();
+	int64_t bin_count = downsampled_points.GetLength();
+	auto original_point_data = original_points.GetDataPtr<float>();
+	auto bin_index_data = bin_indices.GetDataPtr<int32_t>();
+	auto downsampled_point_data = downsampled_points.GetDataPtr<float>();
+
+	core::AtomicKeyIndexArray<TDeviceType> closest_bin_point_tracker(bin_count, original_points.GetDevice());
+
+	o3c::ParallelFor(
+			original_points.GetDevice(),
+			original_point_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_point){
+				Eigen::Map<const Eigen::Vector3f> original_point(original_point_data + i_point * 3);
+				int32_t bin_index = bin_index_data[i_point];
+				Eigen::Map<const Eigen::Vector3f> downsampled_point(downsampled_point_data + bin_index * 3);
+				int i_point_int32 = static_cast<int32_t>(i_point);
+				float distance = (downsampled_point - original_point).norm();
+				closest_bin_point_tracker.FetchMin(bin_index, distance, i_point_int32);
+			}
+	);
+
+	return closest_bin_point_tracker.IndexTensor();
+}
+
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void SampleClosestToMeanOfPointsInGridCells(
+		open3d::core::Tensor& closest_to_mean_indices, const open3d::core::Tensor& original_points, float grid_cell_size,
+		const open3d::core::HashBackendType& hash_backend, const Eigen::Vector3f& grid_offset = Eigen::Vector3f::Zero()) {
+	auto device = original_points.GetDevice();
+
+	auto [bin_indices_tensor, bin_count, point_bin_coord_map] =
+			GridBinPoints<TDeviceType, PointMeanAggregationBin>(original_points, grid_cell_size, hash_backend, grid_offset);
+
+	auto bin_indices = bin_indices_tensor.template GetDataPtr<int32_t>();
+	auto* bins = reinterpret_cast<PointMeanAggregationBin*>(point_bin_coord_map.GetValueTensor().GetDataPtr());
+	InitializeAveragingBins<TDeviceType>(device, bin_count, bins);
+
+	o3gk::NDArrayIndexer original_point_indexer(original_points, 1);
+	auto original_point_count = original_points.GetLength();
+
+	ComputeBinAverageAggregates<TDeviceType>(original_point_indexer, device, original_point_count, bins, bin_indices);
+	ComputeBinAverages<TDeviceType>(device, bin_count, bins);
+
+	o3c::Tensor downsampled_points({bin_count, 3}, o3c::Float32, device);
+	o3gk::NDArrayIndexer downsampled_point_indexer(downsampled_points, 1);
+
+	TransferFromMeanBinsToTensor_NoCountCheck<TDeviceType>(downsampled_point_indexer, device, bin_count, bins);
+
+	closest_to_mean_indices = FindClosestInBins<TDeviceType>(original_points, bin_indices_tensor, downsampled_points);
 }
 
 
