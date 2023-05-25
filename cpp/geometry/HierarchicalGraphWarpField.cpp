@@ -118,11 +118,14 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	int32_t virtual_node_count = 0;
 	std::vector<int32_t> layer_node_count_exclusive_prefix_sum_data = {};
 	std::vector<o3c::Tensor> layer_node_index_sets_fine_to_coarse = {};
+
+	std::vector<float> layer_decimation_radius_data = {};
 	for (int32_t i_layer = 0; i_layer < count; i_layer++) {
 		const auto& layer = this->regularization_layers[i_layer];
 		layer_node_count_exclusive_prefix_sum_data.push_back(virtual_node_count);
 		virtual_node_count += static_cast<int32_t>(layer.node_indices.GetShape(0));
 		layer_node_index_sets_fine_to_coarse.push_back(layer.node_indices);
+		layer_decimation_radius_data.push_back(layer.decimation_radius);
 	}
 	// Now that we have precise node sets ready, in the next pass, connect each successive pair of layers with edges.
 	// Since we'll need to reshuffle the finer layer indices (and edges) as we proceed, we'll need to do this in top-down, coarsest-to-finest layer
@@ -164,14 +167,11 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	std::vector<o3c::Tensor> layer_edge_sets_coarse_to_fine = {};
 	std::vector<o3c::Tensor> layer_edge_layer_indices_coarse_to_fine = {};
 
-	std::vector<float> layer_decimation_radius_data = {};
 
 	for (int32_t i_layer = count - 1; i_layer >= 0; i_layer--) {
 		const auto& source_layer = this->regularization_layers[i_layer];
 		if (i_layer < count - 1) {
 			layer_edge_sets_coarse_to_fine.push_back(source_layer.edges);
-			const auto& target_layer = this->regularization_layers[i_layer + 1];
-			layer_decimation_radius_data.push_back(target_layer.decimation_radius);
 			o3c::Tensor layer_edge_layer_indices({source_layer.edges.GetShape(0)}, o3c::Int8, device);
 			// we record the layer of the "targets" as the official edge layer
 			layer_edge_layer_indices.Fill(i_layer + 1);

@@ -65,7 +65,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 	o3c::AssertTensorDevice(edges, device);
 
 	o3c::AssertTensorShape(edge_layer_indices, { edge_count });
-	o3c::AssertTensorDtype(edge_layer_indices, o3c::Int32);
+	o3c::AssertTensorDtype(edge_layer_indices, o3c::Int8);
 	o3c::AssertTensorDevice(edge_layer_indices, device);
 
 	o3c::AssertTensorShape(layer_decimation_radii, { layer_count });
@@ -76,7 +76,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 	auto node_position_data = node_positions.GetDataPtr<float>();
 	auto node_rotation_data = node_rotations.GetDataPtr<float>();
 	auto edge_data = edges.GetDataPtr<int>();
-	auto edge_layer_index_data = edge_layer_indices.GetDataPtr<int>();
+	auto edge_layer_index_data = edge_layer_indices.GetDataPtr<int8_t>();
 	auto layer_decimation_radii_data = layer_decimation_radii.GetDataPtr<float>();
 
 	// === prepare outputs
@@ -94,7 +94,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 				int64_t i_edge = workload_idx / 2;
 				int64_t i_node_in_edge = workload_idx % 2;
 				int64_t node_index = edge_data[workload_idx];
-				int64_t edge_layer_index = edge_layer_index_data[i_edge];
+				int8_t edge_layer_index = edge_layer_index_data[i_edge];
 				float edge_weight = layer_decimation_radii_data[edge_layer_index];
 				int64_t i_jacobian_address;
 				int i_edge_for_node = node_edge_counters.FetchAdd(node_index, 1);

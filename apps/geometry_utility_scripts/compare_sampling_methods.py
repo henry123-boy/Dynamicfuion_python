@@ -46,7 +46,8 @@ class SamplingMethodResults:
         self.runtimes = []
 
     def append_data(self, minimum_distance: float, maximum_distance: float, mean_distance: float,
-                    median_distance: float, distance_standard_deviation: float, sample_point_count: int, runtime: float):
+                    median_distance: float, distance_standard_deviation: float, sample_point_count: int,
+                    runtime: float):
         self.minimum_distances.append(minimum_distance)
         self.maximum_distances.append(maximum_distance)
         self.mean_distances.append(mean_distance)
@@ -55,7 +56,6 @@ class SamplingMethodResults:
         self.sample_point_counts.append(sample_point_count)
         self.runtimes.append(runtime)
 
-
     def save_to_file(self, file: Path):
         np.savez(
             file,
@@ -63,8 +63,8 @@ class SamplingMethodResults:
             maximum_distances=np.array(self.maximum_distances),
             mean_distances=np.array(self.mean_distances),
             median_distances=np.array(self.median_distances),
-            sample_point_counts=np.array(self.sample_point_counts),
             distance_standard_deviations=np.array(self.distance_standard_deviations),
+            sample_point_counts=np.array(self.sample_point_counts),
             runtimes=np.array(self.runtimes)
         )
 
@@ -75,13 +75,13 @@ class SamplingMethodResults:
 def process_sampling_result(node_coords: np.ndarray, runtime: float, result_accumulator: SamplingMethodResults):
     distances = compute_distance_matrix(node_coords, node_coords)
     distances[np.diag_indices_from(distances)] = 1000.
-    minimum_distances: np.ndarray = distances.min(axis=0) # distances to nearest nodes
+    minimum_distances: np.ndarray = distances.min(axis=0)  # distances to nearest nodes
     result_accumulator.append_data(
         minimum_distance=minimum_distances.min(),
         maximum_distance=minimum_distances.max(),
         mean_distance=minimum_distances.mean(),
         median_distance=float(np.median(minimum_distances)),
-        distance_standard_deviation = minimum_distances.std(),
+        distance_standard_deviation=minimum_distances.std(),
         sample_point_count=len(node_coords),
         runtime=runtime
     )
@@ -109,40 +109,50 @@ def main():
     NECK_PILLOW_0 = StandaloneFrameDataset(0, 18, DataSplit.TRAIN, has_masks=False, masks_subfolder="sod")
     BLUE_SWEATER_GUY_0 = StandaloneFrameDataset(0, 20, DataSplit.TRAIN, has_masks=False, masks_subfolder="sod")
     BACKPACK_0 = StandaloneFrameDataset(0, 22, DataSplit.TRAIN, has_masks=False, masks_subfolder="sod")
-    BERLIN_0 = StandaloneFrameDataset(0, 70, DataSplit.TRAIN, has_masks=False, masks_subfolder="sod")
     BLUE_SHIRT_GUY_0 = StandaloneFrameDataset(0, 24, DataSplit.TRAIN, has_masks=False, masks_subfolder="sod")
+    BERLIN_0 = StandaloneFrameDataset(28, 70, DataSplit.TRAIN, has_masks=True, masks_subfolder="sod")
 
     # all_frame_sets = [DOG_TRAINING_0, DOG_TRAINING_1, DOG_TRAINING_3, DOG_0, DOG_1, DOG_TREAT_0, DOG_2, DOG_TREAT_1,
     #                   LITTLE_GIRL_0, LITTLE_GIRL_1, LITTLE_GIRL_2, LITTLE_GIRL_3, DOG_TREAT_2, WACK_0, NECK_PILLOW_0,
     #                   BLUE_SWEATER_GUY_0, BACKPACK_0, BERLIN_0, BLUE_SHIRT_GUY_0]
     # all_frame_sets = [DOG_TRAINING_0, DOG_TRAINING_1, DOG_TRAINING_3, DOG_0, DOG_1, DOG_TREAT_0, DOG_2, WACK_0, NECK_PILLOW_0, BLUE_SWEATER_GUY_0, BERLIN_0]
-    all_frame_sets = [DOG_TRAINING_0, BLUE_SWEATER_GUY_0, BERLIN_0]
+    # all_frame_sets = [DOG_TRAINING_0, BLUE_SWEATER_GUY_0, BERLIN_0]
+    all_frame_sets = [DOG_TRAINING_0]
+    # all_frame_sets = [BERLIN_0]
     for set in all_frame_sets:
         set.load()
 
     vertex_counts = []
 
     sequential_epsilon_sampling_results = SamplingMethodResults()
+
     mean_grid_downsampling_results = SamplingMethodResults()
     fast_radius_mean_grid_downsampling_results = SamplingMethodResults()
     closest_to_mean_grid_subsampling_results = SamplingMethodResults()
 
-    path_params = Parameters.path
+    median_grid_subsampling_results = SamplingMethodResults()
+
+    path_params: PathParameters = Parameters.path
     output_directory = Path(path_params.output_directory.value) / Path("sampling_method_comparison")
     output_directory.mkdir(parents=True, exist_ok=True)
 
     use_sequential_epsilon_sampling = False
+    use_median_grid_sampling = True
+    save_mesh_data_and_sequential_sampling = False
 
-    for frame_set in all_frame_sets:
-        print(f"Processing frame {frame_set.frame_index} of sequence {frame_set.sequence_id}.")
-        depth_image: o3d.t.geometry.Image = o3d.t.io.read_image(frame_set.get_depth_image_path())
-        # mask_image: o3d.t.geometry.Image = o3d.t.io0.read_image(frame_set.get_mask_image_path())
-        fx, fy, cx, cy = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(frame_set.get_intrinsics_path())
-
-        # sequential epsilon sampling
+    for frame in all_frame_sets:
+        print(f"Processing frame {frame.frame_index} of sequence {frame.sequence_id}.")
+        depth_image: o3d.t.geometry.Image = o3d.t.io.read_image(frame.get_depth_image_path())
         depth_image_np: np.ndarray = depth_image.as_tensor().numpy()
         depth_image_np.resize(depth_image_np.shape[0], depth_image_np.shape[1])
-        # mask_image_np = mask_image.as_tensor().numpy()
+        if frame.has_masks():
+            mask_image: o3d.t.geometry.Image = o3d.t.io.read_image(frame.get_mask_image_path())
+            mask_image_np = mask_image.as_tensor().numpy()
+            mask_image_np.resize(mask_image_np.shape[0], mask_image_np.shape[1])
+            depth_image_np[mask_image_np < 1] = 0
+
+        fx, fy, cx, cy = camera.load_intrinsic_matrix_entries_from_text_4x4_matrix(frame.get_intrinsics_path())
+
         point_image = image_processing.backproject_depth(depth_image_np, fx, fy, cx, cy, depth_scale=1000.0)
         max_triangle_distance: float = 0.05
 
@@ -155,8 +165,17 @@ def main():
         if use_sequential_epsilon_sampling:
             print("Sequential epsilon sampling...")
             start = timer()
-            node_coords, node_point_indices = \
-                nnrt.sample_nodes(vertices_np, non_eroded_vertices, node_coverage, False, False)
+            if frame.has_masks():
+                node_coords, node_point_indices = \
+                    nnrt.sample_nodes(vertices_np, non_eroded_vertices, node_coverage, True, False)
+            else:
+                node_coords, node_point_indices = \
+                    nnrt.sample_nodes(vertices_np, non_eroded_vertices, node_coverage, False, False)
+            if save_mesh_data_and_sequential_sampling:
+                np.save(str(output_directory / "vertices.npy"), vertices_np)
+                np.save(str(output_directory / "faces.npy"), faces)
+                np.save(str(output_directory / "node_coords.npy"), node_coords)
+                np.save(str(output_directory / "node_point_indices.npy"), node_point_indices)
             end = timer()
             process_sampling_result(node_coords, end - start, sequential_epsilon_sampling_results)
 
@@ -174,7 +193,7 @@ def main():
         print("Fast mean radius downsampling...")
         start = timer()
         sampled_vertices_fast_mean_radius = \
-            nnrt.geometry.functional.fast_mean_radius_downsample_3d_points(vertices, node_coverage * (2 / 3))
+            nnrt.geometry.functional.fast_mean_radius_downsample_3d_points(vertices, node_coverage * 0.5)
         end = timer()
         fast_mean_radius_runtime = end - start
         process_sampling_result(sampled_vertices_fast_mean_radius.cpu().numpy(), fast_mean_radius_runtime,
@@ -190,6 +209,17 @@ def main():
                                 closest_to_mean_grid_runtime,
                                 closest_to_mean_grid_subsampling_results)
 
+        if use_median_grid_sampling:
+            print("Median grid subsampling...")
+            start = timer()
+            sampled_indices_median_grid = \
+                nnrt.geometry.functional.median_grid_subsample_3d_points(vertices, node_coverage * 1.5)
+            end = timer()
+            median_grid_runtime = end - start
+            process_sampling_result(vertices_np[sampled_indices_median_grid.cpu().numpy()],
+                                    median_grid_runtime,
+                                    median_grid_subsampling_results)
+
     print("Done. Now saving results.")
     np.save(str(output_directory / "vertex_counts.npy"), np.array(vertex_counts))
     if use_sequential_epsilon_sampling:
@@ -201,6 +231,9 @@ def main():
         output_directory / "fast_radius_mean_grid_downsampling_results.npz")
     closest_to_mean_grid_subsampling_results.save_to_file(
         output_directory / "closest_to_mean_grid_subsampling_results.npz")
+
+    if use_median_grid_sampling:
+        median_grid_subsampling_results.save_to_file(output_directory / "median_grid_subsampling_results.npz")
     print("Saving results completed.")
 
     return 0

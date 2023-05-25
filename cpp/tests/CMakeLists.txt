@@ -134,43 +134,7 @@ if (BUILD_CPP_TESTS)
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
 
-
-    ### add tests ###
-    nnrt_add_test(test_graph_proc)
-    nnrt_add_test(test_index_conversions)
-    nnrt_add_test(test_array_comparisons)
-    nnrt_add_test(test_heap)
-    nnrt_add_test(test_kdtree)
-    nnrt_add_test(test_graph_warp_field)
-    nnrt_add_test(test_mesh_warping)
-    nnrt_add_test(test_sampling)
-    nnrt_add_test(test_non_rigid_surface_voxel_block_grid)
-    nnrt_add_test(test_matmul3d)
-    nnrt_add_test(test_normals_operations)
-    nnrt_add_test(test_tensor_io)
-    nnrt_add_test(test_voxel_block_grid_io)
-    nnrt_add_test(test_unproject_3d_points)
-    nnrt_add_test(test_extract_face_vertices)
-    nnrt_add_test(test_deformable_mesh_fitter_basic)
-    nnrt_add_test(test_deformable_mesh_fitter_intermediate)
-    nnrt_add_test(test_deformable_mesh_fitter_advanced)
-    nnrt_add_test(test_flat_edge_shader)
-    nnrt_add_test(test_triangle_fitter)
-    nnrt_add_test(test_vertex_color_shader)
-    nnrt_add_test(
-        test_atomic_counter_array
-        SOURCES
-        test_atomic_counter_array/test_atomic_counter_array.cpp
-        test_atomic_counter_array/test_atomic_counter_array.h
-        test_atomic_counter_array/test_atomic_counter_array_impl.h
-        test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
-        test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
-    )
-    nnrt_add_test(test_solve_cholesky_block_diagonal)
-    nnrt_add_test(test_rodrigues)
-    nnrt_add_test(test_mesh_to_adjacency_array_conversion)
-    nnrt_add_test(test_sorting)
-
+    # add downloaded test data
     nnrt_add_test_data_download_target(
         test_data_plane_and_cube_rendering
         URL https://algomorph.com/storage/reco/plane_and_cube_rendering_test_data.7z
@@ -252,7 +216,60 @@ if (BUILD_CPP_TESTS)
         arrays/mesh_bunny_res4_rendered_normals.npy
     )
 
+    nnrt_add_test_data_download_target(
+        berlin_frames_28_29
+        URL https://algomorph.com/storage/reco/berlin_frames_28-29.7z
+        SHA256 bc2a96a4790756535b1cbb518b607df231d3f5c4290f41b36c28c7bd7ad96bc3
+        DESTINATION berlin_frames_28-29.7z
+        EXTRACTED_NAMES
+        arrays/berlin_000028_faces.npy
+        arrays/berlin_000028_node_coords.npy
+        arrays/berlin_000028_node_point_indices.npy
+        arrays/berlin_000028_vertices.npy
+        images/berlin_000028_color.jpg
+        images/berlin_000028_depth.png
+        images/berlin_000028_mask.png
+        images/berlin_000029_color.jpg
+        images/berlin_000029_depth.png
+        images/berlin_000029_mask.png
+    )
 
+
+    ### add tests ###
+    nnrt_add_test(test_graph_proc)
+    nnrt_add_test(test_index_conversions)
+    nnrt_add_test(test_array_comparisons)
+    nnrt_add_test(test_heap)
+    nnrt_add_test(test_kdtree)
+    nnrt_add_test(test_graph_warp_field)
+    nnrt_add_test(test_mesh_warping)
+    nnrt_add_test(test_sampling)
+    nnrt_add_test(test_non_rigid_surface_voxel_block_grid)
+    nnrt_add_test(test_matmul3d)
+    nnrt_add_test(test_normals_operations)
+    nnrt_add_test(test_tensor_io)
+    nnrt_add_test(test_voxel_block_grid_io)
+    nnrt_add_test(test_unproject_3d_points)
+    nnrt_add_test(test_extract_face_vertices)
+    nnrt_add_test(test_deformable_mesh_fitter_basic)
+    nnrt_add_test(test_deformable_mesh_fitter_intermediate)
+    nnrt_add_test(test_deformable_mesh_fitter_advanced DEPENDENCIES berlin_frames_28_29)
+    nnrt_add_test(test_flat_edge_shader)
+    nnrt_add_test(test_triangle_fitter)
+    nnrt_add_test(test_vertex_color_shader)
+    nnrt_add_test(
+        test_atomic_counter_array
+        SOURCES
+        test_atomic_counter_array/test_atomic_counter_array.cpp
+        test_atomic_counter_array/test_atomic_counter_array.h
+        test_atomic_counter_array/test_atomic_counter_array_impl.h
+        test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
+        test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
+    )
+    nnrt_add_test(test_solve_cholesky_block_diagonal)
+    nnrt_add_test(test_rodrigues)
+    nnrt_add_test(test_mesh_to_adjacency_array_conversion)
+    nnrt_add_test(test_sorting)
     nnrt_add_test(test_rasterize DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array suzanne_and_bunny_res_4_2_rasterization_test)
     nnrt_add_test(test_interpolate_vertex_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
 

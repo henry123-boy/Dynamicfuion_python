@@ -115,7 +115,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		// distorted barycentric coordinates and reuse them, instead of recomputing them, in RasterizedVertexAndNormalJacobians
 		std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
 				nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, rendering_image_size, 0.5f, 1, -1, -1,
-				                                       this->use_perspective_correction, false, true);;
+				                                       this->use_perspective_correction, false, true);
 		auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
 		// compute residuals r, retain rasterized points & global mask relevant for energy function being minimized
@@ -291,6 +291,10 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeDepthResiduals(
 ) const {
 
 	o3c::SizeVector image_size = {reference_color_image.GetRows(), reference_color_image.GetCols()};
+
+	if(!warped_mesh.HasVertexNormals()){
+		utility::LogError("Input warped mesh needs to have normals defined; it doesn't.");
+	}
 
 	auto vertex_normals = warped_mesh.GetVertexNormals();
 	auto triangle_indices = warped_mesh.GetTriangleIndices();

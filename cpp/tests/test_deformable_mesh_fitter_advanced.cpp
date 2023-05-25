@@ -14,23 +14,25 @@
 //  limitations under the License.
 //  ================================================================
 // stdlib includes
+#include <utility>
+#include <cmath>
+
 // third-party includes
 #include <open3d/core/Tensor.h>
 #include <open3d/t/io/TriangleMeshIO.h>
 #include <open3d/t/io/ImageIO.h>
 #include <open3d/geometry/Geometry.h>
-
-#include <utility>
 // local includes
+#include "tests/test_utils/fitter_testing.h"
 // test utils
 #include "tests/test_utils/test_utils.hpp"
 #include "test_main.hpp"
+// code being tested
 #include "rendering/functional/ExtractFaceVertices.h"
 #include "rendering/RasterizeNdcTriangles.h"
 #include "core/functional/Masking.h"
 #include "alignment/DeformableMeshToImageFitter.h"
-#include "tests/test_utils/fitter_testing.h"
-// code being tested
+
 
 namespace o3c = open3d::core;
 namespace o3u = open3d::utility;
@@ -38,7 +40,7 @@ namespace o3tio = open3d::t::io;
 namespace o3tg = open3d::t::geometry;
 
 
-void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name){
+void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name) {
 	auto pd_tmp = pixel_depths.Clone();
 	nnrt::core::functional::ReplaceValue(pd_tmp, -1.0f, 10.0f);
 	float minimum_depth = pd_tmp.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
@@ -72,7 +74,7 @@ void TestDeformableImageFitter_25NodeSurface(
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
 			test::ReadAndTransformTwoMeshes("plane_skin_source_25_nodes", "plane_skin_target_25_nodes", device,
-			                          mesh_transform);
+			                                mesh_transform);
 
 	o3c::SizeVector image_resolution{100, 100};
 	o3c::Tensor projection_matrix(
@@ -123,7 +125,7 @@ void TestDeformableImageFitter_25NodeSurface(
 	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
-														use_perspective_correction, 10.f, false, 0.01, 0.001);
+	                                                    use_perspective_correction, max_depth, false, 0.01, 0.001);
 	o3tg::Image dummy_color_image;
 
 
@@ -157,6 +159,76 @@ TEST_CASE("Test DMI Fitter -  TRANSLATION-ONLY MODE - 25 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3, false);
 }
+
+void TestDeformableImageFitter_BERLIN_28_29(
+		const o3c::Device& device,
+		bool use_perspective_correction = true,
+		std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
+		int max_iterations = 1,
+		bool draw_depth = false
+) {
+	float max_depth = 10.0f;
+	float node_coverage = 0.025;
+	float layer_decimation_factor = 4.0;
+	o3c::Tensor source_mesh_vertices =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/berlin_000028_vertices.npy").To(device);
+	o3c::Tensor source_mesh_faces =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/berlin_000028_faces.npy").To(device).To(o3c::Int64);
+
+	o3tg::TriangleMesh source_mesh(source_mesh_vertices, source_mesh_faces);
+	source_mesh.ComputeVertexNormals();
+
+	o3c::Tensor node_positions = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/berlin_000028_node_coords.npy");
+
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(
+			node_positions, node_coverage, false, 4, 0, 4, 4,
+			[&layer_decimation_factor](int i_layer, float node_coverage) {
+				return node_coverage * powf(layer_decimation_factor, static_cast<float>(i_layer));
+			}
+	);
+
+	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
+	                                                    use_perspective_correction, max_depth, false, 0.01, 0.001);
+
+	o3tg::Image target_color_image;
+	o3tio::ReadImage(test::generated_image_test_data_directory.ToString() + "/berlin_000029_color.jpg", target_color_image);
+	o3tg::Image target_depth_image;
+	o3tio::ReadImage(test::generated_image_test_data_directory.ToString() + "/berlin_000029_depth.png", target_depth_image);
+	o3tg::Image target_mask_image;
+	o3tio::ReadImage(test::generated_image_test_data_directory.ToString() + "/berlin_000029_mask.png", target_mask_image);
+
+	o3c::Tensor target_mask_greyscale = target_mask_image.AsTensor();
+	target_mask_greyscale = target_mask_greyscale.Reshape({target_mask_greyscale.GetShape(0), target_mask_greyscale.GetShape(1)});
+
+	o3c::Tensor target_mask =
+			(target_mask_greyscale ==
+			 o3c::Tensor::Zeros(target_mask_greyscale.GetShape(), target_mask_greyscale.GetDtype(), device)).LogicalNot();
+
+	o3c::Tensor projection_matrix(
+			std::vector<double>{574.541, 0.0, 322.523,
+			                    0.0, 577.584, 238.559,
+			                    0.0, 0.0, 1.0}, {3, 3},
+			o3c::Float64, o3c::Device("CPU:0")
+	);
+
+	o3c::Tensor extrinsic_matrix = o3c::Tensor::Eye(4, o3c::Float64, o3c::Device("CPU:0"));
+
+	fitter.FitToImage(warp_field, source_mesh, target_color_image, target_depth_image, target_mask, projection_matrix,
+	                  extrinsic_matrix, 1.0f);
+
+}
+
+TEST_CASE("Test DMI Fitter - COMBINED MODE - BERLIN 28-29 - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_BERLIN_28_29(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+}
+
+TEST_CASE("Test DMI Fitter - COMBINED MODE - BERLIN 28-29 - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter_BERLIN_28_29(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+}
+
+
 
 
 
