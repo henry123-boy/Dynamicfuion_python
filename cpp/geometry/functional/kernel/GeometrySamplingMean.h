@@ -226,7 +226,7 @@ o3c::Tensor FindClosestInBins(const o3c::Tensor& original_points, const o3c::Ten
 				int32_t bin_index = bin_index_data[i_point];
 				Eigen::Map<const Eigen::Vector3f> downsampled_point(downsampled_point_data + bin_index * 3);
 				int i_point_int32 = static_cast<int32_t>(i_point);
-				float distance = (downsampled_point - original_point).norm();
+				float distance = (downsampled_point - original_point).squaredNorm();
 				closest_bin_point_tracker.FetchMin(bin_index, distance, i_point_int32);
 			}
 	);
