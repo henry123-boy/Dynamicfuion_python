@@ -181,7 +181,7 @@ void TestDeformableImageFitter_BERLIN_28_29(
 	o3c::Tensor node_positions = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/berlin_000028_node_coords.npy");
 
 	nnrt::geometry::HierarchicalGraphWarpField warp_field(
-			node_positions, node_coverage, false, 4, 0, 4, 4,
+			node_positions, node_coverage, false, 4, 0, 3, 4,
 			[&layer_decimation_factor](int i_layer, float node_coverage) {
 				return node_coverage * powf(layer_decimation_factor, static_cast<float>(i_layer));
 			}
@@ -227,8 +227,3 @@ TEST_CASE("Test DMI Fitter - COMBINED MODE - BERLIN 28-29 - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_BERLIN_28_29(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
 }
-
-
-
-
-
