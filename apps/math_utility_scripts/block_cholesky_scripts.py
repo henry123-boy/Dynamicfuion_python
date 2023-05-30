@@ -181,58 +181,64 @@ def sparse_H_to_dense(hessian_blocks_diagonal: List[np.ndarray],
     return H
 
 
+def indexed_blocks_to_block_lookup_structure(indexed_block_list: List[Tuple[int, int, np.ndarray]], min_i: int = 0,
+                                             min_j: int = 0):
+    block_dict_2d = {}
+    for (i, j, block) in indexed_block_list:
+        if i > min_i and j > min_j:
+            if i not in block_dict_2d:
+                block_dict_2d[i] = {}
+            block_dict_2d[i][j] = block
+    return block_dict_2d
+
+
+def indexed_zero_block_list_like(block_list: List[Tuple[int, int, np.ndarray]]) -> List[Tuple[int, int, np.ndarray]]:
+    return [(i, j, np.zeros_like(block)) for (i, j, block) in block_list]
+
+
+def indexed_zero_block_list(coordinate_list: List[Tuple[int, int]], block_size: int) -> List[
+    Tuple[int, int, np.ndarray]]:
+    return [(i, j, np.zeros((block_size, block_size))) for (i, j, block) in coordinate_list]
+
+
+def generate_diagonal_coordinates(start: int, end: int):
+    return [(i, i) for i in range(start, end, 1)]
+
+
+def blocks_as_diag_coordinate_indexed(blocks: List[np.ndarray], start: int, end: int):
+    assert len(blocks) == end - start
+    return [(i, i, blocks[i]) for i in range(start, end, 1)]
+
+
 def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.ndarray],
                                             hessian_blocks_upper: List[Tuple[int, int, np.ndarray]],
                                             hessian_blocks_upper_corner: List[Tuple[int, int, np.ndarray]],
                                             layer_node_counts: np.ndarray) -> np.ndarray:
-    L_diag = [scipy.linalg.cholesky(block, lower=True) for block in hessian_blocks_diagonal]
-    L_inv_diag = [np.linalg.inv(L) for L in L_diag]
-    U_diag = [L.T for L in L_diag]
-    U_upper = [(i, j, L_inv_diag[i].dot(U_h)) for (i, j, U_h) in hessian_blocks_upper]
-    block_size = hessian_blocks_diagonal[0].shape[0]
-    diagonal_block_count = len(hessian_blocks_diagonal)
-    U = np.zeros((block_size * diagonal_block_count, block_size * diagonal_block_count))
+    first_layer_node_count = layer_node_counts[0]
+    L_diag_upper_left = [scipy.linalg.cholesky(block, lower=True) for block in
+                         hessian_blocks_diagonal[:first_layer_node_count]]
+    L_inv_diag_upper_left = [np.linalg.inv(L) for L in L_diag_upper_left]
 
-    fill_in_diagonal_blocks(U, U_diag)
+    U_diag_upper_left = [L.T for L in L_diag_upper_left]
+    U_upper = [(i, j, L_inv_diag_upper_left[i].dot(U_h)) for (i, j, U_h) in hessian_blocks_upper]
+    block_size = hessian_blocks_diagonal[0].shape[0]
+    node_count = len(hessian_blocks_diagonal)
+    U = np.zeros((block_size * node_count, block_size * node_count))
+
+    fill_in_diagonal_blocks(U, U_diag_upper_left)
     fill_sparse_blocks(U, U_upper, flip_i_and_j=False)
 
-    first_layer_node_count = layer_node_counts[0]
+    U_other_layer_blocks = U_upper
+    H_other_layer_blocks = hessian_blocks_upper + hessian_blocks_upper_corner \
+                           + blocks_as_diag_coordinate_indexed(hessian_blocks_diagonal[:first_layer_node_count],
+                                                               first_layer_node_count, node_count)
 
-    corner_blocks_diagonal = hessian_blocks_diagonal[first_layer_node_count:]
-    corner_blocks_upper = [(i - first_layer_node_count, j - first_layer_node_count, block) for (i, j, block) in
-                           hessian_blocks_upper_corner]
-    H_corner = sparse_H_to_dense(corner_blocks_diagonal, corner_blocks_upper)
-    # for i, j, block in U_upper:
-    #     if j > first_layer_node_count:
-    #         corner_i = i - first_layer_node_count
-    #         corner_j = j - first_layer_node_count
-    #         print(i, j, corner_i, corner_j)
-    #         H_corner[corner_i * 6:(corner_i + 1) * 6, corner_j * 6: (corner_j + 1) * 6] -= block.T.dot(block)
-    #         H_corner[corner_j * 6: (corner_j + 1) * 6, corner_i * 6:(corner_i + 1) * 6] -= block.dot(block.T)
+    U_other_layer_dict = indexed_blocks_to_block_lookup_structure(U_upper)
+    H_other_layer_dict = indexed_blocks_to_block_lookup_structure(H_other_layer_blocks)
 
-    U[first_layer_node_count * 6:, first_layer_node_count * 6:] = scipy.linalg.cholesky(H_corner, lower=False)
+
+
     return U
-
-
-def cholesky_banachiewicz(A: np.ndarray) -> np.ndarray:
-    matrix_row_count = A.shape[0]
-    L = np.zeros_like(A)
-    for i in range(0, matrix_row_count):
-        for j in range(0, i+1):
-            sum = 0.0
-            for k in range(0, j):
-                sum += L[i, k] * L[j, k]
-            if i == j:
-                L[i, j] = math.sqrt(A[i, i] - sum)
-            else:
-                L[i, j] = 1.0 / L[j, j] * (A[i, j] - sum)
-    return L
-
-# def cholesky_banachiewicz_block(A: np.ndarray, block_size) -> np.ndarray:
-#     matrix_row_count = A.shape[0]
-#     L = np.zeros_like(A)
-#
-#     for i in range(0,)
 
 
 def main():
@@ -258,20 +264,5 @@ def main():
     return 0
 
 
-def main1():
-    # @formatter:off
-    A = np.array([[1.87713618, 1.13720606, 0.        , 0.        , 0.43085978, 1.17323464],
-                  [1.13720606, 0.77520692, 0.        , 0.        , 0.20166133, 0.6677495 ],
-                  [0.        , 0.        , 0.29459216, 0.52935895, 0.        , 0.        ],
-                  [0.        , 0.        , 0.52935895, 0.97976523, 0.        , 0.        ],
-                  [0.43085978, 0.20166133, 0.        , 0.        , 0.48812625, 0.77752449],
-                  [1.17323464, 0.6677495 , 0.        , 0.        , 0.77752449, 1.60339873]])
-    # @formatter:on
-    L = cholesky_banachiewicz(A)
-    print(L)
-
-    return 0
-
-
 if __name__ == "__main__":
-    sys.exit(main1())
+    sys.exit(main())

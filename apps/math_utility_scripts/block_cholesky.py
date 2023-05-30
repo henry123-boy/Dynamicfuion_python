@@ -1,7 +1,10 @@
-# Original MATLAB code by Alexander Mamonov, 2015
+import math
+
 import numpy as np
 import scipy
 from scipy.linalg import sqrtm
+
+from apps.math_utility_scripts.matrix_generation import generate_random_block_positive_semidefinite
 
 
 def block_start_and_end(block_size, j):
@@ -17,6 +20,7 @@ def ind(block_size, j, end):
     return block_size * (j + 1) if end else block_size * j
 
 
+# Original MATLAB code for mblockchol is by Alexander Mamonov, 2015
 def mblockchol(M, block_size, block_count):
     """ The function for the Block-Cholesky factorization
         mblockchol: Block Cholesky M = R' * R
@@ -60,21 +64,33 @@ def mblockchol(M, block_size, block_count):
     return U
 
 
-def cholesky_blocked(M, block_size, block_count):
+# Based on:
+# @inproceedings{chen2013block,
+#   title={Block algorithm and its implementation for Cholesky factorization},
+#   author={Chen, Jianping and Jin, Zhe and Shi, Quan and Qiu, Jianlin and Liu, Weifu},
+#   booktitle={Proc. Eight International Multi-Conference on Computing in the Global Information Technology},
+#   pages={232--236},
+#   year={2013}
+# }
+def cholesky_blocked(M, block_size):
     """ The function for the Block-Cholesky factorization
         mblockchol: Block Cholesky M = R' * R
     """
+    assert M.shape[0] % block_size == 0
+    assert M.shape[0] == M.shape[1]
+    block_count = M.shape[0] // block_size
+
     U = np.zeros([block_size * block_count, block_size * block_count])
 
-    # k -- index of current block row in output
+    # i -- index of current block row in output
     for i in range(0, block_count):
         block_sum = np.zeros((block_size, block_size), dtype=np.float64)
         i_start, i_end = block_start_and_end(block_size, i)
-        # use column at index k
+        # use block column at index i to augment the matrix diagonal entry
         for k in range(0, i):
             k_start, k_end = block_start_and_end(block_size, k)
-            U_kj = U[k_start:k_end, i_start:i_end]
-            block_sum += U_kj.transpose() @ U_kj
+            U_ij = U[k_start:k_end, i_start:i_end]
+            block_sum += U_ij.transpose() @ U_ij
 
         # Update U-matrix diagonal blocks
         U_ii = scipy.linalg.cholesky(M[i_start:i_end, i_start:i_end] - block_sum, lower=False)
@@ -82,22 +98,82 @@ def cholesky_blocked(M, block_size, block_count):
         L_kk_inv = np.linalg.inv(U_ii.T)
 
         # Update U-matrix blocks above the diagonal
-        # i is the index of block column in output
+        # j is the index of block column in output
         for j in range(i + 1, block_count):
             block_sum = np.zeros((block_size, block_size), dtype=np.float64)
             j_start, j_end = block_start_and_end(block_size, j)
             for k in range(0, i):  # j is the row index again here, we traverse all rows before k
                 k_start, k_end = block_start_and_end(block_size, k)
-                U_ji = U[k_start:k_end, j_start:j_end]
-                U_jk = U[k_start:k_end, i_start:i_end]
-                block_sum += U_jk.transpose() @ U_ji
+                U_kj = U[k_start:k_end, j_start:j_end]
+                U_ij = U[k_start:k_end, i_start:i_end]
+                block_sum += U_ij.transpose() @ U_kj
 
                 # update "inner" matrix blocks
-            M_ki_new = M[i_start:i_end, j_start:j_end] - block_sum
+            M_ij_new = M[i_start:i_end, j_start:j_end] - block_sum
 
-            U_ki = L_kk_inv@M_ki_new
+            U_ij = L_kk_inv @ M_ij_new
 
-            U[i_start:i_end, j_start:j_end] = U_ki
+            U[i_start:i_end, j_start:j_end] = U_ij
+
+    # Convert to final resulting matrix
+    return U
+
+def cholesky_banachiewicz(A: np.ndarray) -> np.ndarray:
+    matrix_row_count = A.shape[0]
+    L = np.zeros_like(A)
+    for i in range(0, matrix_row_count):
+        for j in range(0, i + 1):
+            sum = 0.0
+            for k in range(0, j):
+                sum += L[i, k] * L[j, k]
+            if i == j:
+                L[i, j] = math.sqrt(A[i, i] - sum)
+            else:
+                L[i, j] = 1.0 / L[j, j] * (A[i, j] - sum)
+    return L
+
+def cholesky_blocked(M, block_size):
+    """ The function for the Block-Cholesky factorization
+        mblockchol: Block Cholesky M = R' * R
+    """
+    assert M.shape[0] % block_size == 0
+    assert M.shape[0] == M.shape[1]
+    block_count = M.shape[0] // block_size
+
+    U = np.zeros([block_size * block_count, block_size * block_count])
+
+    # i -- index of current block row in output
+    for i in range(0, block_count):
+        block_sum = np.zeros((block_size, block_size), dtype=np.float64)
+        i_start, i_end = block_start_and_end(block_size, i)
+        # use block column at index i to augment the matrix diagonal entry
+        for k in range(0, i):
+            k_start, k_end = block_start_and_end(block_size, k)
+            U_ij = U[k_start:k_end, i_start:i_end]
+            block_sum += U_ij.transpose() @ U_ij
+
+        # Update U-matrix diagonal blocks
+        U_ii = scipy.linalg.cholesky(M[i_start:i_end, i_start:i_end] - block_sum, lower=False)
+        U[i_start:i_end, i_start:i_end] = U_ii
+        L_kk_inv = np.linalg.inv(U_ii.T)
+
+        # Update U-matrix blocks above the diagonal
+        # j is the index of block column in output
+        for j in range(i + 1, block_count):
+            block_sum = np.zeros((block_size, block_size), dtype=np.float64)
+            j_start, j_end = block_start_and_end(block_size, j)
+            for k in range(0, i):  # j is the row index again here, we traverse all rows before k
+                k_start, k_end = block_start_and_end(block_size, k)
+                U_kj = U[k_start:k_end, j_start:j_end]
+                U_ij = U[k_start:k_end, i_start:i_end]
+                block_sum += U_ij.transpose() @ U_kj
+
+                # update "inner" matrix blocks
+            M_ij_new = M[i_start:i_end, j_start:j_end] - block_sum
+
+            U_ij = L_kk_inv @ M_ij_new
+
+            U[i_start:i_end, j_start:j_end] = U_ij
 
     # Convert to final resulting matrix
     return U
@@ -117,12 +193,12 @@ if __name__ == '__main__':
     # print(M)
 
     # Test cholesky function
-    R = cholesky_blocked(M, block_size, block_count)
+    R = cholesky_blocked(M, block_size)
     print("Result of function:")
     print(R)
 
     print("\nCheck R.T * R to see if correct (--> should be M exactly):")
-    print(R.T@R)
+    print(R.T @ R)
 
     print(f"R.T * R == M: {np.allclose(R.T @ R, M)}")
     # @formatter:off
@@ -142,5 +218,9 @@ if __name__ == '__main__':
                   [1.14987882, 0.64321492, 0.40630276, 0.        , 0.        , 0.        , 0.73069373, 0.66243422, 1.08019913, 0.        , 0.        , 0.        , 0.49293692, 0.69536983, 0.77337116],
                   [1.1943462 , 0.65543784, 0.45841593, 0.        , 0.        , 0.        , 0.80650692, 0.61645061, 1.1076815 , 0.        , 0.        , 0.        , 0.43591069, 0.77337116, 0.8891878 ]])
     # @formatter:on
-    L = cholesky_blocked(A, 3, 5)
-    print(f"L.T * L == A: {np.allclose(L.T @ L, A)}")
+    U = cholesky_blocked(A, 3)
+    print(f"U.T * U == A: {np.allclose(U.T @ U, A)}")
+
+    A2 = generate_random_block_positive_semidefinite(88, 4, 0.1)
+    U2 = cholesky_blocked(A2, 4)
+    print(f"L2.T * L2 == A2: {np.allclose(U2.T @ U2, A2)}")
