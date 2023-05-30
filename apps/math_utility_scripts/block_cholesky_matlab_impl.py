@@ -1,5 +1,6 @@
 # Original MATLAB code by Alexander Mamonov, 2015
 import numpy as np
+import scipy
 from scipy.linalg import sqrtm
 
 
@@ -10,6 +11,10 @@ def block_start_and_end(block_size, j):
         Added a -1 since k in range(1, Nt) and we want to have starting index 0
     """
     return block_size * j, block_size * (j + 1)
+
+
+def ind(block_size, j, end):
+    return block_size * (j + 1) if end else block_size * j
 
 
 def mblockchol(M, block_size, block_count):
@@ -44,18 +49,62 @@ def mblockchol(M, block_size, block_count):
                 block_sum += L_ij @ L_kj.transpose()
 
             # update "inner" matrix blocks
-            M_new = M[i_start:i_end, k_start:k_end] - block_sum
+            M_ik_new = M[i_start:i_end, k_start:k_end] - block_sum
 
-            L_ik = M_new @ np.linalg.inv(L_kk)
+            L_ik = M_ik_new @ np.linalg.inv(L_kk)
 
             L[i_start:i_end, k_start:k_end] = L_ik
 
     # Convert to final resulting matrix
-    R = L.transpose()
-    return R
+    U = L.transpose()
+    return U
+
+
+def cholesky_blocked(M, block_size, block_count):
+    """ The function for the Block-Cholesky factorization
+        mblockchol: Block Cholesky M = R' * R
+    """
+    U = np.zeros([block_size * block_count, block_size * block_count])
+
+    # k -- index of current block row in output
+    for i in range(0, block_count):
+        block_sum = np.zeros((block_size, block_size), dtype=np.float64)
+        i_start, i_end = block_start_and_end(block_size, i)
+        # use column at index k
+        for k in range(0, i):
+            k_start, k_end = block_start_and_end(block_size, k)
+            U_kj = U[k_start:k_end, i_start:i_end]
+            block_sum += U_kj.transpose() @ U_kj
+
+        # Update U-matrix diagonal blocks
+        U_ii = scipy.linalg.cholesky(M[i_start:i_end, i_start:i_end] - block_sum, lower=False)
+        U[i_start:i_end, i_start:i_end] = U_ii
+        L_kk_inv = np.linalg.inv(U_ii.T)
+
+        # Update U-matrix blocks above the diagonal
+        # i is the index of block column in output
+        for j in range(i + 1, block_count):
+            block_sum = np.zeros((block_size, block_size), dtype=np.float64)
+            j_start, j_end = block_start_and_end(block_size, j)
+            for k in range(0, i):  # j is the row index again here, we traverse all rows before k
+                k_start, k_end = block_start_and_end(block_size, k)
+                U_ji = U[k_start:k_end, j_start:j_end]
+                U_jk = U[k_start:k_end, i_start:i_end]
+                block_sum += U_jk.transpose() @ U_ji
+
+                # update "inner" matrix blocks
+            M_ki_new = M[i_start:i_end, j_start:j_end] - block_sum
+
+            U_ki = L_kk_inv@M_ki_new
+
+            U[i_start:i_end, j_start:j_end] = U_ki
+
+    # Convert to final resulting matrix
+    return U
 
 
 if __name__ == '__main__':
+    np.set_printoptions(edgeitems=60, linewidth=1000)
     # Given input data
     block_size = 2
     block_count = 3
@@ -68,12 +117,12 @@ if __name__ == '__main__':
     # print(M)
 
     # Test cholesky function
-    R = mblockchol(M, block_size, block_count)
-    # print("Result of function:")
-    # print(R)
-    #
-    # print("\nCheck R.T * R to see if correct (--> should be M exactly):")
-    # print(R.T@R)
+    R = cholesky_blocked(M, block_size, block_count)
+    print("Result of function:")
+    print(R)
+
+    print("\nCheck R.T * R to see if correct (--> should be M exactly):")
+    print(R.T@R)
 
     print(f"R.T * R == M: {np.allclose(R.T @ R, M)}")
     # @formatter:off
@@ -93,5 +142,5 @@ if __name__ == '__main__':
                   [1.14987882, 0.64321492, 0.40630276, 0.        , 0.        , 0.        , 0.73069373, 0.66243422, 1.08019913, 0.        , 0.        , 0.        , 0.49293692, 0.69536983, 0.77337116],
                   [1.1943462 , 0.65543784, 0.45841593, 0.        , 0.        , 0.        , 0.80650692, 0.61645061, 1.1076815 , 0.        , 0.        , 0.        , 0.43591069, 0.77337116, 0.8891878 ]])
     # @formatter:on
-    L = mblockchol(A, 3, 5)
+    L = cholesky_blocked(A, 3, 5)
     print(f"L.T * L == A: {np.allclose(L.T @ L, A)}")
