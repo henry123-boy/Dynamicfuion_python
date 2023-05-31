@@ -147,10 +147,10 @@ def cholesky_blocked(M, block_size):
         block_sum = np.zeros((block_size, block_size), dtype=np.float64)
         i_start, i_end = block_start_and_end(block_size, i)
         # use block column at index i to augment the matrix diagonal entry
-        for k in range(0, i):
+        for k in range(0, i):  # Note: servers as row index here
             k_start, k_end = block_start_and_end(block_size, k)
-            U_ij = U[k_start:k_end, i_start:i_end]
-            block_sum += U_ij.transpose() @ U_ij
+            U_ki = U[k_start:k_end, i_start:i_end]
+            block_sum += U_ki.transpose() @ U_ki
 
         # Update U-matrix diagonal blocks
         U_ii = scipy.linalg.cholesky(M[i_start:i_end, i_start:i_end] - block_sum, lower=False)
@@ -162,13 +162,13 @@ def cholesky_blocked(M, block_size):
         for j in range(i + 1, block_count):
             block_sum = np.zeros((block_size, block_size), dtype=np.float64)
             j_start, j_end = block_start_and_end(block_size, j)
-            for k in range(0, i):  # j is the row index again here, we traverse all rows before k
+            for k in range(0, i):  # k is the row index again here, we traverse all rows before i
                 k_start, k_end = block_start_and_end(block_size, k)
                 U_kj = U[k_start:k_end, j_start:j_end]
-                U_ij = U[k_start:k_end, i_start:i_end]
-                block_sum += U_ij.transpose() @ U_kj
+                U_ki = U[k_start:k_end, i_start:i_end]
+                block_sum += U_ki.transpose() @ U_kj
 
-                # update "inner" matrix blocks
+            # update "inner" matrix blocks
             M_ij_new = M[i_start:i_end, j_start:j_end] - block_sum
 
             U_ij = L_kk_inv @ M_ij_new
@@ -177,6 +177,8 @@ def cholesky_blocked(M, block_size):
 
     # Convert to final resulting matrix
     return U
+
+
 
 
 if __name__ == '__main__':
