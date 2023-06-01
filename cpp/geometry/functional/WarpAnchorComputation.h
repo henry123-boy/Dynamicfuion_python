@@ -19,7 +19,7 @@
 
 // 3rd party
 #include <open3d/core/Tensor.h>
-#include <geometry/WarpAnchorWeightComputationMethod.h>
+#include <geometry/WarpNodeCoverageComputationMethod.h>
 
 
 namespace nnrt::geometry::functional {

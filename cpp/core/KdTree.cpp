@@ -50,7 +50,7 @@ KdTree::KdTree(const open3d::core::Tensor& points)
 
 
 void KdTree::FindKNearestToPoints(
-		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+		open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& distances,
 		const open3d::core::Tensor& query_points, int32_t k, bool sort_output
 ) const {
 	o3c::AssertTensorDevice(query_points, this->points.GetDevice());
@@ -62,22 +62,32 @@ void KdTree::FindKNearestToPoints(
 		                  query_points.GetShape(), this->points.GetShape());
 	}
 	if (sort_output) {
-		if (k > 20) {
+		if (k > 8) {
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PRIORITY_QUEUE>(
-					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+					*this->nodes, this->node_count, nearest_neighbor_indices, distances, query_points, k, this->points);
 		} else {
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
-					*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+					*this->nodes, this->node_count, nearest_neighbor_indices, distances, query_points, k, this->points);
 			//TODO: this is wrong, sort by distance, not index!
-			std::tie(nearest_neighbor_indices, squared_distances) =
-					core::functional::SortTensorAlongLastDimensionByKey(nearest_neighbor_indices, squared_distances, false,
+			std::tie(nearest_neighbor_indices, distances) =
+					core::functional::SortTensorAlongLastDimensionByKey(nearest_neighbor_indices, distances, false,
 					                                                    core::functional::SortOrder::ASC);
 		}
 	} else {
 		kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
-				*this->nodes, this->node_count, nearest_neighbor_indices, squared_distances, query_points, k, this->points);
+				*this->nodes, this->node_count, nearest_neighbor_indices, distances, query_points, k, this->points);
 	}
 
+}
+
+void KdTree::FindKNearestToPoints(
+		open3d::core::Tensor& nearest_neighbor_indices,
+		const open3d::core::Tensor& query_points,
+		int32_t k,
+		bool sort_output
+) const {
+	o3c::Tensor distances;
+	KdTree::FindKNearestToPoints(nearest_neighbor_indices, distances, query_points, k, sort_output);
 }
 
 std::string KdTree::GenerateTreeDiagram(int digit_length) const {
@@ -116,5 +126,6 @@ KdTree::KdTree(open3d::core::Tensor points, int32_t node_count, std::shared_ptr<
 open3d::core::Tensor KdTree::GetPoints() const {
 	return this->points;
 }
+
 
 } // namespace nnrt::core

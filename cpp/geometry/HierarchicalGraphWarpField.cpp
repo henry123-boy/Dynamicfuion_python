@@ -40,6 +40,7 @@ HierarchicalGraphWarpField::HierarchicalGraphWarpField(
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
 		int minimum_valid_anchor_count,
+		WarpNodeCoverageComputationMethod warp_node_coverage_computation_method,
 		int layer_count,
 		int max_vertex_degree,
 		std::function<float(int, float)> compute_layer_decimation_radius
@@ -47,12 +48,13 @@ HierarchicalGraphWarpField::HierarchicalGraphWarpField(
               node_coverage,
               threshold_nodes_by_distance_by_default,
               anchor_count,
-              minimum_valid_anchor_count),
+              minimum_valid_anchor_count,
+			  warp_node_coverage_computation_method),
     regularization_layers(),
     compute_layer_decimation_radius(std::move(compute_layer_decimation_radius)),
-    indexed_nodes(this->nodes),
-    indexed_rotations(this->rotations),
-    indexed_translations(this->translations) {
+    indexed_nodes(this->node_positions),
+    indexed_rotations(this->node_rotations),
+    indexed_translations(this->node_translations) {
 	if (layer_count < 1) {
 		utility::LogError("layer_count must be a positive integer, got {}.", layer_count);
 	}
@@ -74,8 +76,8 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 	// use all nodes at first for finest layer
 	finest_layer.decimation_radius = this->node_coverage;
 	o3c::Device device = this->GetDevice();
-	finest_layer.node_indices = o3c::Tensor::Arange(0, this->nodes.GetLength(), 1, o3c::Int64, device);
-	finest_layer.node_positions = this->nodes;
+	finest_layer.node_indices = o3c::Tensor::Arange(0, this->node_positions.GetLength(), 1, o3c::Int64, device);
+	finest_layer.node_positions = this->node_positions;
 
 	o3c::Tensor false_tensor(std::vector<bool>({false}), {1}, o3c::Bool, device);
 	// build up node indices for each coarser layer, while filtering them out of the finer layer
@@ -138,10 +140,9 @@ void HierarchicalGraphWarpField::RebuildRegularizationLayers(int count, int max_
 		auto& finer_layer = this->regularization_layers[i_layer - 1];
 
 		// find K nearest neighbors in the finer level for each source node
-		o3c::Tensor finer_layer_adjacency_array, squared_distances;
+		o3c::Tensor finer_layer_adjacency_array;
 		core::KdTree current_layer_node_tree(current_layer.node_positions);
-		current_layer_node_tree.FindKNearestToPoints(finer_layer_adjacency_array, squared_distances,
-		                                             finer_layer.node_positions, max_vertex_degree, false);
+		current_layer_node_tree.FindKNearestToPoints(finer_layer_adjacency_array,finer_layer.node_positions, max_vertex_degree, false);
 		finer_layer_adjacency_array = core::functional::SortTensorAlongLastDimension(finer_layer_adjacency_array, true,
 		                                                                             core::functional::SortOrder::DESC);
 
@@ -206,15 +207,15 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetVirtualNodeIndices() const {
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodePositions(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_nodes.Get(&this->node_indices) : this->nodes;
+	return use_virtual_ordering ? this->indexed_nodes.Get(&this->node_indices) : this->node_positions;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodeTranslations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->translations;
+	return use_virtual_ordering ? this->indexed_translations.Get(&this->node_indices) : this->node_translations;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetNodeRotations(bool use_virtual_ordering) {
-	return use_virtual_ordering ? this->indexed_rotations.Get(&this->node_indices) : this->rotations;
+	return use_virtual_ordering ? this->indexed_rotations.Get(&this->node_indices) : this->node_rotations;
 }
 
 const o3c::Tensor& HierarchicalGraphWarpField::GetEdgeLayerIndices() const {
@@ -232,10 +233,23 @@ HierarchicalGraphWarpField::PrecomputeAnchorsAndWeights(const open3d::t::geometr
 	}
 	o3c::Tensor anchors, weights;
 	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
-	functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
-			anchors, weights, vertex_positions, this->GetNodePositions(use_virtual_ordering), this->anchor_count,
-			this->minimum_valid_anchor_count, this->node_coverage
-	);
+	//TODO: resolve DRY violations with same-name method in parent class via class hierarchy restructuring + replacement of inheritance by encapsulation
+	switch (this->warp_node_coverage_computation_method) {
+		case WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE:
+			functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+					anchors, weights, vertex_positions, this->GetNodePositions(use_virtual_ordering), this->anchor_count,
+					this->minimum_valid_anchor_count, this->node_coverage
+			);
+			break;
+		case WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE:
+			functional::ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+					anchors, weights, vertex_positions, this->GetNodePositions(use_virtual_ordering), this->node_coverage_weights, this->anchor_count,
+					this->minimum_valid_anchor_count
+			);
+			break;
+		default: utility::LogError("Unsupported WarpNodeCoverageComputationMethod: {}", this->warp_node_coverage_computation_method);
+			break;
+	}
 	return std::make_tuple(anchors, weights);
 }
 
@@ -244,8 +258,8 @@ void HierarchicalGraphWarpField::TranslateNodes(const o3c::Tensor& node_translat
 		o3c::Tensor old_translations = this->GetNodeTranslations(use_virtual_ordering);
 		this->indexed_translations.Set(old_translations + node_translation_deltas);
 	} else {
-		this->translations += node_translation_deltas;
-		this->translations_data = this->translations.GetDataPtr<float>();
+		this->node_translations += node_translation_deltas;
+		this->translations_data = this->node_translations.GetDataPtr<float>();
 	}
 }
 
@@ -253,12 +267,12 @@ void HierarchicalGraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_de
 	o3c::Tensor new_rotations;
 	if (use_virtual_ordering) {
 		o3c::Tensor old_rotations = this->GetNodeRotations(use_virtual_ordering);
-		core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
+		core::linalg::Matmul3D(new_rotations, this->node_rotations, node_rotation_deltas);
 		this->indexed_rotations.Set(new_rotations);
 	} else {
-		core::linalg::Matmul3D(new_rotations, this->rotations, node_rotation_deltas);
-		this->rotations = new_rotations;
-		this->rotations_data = this->rotations.GetDataPtr<float>();
+		core::linalg::Matmul3D(new_rotations, this->node_rotations, node_rotation_deltas);
+		this->node_rotations = new_rotations;
+		this->rotations_data = this->node_rotations.GetDataPtr<float>();
 	}
 }
 

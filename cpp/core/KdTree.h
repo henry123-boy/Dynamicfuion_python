@@ -32,7 +32,10 @@ public:
 
 	virtual ~KdTree() = default;
 	std::string GenerateTreeDiagram(int digit_length = 5) const;
-	void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& squared_distances,
+	void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices, open3d::core::Tensor& distances,
+	                          const open3d::core::Tensor& query_points, int32_t k, bool sort_output = false) const;
+
+	void FindKNearestToPoints(open3d::core::Tensor& nearest_neighbor_indices,
 	                          const open3d::core::Tensor& query_points, int32_t k, bool sort_output = false) const;
 
 

@@ -40,8 +40,8 @@ PlanarGraphWarpField::PlanarGraphWarpField(
 ) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count,
               minimum_valid_anchor_count),
     edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)) {
-	auto device = this->nodes.GetDevice();
-	int64_t node_count = this->nodes.GetLength();
+	auto device = this->node_positions.GetDevice();
+	int64_t node_count = this->node_positions.GetLength();
 	int64_t max_vertex_degree = this->edges.GetShape(1);
 
 	o3c::AssertTensorDevice(this->edges, device);
@@ -77,13 +77,13 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> PlanarGraphWarpField::Pre
 	switch (anchor_computation_method) {
 		case AnchorComputationMethod::EUCLIDEAN:
 			functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
-					anchors, weights, vertex_positions, this->nodes, this->anchor_count,
+					anchors, weights, vertex_positions, this->node_positions, this->anchor_count,
 					this->minimum_valid_anchor_count, this->node_coverage
 			);
 			break;
 		case AnchorComputationMethod::SHORTEST_PATH:
 			functional::ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
-					anchors, weights, vertex_positions, this->nodes, this->edges,
+					anchors, weights, vertex_positions, this->node_positions, this->edges,
 					this->anchor_count, this->node_coverage
 			);
 			break;
@@ -94,7 +94,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> PlanarGraphWarpField::Pre
 }
 
 PlanarGraphWarpField PlanarGraphWarpField::ApplyTransformations() const {
-	return {this->nodes + this->translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
+	return {this->node_positions + this->node_translations, this->edges, this->edge_weights, this->clusters, this->node_coverage,
 	        this->threshold_nodes_by_distance_by_default, this->anchor_count, this->minimum_valid_anchor_count};
 }
 

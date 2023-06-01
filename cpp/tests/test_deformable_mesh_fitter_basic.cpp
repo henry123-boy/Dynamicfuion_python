@@ -37,7 +37,7 @@ namespace o3u = open3d::utility;
 namespace o3tio = open3d::t::io;
 namespace o3tg = open3d::t::geometry;
 
-void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name){
+void DrawDepth(const o3c::Tensor& pixel_depths, const std::string& image_name) {
 	auto pd_tmp = pixel_depths.Clone();
 	nnrt::core::functional::ReplaceValue(pd_tmp, -1.0f, 10.0f);
 	float minimum_depth = pd_tmp.Min({0, 1}).To(o3c::Device("CPU:0")).ToFlatVector<float>()[0];
@@ -53,6 +53,8 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 		const o3c::Device& device, bool use_perspective_correction = false,
 		std::vector<nnrt::alignment::IterationMode> iteration_modes = {nnrt::alignment::IterationMode::ALL},
 		int max_iterations = 1,
+		nnrt::geometry::WarpNodeCoverageComputationMethod warp_node_coverage_computation_method =
+		nnrt::geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE,
 		bool draw_depth = false
 ) {
 	float max_depth = 10.0f;
@@ -70,7 +72,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
 			test::ReadAndTransformTwoMeshes("plane_skin_source_1_node", "plane_skin_target_1_node_translation", device,
-			                          mesh_transform);
+			                                mesh_transform);
 
 
 	o3c::SizeVector image_resolution{100, 100};
@@ -87,7 +89,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 
 	std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor> fragments =
 			nnrt::rendering::RasterizeNdcTriangles(extracted_face_vertices, clipped_face_mask, image_resolution, 0.5f, 1, -1, -1,
-												   use_perspective_correction, false, true);
+			                                       use_perspective_correction, false, true);
 	auto [pixel_face_indices, pixel_depths, pixel_barycentric_coordinates, pixel_face_distances] = fragments;
 
 	pixel_depths = pixel_depths.Reshape(image_resolution);
@@ -111,7 +113,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 	                                                                     0.0, 0.0, 1.0}, {1, 3, 3}, o3c::Float32, device);
 
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 1, 0, warp_node_coverage_computation_method, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 	                                                    use_perspective_correction, 10.f, false, 0.01, 0.001);
@@ -125,27 +127,43 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., 1e-5));
 }
 
-TEST_CASE("Test DMI Fitter Fitter - COMBINED MODE - 1 Node Plane Translation - CPU") {
-	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL}, 3);
-}
-
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Translation - CUDA") {
-	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlaneTranslation(device, true, {nnrt::alignment::IterationMode::ALL}, 3);
-}
-
-TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 1 Node Plane Translation - CPU") {
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane Translation - CPU") {
 	o3c::Device device("CPU:0");
 	TestDeformableImageFitter_1NodePlaneTranslation(
-			device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3
+			device, true, {nnrt::alignment::IterationMode::ALL}, 3,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
 	);
 }
 
-TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY MODE - 1 Node Plane Translation - CUDA") {
+TEST_CASE("Test DMI Fitter - COMBINED - MIN - 1 Node Plane Translation - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_1NodePlaneTranslation(
+			device, true, {nnrt::alignment::IterationMode::ALL}, 3,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE
+	);
+}
+
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane Translation - CUDA") {
 	o3c::Device device("CUDA:0");
 	TestDeformableImageFitter_1NodePlaneTranslation(
-			device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3
+			device, true, {nnrt::alignment::IterationMode::ALL}, 3,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
+}
+
+TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY - 1 Node Plane Translation - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_1NodePlaneTranslation(
+			device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
+}
+
+TEST_CASE("Test DMI Fitter - TRANSLATION-ONLY - 1 Node Plane Translation - CUDA") {
+	o3c::Device device("CUDA:0");
+	TestDeformableImageFitter_1NodePlaneTranslation(
+			device, true, {nnrt::alignment::IterationMode::TRANSLATION_ONLY}, 3,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
 	);
 }
 
@@ -156,6 +174,8 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 		std::vector<nnrt::alignment::IterationMode> iteration_modes = {
 				nnrt::alignment::IterationMode::ALL},
 		int max_iterations = 1,
+		nnrt::geometry::WarpNodeCoverageComputationMethod warp_node_coverage_computation_method =
+		nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE,
 		bool draw_depth = true
 ) {
 	float max_depth = 10.0f;
@@ -173,7 +193,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
 			test::ReadAndTransformTwoMeshes("plane_skin_source_1_node", "plane_skin_target_1_node_rotation_"
-			                                                      + std::to_string(angle), device, mesh_transform);
+			                                                            + std::to_string(angle), device, mesh_transform);
 
 
 	o3c::SizeVector image_resolution{100, 100};
@@ -210,7 +230,7 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 	o3c::Tensor expected_node_translations = o3c::Tensor(std::vector<float>{0.0, 0.0, 0.0}, {1, 3}, o3c::Float32,
 	                                                     device);
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 1, 0, warp_node_coverage_computation_method, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(
 			max_iterations, std::move(iteration_modes), 1e-6,
@@ -240,40 +260,61 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., 1e-3));
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x 45 - CPU") {
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane Rotation x 45 - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane Rotation x 45 - CUDA") {
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane Rotation x 45 - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 45 - CPU") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY - 1 Node Plane Rotation x 45 - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 45 - CUDA") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY - 1 Node Plane Rotation x 45 - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x 5 - CPU") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY - 1 Node Plane Rotation x 5 - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, 5, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 2);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 5, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 2,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x -45 - CPU") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY - 1 Node Plane Rotation x -45 - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - ROTATION-ONLY MODE - 1 Node Plane Rotation x -45 - CUDA") {
+TEST_CASE("Test DMI Fitter - ROTATION-ONLY - 1 Node Plane Rotation x -45 - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlaneRotation(device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4);
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, -45, true, {nnrt::alignment::IterationMode::ROTATION_ONLY}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
 
@@ -283,6 +324,8 @@ void TestDeformableImageFitter_1NodePlane(
 		std::vector<nnrt::alignment::IterationMode> iteration_modes = {
 				nnrt::alignment::IterationMode::ALL},
 		int max_iterations = 1,
+		nnrt::geometry::WarpNodeCoverageComputationMethod warp_node_coverage_computation_method =
+		nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE,
 		bool draw_depth = true
 ) {
 	float max_depth = 10.0f;
@@ -338,7 +381,7 @@ void TestDeformableImageFitter_1NodePlane(
 
 	o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1}, {1, 4}, o3c::Int32, device);
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 1, 0, warp_node_coverage_computation_method, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(
 			max_iterations, std::move(iteration_modes), 1e-6,
@@ -369,12 +412,18 @@ void TestDeformableImageFitter_1NodePlane(
 	REQUIRE(warp_field.GetNodeTranslations().AllClose(expected_node_translations, 1., 1e-3));
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane - CPU") {
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane - CPU") {
 	o3c::Device device("CPU:0");
-	TestDeformableImageFitter_1NodePlane(device, true, {nnrt::alignment::IterationMode::ALL}, 4);
+	TestDeformableImageFitter_1NodePlane(
+			device, true, {nnrt::alignment::IterationMode::ALL}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }
 
-TEST_CASE("Test DMI Fitter - COMBINED MODE - 1 Node Plane - CUDA") {
+TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane - CUDA") {
 	o3c::Device device("CUDA:0");
-	TestDeformableImageFitter_1NodePlane(device, true, {nnrt::alignment::IterationMode::ALL}, 4);
+	TestDeformableImageFitter_1NodePlane(
+			device, true, {nnrt::alignment::IterationMode::ALL}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
 }

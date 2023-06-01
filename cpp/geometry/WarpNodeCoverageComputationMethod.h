@@ -16,9 +16,9 @@
 #pragma once
 
 namespace nnrt::geometry {
-enum class WarpAnchorWeightComputationMethod : int {
+enum class WarpNodeCoverageComputationMethod : int {
 	FIXED_NODE_COVERAGE = 0,
-	MINIMAL_NEIGHBOR_DISTANCE = 1
+	MINIMAL_K_NEIGHBOR_NODE_DISTANCE = 1
 };
 
 }// namespace nnrt::geometry

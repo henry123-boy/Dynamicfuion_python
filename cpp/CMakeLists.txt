@@ -419,7 +419,7 @@ set(
     geometry/PlanarGraphWarpField.cpp
     geometry/PlanarGraphWarpField.h
     core/platform_independence/AtomicKeyIndexArray.cuh
-    geometry/WarpAnchorWeightComputationMethod.h)
+    geometry/WarpNodeCoverageComputationMethod.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

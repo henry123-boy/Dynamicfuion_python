@@ -21,10 +21,12 @@
 // local includes
 #include "core/KdTree.h"
 #include "geometry/functional/kernel/WarpUtilities.h"
-#include "WarpAnchorWeightComputationMethod.h"
+#include "WarpNodeCoverageComputationMethod.h"
 
 namespace nnrt::geometry {
-
+// TODO: there should be a separation of concerns between [node storage/retrieval + edge topology] and [warp anchor computation + warping].
+//  This should address various TODOs throughout this header.
+//  I'll need to rethink class hierarchy and overhaul implementation when I have time.
 class WarpField {
 
 public:
@@ -33,7 +35,9 @@ public:
 			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0
+			int minimum_valid_anchor_count = 0,
+			WarpNodeCoverageComputationMethod warp_node_coverage_computation_method = WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE,
+			int warp_node_coverage_neighbor_count = 4
 	);
 	WarpField(const WarpField& original) = default;
 	WarpField(WarpField&& other) = default;
@@ -51,7 +55,7 @@ public:
 			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
 			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights_FixedNodeWeight(
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
 			const open3d::t::geometry::TriangleMesh& input_mesh
 	) const;
 
@@ -70,20 +74,33 @@ public:
 
 	// TODO: take these two (ComputeAnchorsForPoint and WarpPoint) outside of class and declare as friend functions here, to take in a WarpField
 	//  argument and perform the ops
-	template<open3d::core::Device::DeviceType TDeviceType, bool UseNodeDistanceThreshold>
+	template<open3d::core::Device::DeviceType TDeviceType, bool UseNodeDistanceThreshold, bool UseFixedNodeCoverageWeight = false>
 	NNRT_DEVICE_WHEN_CUDACC bool ComputeAnchorsForPoint(
 			int32_t* anchor_indices, float* anchor_weights,
 			const Eigen::Vector3f& point
 	) const {
-		if (UseNodeDistanceThreshold) {
-			return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold_FixedNodeCoverageWeight<TDeviceType>(
-					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
-					point, node_coverage_squared);
+		if (UseFixedNodeCoverageWeight) {
+			if (UseNodeDistanceThreshold) {
+				return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold_FixedNodeCoverageWeight<TDeviceType>(
+						anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
+						point, node_coverage_squared);
+			} else {
+				geometry::functional::kernel::warp::FindAnchorsAndWeightsForPoint_Euclidean_KDTree_FixedNodeCoverageWeight<TDeviceType>(
+						anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
+						point, node_coverage_squared);
+				return true;
+			}
 		} else {
-			geometry::functional::kernel::warp::FindAnchorsAndWeightsForPoint_Euclidean_KDTree_FixedNodeCoverageWeight<TDeviceType>(
-					anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
-					point, node_coverage_squared);
-			return true;
+			if (UseNodeDistanceThreshold) {
+				return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold_VariableNodeCoverageWeight<TDeviceType>(
+						anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
+						point, node_coverage_weight_data);
+			} else {
+				geometry::functional::kernel::warp::FindAnchorsAndWeightsForPoint_Euclidean_KDTree_VariableNodeCoverageWeight<TDeviceType>(
+						anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
+						point, node_coverage_weight_data);
+				return true;
+			}
 		}
 	}
 
@@ -95,11 +112,11 @@ public:
 		functional::kernel::warp::BlendWarp(
 				warped_point, anchor_indices, anchor_weights, anchor_count, point, node_indexer,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
-			return GetRotationForNode(i_node);
-		},
-		NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
-			return GetTranslationForNode(i_node);
-		}
+					return GetRotationForNode(i_node);
+				},
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int i_node) {
+					return GetTranslationForNode(i_node);
+				}
 		);
 		return warped_point;
 	}
@@ -123,29 +140,34 @@ public:
 	void TranslateNodes(const o3c::Tensor& node_translation_deltas);
 	void RotateNodes(const o3c::Tensor& node_rotation_deltas);
 
-	open3d::core::Tensor nodes;
+	open3d::core::Tensor node_positions;
 
 	const float node_coverage;
 	const int anchor_count;
 	const bool threshold_nodes_by_distance_by_default;
 	const int minimum_valid_anchor_count;
+	const WarpNodeCoverageComputationMethod warp_node_coverage_computation_method;
+	const int warp_node_coverage_neighbor_count;
 protected:
+	void RecomputeNodeCoverageWeights();
 	WarpField(const WarpField& original, const core::KdTree& index);
 
 	core::KdTree index;
 	const float node_coverage_squared;
+
 	const core::kernel::kdtree::KdTreeNode* kd_tree_nodes;
 	const int32_t kd_tree_node_count;
 
 
 	const open3d::t::geometry::kernel::NDArrayIndexer node_indexer;
 
-	open3d::core::Tensor rotations;
-	open3d::core::Tensor translations;
+	open3d::core::Tensor node_rotations;
+	open3d::core::Tensor node_translations;
 	open3d::core::Tensor node_coverage_weights;
 
 	float const* rotations_data;
 	float const* translations_data;
+	float const* node_coverage_weight_data;
 
 };
 

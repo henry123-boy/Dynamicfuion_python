@@ -310,7 +310,7 @@ void pybind_geometry_graph_warp_field(pybind11::module& m) {
 	graph_warp_field.def("translate_nodes", &WarpField::TranslateNodes, "node_translation_deltas"_a);
 	graph_warp_field.def("rotate_nodes", &WarpField::RotateNodes, "node_rotation_deltas"_a);
 
-	graph_warp_field.def_readonly("nodes", &WarpField::nodes);
+	graph_warp_field.def_readonly("nodes", &WarpField::node_positions);
 	//TODO: expose ~_graph_warp_field classes
 	// graph_warp_field.def_readonly("edges", &WarpField::edges);
 	// graph_warp_field.def_readonly("edge_weights", &WarpField::edge_weights);

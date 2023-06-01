@@ -62,8 +62,8 @@ ComputeAnchorWeights_VariableNodeCoverageWeight(
 		if (!TDistancesAreSquared) {
 			square_distance = square_distance * square_distance;
 		}
-		float node_weight = node_weights[anchor_node_indices[i_anchor]];
-		float weight = expf(-square_distance / (2 * node_weight * node_weight));
+		float node_coverage_squared = node_weights[anchor_node_indices[i_anchor]];
+		float weight = expf(-square_distance / (2 * node_coverage_squared));
 		weight_sum += weight;
 		anchor_weights[i_anchor] = weight;
 	}
@@ -112,8 +112,7 @@ ComputeAnchorWeights_Threshold_VariableNodeCoverageWeight(
 		if (!TDistancesAreSquared) {
 			square_distance = square_distance * square_distance;
 		}
-		float node_weight = node_weights[anchor_node_indices[i_anchor]];
-		float node_coverage_squared = node_weight * node_weight;
+		float node_coverage_squared = node_weights[anchor_node_indices[i_anchor]];
 		// note: equivalent to distance > 2 * node_coverage, avoids sqrtf
 		if (square_distance > 4 * node_coverage_squared) {
 			anchor_node_indices[i_anchor] = -1;
@@ -305,8 +304,7 @@ FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold_VariableNodeCoverageWeig
 	float weight_sum;
 	int valid_anchor_count;
 	ComputeAnchorWeights_Threshold_VariableNodeCoverageWeight<TDeviceType, false>(
-			anchor_node_indices, anchor_weights, weight_sum, valid_anchor_count, anchor_distances, anchor_count,
-			node_weights
+			anchor_node_indices, anchor_weights, weight_sum, node_weights, valid_anchor_count, anchor_distances, anchor_count
 	);
 	if (valid_anchor_count < minimum_valid_anchor_count) {
 		return false;

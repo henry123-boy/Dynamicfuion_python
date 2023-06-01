@@ -137,7 +137,7 @@ IntegrateNonRigid_Generic
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				if(!warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, voxel_camera)){
+				if(!warp_field.template ComputeAnchorsForPoint<TDeviceType, true, false>(anchor_indices, anchor_weights, voxel_camera)){
 					return;
 				}
 				// endregion

@@ -166,7 +166,7 @@ void DeformableMeshToImageFitter::FitToImage(
 						rasterized_vertex_position_jacobians, rasterized_vertex_normal_jacobians,
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
-						face_node_anchors, face_node_anchor_counts, warp_field.nodes.GetLength(),
+						face_node_anchors, face_node_anchor_counts, warp_field.node_positions.GetLength(),
 						use_tukey_penalty_for_data_term, tukey_penalty_cutoff_cm, current_mode
 				);
 

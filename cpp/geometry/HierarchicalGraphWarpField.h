@@ -40,6 +40,7 @@ public:
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
 			int minimum_valid_anchor_count = 0,
+			WarpNodeCoverageComputationMethod warp_node_coverage_computation_method = WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE,
 			int layer_count = 4,
 			int max_vertex_degree = 4,
 			std::function<float(int, float)> compute_layer_decimation_radius =

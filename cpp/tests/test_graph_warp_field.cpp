@@ -48,14 +48,14 @@ void TestGraphWarpFieldConstructor(const o3c::Device& device) {
 	o3c::Tensor clusters(clusters_data, {3}, o3c::Dtype::Int32, device);
 
 	ngeom::WarpField gwf(nodes);
-	REQUIRE(gwf.nodes.GetShape(0) == 3);
-	REQUIRE(gwf.nodes.GetShape(1) == 3);
+	REQUIRE(gwf.node_positions.GetShape(0) == 3);
+	REQUIRE(gwf.node_positions.GetShape(1) == 3);
 
 
 	ngeom::PlanarGraphWarpField pgwf(nodes, edges, edge_weights, clusters);
-	REQUIRE(pgwf.nodes.GetShape(0) == 3);
-	REQUIRE(pgwf.nodes.GetShape(1) == 3);
-	REQUIRE(pgwf.nodes.ToFlatVector<float>() == nodes.ToFlatVector<float>());
+	REQUIRE(pgwf.node_positions.GetShape(0) == 3);
+	REQUIRE(pgwf.node_positions.GetShape(1) == 3);
+	REQUIRE(pgwf.node_positions.ToFlatVector<float>() == nodes.ToFlatVector<float>());
 	REQUIRE(pgwf.edges.ToFlatVector<int>() == edges.ToFlatVector<int>());
 	REQUIRE(pgwf.edge_weights.value().get().ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
 	REQUIRE(pgwf.clusters.value().get().ToFlatVector<int>() == clusters.ToFlatVector<int>());
