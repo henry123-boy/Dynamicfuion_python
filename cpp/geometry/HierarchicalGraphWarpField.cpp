@@ -232,7 +232,7 @@ HierarchicalGraphWarpField::PrecomputeAnchorsAndWeights(const open3d::t::geometr
 	}
 	o3c::Tensor anchors, weights;
 	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
-	functional::ComputeAnchorsAndWeightsEuclidean(
+	functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
 			anchors, weights, vertex_positions, this->GetNodePositions(use_virtual_ordering), this->anchor_count,
 			this->minimum_valid_anchor_count, this->node_coverage
 	);

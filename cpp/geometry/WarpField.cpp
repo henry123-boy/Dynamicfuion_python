@@ -43,7 +43,8 @@ WarpField::WarpField(
 
 		rotations({this->nodes.GetLength(), 3, 3}, o3c::Dtype::Float32, this->nodes.GetDevice()),
 		translations(o3c::Tensor::Zeros({this->nodes.GetLength(), 3}, o3c::Dtype::Float32, this->nodes.GetDevice())),
-		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>()) {
+		rotations_data(this->rotations.GetDataPtr<float>()), translations_data(this->translations.GetDataPtr<float>())
+		{
 
 	int64_t node_count = this->nodes.GetLength();
 	o3c::AssertTensorShape(this->nodes, { node_count, 3 });
@@ -179,7 +180,7 @@ const open3d::core::Tensor& WarpField::GetNodePositions() const {
 	return nodes;
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpField::PrecomputeAnchorsAndWeights(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpField::PrecomputeAnchorsAndWeights_FixedNodeWeight(
 		const open3d::t::geometry::TriangleMesh& input_mesh
 ) const {
 	o3c::Tensor anchors, weights;
@@ -188,10 +189,14 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> WarpField::PrecomputeAnch
 		utility::LogError("Input mesh doesn't have vertex positions defined, which are required for computing warp field anchors & weights.");
 	}
 	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
-	functional::ComputeAnchorsAndWeightsEuclidean(
+	functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
 			anchors, weights, vertex_positions, this->nodes, this->anchor_count,
 			this->minimum_valid_anchor_count, this->node_coverage
 	);
 	return std::make_tuple(anchors, weights);
+}
+
+const open3d::core::Tensor& WarpField::GetNodeCoverageWeights() const {
+	return this->node_coverage_weights;
 }
 } // namespace nnrt::geometry

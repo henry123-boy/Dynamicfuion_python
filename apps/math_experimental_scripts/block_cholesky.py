@@ -4,7 +4,7 @@ import numpy as np
 import scipy
 from scipy.linalg import sqrtm
 
-from apps.math_utility_scripts.matrix_generation import generate_random_block_positive_semidefinite
+from apps.math_experimental_scripts.matrix_generation import generate_random_block_positive_semidefinite
 
 
 def block_start_and_end(block_size, j):

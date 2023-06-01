@@ -22,7 +22,7 @@
 #include "geometry/functional/AnchorComputationMethod.h"
 
 namespace nnrt::geometry::functional::kernel::warp {
-
+// region ============== POINTS ONLY =================================================================================================================
 // region ============== POINTS ONLY: FOR EXTERNAL USAGE =============================================================================================
 
 // version not using node distance thresholding
@@ -50,7 +50,7 @@ void Warp3dPoints(open3d::core::Tensor& warped_points, const open3d::core::Tenso
                   const open3d::core::Tensor& extrinsics);
 
 // endregion
-// region =========== POINTS ONLY: TEMPLATED IMPLEMENTATIONS OF THE SAME VERSIONS (IN SAME ORDER) ====================================================
+// region =========== POINTS ONLY: DEVICE-TEMPLATED IMPLEMENTATIONS OF THE ABOVE VERSIONS (IN SAME ORDER) ============================================
 
 // computes anchors on-the-fly, does not use node distance thresholding
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -89,6 +89,8 @@ void Warp3dPoints(
 		const open3d::core::Tensor& extrinsics
 );
 // endregion
+// endregion
+// region ============== POINTS AND NORMALS ==========================================================================================================
 // region ============== POINTS AND NORMALS: FOR EXTERNAL USE ========================================================================================
 
 // version not using node distance thresholding
@@ -127,7 +129,7 @@ void Warp3dPointsAndNormals(
 		const open3d::core::Tensor& extrinsics
 );
 // endregion
-// region ================== POINTS AND NORMALS: TEMPLATED IMPLEMENTATIONS OF THE SAME VERSIONS (IN SAME ORDER) ======================================
+// region ================== POINTS AND NORMALS: DEVICE-TEMPLATED IMPLEMENTATIONS OF THE SAME VERSIONS (IN SAME ORDER) ===============================
 
 // computes anchors on-the-fly, does not use node distance thresholding
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -170,4 +172,6 @@ void Warp3dPointsAndNormals(
 		const open3d::core::Tensor& extrinsics
 );
 // endregion
+// endregion
+
 } // namespace nnrt::geometry::functional::kernel::warp

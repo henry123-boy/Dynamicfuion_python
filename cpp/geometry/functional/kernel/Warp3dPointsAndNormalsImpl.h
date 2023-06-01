@@ -92,8 +92,8 @@ void Warp3dPoints(open3d::core::Tensor& warped_points, const open3d::core::Tenso
 					int32_t* anchor_indices, float* anchor_weights, const int node_count,
 					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
 					const float node_coverage_squared) {
-				warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                          node_count, point, node_indexer, node_coverage_squared);
+				warp::FindAnchorsAndWeightsForPoint_Euclidean_FixedNodeCoverageWeight<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                                   node_count, point, node_indexer, node_coverage_squared);
 				return true;
 			});
 
@@ -110,9 +110,12 @@ void Warp3dPoints(open3d::core::Tensor& warped_points, const open3d::core::Tenso
 					int32_t* anchor_indices, float* anchor_weights, const int node_count,
 					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
 					const float node_coverage_squared) {
-				return warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                                           minimum_valid_anchor_count, node_count,
-				                                                                           point, node_indexer, node_coverage_squared);
+				return warp::FindAnchorsAndWeightsForPoint_Euclidean_Threshold_FixedNodeCoverageWeight<TDeviceType>(anchor_indices, anchor_weights,
+				                                                                                                    anchor_count,
+				                                                                                                    minimum_valid_anchor_count,
+				                                                                                                    node_count,
+				                                                                                                    point, node_indexer,
+				                                                                                                    node_coverage_squared);
 			});
 }
 
@@ -294,8 +297,8 @@ void Warp3dPointsAndNormals(
 					int32_t* anchor_indices, float* anchor_weights, const int node_count,
 					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
 					const float node_coverage_squared) {
-				warp::FindAnchorsAndWeightsForPointEuclidean<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                          node_count, point, node_indexer, node_coverage_squared);
+				warp::FindAnchorsAndWeightsForPoint_Euclidean_FixedNodeCoverageWeight<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
+				                                                                                   node_count, point, node_indexer, node_coverage_squared);
 				return true;
 			});
 
@@ -316,9 +319,12 @@ void Warp3dPointsAndNormals(
 					int32_t* anchor_indices, float* anchor_weights, const int node_count,
 					const Eigen::Vector3f& point, const NDArrayIndexer& node_indexer,
 					const float node_coverage_squared) {
-				return warp::FindAnchorsAndWeightsForPointEuclidean_Threshold<TDeviceType>(anchor_indices, anchor_weights, anchor_count,
-				                                                                           minimum_valid_anchor_count, node_count,
-				                                                                           point, node_indexer, node_coverage_squared);
+				return warp::FindAnchorsAndWeightsForPoint_Euclidean_Threshold_FixedNodeCoverageWeight<TDeviceType>(anchor_indices, anchor_weights,
+				                                                                                                    anchor_count,
+				                                                                                                    minimum_valid_anchor_count,
+				                                                                                                    node_count,
+				                                                                                                    point, node_indexer,
+				                                                                                                    node_coverage_squared);
 			});
 }
 

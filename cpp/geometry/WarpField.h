@@ -21,6 +21,7 @@
 // local includes
 #include "core/KdTree.h"
 #include "geometry/functional/kernel/WarpUtilities.h"
+#include "WarpAnchorWeightComputationMethod.h"
 
 namespace nnrt::geometry {
 
@@ -50,7 +51,7 @@ public:
 			const open3d::t::geometry::TriangleMesh& input_mesh, const open3d::core::Tensor& anchors,
 			const open3d::core::Tensor& weights, bool disable_neighbor_thresholding = true,
 			const open3d::core::Tensor& extrinsics = open3d::core::Tensor::Eye(4, open3d::core::Float64, open3d::core::Device("CPU:0"))) const;
-	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights(
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> PrecomputeAnchorsAndWeights_FixedNodeWeight(
 			const open3d::t::geometry::TriangleMesh& input_mesh
 	) const;
 
@@ -75,11 +76,11 @@ public:
 			const Eigen::Vector3f& point
 	) const {
 		if (UseNodeDistanceThreshold) {
-			return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold<TDeviceType>(
+			return geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree_Threshold_FixedNodeCoverageWeight<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, minimum_valid_anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
 					point, node_coverage_squared);
 		} else {
-			geometry::functional::kernel::warp::FindAnchorsAndWeightsForPointEuclidean_KDTree<TDeviceType>(
+			geometry::functional::kernel::warp::FindAnchorsAndWeightsForPoint_Euclidean_KDTree_FixedNodeCoverageWeight<TDeviceType>(
 					anchor_indices, anchor_weights, anchor_count, kd_tree_nodes, kd_tree_node_count, node_indexer,
 					point, node_coverage_squared);
 			return true;
@@ -113,6 +114,7 @@ public:
 	open3d::core::Tensor GetNodeTranslations();
 	const open3d::core::Tensor& GetNodeTranslations() const;
 	const open3d::core::Tensor& GetNodePositions() const;
+	const open3d::core::Tensor& GetNodeCoverageWeights() const;
 	open3d::core::Device GetDevice() const;
 
 	void SetNodeRotations(const o3c::Tensor& node_rotations);
@@ -140,6 +142,7 @@ protected:
 
 	open3d::core::Tensor rotations;
 	open3d::core::Tensor translations;
+	open3d::core::Tensor node_coverage_weights;
 
 	float const* rotations_data;
 	float const* translations_data;

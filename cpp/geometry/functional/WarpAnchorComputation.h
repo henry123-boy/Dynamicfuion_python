@@ -19,24 +19,94 @@
 
 // 3rd party
 #include <open3d/core/Tensor.h>
+#include <geometry/WarpAnchorWeightComputationMethod.h>
 
 
 namespace nnrt::geometry::functional {
-void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
-                                       float node_coverage);
+// region ======================================== EUCLIDEAN =========================================================================================
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
+);
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-ComputeAnchorsAndWeightsEuclidean(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes, int anchor_count,
-                                  int minimum_valid_anchor_count, float node_coverage);
+ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
+);
 
-void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
-                                          float node_coverage);
+
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage_weight
+);
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-ComputeAnchorsAndWeightsShortestPath(const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
-                                     const open3d::core::Tensor& edges, int anchor_count, float node_coverage);
+ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage_weight
+);
 
+// endregion
+// region ======================================== SHORTEST PATH =====================================================================================
+void ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+);
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight(
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+);
+
+void ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges,
+		int anchor_count,
+		float node_coverage_weight
+);
+
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges,
+		int anchor_count,
+		float node_coverage
+);
+
+// endregion
 
 } //namespace nnrt::geometry::functional

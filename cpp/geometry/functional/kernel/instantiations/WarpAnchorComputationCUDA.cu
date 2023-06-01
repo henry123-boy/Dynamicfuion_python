@@ -21,33 +21,69 @@
 namespace nnrt::geometry::functional::kernel {
 
 template
-void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CUDA, true>(
-		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<open3d::core::Device::DeviceType::CUDA, true>(
+		open3d::core::Tensor& i_point,
+		open3d::core::Tensor& anchor_weights,
+
 		const open3d::core::Tensor& points,
 		const open3d::core::Tensor& nodes,
-		const int anchor_count,
-		const int minimum_valid_anchor_count,
-		const float node_coverage
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
 );
 
 template
-void ComputeAnchorsAndWeightsEuclidean<open3d::core::Device::DeviceType::CUDA, false>(
-		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<open3d::core::Device::DeviceType::CUDA, false>(
+		open3d::core::Tensor& i_point,
+		open3d::core::Tensor& anchor_weights,
+
 		const open3d::core::Tensor& points,
 		const open3d::core::Tensor& nodes,
-		const int anchor_count,
-		const int minimum_valid_anchor_count,
-		const float node_coverage
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
 );
 
 template
-void ComputeAnchorsAndWeightsShortestPath<open3d::core::Device::DeviceType::CUDA>(
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<open3d::core::Device::DeviceType::CUDA, true>(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage
+);
+
+template
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<open3d::core::Device::DeviceType::CUDA, false>(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage
+);
+
+template
+void ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+);
+
+template
+void ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& anchors, open3d::core::Tensor& weights,
 		const open3d::core::Tensor& points,
 		const open3d::core::Tensor& nodes,
 		const open3d::core::Tensor& edges,
-		const int anchor_count,
-		const float node_coverage
+		int anchor_count,
+		float node_coverage
 );
 
 } // namespace nnrt::geometry::functional::kernel

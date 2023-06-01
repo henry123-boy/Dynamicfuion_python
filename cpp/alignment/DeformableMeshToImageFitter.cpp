@@ -122,7 +122,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		o3tg::PointCloud rasterized_point_cloud;
 		o3c::Tensor residual_mask;
 		// [PX]; PX = W * H
-		o3c::Tensor residuals =
+		o3c::Tensor depth_residuals =
 				this->ComputeDepthResiduals(
 						rasterized_point_cloud, residual_mask, warped_mesh, pixel_face_indices,
 						pixel_barycentric_coordinates, pixel_depths,
@@ -183,7 +183,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		o3c::Tensor negative_gradient_data;
 		int max_anchor_count_per_vertex = static_cast<int32_t>(warp_anchors.GetShape(1));
 		kernel::ComputeNegativeGradient_UnorderedNodePixels(
-				negative_gradient_data, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
+				negative_gradient_data, depth_residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
 		);
 

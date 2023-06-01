@@ -20,25 +20,101 @@
 #include "core/platform_independence/Qualifiers.h"
 #include "geometry/functional/kernel/Defines.h"
 
-namespace nnrt::geometry::functional::kernel{
+namespace nnrt::geometry::functional::kernel {
 
-void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
-                                       float node_coverage);
+// region ========================================== EUCLIDEAN =======================================================================================
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+		open3d::core::Tensor& i_point,
+		open3d::core::Tensor& anchor_weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
+);
 
 template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
-void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
-                                       float node_coverage);
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+		open3d::core::Tensor& i_point,
+		open3d::core::Tensor& anchor_weights,
 
-void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
-                                          float node_coverage);
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
+);
+
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage
+);
+
+template<open3d::core::Device::DeviceType TDeviceType, bool TUseValidAnchorThreshold>
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		int anchor_count,
+		int minimum_valid_anchor_count,
+		float node_coverage
+);
+// endregion
+// region ========================================== SHORTEST PATH ===================================================================================
+void ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+);
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ComputeAnchorsAndWeightsShortestPath(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                          const open3d::core::Tensor& nodes, const open3d::core::Tensor& edges, int anchor_count,
-                                          float node_coverage);
+void ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
 
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+);
+
+void ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges,
+		int anchor_count,
+		float node_coverage
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges,
+		int anchor_count,
+		float node_coverage
+);
+// endregion
 
 } // namespace nnrt::geometry::functional::kernel{

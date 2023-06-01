@@ -76,13 +76,13 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> PlanarGraphWarpField::Pre
 	const o3c::Tensor& vertex_positions = input_mesh.GetVertexPositions();
 	switch (anchor_computation_method) {
 		case AnchorComputationMethod::EUCLIDEAN:
-			functional::ComputeAnchorsAndWeightsEuclidean(
+			functional::ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
 					anchors, weights, vertex_positions, this->nodes, this->anchor_count,
 					this->minimum_valid_anchor_count, this->node_coverage
 			);
 			break;
 		case AnchorComputationMethod::SHORTEST_PATH:
-			functional::ComputeAnchorsAndWeightsShortestPath(
+			functional::ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
 					anchors, weights, vertex_positions, this->nodes, this->edges,
 					this->anchor_count, this->node_coverage
 			);

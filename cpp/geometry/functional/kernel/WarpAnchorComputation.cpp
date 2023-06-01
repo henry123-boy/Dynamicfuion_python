@@ -14,68 +14,126 @@
 //  limitations under the License.
 //  ================================================================
 #include "WarpAnchorComputation.h"
+#include "core/DeviceSelection.h"
 
-using namespace open3d;
+namespace o3c = open3d::core;
 
-namespace nnrt::geometry::functional::kernel{
-void ComputeAnchorsAndWeightsEuclidean(open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
-                                       const open3d::core::Tensor& nodes, const int anchor_count, const int minimum_valid_anchor_count,
-                                       const float node_coverage) {
-	core::Device device = points.GetDevice();
-	core::Device::DeviceType device_type = device.GetType();
+namespace nnrt::geometry::functional::kernel {
 
-	switch (device_type) {
-		case core::Device::DeviceType::CPU:
-			if (minimum_valid_anchor_count > 0) {
-				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, true>(
-						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
-			} else {
-				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CPU, false>(
-						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+
+void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
+		o3c::Tensor& anchors,
+		o3c::Tensor& weights,
+		const o3c::Tensor& points,
+		const o3c::Tensor& nodes,
+		const o3c::Tensor& node_coverage_weights,
+		int anchor_count,
+		int minimum_valid_anchor_count
+) {
+	o3c::Device device = points.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				if (minimum_valid_anchor_count > 0) {
+					ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<o3c::Device::DeviceType::CPU, true>(
+							anchors, weights, points, nodes, node_coverage_weights, anchor_count, minimum_valid_anchor_count);
+				} else {
+					ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<o3c::Device::DeviceType::CPU, false>(
+							anchors, weights, points, nodes, node_coverage_weights, anchor_count, minimum_valid_anchor_count);
+				}
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						if (minimum_valid_anchor_count > 0) {
+							ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<o3c::Device::DeviceType::CUDA, true>(
+									anchors, weights, points, nodes, node_coverage_weights, anchor_count, minimum_valid_anchor_count);
+						} else {
+							ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight<o3c::Device::DeviceType::CUDA, false>(
+									anchors, weights, points, nodes, node_coverage_weights, anchor_count, minimum_valid_anchor_count);
+						}
+				);
 			}
-			break;
-		case core::Device::DeviceType::CUDA:
-#ifdef BUILD_CUDA_MODULE
-			if (minimum_valid_anchor_count > 0) {
-				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, true>(
-						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
-			} else {
-				ComputeAnchorsAndWeightsEuclidean<core::Device::DeviceType::CUDA, false>(
-						anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
-			}
-#else
-			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-			break;
-		default:
-			utility::LogError("Unimplemented device");
-			break;
-	}
+	);
 }
 
-void ComputeAnchorsAndWeightsShortestPath(core::Tensor& anchors, core::Tensor& weights, const core::Tensor& points, const core::Tensor& nodes,
-                                          const core::Tensor& edges, int anchor_count, float node_coverage) {
-	core::Device device = points.GetDevice();
-	core::Device::DeviceType device_type = device.GetType();
-
-	switch (device_type) {
-		case core::Device::DeviceType::CPU:
-			ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CPU>(
-					anchors, weights, points, nodes, edges, anchor_count, node_coverage);
-			break;
-		case core::Device::DeviceType::CUDA:
-#ifdef BUILD_CUDA_MODULE
-			ComputeAnchorsAndWeightsShortestPath<core::Device::DeviceType::CUDA>(
-					anchors, weights, points, nodes, edges, anchor_count, node_coverage);
-
-#else
-			utility::LogError("Not compiled with CUDA, but CUDA device is used.");
-#endif
-			break;
-		default:
-			utility::LogError("Unimplemented device");
-			break;
-	}
+void ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes, int anchor_count, int minimum_valid_anchor_count,
+		float node_coverage
+) {
+	o3c::Device device = points.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				if (minimum_valid_anchor_count > 0) {
+					ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<o3c::Device::DeviceType::CPU, true>(
+							anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+				} else {
+					ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<o3c::Device::DeviceType::CPU, false>(
+							anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+				}
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						if (minimum_valid_anchor_count > 0) {
+							ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<o3c::Device::DeviceType::CUDA, true>(
+									anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+						} else {
+							ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight<o3c::Device::DeviceType::CUDA, false>(
+									anchors, weights, points, nodes, anchor_count, minimum_valid_anchor_count, node_coverage);
+						}
+				);
+			}
+	);
 }
+
+void ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight(
+		open3d::core::Tensor& anchors,
+		open3d::core::Tensor& weights,
+
+		const open3d::core::Tensor& points,
+		const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& edges,
+		int anchor_count
+) {
+	o3c::Device device = points.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight<o3c::Device::DeviceType::CPU>(
+						anchors, weights, points, nodes, node_coverage_weights, edges, anchor_count);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight<o3c::Device::DeviceType::CUDA>(
+								anchors, weights, points, nodes, node_coverage_weights, edges, anchor_count);
+				);
+			}
+	);
+}
+
+void ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight(
+		open3d::core::Tensor& anchors, open3d::core::Tensor& weights, const open3d::core::Tensor& points, const open3d::core::Tensor& nodes,
+		const open3d::core::Tensor& edges, int anchor_count, float node_coverage
+) {
+	o3c::Device device = points.GetDevice();
+	core::ExecuteOnDevice(
+			device,
+			[&] {
+				ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight<o3c::Device::DeviceType::CPU>(
+						anchors, weights, points, nodes, edges, anchor_count, node_coverage);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight<o3c::Device::DeviceType::CUDA>(
+								anchors, weights, points, nodes, edges, anchor_count, node_coverage);
+				);
+			}
+	);
+}
+
+
+
 
 } // namespace nnrt::geometry::functional::kernel
