@@ -24,7 +24,6 @@
 // local
 #include "core/functional/Masking.h"
 #include "core/linalg/SolveBlockDiagonalCholesky.h"
-#include "core/linalg/SolveBlockDiagonalQR.h"
 #include "alignment/DeformableMeshToImageFitter.h"
 #include "geometry/functional/PerspectiveProjection.h"
 #include "geometry/functional/PointToPlaneDistances.h"
@@ -60,16 +59,20 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
 		bool use_tukey_penalty_for_data_term /* = false*/,
 		float tukey_penalty_cutoff_cm /* = 0.01f*/,
 		float preconditioning_dampening_factor /* = 0.0f*/,
-		float regularization_term_weight /*= 0.1f*/
+		float arap_term_weight /*= 0.1f*/,
+		bool use_huber_penalty_for_arap_term /* = false*/,
+		float huber_penalty_constant /* = 0.0001*/
 ) : max_iteration_count(max_iteration_count),
     iteration_mode_sequence(std::move(iteration_mode_sequence)),
     min_update_threshold(minimal_update_threshold),
     max_depth(max_depth),
     use_perspective_correction(use_perspective_correction),
-    use_tukey_penalty_for_data_term(use_tukey_penalty_for_data_term),
+    use_tukey_penalty_for_depth_term(use_tukey_penalty_for_data_term),
     tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm),
     preconditioning_dampening_factor(preconditioning_dampening_factor),
-    regularization_term_weight(regularization_term_weight) {
+    arap_term_weight(arap_term_weight),
+    use_huber_penalty_for_arap_term(use_huber_penalty_for_arap_term),
+    huber_penalty_constant(huber_penalty_constant) {
 	if (preconditioning_dampening_factor < 0.0f || preconditioning_dampening_factor > 1.0f) {
 		utility::LogError("`preconditioning_dampening_factor` should be a small non-negative value between 0 and 1. Got: {}",
 		                  preconditioning_dampening_factor);
@@ -132,9 +135,10 @@ void DeformableMeshToImageFitter::FitToImage(
 						intrinsic_matrix
 				);
 
-		o3c::Tensor edge_residuals;
-		if(use_regularization_term){
 
+		o3c::Tensor edge_residuals;
+		if (use_regularization_term) {
+			edge_residuals = this->ComputeEdgeResiduals(warp_field);
 		}
 
 #ifdef DEBUG_HANDPICKED_DATA_PIXEL_REGION
@@ -144,7 +148,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		int pixel_x_end = pixel_x_start + region_width;
 		int pixel_y_start = 22;
 		int pixel_y_end = pixel_y_start + region_height;
-		o3c::Tensor region_depth_residuals = depth_residuals.Reshape(rendering_image_size).Slice(0, pixel_y_start, pixel_y_end).Contiguous().Slice(1, pixel_x_start, pixel_x_end).Contiguous();
+		o3c::Tensor region_depth_residuals = depth_residuals.Reshape(rendering_image_size).Slice(0, pixel_y_start, pixel_y_end).Contiguous()
+		                                                    .Slice(1, pixel_x_start, pixel_x_end).Contiguous();
 #endif
 
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
@@ -184,14 +189,14 @@ void DeformableMeshToImageFitter::FitToImage(
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
 						face_node_anchors, face_node_anchor_counts, warp_field.node_positions.GetLength(),
-						use_tukey_penalty_for_data_term, tukey_penalty_cutoff_cm, current_mode
+						use_tukey_penalty_for_depth_term, tukey_penalty_cutoff_cm, current_mode
 				);
 #ifdef DEBUG_HANDPICKED_DATA_PIXEL_REGION
 		int jacobian_stride = current_mode == IterationMode::ALL ? 6 : 3;
 		int max_face_anchor_count = 3 * static_cast<int>(warped_vertex_position_jacobians.GetShape(1));
 		o3c::Tensor region_pixel_jacobians =
-				pixel_jacobians.Reshape({rendering_image_size[0], rendering_image_size[1],  max_face_anchor_count, jacobian_stride})
-				.Slice(0, pixel_y_start, pixel_y_end).Contiguous().Slice(1, pixel_x_start, pixel_x_end).Contiguous();
+				pixel_jacobians.Reshape({rendering_image_size[0], rendering_image_size[1], max_face_anchor_count, jacobian_stride})
+				               .Slice(0, pixel_y_start, pixel_y_end).Contiguous().Slice(1, pixel_x_start, pixel_x_end).Contiguous();
 #endif
 
 
@@ -215,7 +220,8 @@ void DeformableMeshToImageFitter::FitToImage(
 		if (use_regularization_term) {
 			// compute J_r
 			std::tie(edge_jacobians, node_edge_indices_jagged, node_edge_counts) =
-					functional::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(warp_field, this->regularization_term_weight);
+					functional::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(warp_field,
+					                                                                       this->arap_term_weight);
 		}
 
 
@@ -316,7 +322,7 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeDepthResiduals(
 
 	o3c::SizeVector image_size = {reference_color_image.GetRows(), reference_color_image.GetCols()};
 
-	if(!warped_mesh.HasVertexNormals()){
+	if (!warped_mesh.HasVertexNormals()) {
 		utility::LogError("Input warped mesh needs to have normals defined; it doesn't.");
 	}
 
@@ -347,18 +353,76 @@ open3d::core::Tensor DeformableMeshToImageFitter::ComputeDepthResiduals(
 
 	core::functional::SetMaskedToValue(distances, residual_mask.LogicalNot(), 0.0f);
 
-	if (this->use_tukey_penalty_for_data_term) {
+	if (this->use_tukey_penalty_for_depth_term) {
 		float c = this->tukey_penalty_cutoff_cm;
 		float c_squared_over_six = (c * c / 6.f);
 		o3c::Tensor c_squared_over_six_tensor(std::vector<float>{c_squared_over_six}, {1}, o3c::Float32, triangle_indices.GetDevice());
 		o3c::Tensor distances_over_c = distances / c;
 		o3c::Tensor left_operand = 1.f - (distances_over_c * distances_over_c);
 		o3c::Tensor residuals = c_squared_over_six * (1.f - left_operand * left_operand * left_operand);
-		o3c::Tensor locations_of_residuals_below_c = distances <= c_squared_over_six_tensor;
+		o3c::Tensor locations_of_residuals_below_c = distances.Le(c);
 		residuals.SetItem(o3c::TensorKey::IndexTensor(locations_of_residuals_below_c), c_squared_over_six_tensor);
 		return residuals;
 	} else {
 		return distances;
+	}
+}
+
+open3d::core::Tensor DeformableMeshToImageFitter::ComputeEdgeResiduals(geometry::HierarchicalGraphWarpField& warp_field) const {
+	const o3c::Tensor& node_positions = warp_field.GetNodePositions(true);
+	const o3c::Tensor& node_translations = warp_field.GetNodeTranslations(true);
+	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
+
+	const o3c::Tensor& edges = warp_field.GetEdges();
+	o3c::Tensor edge_residuals;
+
+	switch (warp_field.warp_node_coverage_computation_method) {
+		case geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE: {
+			const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
+			const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
+			kernel::ComputeArapResiduals_FixedCoverageWeight(
+					edge_residuals,
+					edges,
+					edge_layer_indices,
+					node_positions,
+					node_translations,
+					node_rotations,
+					layer_decimation_radii,
+					this->arap_term_weight
+			);
+		}
+			break;
+
+		case geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE: {
+			const o3c::Tensor& node_coverage_weights = warp_field.GetNodeCoverageWeights(true);
+			kernel::ComputeArapResiduals_VariableCoverageWeight(
+					edge_residuals,
+					edges,
+					node_positions,
+					node_coverage_weights,
+					node_translations,
+					node_rotations,
+					this->arap_term_weight
+			);
+		}
+			break;
+		default: utility::LogError("Unsupported warp node coverage computation method: {}", warp_field.warp_node_coverage_computation_method);
+			break;
+	}
+
+	if (use_huber_penalty_for_arap_term) {
+		float delta = this->huber_penalty_constant;
+		float half_of_delta_squared = 0.5f * delta * delta;
+		o3c::Tensor half_of_z_squared_tensor(std::vector<float>{half_of_delta_squared}, {1}, o3c::Float32, edge_residuals.GetDevice());
+		o3c::TensorKey locations_of_residuals_above_delta = o3c::TensorKey::IndexTensor(edge_residuals.Ge(delta));
+		o3c::Tensor edge_residuals_huber = 0.5 * edge_residuals * edge_residuals;
+		o3c::Tensor edge_residuals_huber_above_delta = edge_residuals.GetItem(locations_of_residuals_above_delta);
+		edge_residuals_huber_above_delta.Abs_();
+		edge_residuals_huber_above_delta -= half_of_z_squared_tensor;
+		edge_residuals_huber.SetItem(locations_of_residuals_above_delta, edge_residuals_huber_above_delta);
+		return edge_residuals_huber;
+	} else {
+		return edge_residuals;
 	}
 }
 

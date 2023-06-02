@@ -20,27 +20,53 @@
 #include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
 
 namespace o3c = open3d::core;
+namespace utility = open3d::utility;
 namespace nnrt::alignment::functional {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field, float regularization_weight) {
 	const o3c::Tensor& node_positions = warp_field.GetNodePositions(true);
 	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
 	const o3c::Tensor& edges = warp_field.GetEdges();
-	const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
-	const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
 
 	o3c::Tensor edge_jacobians, node_edge_indices_jagged, node_edge_counts;
-	kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
-			edge_jacobians,
-			node_edge_indices_jagged,
-			node_edge_counts,
-			node_positions,
-			node_rotations,
-			edges,
-			edge_layer_indices,
-			layer_decimation_radii,
-			regularization_weight
-	);
+
+	switch(warp_field.warp_node_coverage_computation_method){
+		case geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE:{
+			const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
+			const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
+			kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+					edge_jacobians,
+					node_edge_indices_jagged,
+					node_edge_counts,
+					node_positions,
+					node_rotations,
+					edges,
+					edge_layer_indices,
+					layer_decimation_radii,
+					regularization_weight
+			);
+		}
+			break;
+
+		case geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE:{
+			const o3c::Tensor& node_coverage_weights = warp_field.GetNodeCoverageWeights(true);
+			kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
+					edge_jacobians,
+					node_edge_indices_jagged,
+					node_edge_counts,
+					node_positions,
+					node_coverage_weights,
+					node_rotations,
+					edges,
+					regularization_weight
+			);
+		}
+			break;
+		default:
+			utility::LogError("Unsupported warp node coverage computation method: {}", warp_field.warp_node_coverage_computation_method);
+			break;
+	}
+
 	return std::make_tuple(edge_jacobians, node_edge_indices_jagged, node_edge_counts);
 }
 } // namespace nnrt::alignment::functional

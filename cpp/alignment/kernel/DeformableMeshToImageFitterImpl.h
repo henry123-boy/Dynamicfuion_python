@@ -481,7 +481,7 @@ void PreconditionDiagonalBlocks(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeEdgeResiduals_FixedCoverageWeight(
+void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
@@ -518,8 +518,8 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 	o3c::AssertTensorDevice(node_rotations, device);
 
 	o3c::AssertTensorShape(layer_decimation_radii, { layer_count });
-	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
-	o3c::AssertTensorDevice(node_rotations, device);
+	o3c::AssertTensorDtype(layer_decimation_radii, o3c::Float32);
+	o3c::AssertTensorDevice(layer_decimation_radii, device);
 
 	// input / output prep
 	edge_residuals = o3c::Tensor({edge_count * 3}, o3c::Float32, device);
@@ -545,6 +545,75 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 				Eigen::Map<const Eigen::Vector3f> node_j_translation(node_translation_data + node_j * 3);
 				Eigen::Map<const core::kernel::Matrix3f> node_i_rotation(node_rotation_data + node_i * 9);
 				float edge_weight = layer_decimation_radius_data[edge_layer_index_data[node_j]];
+				Eigen::Map<Eigen::Vector3f> edge_residual(edge_residual_data + i_edge * 3);
+				edge_residual = regularization_weight * edge_weight *
+				                ((node_i_position + node_i_translation) - (node_j_position + node_j_translation) -
+				                 node_i_rotation * (node_i_position - node_j_position));
+			}
+	);
+}
+
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeArapResiduals_VariableCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		float regularization_weight
+){
+	// counts & checks
+	int64_t edge_count = edges.GetLength();
+	int64_t node_count = node_positions.GetLength();
+
+	o3c::Device device = edges.GetDevice();
+
+	o3c::AssertTensorShape(edges, { edge_count, 2 });
+	o3c::AssertTensorDtype(edges, o3c::Int32);
+
+	o3c::AssertTensorShape(node_positions, { node_count, 3 });
+	o3c::AssertTensorDtype(node_positions, o3c::Float32);
+	o3c::AssertTensorDevice(node_positions, device);
+
+	o3c::AssertTensorShape(node_coverage_weights, { node_count });
+	o3c::AssertTensorDtype(node_coverage_weights, o3c::Float32);
+	o3c::AssertTensorDevice(node_coverage_weights, device);
+
+	o3c::AssertTensorShape(node_translations, { node_count, 3 });
+	o3c::AssertTensorDtype(node_translations, o3c::Float32);
+	o3c::AssertTensorDevice(node_translations, device);
+
+	o3c::AssertTensorShape(node_rotations, { node_count, 3, 3 });
+	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
+	o3c::AssertTensorDevice(node_rotations, device);
+
+	// input / output prep
+	edge_residuals = o3c::Tensor({edge_count * 3}, o3c::Float32, device);
+	auto edge_residual_data = edge_residuals.GetDataPtr<float>();
+
+	auto edge_data = edges.GetDataPtr<int32_t>();
+	auto node_weight_data = node_coverage_weights.GetDataPtr<float>();
+	auto node_position_data = node_positions.GetDataPtr<float>();
+	auto node_translation_data = node_translations.GetDataPtr<float>();
+	auto node_rotation_data = node_rotations.GetDataPtr<float>();
+
+	// actual computation
+	o3c::ParallelFor(
+			device,
+			edge_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_edge) {
+				int32_t node_i = edge_data[i_edge * 2];
+				int32_t node_j = edge_data[i_edge * 2 + 1];
+				Eigen::Map<const Eigen::Vector3f> node_i_position(node_position_data + node_i * 3);
+				Eigen::Map<const Eigen::Vector3f> node_j_position(node_position_data + node_j * 3);
+				Eigen::Map<const Eigen::Vector3f> node_i_translation(node_translation_data + node_i * 3);
+				Eigen::Map<const Eigen::Vector3f> node_j_translation(node_translation_data + node_j * 3);
+				Eigen::Map<const core::kernel::Matrix3f> node_i_rotation(node_rotation_data + node_i * 9);
+				float node_i_weight = node_weight_data[node_i];
+				float node_j_weight = node_weight_data[node_j];
+				float edge_weight = fmaxf(node_i_weight, node_j_weight);
 				Eigen::Map<Eigen::Vector3f> edge_residual(edge_residual_data + i_edge * 3);
 				edge_residual = regularization_weight * edge_weight *
 				                ((node_i_position + node_i_translation) - (node_j_position + node_j_translation) -

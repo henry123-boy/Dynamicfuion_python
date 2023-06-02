@@ -54,7 +54,8 @@ HierarchicalGraphWarpField::HierarchicalGraphWarpField(
     compute_layer_decimation_radius(std::move(compute_layer_decimation_radius)),
     indexed_nodes(this->node_positions),
     indexed_rotations(this->node_rotations),
-    indexed_translations(this->node_translations) {
+    indexed_translations(this->node_translations),
+    indexed_node_coverage_weights(this->node_coverage_weights){
 	if (layer_count < 1) {
 		utility::LogError("layer_count must be a positive integer, got {}.", layer_count);
 	}
@@ -218,6 +219,10 @@ const o3c::Tensor& HierarchicalGraphWarpField::GetNodeRotations(bool use_virtual
 	return use_virtual_ordering ? this->indexed_rotations.Get(&this->node_indices) : this->node_rotations;
 }
 
+const o3c::Tensor& HierarchicalGraphWarpField::GetNodeCoverageWeights(bool use_virtual_ordering) {
+	return use_virtual_ordering ? this->indexed_node_coverage_weights.Get(&this->node_indices) : this->node_rotations;
+}
+
 const o3c::Tensor& HierarchicalGraphWarpField::GetEdgeLayerIndices() const {
 	return this->edge_layer_indices;
 }
@@ -275,6 +280,7 @@ void HierarchicalGraphWarpField::RotateNodes(const o3c::Tensor& node_rotation_de
 		this->rotations_data = this->node_rotations.GetDataPtr<float>();
 	}
 }
+
 
 
 HierarchicalGraphWarpField::ReindexedTensorWrapper::ReindexedTensorWrapper(const o3c::Tensor* index, o3c::Tensor& source_tensor) :

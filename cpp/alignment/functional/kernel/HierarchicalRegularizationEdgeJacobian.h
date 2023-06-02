@@ -23,7 +23,7 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
 		open3d::core::Tensor& node_edge_indices_jagged,
 		open3d::core::Tensor& node_edge_counts,
@@ -36,7 +36,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 );
 
 template <open3d::core::Device::DeviceType TDeviceType>
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
 		open3d::core::Tensor& node_edge_indices_jagged,
 		open3d::core::Tensor& node_edge_counts,
@@ -45,6 +45,29 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
 		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
+);
+
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
+		open3d::core::Tensor& edge_jacobians,
+		open3d::core::Tensor& node_edges_jagged,
+		open3d::core::Tensor& node_edge_counts,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& edges,
+		float regularization_weight
+);
+
+template <open3d::core::Device::DeviceType TDeviceType>
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
+		open3d::core::Tensor& edge_jacobians,
+		open3d::core::Tensor& node_edges_jagged,
+		open3d::core::Tensor& node_edge_counts,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& edges,
 		float regularization_weight
 );
 

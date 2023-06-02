@@ -24,10 +24,10 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_jacobian_indices_jagged,
-		open3d::core::Tensor& node_edge_jacobian_counts,
+		open3d::core::Tensor& node_edge_indices_jagged,
+		open3d::core::Tensor& node_edge_counts,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -38,10 +38,10 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 	core::ExecuteOnDevice(
 			node_positions.GetDevice(),
 			[&] {
-				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CPU>(
+				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
 						edge_jacobians,
-						node_edge_jacobian_indices_jagged,
-						node_edge_jacobian_counts,
+						node_edge_indices_jagged,
+						node_edge_counts,
 						node_positions,
 						node_rotations,
 						edges,
@@ -52,10 +52,10 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 			},
 			[&] {
 				NNRT_IF_CUDA (
-						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations<open3d::core::Device::DeviceType::CUDA>(
+						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 								edge_jacobians,
-								node_edge_jacobian_indices_jagged,
-								node_edge_jacobian_counts,
+								node_edge_indices_jagged,
+								node_edge_counts,
 								node_positions,
 								node_rotations,
 								edges, edge_layer_indices,
@@ -65,7 +65,47 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
 				);
 			}
 	);
+}
 
+void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
+		open3d::core::Tensor&       edge_jacobians,
+		open3d::core::Tensor&       node_edges_jagged,
+		open3d::core::Tensor&       node_edge_counts,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& edges,
+		float                       regularization_weight
+) {
+	core::ExecuteOnDevice(
+			node_positions.GetDevice(),
+			[&] {
+				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight<open3d::core::Device::DeviceType::CPU>(
+						edge_jacobians,
+						node_edges_jagged,
+						node_edge_counts,
+						node_positions,
+						node_coverage_weights,
+						node_rotations,
+						edges,
+						regularization_weight
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA (
+						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+								edge_jacobians,
+								node_edges_jagged,
+								node_edge_counts,
+								node_positions,
+								node_coverage_weights,
+								node_rotations,
+								edges,
+								regularization_weight
+						);
+				);
+			}
+	);
 }
 
 } // namespace nnrt::alignment::functional::kernel

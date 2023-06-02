@@ -40,79 +40,88 @@ public:
 			bool use_tukey_penalty_for_data_term = false,
 			float tukey_penalty_cutoff_cm = 0.01f,
 			float preconditioning_dampening_factor = 0.0f,
-			float regularization_term_weight = 0.1f
+			float arap_term_weight = 200.0f,
+			bool use_huber_penalty_for_arap_term = false,
+			float huber_penalty_constant = 0.0001
 	);
 
-    /**
-     * \brief
-     * \param warp_field
-     * \param canonical_mesh
-     * \param reference_image
-     * \param intrinsic_matrix
-     * \param extrinsic_matrix -- Note: has nothing to do with the reference RGBD image, which is assumed to have identity extrinsics (rel. to camera)
-     * \param depth_scale
-     * \param depth_max
-     */
-    void FitToImage(
-		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
-		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		    const open3d::t::geometry::RGBDImage& reference_image,
-		    const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-		    const open3d::core::Tensor& intrinsic_matrix,
-		    const open3d::core::Tensor& extrinsic_matrix,
-		    float depth_scale
-    )
-    const;
+	/**
+	 * \brief
+	 * \param warp_field
+	 * \param canonical_mesh
+	 * \param reference_image
+	 * \param intrinsic_matrix
+	 * \param extrinsic_matrix -- Note: has nothing to do with the reference RGBD image, which is assumed to have identity extrinsics (rel. to camera)
+	 * \param depth_scale
+	 * \param depth_max
+	 */
+	void FitToImage(
+			nnrt::geometry::HierarchicalGraphWarpField& warp_field,
+			const open3d::t::geometry::TriangleMesh& canonical_mesh,
+			const open3d::t::geometry::RGBDImage& reference_image,
+			const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+			const open3d::core::Tensor& intrinsic_matrix,
+			const open3d::core::Tensor& extrinsic_matrix,
+			float depth_scale
+	)
+	const;
 
-    void FitToImage(
-		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
-		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		    const open3d::t::geometry::Image& reference_color_image,
-		    const open3d::t::geometry::Image& reference_depth_image,
-		    const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
-		    const open3d::core::Tensor& intrinsic_matrix,
-		    const open3d::core::Tensor& extrinsic_matrix,
-		    float depth_scale
-    )
-    const;
+	void FitToImage(
+			nnrt::geometry::HierarchicalGraphWarpField& warp_field,
+			const open3d::t::geometry::TriangleMesh& canonical_mesh,
+			const open3d::t::geometry::Image& reference_color_image,
+			const open3d::t::geometry::Image& reference_depth_image,
+			const open3d::utility::optional<std::reference_wrapper<const open3d::core::Tensor>>& reference_image_mask,
+			const open3d::core::Tensor& intrinsic_matrix,
+			const open3d::core::Tensor& extrinsic_matrix,
+			float depth_scale
+	)
+	const;
 
-    void FitToImage(
-		    nnrt::geometry::HierarchicalGraphWarpField& warp_field,
-		    const open3d::t::geometry::TriangleMesh& canonical_mesh,
-		    const open3d::t::geometry::Image& reference_color_image,
-		    const open3d::t::geometry::PointCloud& reference_point_cloud,
-		    const open3d::core::Tensor& reference_point_mask,
-		    const open3d::core::Tensor& intrinsic_matrix,
-		    const open3d::core::Tensor& extrinsic_matrix,
-		    const open3d::core::SizeVector& rendering_image_size
-    )
-    const;
+	void FitToImage(
+			nnrt::geometry::HierarchicalGraphWarpField& warp_field,
+			const open3d::t::geometry::TriangleMesh& canonical_mesh,
+			const open3d::t::geometry::Image& reference_color_image,
+			const open3d::t::geometry::PointCloud& reference_point_cloud,
+			const open3d::core::Tensor& reference_point_mask,
+			const open3d::core::Tensor& intrinsic_matrix,
+			const open3d::core::Tensor& extrinsic_matrix,
+			const open3d::core::SizeVector& rendering_image_size
+	)
+	const;
 
 
 private:
-    int max_iteration_count;
+	int max_iteration_count;
 	std::vector<IterationMode> iteration_mode_sequence;
-    float min_update_threshold;
-    float max_depth;
-    bool use_perspective_correction;
-	bool use_tukey_penalty_for_data_term;
+	float min_update_threshold;
+	float max_depth;
+	bool use_perspective_correction;
+	bool use_tukey_penalty_for_depth_term;
 	float tukey_penalty_cutoff_cm;
 	float preconditioning_dampening_factor;
-	float regularization_term_weight;
+	float arap_term_weight;
+	bool use_huber_penalty_for_arap_term;
+	float huber_penalty_constant;
 
-    open3d::core::Tensor ComputeDepthResiduals(
-            open3d::t::geometry::PointCloud& rasterized_point_cloud,
-            open3d::core::Tensor& residual_mask,
-            const open3d::t::geometry::TriangleMesh& warped_mesh,
-            const open3d::core::Tensor& pixel_face_indices,
-            const open3d::core::Tensor& pixel_barycentric_coordinates,
-            const open3d::core::Tensor& pixel_depths,
-            const open3d::t::geometry::Image& reference_color_image,
-            const open3d::t::geometry::PointCloud& reference_point_cloud,
-            const open3d::core::Tensor& reference_point_mask,
-            const open3d::core::Tensor& intrinsics
-    )
-    const;
+
+	open3d::core::Tensor ComputeDepthResiduals(
+			open3d::t::geometry::PointCloud& rasterized_point_cloud,
+			open3d::core::Tensor& residual_mask,
+			const open3d::t::geometry::TriangleMesh& warped_mesh,
+			const open3d::core::Tensor& pixel_face_indices,
+			const open3d::core::Tensor& pixel_barycentric_coordinates,
+			const open3d::core::Tensor& pixel_depths,
+			const open3d::t::geometry::Image& reference_color_image,
+			const open3d::t::geometry::PointCloud& reference_point_cloud,
+			const open3d::core::Tensor& reference_point_mask,
+			const open3d::core::Tensor& intrinsics
+	)
+	const;
+
+	open3d::core::Tensor ComputeEdgeResiduals(
+			geometry::HierarchicalGraphWarpField& warp_field
+	) const;
 
 };
 

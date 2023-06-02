@@ -110,7 +110,7 @@ void PreconditionDiagonalBlocks(
 		float dampening_factor
 );
 
-void ComputeEdgeResiduals_FixedCoverageWeight(
+void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
@@ -118,11 +118,11 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& layer_decimation_radii,
-		float regularization_weight
+		float arap_term_weight
 );
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeEdgeResiduals_FixedCoverageWeight(
+void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layer_indices,
@@ -130,8 +130,28 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& layer_decimation_radii,
-		float regularization_weight
+		float arap_term_weight
 );
 
+void ComputeArapResiduals_VariableCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		float arap_term_weight
+);
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeArapResiduals_VariableCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		float arap_term_weight
+);
 
 } // namespace nnrt::alignment::kernel

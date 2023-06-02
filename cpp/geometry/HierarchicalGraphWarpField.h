@@ -56,6 +56,7 @@ public:
 	const o3c::Tensor& GetNodePositions(bool use_virtual_ordering = false);
 	const o3c::Tensor& GetNodeRotations(bool use_virtual_ordering = false);
 	const o3c::Tensor& GetNodeTranslations(bool use_virtual_ordering = false);
+	const o3c::Tensor& GetNodeCoverageWeights(bool use_virtual_ordering = false);
 
 	const o3c::Tensor& GetEdges() const;
 	const o3c::Tensor& GetVirtualNodeIndices() const;
@@ -90,6 +91,7 @@ private:
 	ReindexedTensorWrapper indexed_nodes;
 	ReindexedTensorWrapper indexed_rotations;
 	ReindexedTensorWrapper indexed_translations;
+	ReindexedTensorWrapper indexed_node_coverage_weights;
 
 
 };

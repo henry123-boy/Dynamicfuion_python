@@ -121,7 +121,7 @@ void PreconditionDiagonalBlocks(open3d::core::Tensor& blocks, float dampening_fa
 	);
 }
 
-void ComputeEdgeResiduals_FixedCoverageWeight(
+void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& edge_layers,
@@ -129,12 +129,12 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& layer_node_weights,
-		float regularization_weight
+		float arap_term_weight
 ) {
 	core::ExecuteOnDevice(
 			edges.GetDevice(),
 			[&] {
-				ComputeEdgeResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
+				ComputeArapResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
 						edge_residuals,
 						edges,
 						edge_layers,
@@ -142,12 +142,12 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 						node_translations,
 						node_rotations,
 						layer_node_weights,
-						regularization_weight
+						arap_term_weight
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ComputeEdgeResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+						ComputeArapResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 								edge_residuals,
 								edges,
 								edge_layers,
@@ -155,7 +155,45 @@ void ComputeEdgeResiduals_FixedCoverageWeight(
 								node_translations,
 								node_rotations,
 								layer_node_weights,
-								regularization_weight
+								arap_term_weight
+						);
+				);
+			}
+	);
+}
+
+void ComputeArapResiduals_VariableCoverageWeight(
+		open3d::core::Tensor&       edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_coverage_weights,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		float                       arap_term_weight
+) {
+	core::ExecuteOnDevice(
+			edges.GetDevice(),
+			[&] {
+				ComputeArapResiduals_VariableCoverageWeight<open3d::core::Device::DeviceType::CPU>(
+						edge_residuals,
+						edges,
+						node_positions,
+						node_coverage_weights,
+						node_translations,
+						node_rotations,
+						arap_term_weight
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ComputeArapResiduals_VariableCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+								edge_residuals,
+								edges,
+								node_positions,
+								node_coverage_weights,
+								node_translations,
+								node_rotations,
+								arap_term_weight
 						);
 				);
 			}
