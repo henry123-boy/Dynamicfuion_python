@@ -115,6 +115,7 @@ void SolveCholeskyBlockDiagonalCUDA(
 		open3d::core::Dtype data_type,
 		const open3d::core::Device& device
 ) {
+	utility::LogError("Attempting to call SolveCholeskyBlockDiagonalCUDA routine when library not compiled with BUILD_CUDA_MODULE=ON");
 }
 } // nnrt::core::linalg::internal
 #endif

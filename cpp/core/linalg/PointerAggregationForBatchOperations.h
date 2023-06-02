@@ -21,7 +21,7 @@
 #include <cstdint>
 
 // local includes
-
+namespace nnrt::core::linalg::internal {
 template<typename scalar_t>
 inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC(
 		const scalar_t* A_array[], const scalar_t* B_array[], scalar_t* C_array[],
@@ -38,8 +38,8 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC(
 
 #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
     default(none) \
-	firstprivate(batch_size, A_block_stride, B_block_stride, C_block_stride) \
-	shared(A_data, B_data, C_data, A_array, B_array, C_array)
+    firstprivate(batch_size, A_block_stride, B_block_stride, C_block_stride) \
+    shared(A_data, B_data, C_data, A_array, B_array, C_array)
 	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
 		A_array[i_matrix] = A_data + i_matrix * A_block_stride;
 		B_array[i_matrix] = B_data + i_matrix * B_block_stride;
@@ -63,10 +63,33 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB(
 
 #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
     default(none) \
-	firstprivate(batch_size, A_block_stride, B_block_stride) \
-	shared(A_data, B_data, A_array, B_array)
+    firstprivate(batch_size, A_block_stride, B_block_stride) \
+    shared(A_data, B_data, A_array, B_array)
 	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
 		A_array[i_matrix] = A_data + i_matrix * A_block_stride;
 		B_array[i_matrix] = B_data + i_matrix * B_block_stride;
 	}
 }
+
+
+template<typename scalar_t>
+inline void GetMatrixPointersFromContiguousArrayOfMatrices(
+		scalar_t* A_array[],
+		void* A,
+		const int64_t A_row_count,
+		const int64_t A_column_count,
+		const int64_t batch_size
+) {
+	auto A_data = static_cast<scalar_t*>(A);
+
+	auto A_block_stride = A_row_count * A_column_count;
+
+#pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
+    default(none) \
+    firstprivate(batch_size, A_block_stride) \
+    shared(A_data, A_array)
+	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
+		A_array[i_matrix] = A_data + i_matrix * A_block_stride;
+	}
+}
+} // namespace nnrt::core::linalg::internal

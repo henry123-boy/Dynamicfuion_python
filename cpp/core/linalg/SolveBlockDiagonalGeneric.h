@@ -25,11 +25,11 @@ namespace nnrt::core::linalg{
 
 template<typename FSolveOnCPU, typename FSolveOnCUDA>
 void SolveBlockDiagonal_Generic(
-        open3d::core::Tensor &X,
-        const open3d::core::Tensor &A_blocks,
-        const open3d::core::Tensor &B,
-        FSolveOnCPU &&solve_on_cpu,
-        FSolveOnCUDA &&solve_on_cuda
+        open3d::core::Tensor& X,
+        const open3d::core::Tensor& A_blocks,
+        const open3d::core::Tensor& B,
+        FSolveOnCPU&& solve_on_cpu,
+        FSolveOnCUDA&& solve_on_cuda
 ) {
     o3c::AssertTensorDtypes(A_blocks, { o3c::Float32, o3c::Float64 });
     const o3c::Device device = A_blocks.GetDevice();

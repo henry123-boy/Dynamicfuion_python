@@ -13,31 +13,9 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
 
 // local includes
-
-namespace nnrt::alignment::functional {
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-ComputeArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& edges,
-		const open3d::core::Tensor& condensed_edge_jacobians,
-		int64_t first_layer_node_count,
-		int64_t node_count
-);
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-FactorArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& arap_hessian_blocks_upper,
-		const open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		const open3d::core::Tensor& arap_hessian_block_breadboard,
-		const open3d::core::Tensor& arap_hessian_blocks_diagonal,
-		int64_t first_layer_node_count
-);
-
-} // namespace nnrt::alignment::functional
+#include "InvertBlocks.h"

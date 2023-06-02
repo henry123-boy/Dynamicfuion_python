@@ -15,29 +15,33 @@
 //  ================================================================
 #pragma once
 // stdlib includes
-
 // third-party includes
 #include <open3d/core/Tensor.h>
-
 // local includes
 
-namespace nnrt::alignment::functional {
+namespace nnrt::core::linalg {
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-ComputeArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& edges,
-		const open3d::core::Tensor& condensed_edge_jacobians,
-		int64_t first_layer_node_count,
-		int64_t node_count
+void FactorizeBlocksCholesky(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks);
+
+namespace internal{
+
+void FactorizeBlocksCholeskyCPU(
+		void* block_data,
+		int64_t block_size,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
 );
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-FactorArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& arap_hessian_blocks_upper,
-		const open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		const open3d::core::Tensor& arap_hessian_block_breadboard,
-		const open3d::core::Tensor& arap_hessian_blocks_diagonal,
-		int64_t first_layer_node_count
+
+void FactorizeBlocksCholeskyCUDA(
+		void* block_data,
+		int64_t block_size,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
 );
 
-} // namespace nnrt::alignment::functional
+} // internal
+
+} // nnrt::core::linalg
