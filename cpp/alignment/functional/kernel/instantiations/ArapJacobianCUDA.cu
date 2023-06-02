@@ -18,15 +18,14 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h"
+#include "alignment/functional/kernel/ArapJacobianImpl.h"
 
 namespace nnrt::alignment::functional::kernel {
 
 template
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+void ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_indices_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -38,8 +37,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 template
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edges_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_coverage_weights,
 		const open3d::core::Tensor& node_rotations,

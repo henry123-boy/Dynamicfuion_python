@@ -24,8 +24,8 @@
 
 namespace nnrt::alignment::functional {
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(
+open3d::core::Tensor
+ComputeDenseArapEdgeJacobians(
 		geometry::HierarchicalGraphWarpField& warp_field,
 		float regularization_weight
 );

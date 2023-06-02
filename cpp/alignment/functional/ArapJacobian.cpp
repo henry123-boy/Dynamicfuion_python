@@ -16,28 +16,30 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/HierarchicalRegularizationEdgeJacobian.h"
-#include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
+#include "alignment/functional/ArapJacobian.h"
+#include "alignment/functional/kernel/ArapJacobian.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 namespace nnrt::alignment::functional {
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::HierarchicalGraphWarpField& warp_field, float regularization_weight) {
+open3d::core::Tensor
+ComputeDenseArapEdgeJacobians(
+		geometry::HierarchicalGraphWarpField& warp_field,
+		float regularization_weight
+) {
 	const o3c::Tensor& node_positions = warp_field.GetNodePositions(true);
 	const o3c::Tensor& node_rotations = warp_field.GetNodeRotations(true);
 	const o3c::Tensor& edges = warp_field.GetEdges();
 
-	o3c::Tensor edge_jacobians, node_edge_indices_jagged, node_edge_counts;
+	o3c::Tensor edge_jacobians;
 
 	switch(warp_field.warp_node_coverage_computation_method){
 		case geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE:{
 			const o3c::Tensor& edge_layer_indices = warp_field.GetEdgeLayerIndices();
 			const o3c::Tensor& layer_decimation_radii = warp_field.GetLayerDecimationRadii();
-			kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+			kernel::ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 					edge_jacobians,
-					node_edge_indices_jagged,
-					node_edge_counts,
+
 					node_positions,
 					node_rotations,
 					edges,
@@ -52,8 +54,7 @@ HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::Hierarchica
 			const o3c::Tensor& node_coverage_weights = warp_field.GetNodeCoverageWeights(true);
 			kernel::HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
 					edge_jacobians,
-					node_edge_indices_jagged,
-					node_edge_counts,
+
 					node_positions,
 					node_coverage_weights,
 					node_rotations,
@@ -67,6 +68,6 @@ HierarchicalRegularizationEdgeJacobiansAndNodeAssociations(geometry::Hierarchica
 			break;
 	}
 
-	return std::make_tuple(edge_jacobians, node_edge_indices_jagged, node_edge_counts);
+	return edge_jacobians;
 }
 } // namespace nnrt::alignment::functional

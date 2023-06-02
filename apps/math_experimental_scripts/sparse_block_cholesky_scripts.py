@@ -106,6 +106,7 @@ def compute_sparse_H(edges: np.ndarray, edge_jacobians: np.ndarray,
                      node_count: int, layer_node_counts: np.ndarray) \
         -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]], List[Tuple[int, int, np.ndarray]]]:
     node_jacobians = {}
+    # associate jacobians with their node / block column
     for i_edge, (J_edge_condensed, edge) in enumerate(zip(edge_jacobians, edges)):
         i = edge[0]
         j = edge[1]
@@ -370,26 +371,28 @@ def main():
     edge_jacobians = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/edge_jacobians.npy")
     layer_node_counts = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/layer_node_counts.npy")
     node_count = 249
+    print(f"Edge count: {len(edges)}")
     H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts)
+    print(f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
     H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)
-    print("H reconstructed successfully: ", np.allclose(H_gt, H))
+    print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ", np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
     U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts)
     U = sparse_U_to_dense(U_diag, U_upper)
     H_aug = H + np.eye(H.shape[0]) * lm_factor
     U_gt = scipy.linalg.cholesky(H_aug, lower=False)
-    print("H factorized successfully: ", np.allclose(U, U_gt))
+    print("Block-sparse H factorized successfully: ", np.allclose(U, U_gt))
 
     dummy_negJr = np.random.rand(node_count * 6)
 
     y_gt = scipy.linalg.solve_triangular(U_gt.T, dummy_negJr, lower=True)
     y = solve_triangular_sparse_forward_substitution(U_diag, U_upper, dummy_negJr)
-    print("Uy=b forward-substitution finished successfully: ", np.allclose(y_gt, y))
+    print("Uy=b block-sparse forward-substitution finished successfully: ", np.allclose(y_gt, y))
 
     delta = solve_triangular_sparse_back_substitution(U_diag, U_upper, y)
     delta_gt = scipy.linalg.solve(H_aug, dummy_negJr)
-    print("Lx=y back-substitution finished successfully: ", np.allclose(delta, delta_gt))
+    print("Lx=y block-sparse back-substitution finished successfully: ", np.allclose(delta, delta_gt))
 
     return 0
 

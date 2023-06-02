@@ -23,10 +23,9 @@
 
 namespace nnrt::alignment::functional::kernel {
 
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+void ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_indices_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -36,10 +35,9 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 );
 
 template <open3d::core::Device::DeviceType TDeviceType>
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+void ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_indices_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -50,8 +48,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edges_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_coverage_weights,
 		const open3d::core::Tensor& node_rotations,
@@ -62,8 +59,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 template <open3d::core::Device::DeviceType TDeviceType>
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edges_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_coverage_weights,
 		const open3d::core::Tensor& node_rotations,

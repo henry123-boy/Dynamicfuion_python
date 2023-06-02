@@ -19,15 +19,14 @@
 #include <open3d/core/Tensor.h>
 
 // local includes
-#include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
+#include "alignment/functional/kernel/ArapJacobian.h"
 #include "core/DeviceSelection.h"
 
 namespace nnrt::alignment::functional::kernel {
 
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+void ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_indices_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -38,10 +37,9 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 	core::ExecuteOnDevice(
 			node_positions.GetDevice(),
 			[&] {
-				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
+				ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
 						edge_jacobians,
-						node_edge_indices_jagged,
-						node_edge_counts,
+
 						node_positions,
 						node_rotations,
 						edges,
@@ -52,10 +50,9 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 			},
 			[&] {
 				NNRT_IF_CUDA (
-						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+						ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 								edge_jacobians,
-								node_edge_indices_jagged,
-								node_edge_counts,
+
 								node_positions,
 								node_rotations,
 								edges, edge_layer_indices,
@@ -69,8 +66,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
 		open3d::core::Tensor&       edge_jacobians,
-		open3d::core::Tensor&       node_edges_jagged,
-		open3d::core::Tensor&       node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_coverage_weights,
 		const open3d::core::Tensor& node_rotations,
@@ -82,8 +78,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 			[&] {
 				HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight<open3d::core::Device::DeviceType::CPU>(
 						edge_jacobians,
-						node_edges_jagged,
-						node_edge_counts,
+
 						node_positions,
 						node_coverage_weights,
 						node_rotations,
@@ -95,8 +90,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 				NNRT_IF_CUDA (
 						HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
 								edge_jacobians,
-								node_edges_jagged,
-								node_edge_counts,
+
 								node_positions,
 								node_coverage_weights,
 								node_rotations,

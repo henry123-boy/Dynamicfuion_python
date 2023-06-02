@@ -23,7 +23,7 @@
 #include <Eigen/Dense>
 
 // local includes
-#include "alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h"
+#include "alignment/functional/kernel/ArapJacobian.h"
 #include "core/platform_independence/AtomicCounterArray.h"
 #include "core/platform_independence/Qualifiers.h"
 
@@ -31,13 +31,10 @@ namespace o3c = open3d::core;
 
 namespace nnrt::alignment::functional::kernel {
 
-#define MAX_EDGES_PER_NODE 100
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
+void ArapEdgeJacobiansAndNodeAssociations_FixedCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edge_indices_jagged,
-		open3d::core::Tensor& node_edge_counts,
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
@@ -82,10 +79,6 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 	// === prepare outputs
 	edge_jacobians = o3c::Tensor({edge_count, 5}, o3c::Float32, device);
 	auto edge_jacobian_data = edge_jacobians.GetDataPtr<float>();
-	node_edge_indices_jagged = o3c::Tensor({node_count, MAX_EDGES_PER_NODE}, o3c::Int32, device);
-	auto node_edge_data = node_edge_indices_jagged.GetDataPtr<int32_t>();
-
-	core::AtomicCounterArray<TDeviceType> node_edge_counters(node_count);
 
 	// jacobians of edges ij w.r.t translations of nodes i & j.
 	o3c::ParallelFor(
@@ -93,24 +86,13 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				int64_t i_edge = workload_idx / 2;
 				int64_t i_node_in_edge = workload_idx % 2;
-				int64_t node_index = edge_data[workload_idx];
 				int8_t edge_layer_index = edge_layer_index_data[i_edge];
 				float edge_weight = layer_decimation_radii_data[edge_layer_index];
-				int64_t i_jacobian_address;
-				int i_edge_for_node = node_edge_counters.FetchAdd(node_index, 1);
-				if (i_edge_for_node > MAX_EDGES_PER_NODE) {
-					printf("Warning: too many edges for node %li in hierarchy, %i. The allowed maximum is %i. Jacobians will be incomplete.\n",
-					       node_index, i_edge_for_node, MAX_EDGES_PER_NODE);
-				} else {
-					node_edge_data[node_index * MAX_EDGES_PER_NODE + i_edge_for_node] = static_cast<int32_t>(i_edge);
-				}
 				if (i_node_in_edge == 0) { // edge "i"
 					// don't store weight * identity explicitly -- just store the weight to reproduce the full thing later.
-					i_jacobian_address = i_edge * 5 + 3;
-					edge_jacobian_data[i_jacobian_address] = regularization_weight * edge_weight;
+					edge_jacobian_data[i_edge * 5 + 3] = regularization_weight * edge_weight;
 				} else { // edge "j"
-					i_jacobian_address = i_edge * 5 + 4;
-					edge_jacobian_data[i_jacobian_address] = -regularization_weight * edge_weight;
+					edge_jacobian_data[i_edge * 5 + 4] = -regularization_weight * edge_weight;
 				}
 
 			}
@@ -119,7 +101,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 	o3c::ParallelFor(
 			device, edge_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_edge) {
-				Eigen::Map<Eigen::Vector3f> edge_rotation_jacobian(edge_jacobian_data + i_edge * 5);
+				Eigen::Map<Eigen::Vector3f> dense_edge_rotation_jacobian(edge_jacobian_data + i_edge * 5);
 				int32_t i_node = edge_data[i_edge * 2];
 				int32_t j_node = edge_data[i_edge * 2 + 1];
 				int8_t edge_layer_index = edge_layer_index_data[i_edge];
@@ -130,24 +112,21 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_FixedCoverageWei
 				Eigen::Map<const Eigen::Vector3f> node_i_position(node_position_data + (i_node * 3));
 				Eigen::Map<const Eigen::Vector3f> node_j_position(node_position_data + (j_node * 3));
 
-				edge_rotation_jacobian = -regularization_weight * edge_weight * (node_rotation * (node_i_position - node_j_position));
+				dense_edge_rotation_jacobian = -regularization_weight * edge_weight * (node_rotation * (node_i_position - node_j_position));
 			}
 	);
-
-	node_edge_counts = node_edge_counters.AsTensor(true);
 }
 
-template <open3d::core::Device::DeviceType TDeviceType>
+template<open3d::core::Device::DeviceType TDeviceType>
 void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverageWeight(
 		open3d::core::Tensor& edge_jacobians,
-		open3d::core::Tensor& node_edges_jagged,
-		open3d::core::Tensor& node_edge_counts,
+
 		const open3d::core::Tensor& node_positions,
 		const open3d::core::Tensor& node_coverage_weights,
 		const open3d::core::Tensor& node_rotations,
 		const open3d::core::Tensor& edges,
 		float regularization_weight
-){
+) {
 	// === counters & checks
 	o3c::Device device = node_positions.GetDevice();
 
@@ -179,10 +158,6 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 	// === prepare outputs
 	edge_jacobians = o3c::Tensor({edge_count, 5}, o3c::Float32, device);
 	auto edge_jacobian_data = edge_jacobians.GetDataPtr<float>();
-	node_edges_jagged = o3c::Tensor({node_count, MAX_EDGES_PER_NODE}, o3c::Int32, device);
-	auto node_edge_data = node_edges_jagged.GetDataPtr<int32_t>();
-
-	core::AtomicCounterArray<TDeviceType> node_edge_counters(node_count);
 
 	// jacobians of edges ij w.r.t translations of nodes i & j.
 	o3c::ParallelFor(
@@ -190,7 +165,6 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				int64_t i_edge = workload_idx / 2;
 				int64_t i_node_in_edge = workload_idx % 2;
-				int64_t node_index = edge_data[workload_idx];
 
 				int64_t node_i = edge_data[i_edge * 2];
 				int64_t node_j = edge_data[i_edge * 2 + 1];
@@ -199,13 +173,6 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 				float edge_weight = fmaxf(node_i_weight, node_j_weight);
 
 				int64_t i_jacobian_address;
-				int i_edge_for_node = node_edge_counters.FetchAdd(node_index, 1);
-				if (i_edge_for_node > MAX_EDGES_PER_NODE) {
-					printf("Warning: too many edges for node %li in hierarchy, %i. The allowed maximum is %i. Jacobians will be incomplete.\n",
-					       node_index, i_edge_for_node, MAX_EDGES_PER_NODE);
-				} else {
-					node_edge_data[node_index * MAX_EDGES_PER_NODE + i_edge_for_node] = static_cast<int32_t>(i_edge);
-				}
 				if (i_node_in_edge == 0) { // edge "i"
 					// don't store weight * identity explicitly -- just store the weight to reproduce the full thing later.
 					i_jacobian_address = i_edge * 5 + 3;
@@ -225,6 +192,7 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 
 				int64_t node_i = edge_data[i_edge * 2];
 				int64_t node_j = edge_data[i_edge * 2 + 1];
+
 				float node_i_weight = node_weight_data[node_i];
 				float node_j_weight = node_weight_data[node_j];
 				float edge_weight = fmaxf(node_i_weight, node_j_weight);
@@ -238,8 +206,6 @@ void HierarchicalRegularizationEdgeJacobiansAndNodeAssociations_VariableCoverage
 				edge_rotation_jacobian = -regularization_weight * edge_weight * (node_rotation * (node_i_position - node_j_position));
 			}
 	);
-
-	node_edge_counts = node_edge_counters.AsTensor(true);
 }
 
 } // namespace nnrt::alignment::functional::kernel

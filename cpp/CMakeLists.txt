@@ -389,14 +389,14 @@ set(
     alignment/functional/kernel/instantiations/AssociateFacesWithAnchorsCUDA.cu
     alignment/functional/kernel/AssociateFacesWithAnchorsImpl.h
 
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.cpp
-    alignment/functional/HierarchicalRegularizationEdgeJacobian.h
+    alignment/functional/ArapJacobian.cpp
+    alignment/functional/ArapJacobian.h
 
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.cpp
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobian.h
-    alignment/functional/kernel/HierarchicalRegularizationEdgeJacobianImpl.h
-    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCPU.cpp
-    alignment/functional/kernel/instantiations/HierarchicalRegularizationEdgeJacobianCUDA.cu
+    alignment/functional/kernel/ArapJacobian.cpp
+    alignment/functional/kernel/ArapJacobian.h
+    alignment/functional/kernel/ArapJacobianImpl.h
+    alignment/functional/kernel/instantiations/ArapJacobianCPU.cpp
+    alignment/functional/kernel/instantiations/ArapJacobianCUDA.cu
 
     geometry/functional/ComputeDistanceMatrix.cpp
     geometry/functional/ComputeDistanceMatrix.h
@@ -419,7 +419,7 @@ set(
     geometry/PlanarGraphWarpField.cpp
     geometry/PlanarGraphWarpField.h
     core/platform_independence/AtomicKeyIndexArray.cuh
-    geometry/WarpNodeCoverageComputationMethod.h)
+    geometry/WarpNodeCoverageComputationMethod.h alignment/functional/ArapHessian.cpp alignment/functional/ArapHessian.h alignment/functional/kernel/ArapHessian.cpp alignment/functional/kernel/ArapHessian.h alignment/functional/kernel/ArapHessianImpl.h alignment/functional/kernel/instantiations/ArapHessianCPU.cpp alignment/functional/kernel/instantiations/ArapHessianCUDA.cu)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

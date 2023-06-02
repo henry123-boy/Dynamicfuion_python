@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 12/6/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/2/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -17,21 +17,18 @@
 // stdlib includes
 
 // third-party includes
-#include <Eigen/Dense>
 #include <open3d/core/Tensor.h>
-#include <open3d/core/Dispatch.h>
 
-namespace utility = open3d::utility;
+// local includes
 
-namespace nnrt::core::kernel {
+namespace nnrt::alignment::functional {
 
-typedef Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Matrix3f;
-typedef Eigen::Matrix<float, 2, 2, Eigen::RowMajor> Matrix2f;
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+ArapSparseHessianApproximation(
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& condensed_edge_jacobians,
+		int64_t first_layer_node_count,
+		int64_t node_count
+);
 
-typedef Eigen::Matrix<float, 3, 2, Eigen::RowMajor> Matrix3x2f;
-typedef Eigen::Matrix<float, 2, 3, Eigen::RowMajor> Matrix2x3f;
-typedef Eigen::Matrix<float, 3, 6, Eigen::RowMajor> Matrix3x6f;
-typedef Eigen::Matrix<float, 3, 9, Eigen::RowMajor> Matrix3x9f;
-typedef Eigen::Matrix<float, 6, 6, Eigen::RowMajor> Matrix6f;
-
-} // nnrt::core::kernel
+} // namespace nnrt::alignment::functional
