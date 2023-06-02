@@ -32,7 +32,7 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians<open3d::core::Device::Devi
 );
 
 template
-void ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
+void ComputeDepthHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& workload_index,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -41,7 +41,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device:
 );
 
 template
-void ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
+void ComputeNegativeDepthGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -54,9 +54,21 @@ void ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceTyp
 
 
 template
-void PreconditionBlocks<open3d::core::Device::DeviceType::CUDA>(
+void PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(
 		open3d::core::Tensor & blocks,
 		float dampening_factor
+);
+
+template
+void ComputeEdgeResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layer_indices,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
 );
 
 } // namespace nnrt::alignment::kernel

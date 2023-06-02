@@ -47,6 +47,8 @@ namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
 
+#define DEBUG_HANDPICKED_DATA_PIXEL_REGION
+
 namespace nnrt::alignment {
 
 DeformableMeshToImageFitter::DeformableMeshToImageFitter(
@@ -130,6 +132,21 @@ void DeformableMeshToImageFitter::FitToImage(
 						intrinsic_matrix
 				);
 
+		o3c::Tensor edge_residuals;
+		if(use_regularization_term){
+
+		}
+
+#ifdef DEBUG_HANDPICKED_DATA_PIXEL_REGION
+		int region_width = 10;
+		int region_height = 9;
+		int pixel_x_start = 45;
+		int pixel_x_end = pixel_x_start + region_width;
+		int pixel_y_start = 22;
+		int pixel_y_end = pixel_y_start + region_height;
+		o3c::Tensor region_depth_residuals = depth_residuals.Reshape(rendering_image_size).Slice(0, pixel_y_start, pixel_y_end).Contiguous().Slice(1, pixel_x_start, pixel_x_end).Contiguous();
+#endif
+
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
 		o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
 
@@ -169,21 +186,28 @@ void DeformableMeshToImageFitter::FitToImage(
 						face_node_anchors, face_node_anchor_counts, warp_field.node_positions.GetLength(),
 						use_tukey_penalty_for_data_term, tukey_penalty_cutoff_cm, current_mode
 				);
+#ifdef DEBUG_HANDPICKED_DATA_PIXEL_REGION
+		int jacobian_stride = current_mode == IterationMode::ALL ? 6 : 3;
+		int max_face_anchor_count = 3 * static_cast<int>(warped_vertex_position_jacobians.GetShape(1));
+		o3c::Tensor region_pixel_jacobians =
+				pixel_jacobians.Reshape({rendering_image_size[0], rendering_image_size[1],  max_face_anchor_count, jacobian_stride})
+				.Slice(0, pixel_y_start, pixel_y_end).Contiguous().Slice(1, pixel_x_start, pixel_x_end).Contiguous();
+#endif
 
 
 		// compute (J_d^T)J_d, i.e. hessian approximation for the data term
-		open3d::core::Tensor hessian_approximation_blocks_data;
-		kernel::ComputeHessianApproximationBlocks_UnorderedNodePixels(
-				hessian_approximation_blocks_data, pixel_jacobians,
+		open3d::core::Tensor hessian_approximation_blocks_depth;
+		kernel::ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
+				hessian_approximation_blocks_depth, pixel_jacobians,
 				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode
 		);
 
 
 		// compute -(J_d^T)r_d (negative gradient for the data term)
-		o3c::Tensor negative_gradient_data;
+		o3c::Tensor negative_gradient_depth;
 		int max_anchor_count_per_vertex = static_cast<int32_t>(warp_anchors.GetShape(1));
-		kernel::ComputeNegativeGradient_UnorderedNodePixels(
-				negative_gradient_data, depth_residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
+		kernel::ComputeNegativeDepthGradient_UnorderedNodePixels(
+				negative_gradient_depth, depth_residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
 		);
 
@@ -196,11 +220,11 @@ void DeformableMeshToImageFitter::FitToImage(
 
 
 		if (preconditioning_dampening_factor > 0.0) {
-			kernel::PreconditionBlocks(hessian_approximation_blocks_data, preconditioning_dampening_factor);
+			kernel::PreconditionDiagonalBlocks(hessian_approximation_blocks_depth, preconditioning_dampening_factor);
 		}
 
 		open3d::core::Tensor motion_updates;
-		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks_data, negative_gradient_data);
+		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks_depth, negative_gradient_depth);
 
 
 		o3c::Tensor rotation_matrix_updates;

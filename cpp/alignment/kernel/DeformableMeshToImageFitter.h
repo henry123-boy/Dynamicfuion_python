@@ -58,7 +58,7 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 		const open3d::core::Tensor& pixel_jacobians
 );
 
-void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+void ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& workload_index,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -67,7 +67,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 );
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+void ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& workload_index,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -75,7 +75,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 		IterationMode mode
 );
 
-void ComputeNegativeGradient_UnorderedNodePixels(
+void ComputeNegativeDepthGradient_UnorderedNodePixels(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -87,7 +87,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 );
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeNegativeGradient_UnorderedNodePixels(
+void ComputeNegativeDepthGradient_UnorderedNodePixels(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -98,15 +98,40 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 		IterationMode mode
 );
 
-void PreconditionBlocks(
+//TODO: move this kernel function set to core::math::linalg
+void PreconditionDiagonalBlocks(
 		open3d::core::Tensor& blocks,
 		float dampening_factor
 );
 
 template<open3d::core::Device::DeviceType TDevice>
-void PreconditionBlocks(
+void PreconditionDiagonalBlocks(
 		open3d::core::Tensor& blocks,
 		float dampening_factor
 );
+
+void ComputeEdgeResiduals_FixedCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layer_indices,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
+);
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeEdgeResiduals_FixedCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layer_indices,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
+);
+
 
 } // namespace nnrt::alignment::kernel

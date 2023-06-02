@@ -15,12 +15,9 @@
 //  ================================================================
 #pragma once
 // stdlib includes
-
 // third-party includes
 #include <open3d/core/ParallelFor.h>
 #include <Eigen/Dense>
-
-
 // local includes
 #include "alignment/kernel/DeformableMeshToImageFitter.h"
 #include "core/platform_independence/Qualifiers.h"
@@ -29,6 +26,7 @@
 #include "core/platform_independence/AtomicCounterArray.h"
 #include "core/platform_independence/Atomics.h"
 #include "geometry/functional/kernel/Defines.h"
+
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -291,7 +289,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels_Generic(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+void ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -424,7 +422,7 @@ void ComputeNegativeGradient_UnorderedNodePixels_Generic(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void ComputeNegativeGradient_UnorderedNodePixels(
+void ComputeNegativeDepthGradient_UnorderedNodePixels(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -457,7 +455,7 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void PreconditionBlocks(
+void PreconditionDiagonalBlocks(
 		open3d::core::Tensor& blocks,
 		float dampening_factor
 ) {
@@ -478,6 +476,79 @@ void PreconditionBlocks(
 				int64_t i_block = workload_index / block_size;
 				int64_t i_position_in_block = workload_index % block_size;
 				block_data[i_block * (block_size_squared) + i_position_in_block * block_size + i_position_in_block] += dampening_factor;
+			}
+	);
+}
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeEdgeResiduals_FixedCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layer_indices,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& layer_decimation_radii,
+		float regularization_weight
+) {
+	// counts & checks
+	int64_t edge_count = edges.GetLength();
+	int64_t layer_count = layer_decimation_radii.GetLength();
+	int64_t node_count = node_positions.GetLength();
+
+	o3c::Device device = edges.GetDevice();
+
+	o3c::AssertTensorShape(edges, { edge_count, 2 });
+	o3c::AssertTensorDtype(edges, o3c::Int32);
+
+	o3c::AssertTensorShape(edge_layer_indices, { edge_count });
+	o3c::AssertTensorDtype(edge_layer_indices, o3c::Int8);
+	o3c::AssertTensorDevice(edge_layer_indices, device);
+
+	o3c::AssertTensorShape(node_positions, { node_count, 3 });
+	o3c::AssertTensorDtype(node_positions, o3c::Float32);
+	o3c::AssertTensorDevice(node_positions, device);
+
+	o3c::AssertTensorShape(node_translations, { node_count, 3 });
+	o3c::AssertTensorDtype(node_translations, o3c::Float32);
+	o3c::AssertTensorDevice(node_translations, device);
+
+	o3c::AssertTensorShape(node_rotations, { node_count, 3, 3 });
+	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
+	o3c::AssertTensorDevice(node_rotations, device);
+
+	o3c::AssertTensorShape(layer_decimation_radii, { layer_count });
+	o3c::AssertTensorDtype(node_rotations, o3c::Float32);
+	o3c::AssertTensorDevice(node_rotations, device);
+
+	// input / output prep
+	edge_residuals = o3c::Tensor({edge_count * 3}, o3c::Float32, device);
+	auto edge_residual_data = edge_residuals.GetDataPtr<float>();
+
+	auto edge_data = edges.GetDataPtr<int32_t>();
+	auto edge_layer_index_data = edge_layer_indices.GetDataPtr<int8_t>();
+	auto node_position_data = node_positions.GetDataPtr<float>();
+	auto node_translation_data = node_translations.GetDataPtr<float>();
+	auto node_rotation_data = node_rotations.GetDataPtr<float>();
+	auto layer_decimation_radius_data = layer_decimation_radii.GetDataPtr<float>();
+
+	// actual computation
+	o3c::ParallelFor(
+			device,
+			edge_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_edge) {
+				int32_t node_i = edge_data[i_edge * 2];
+				int32_t node_j = edge_data[i_edge * 2 + 1];
+				Eigen::Map<const Eigen::Vector3f> node_i_position(node_position_data + node_i * 3);
+				Eigen::Map<const Eigen::Vector3f> node_j_position(node_position_data + node_j * 3);
+				Eigen::Map<const Eigen::Vector3f> node_i_translation(node_translation_data + node_i * 3);
+				Eigen::Map<const Eigen::Vector3f> node_j_translation(node_translation_data + node_j * 3);
+				Eigen::Map<const core::kernel::Matrix3f> node_i_rotation(node_rotation_data + node_i * 9);
+				float edge_weight = layer_decimation_radius_data[edge_layer_index_data[node_j]];
+				Eigen::Map<Eigen::Vector3f> edge_residual(edge_residual_data + i_edge * 3);
+				edge_residual = regularization_weight * edge_weight *
+				                ((node_i_position + node_i_translation) - (node_j_position + node_j_translation) -
+				                 node_i_rotation * (node_i_position - node_j_position));
 			}
 	);
 }

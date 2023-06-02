@@ -50,7 +50,7 @@ void ConvertPixelVertexAnchorJacobiansToNodeJacobians(
 	);
 }
 
-void ComputeHessianApproximationBlocks_UnorderedNodePixels(
+void ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
 		open3d::core::Tensor& hessian_approximation_blocks,
 		const open3d::core::Tensor& pixel_jacobians,
 		const open3d::core::Tensor& node_pixel_jacobian_indices,
@@ -60,13 +60,13 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
-				ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
+				ComputeDepthHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 						hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts, mode
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ComputeHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
+						ComputeDepthHessianApproximationBlocks_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 								hessian_approximation_blocks, pixel_jacobians, node_pixel_jacobian_indices, node_pixel_jacobian_counts, mode
 						);
 				);
@@ -74,7 +74,7 @@ void ComputeHessianApproximationBlocks_UnorderedNodePixels(
 	);
 }
 
-void ComputeNegativeGradient_UnorderedNodePixels(
+void ComputeNegativeDepthGradient_UnorderedNodePixels(
 		open3d::core::Tensor& negative_gradient,
 		const open3d::core::Tensor& residuals,
 		const open3d::core::Tensor& residual_mask,
@@ -87,14 +87,14 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	core::ExecuteOnDevice(
 			pixel_jacobians.GetDevice(),
 			[&] {
-				ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
+				ComputeNegativeDepthGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CPU>(
 						negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 						node_pixel_jacobian_counts, max_vertex_anchor_count, mode
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						ComputeNegativeGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
+						ComputeNegativeDepthGradient_UnorderedNodePixels<open3d::core::Device::DeviceType::CUDA>(
 								negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 								node_pixel_jacobian_counts, max_vertex_anchor_count, mode
 						);
@@ -103,18 +103,59 @@ void ComputeNegativeGradient_UnorderedNodePixels(
 	);
 }
 
-void PreconditionBlocks(open3d::core::Tensor& blocks, float dampening_factor) {
+void PreconditionDiagonalBlocks(open3d::core::Tensor& blocks, float dampening_factor) {
 	core::ExecuteOnDevice(
 			blocks.GetDevice(),
 			[&] {
-				PreconditionBlocks<open3d::core::Device::DeviceType::CPU>(
+				PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(
 						blocks, dampening_factor
 				);
 			},
 			[&] {
 				NNRT_IF_CUDA(
-						PreconditionBlocks<open3d::core::Device::DeviceType::CUDA>(
+						PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(
 								blocks, dampening_factor
+						);
+				);
+			}
+	);
+}
+
+void ComputeEdgeResiduals_FixedCoverageWeight(
+		open3d::core::Tensor& edge_residuals,
+		const open3d::core::Tensor& edges,
+		const open3d::core::Tensor& edge_layers,
+		const open3d::core::Tensor& node_positions,
+		const open3d::core::Tensor& node_translations,
+		const open3d::core::Tensor& node_rotations,
+		const open3d::core::Tensor& layer_node_weights,
+		float regularization_weight
+) {
+	core::ExecuteOnDevice(
+			edges.GetDevice(),
+			[&] {
+				ComputeEdgeResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
+						edge_residuals,
+						edges,
+						edge_layers,
+						node_positions,
+						node_translations,
+						node_rotations,
+						layer_node_weights,
+						regularization_weight
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ComputeEdgeResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CUDA>(
+								edge_residuals,
+								edges,
+								edge_layers,
+								node_positions,
+								node_translations,
+								node_rotations,
+								layer_node_weights,
+								regularization_weight
 						);
 				);
 			}
