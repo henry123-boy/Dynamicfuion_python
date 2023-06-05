@@ -25,6 +25,7 @@ option(USE_SYSTEM_PYBIND11        "Use system pre-installed pybind11"        OFF
 option(USE_SYSTEM_CATCH2          "Use system pre-installed Catch2"          OFF)
 option(USE_SYSTEM_GLEW            "Use system pre-installed glew"            OFF)
 option(USE_SYSTEM_PNG             "Use system pre-installed png"             OFF)
+option(USE_SYSTEM_MAGMA           "Use system pre-installed MAGMA"           OFF)
 
 option(BUILD_CUDA_MODULE          "Build the CUDA module"                    ON)
 option(BUILD_CPP_TESTS            "Build C++ tests"                          OFF)

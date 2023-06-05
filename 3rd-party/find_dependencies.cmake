@@ -822,7 +822,24 @@ if (BUILD_CUDA_MODULE)
         add_library(NNRT::3rdparty_cublas ALIAS 3rdparty_cublas)
         list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_cublas)
     endif ()
+
+
+    # TODO create option in main cmake file to enable USE_SYSTEM_MAGMA
+    if (NOT USE_SYSTEM_MAGMA)
+        include(${NNRT_3RDPARTY_DIR}/magma/magma.cmake)
+        nnrt_import_3rdparty_library(3rdparty_magma
+            INCLUDE_DIRS ${MAGMA_INCLUDE_DIRS}
+            LIB_DIR ${MAGMA_LIB_DIR}
+            LIBRARIES ${MAGMA_LIBRARIES}
+            DEPENDS ext_magma
+            )
+    endif ()
+    # TODO not sure this needs to be happening like so if USE_SYSTEM_MAGMA=TRUE
+    list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_magma)
 endif ()
+
+
+
 
 
 # Backward

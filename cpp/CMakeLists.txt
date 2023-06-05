@@ -547,5 +547,3 @@ add_custom_target(install-python-stubs
 
 add_subdirectory(tests)
 
-
-
