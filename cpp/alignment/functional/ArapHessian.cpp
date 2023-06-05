@@ -59,7 +59,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> FactorArapBlockSparseHess
 		int64_t first_layer_node_count
 ) {
 	o3c::Tensor L_diag_upper_left;
-	core::linalg::FactorizeBlocksCholesky(L_diag_upper_left, arap_hessian_blocks_diagonal.Slice(0,0, first_layer_node_count));
+	core::linalg::FactorizeBlocksCholesky_LowerTriangular(L_diag_upper_left, arap_hessian_blocks_diagonal.Slice(0, 0, first_layer_node_count));
 
 
 }

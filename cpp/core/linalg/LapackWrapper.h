@@ -197,7 +197,6 @@ trtri_cpu<float>(
 		NNRT_CPU_LINALG_INT lda
 ) {
 	return LAPACKE_strtri(matrix_layout, uplo, diag, n, a, lda);
-	return -1;
 }
 
 template<>
@@ -211,7 +210,6 @@ trtri_cpu<double>(
 		NNRT_CPU_LINALG_INT lda
 ) {
 	return LAPACKE_dtrtri(matrix_layout, uplo, diag, n, a, lda);
-	return -1;
 }
 
 // --- CUDA (batched) ---

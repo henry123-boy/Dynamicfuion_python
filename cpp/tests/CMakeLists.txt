@@ -266,7 +266,7 @@ if (BUILD_CPP_TESTS)
         test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
         test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
     )
-    nnrt_add_test(test_solve_cholesky_block_diagonal)
+    nnrt_add_test(test_linalg_routines)
     nnrt_add_test(test_rodrigues)
     nnrt_add_test(test_mesh_to_adjacency_array_conversion)
     nnrt_add_test(test_sorting)

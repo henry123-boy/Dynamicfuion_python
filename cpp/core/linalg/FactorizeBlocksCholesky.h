@@ -21,7 +21,7 @@
 
 namespace nnrt::core::linalg {
 
-void FactorizeBlocksCholesky(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks);
+void FactorizeBlocksCholesky_LowerTriangular(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks);
 
 namespace internal{
 

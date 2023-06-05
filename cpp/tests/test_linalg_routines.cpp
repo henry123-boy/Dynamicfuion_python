@@ -23,10 +23,12 @@
 
 // code being tested
 #include "core/linalg/SolveBlockDiagonalCholesky.h"
+#include "core/linalg/FactorizeBlocksCholesky.h"
+#include "core/TensorManipulationRoutines.h"
 
 namespace o3c = open3d::core;
 
-void TestRodrigues(const o3c::Device& device) {
+void TestCholeskyBlockDiagonalSolver(const o3c::Device& device) {
 	o3c::Tensor A_blocks(std::vector<float>{
 			7.66466999, 7.42160096, 7.96971846, 5.41618416, 5.48901906, 6.29302529,
 			7.42160096, 11.28136639, 10.02191478, 7.6142696, 6.11965727, 8.29031205,
@@ -102,10 +104,86 @@ void TestRodrigues(const o3c::Device& device) {
 
 TEST_CASE("Test Solve Cholesky Block Diagonal - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestRodrigues(device);
+	TestCholeskyBlockDiagonalSolver(device);
 }
 
 TEST_CASE("Test Solve Cholesky Block Diagonal - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestRodrigues(device);
+	TestCholeskyBlockDiagonalSolver(device);
+}
+
+void TestBlockCholeskyFactorization(const o3c::Device& device) {
+	o3c::Tensor blocks(std::vector<float>{
+			7.66466999, 7.42160096, 7.96971846, 5.41618416, 5.48901906, 6.29302529,
+			7.42160096, 11.28136639, 10.02191478, 7.6142696, 6.11965727, 8.29031205,
+			7.96971846, 10.02191478, 12.84076044, 7.99068493, 7.71414652, 8.53580411,
+			5.41618416, 7.6142696, 7.99068493, 8.59449478, 5.25876695, 6.28306648,
+			5.48901906, 6.11965727, 7.71414652, 5.25876695, 6.5656741, 5.7888223,
+			6.29302529, 8.29031205, 8.53580411, 6.28306648, 5.7888223, 8.58118284,
+
+			11.02955047, 7.99694855, 8.60120371, 7.94013951, 8.92082018, 6.28801604,
+			7.99694855, 9.59915016, 8.38727439, 7.69725731, 8.57161899, 6.67614202,
+			8.60120371, 8.38727439, 10.27710871, 7.29562432, 9.01899879, 6.63105238,
+			7.94013951, 7.69725731, 7.29562432, 9.06157844, 8.29751497, 5.44649512,
+			8.92082018, 8.57161899, 9.01899879, 8.29751497, 11.55352825, 6.84668649,
+			6.28801604, 6.67614202, 6.63105238, 5.44649512, 6.84668649, 6.56172847,
+
+			9.76694034, 7.01864966, 6.48232141, 7.00072462, 7.35419513, 5.94435122,
+			7.01864966, 9.59364701, 6.5592933, 7.44435127, 7.66117909, 6.28624863,
+			6.48232141, 6.5592933, 10.01902388, 6.28058687, 7.16248224, 6.99130877,
+			7.00072462, 7.44435127, 6.28058687, 8.7593816, 8.17335754, 6.52806757,
+			7.35419513, 7.66117909, 7.16248224, 8.17335754, 11.15212005, 6.81745422,
+			5.94435122, 6.28624863, 6.99130877, 6.52806757, 6.81745422, 9.11671782
+	}, {3, 6, 6}, o3c::Float32, device);
+	o3c::Tensor factorized_blocks;
+	nnrt::core::linalg::FactorizeBlocksCholesky_LowerTriangular(factorized_blocks, blocks);
+	o3c::Tensor factorized_blocks_cpu = factorized_blocks.To(o3c::Device("CPU:0"));
+	auto factorized_blocks_data = factorized_blocks_cpu.ToFlatVector<float>();
+	for (int i_block = 0; i_block < 3; i_block++) {
+		for (int i_row = 0; i_row < 6; i_row++) {
+			for (int i_col = 0; i_col < 6; i_col++) {
+				if (i_col > i_row) {
+					factorized_blocks_data[i_block * 36 + i_row * 6 + i_col] = 0.0;
+				}
+			}
+		}
+	}
+	o3c::Tensor factorized_blocks_ut_zeroed(factorized_blocks_data, {3, 6, 6}, o3c::Float32, o3c::Device("CPU:0"));
+
+	o3c::Tensor factorized_blocks_gt(std::vector<float>{
+			2.76851404, 0., 0., 0., 0., 0.,
+			2.68071639, 2.02364177, 0., 0., 0., 0.,
+			2.87869895, 1.13900561, 1.80458278, 0., 0., 0.,
+			1.95635062, 1.171081, 0.56803857, 1.75302268, 0., 0.,
+			1.98265892, 0.39765487, 0.86099527, 0.24256751, 1.29478047, 0.,
+			2.27306967, 1.08559576, 0.41883431, 0.18648396, 0.34334677, 1.38120727,
+
+			3.3210767, 0., 0., 0., 0., 0.,
+			2.40793853, 1.94961078, 0., 0., 0., 0.,
+			2.58988409, 1.1032934, 1.53373818, 0., 0., 0.,
+			2.39083292, 0.99521331, 0.00367201, 1.5346118, 0., 0.,
+			2.6861229, 1.07898468, 0.56842502, 0.5210026, 1.60608635, 0.,
+			1.8933667, 1.08587386, 0.34517927, -0.1056762, 0.27898787, 1.26080075,
+
+			3.12521045, 0., 0., 0., 0., 0.,
+			2.24581665, 2.13306225, 0., 0., 0., 0.,
+			2.07420317, 0.89121322, 2.21865817, 0., 0., 0.,
+			2.24008102, 1.13149065, 0.28206431, 1.5432392, 0., 0.,
+			2.35318397, 1.11406001, 0.58081754, 0.95750445, 1.76616867, 0.,
+			1.9020643, 0.94444546, 0.99354588, 0.59512121, 0.08067067, 1.80529265
+	}, {3, 6, 6}, o3c::Float32, o3c::Device("CPU:0"));
+
+	REQUIRE(factorized_blocks_ut_zeroed.AllClose(factorized_blocks_gt, 1e-4));
+
+}
+
+
+TEST_CASE("Test Factorize Cholesky Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestBlockCholeskyFactorization(device);
+}
+
+TEST_CASE("Test Factorize Cholesky Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestBlockCholeskyFactorization(device);
 }

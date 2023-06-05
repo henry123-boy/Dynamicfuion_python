@@ -25,8 +25,11 @@ namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg {
 
-
-void FactorizeBlocksCholesky(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks) {
+/**
+ * \brief perform cholesky factorization on supplied blocks
+ * \details leaves entries in factorized blocks above diagonal same as in the original blocks
+ */
+void FactorizeBlocksCholesky_LowerTriangular(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks) {
 	o3c::AssertTensorDtypes(blocks, { o3c::Float32, o3c::Float64 });
 	const o3c::Device device = blocks.GetDevice();
 	const o3c::Dtype data_type = blocks.GetDtype();
