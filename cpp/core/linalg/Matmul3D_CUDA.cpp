@@ -44,7 +44,7 @@ void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void*
 		const scalar_t* B_array[batch_size];
 		scalar_t* C_array[batch_size];
 
-		GetMatrixPointersFromContiguousArrayOfMatrices_ABC<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
+		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
 
 		const scalar_t** A_array_device;
 		const scalar_t** B_array_device;

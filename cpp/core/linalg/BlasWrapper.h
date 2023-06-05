@@ -320,14 +320,8 @@ inline cublasStatus_t trsm_batched_cuda<double>(
 
 #endif
 // endregion
-// region ==================================== ?gels (Batched) =========================================================
 
 
-#ifdef BUILD_CUDA_MODULE
 
-#endif
-
-
-// endregion
 
 } // nnrt::core

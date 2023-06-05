@@ -788,8 +788,9 @@ else ()
     list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_blas)
 endif ()
 
-# cuBLAS
+
 if (BUILD_CUDA_MODULE)
+    # cuBLAS
     if (WIN32)
         # Nvidia does not provide static libraries for Windows. We don't release
         # pip wheels for Windows with CUDA support at the moment. For the pip
@@ -825,6 +826,7 @@ if (BUILD_CUDA_MODULE)
 
 
     # TODO create option in main cmake file to enable USE_SYSTEM_MAGMA
+    # MAGMA
     if (NOT USE_SYSTEM_MAGMA)
         include(${NNRT_3RDPARTY_DIR}/magma/magma.cmake)
         nnrt_import_3rdparty_library(3rdparty_magma

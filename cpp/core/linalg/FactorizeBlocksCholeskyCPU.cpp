@@ -40,7 +40,7 @@ void FactorizeBlocksCholeskyCPU_Generic(
 
 #pragma omp parallel for schedule(static) num_threads(utility::EstimateMaxThreads()) \
     default(none) \
-	firstprivate(block_count, block_stride, block_size, block_count) \
+	firstprivate(block_count, block_stride, block_size) \
 	shared(block_data_typed)
 	for (int64_t i_block = 0; i_block < block_count; i_block++) {
 		auto* A_block_data = block_data_typed + block_stride * i_block;

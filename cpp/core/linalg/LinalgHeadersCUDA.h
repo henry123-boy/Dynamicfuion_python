@@ -15,10 +15,9 @@
 //  ================================================================
 #pragma once
 
-#pragma once
-
 #ifdef BUILD_CUDA_MODULE
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include <cusolver_common.h>
+#include <magma_v2.h>
 #endif
