@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/2/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/5/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -17,35 +17,14 @@
 // stdlib includes
 
 // third-party includes
-#include <open3d/core/Tensor.h>
-#include "UpLoTriangular.h"
 
 // local includes
 
-namespace nnrt::core::linalg {
+namespace nnrt::core::linalg{
 
-open3d::core::Tensor InvertTriangularBlocks(const open3d::core::Tensor& blocks, nnrt::core::linalg::UpLoTriangular uplo);
+enum class UpLoTriangular{
+	LOWER = 0,
+	UPPER = 1
+};
 
-namespace internal {
-
-void InvertTriangularBlocksCPU(
-		void* A_block_data,
-		int64_t block_size,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device,
-		nnrt::core::linalg::UpLoTriangular uplo
-);
-
-void InvertTriangularBlocksCUDA(
-		const void* A_block_data,
-		void* inv_A_block_data,
-		int64_t block_size,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device,
-		nnrt::core::linalg::UpLoTriangular uplo
-);
-
-} // internal
-} // nnrt::core::linalg
+} // namespace nnrt::core::linalg

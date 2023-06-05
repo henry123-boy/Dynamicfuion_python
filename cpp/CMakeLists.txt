@@ -418,8 +418,26 @@ set(
     geometry/WarpField.h
     geometry/PlanarGraphWarpField.cpp
     geometry/PlanarGraphWarpField.h
+
     core/platform_independence/AtomicKeyIndexArray.cuh
-    geometry/WarpNodeCoverageComputationMethod.h alignment/functional/ArapHessian.cpp alignment/functional/ArapHessian.h alignment/functional/kernel/ArapHessian.cpp alignment/functional/kernel/ArapHessian.h alignment/functional/kernel/ArapHessianImpl.h alignment/functional/kernel/instantiations/ArapHessianCPU.cpp alignment/functional/kernel/instantiations/ArapHessianCUDA.cu core/linalg/FactorizeBlocksCholesky.cpp core/linalg/FactorizeBlocksCholesky.h core/linalg/FactorizeBlocksCholeskyCPU.cpp core/linalg/FactorizeBlocksCholeskyCUDA.cpp core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h)
+
+    geometry/WarpNodeCoverageComputationMethod.h
+    alignment/functional/ArapHessian.cpp
+    alignment/functional/ArapHessian.h
+    alignment/functional/kernel/ArapHessian.cpp
+    alignment/functional/kernel/ArapHessian.h
+    alignment/functional/kernel/ArapHessianImpl.h
+    alignment/functional/kernel/instantiations/ArapHessianCPU.cpp
+    alignment/functional/kernel/instantiations/ArapHessianCUDA.cu
+
+    core/linalg/FactorizeBlocksCholesky.cpp
+    core/linalg/FactorizeBlocksCholesky.h
+    core/linalg/FactorizeBlocksCholeskyCPU.cpp
+    core/linalg/FactorizeBlocksCholeskyCUDA.cpp
+    core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h
+    core/linalg/UpLoTriangular.h core/linalg/InvertBlocksCPU.cpp
+    core/linalg/InvertBlocksCUDA.cpp
+    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

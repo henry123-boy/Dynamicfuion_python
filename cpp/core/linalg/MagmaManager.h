@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/2/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/5/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -16,36 +16,32 @@
 #pragma once
 // stdlib includes
 
+# ifdef BUILD_CUDA_MODULE
 // third-party includes
-#include <open3d/core/Tensor.h>
-#include "UpLoTriangular.h"
-
-// local includes
+#include <magma_v2.h>
 
 namespace nnrt::core::linalg {
 
-open3d::core::Tensor InvertTriangularBlocks(const open3d::core::Tensor& blocks, nnrt::core::linalg::UpLoTriangular uplo);
+// local includes
+class MagmaManager {
+public:
 
-namespace internal {
+	MagmaManager(MagmaManager &other) = delete;
+	void operator=(const MagmaManager &) = delete;
 
-void InvertTriangularBlocksCPU(
-		void* A_block_data,
-		int64_t block_size,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device,
-		nnrt::core::linalg::UpLoTriangular uplo
-);
+	static MagmaManager& GetInstance();
+public:
+	void SetDevice(int device);
+	magma_queue_t  GetDefaultQueue() const;
 
-void InvertTriangularBlocksCUDA(
-		const void* A_block_data,
-		void* inv_A_block_data,
-		int64_t block_size,
-		int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device,
-		nnrt::core::linalg::UpLoTriangular uplo
-);
+protected:
+	MagmaManager();
+	virtual ~MagmaManager();
 
-} // internal
+private:
+	int current_device = -1;
+	magma_queue_t default_magma_queue;
+};
+
 } // nnrt::core::linalg
+#endif

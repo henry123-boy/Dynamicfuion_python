@@ -14,13 +14,15 @@
 //  limitations under the License.
 //  ================================================================
 // stdlib includes
-#ifdef BUILD_CUDA_MODULE
+
 
 // third-party includes
 #include <open3d/core/Dtype.h>
 #include <open3d/core/Device.h>
 #include <open3d/utility/Parallel.h>
 #include <open3d/core/CUDAUtils.h>
+
+#ifdef BUILD_CUDA_MODULE
 
 // local includes
 #include "core/linalg/FactorizeBlocksCholesky.h"
