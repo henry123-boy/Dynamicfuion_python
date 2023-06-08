@@ -34,7 +34,7 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t>
-inline void SolveCholeskyBlockDiagonalCUDA_Generic(
+inline void SolveBlockDiagonalCholeskyCUDA_Generic(
 		void* A_blocks_data,
 		void* B_data,
 		const int64_t A_and_B_block_row_count,
@@ -63,7 +63,7 @@ inline void SolveCholeskyBlockDiagonalCUDA_Generic(
 
 	NNRT_CUSOLVER_CHECK(
 			potrf_batched_cuda<scalar_t>(cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER, A_and_B_block_row_count, A_array_device,
-			                             A_and_B_block_row_count, info_array, block_count), "Batched portf failed in SolveCholeskyBlockDiagonalCUDA"
+			                             A_and_B_block_row_count, info_array, block_count), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 	);
 
 	cublasHandle_t cublas_handle = CuBLASContext::GetInstance()->GetHandle();
@@ -73,21 +73,21 @@ inline void SolveCholeskyBlockDiagonalCUDA_Generic(
 			                            cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, A_and_B_block_row_count,
 			                            B_column_count, &alpha, A_array_device, A_and_B_block_row_count, B_array_device,
 			                            A_and_B_block_row_count, block_count),
-			"Batched trsm failed in SolveCholeskyBlockDiagonalCUDA"
+			"Batched trsm failed in SolveBlockDiagonalCUDACholesky"
 	);
 	NNRT_CUBLAS_CHECK(
 			trsm_batched_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_LEFT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
 			                            cublasOperation_t::CUBLAS_OP_N, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, A_and_B_block_row_count,
 			                            B_column_count, &alpha, A_array_device, A_and_B_block_row_count, B_array_device,
 			                            A_and_B_block_row_count, block_count),
-			"Batched trsm failed in SolveCholeskyBlockDiagonalCUDA"
+			"Batched trsm failed in SolveBlockDiagonalCUDACholesky"
 	);
 	OPEN3D_CUDA_CHECK(cudaFree(info_array));
 	OPEN3D_CUDA_CHECK(cudaFree(A_array_device));
 	OPEN3D_CUDA_CHECK(cudaFree(B_array_device));
 }
 
-void SolveCholeskyBlockDiagonalCUDA(
+void SolveBlockDiagonalCUDACholesky(
 		void* A_blocks_data,
 		void* B_data,
 		const int64_t A_and_B_block_row_count,
@@ -97,7 +97,7 @@ void SolveCholeskyBlockDiagonalCUDA(
 		const open3d::core::Device& device
 ) {
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
-		SolveCholeskyBlockDiagonalCUDA_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
+		SolveBlockDiagonalCholeskyCUDA_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
 		                                                 B_column_count, block_count);
 	});
 }

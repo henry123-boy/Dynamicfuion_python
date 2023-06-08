@@ -48,7 +48,7 @@ void FactorizeBlocksCholeskyCPU_Generic(
 		NNRT_LAPACK_CHECK(
 				potrf_cpu<scalar_t>(
 						LAPACK_COL_MAJOR, 'U', block_size, A_block_data, block_size),
-				"potrf failed in SolveCholeskyBlockDiagonalCPU"
+				"potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);
 	}
 }

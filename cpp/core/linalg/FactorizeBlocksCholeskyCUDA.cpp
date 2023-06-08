@@ -56,7 +56,7 @@ void FactorizeBlocksCholeskyCUDA_Generic(
 
 	NNRT_CUSOLVER_CHECK(
 			potrf_batched_cuda<scalar_t>(cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER, block_size, A_array_device,
-			                             block_size, info_array, block_count), "Batched portf failed in SolveCholeskyBlockDiagonalCUDA"
+			                             block_size, info_array, block_count), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 	);
 
 	OPEN3D_CUDA_CHECK(cudaFree(info_array));

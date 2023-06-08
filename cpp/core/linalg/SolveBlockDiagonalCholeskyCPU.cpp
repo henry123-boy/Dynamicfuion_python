@@ -31,7 +31,7 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t>
-inline void SolveCholeskyBlockDiagonalCPU_Generic(
+inline void SolveBlockDiagonalCholeskyCPU_Generic(
 		void* A_blocks_data,
 		void* B_data,
 		const int64_t A_and_B_block_row_count,
@@ -53,7 +53,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 		// use Cholesky factorization to compute lower-triangular L, where L(L^T) = A
 		NNRT_LAPACK_CHECK(
 				potrf_cpu<scalar_t>(
-						LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_block_data, A_and_B_block_row_count), "potrf failed in SolveCholeskyBlockDiagonalCPU"
+						LAPACK_COL_MAJOR, 'U', A_and_B_block_row_count, A_block_data, A_and_B_block_row_count), "potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);
 		//solve LY = B
 		trsm_cpu<scalar_t>(
@@ -81,7 +81,7 @@ inline void SolveCholeskyBlockDiagonalCPU_Generic(
 
 }
 
-void SolveCholeskyBlockDiagonalCPU(
+void SolveBlockDiagonalCholeskyCPU(
 		void* A_blocks_data,
 		void* B_data,
 		const int64_t A_and_B_block_row_count,
@@ -91,7 +91,7 @@ void SolveCholeskyBlockDiagonalCPU(
 		const open3d::core::Device& device
 ) {
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
-		SolveCholeskyBlockDiagonalCPU_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
+		SolveBlockDiagonalCholeskyCPU_Generic<scalar_t>(A_blocks_data, B_data, A_and_B_block_row_count,
 		                                                B_column_count, block_count);
 	});
 }

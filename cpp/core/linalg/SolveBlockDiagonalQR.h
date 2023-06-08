@@ -21,7 +21,7 @@
 #include "core/platform_independence/Macros.h"
 
 namespace nnrt::core::linalg {
-void SolveQRBlockDiagonal(
+void SolveBlockDiagonalQR(
         open3d::core::Tensor &X,
         const open3d::core::Tensor &A_blocks,
         const open3d::core::Tensor &B,
@@ -29,7 +29,7 @@ void SolveQRBlockDiagonal(
 );
 
 namespace internal {
-void SolveQRBlockDiagonalCPU_FullRank(
+void SolveBlockDiagonalQR_CPU_FullRank(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -38,7 +38,7 @@ void SolveQRBlockDiagonalCPU_FullRank(
         open3d::core::Dtype data_type,
         const open3d::core::Device &device
 );
-void SolveQRBlockDiagonalCPU_General(
+void SolveBlockDiagonalQR_CPU_General(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -48,7 +48,7 @@ void SolveQRBlockDiagonalCPU_General(
         const open3d::core::Device &device
 );
 
-void SolveQRBlockDiagonalCUDA_FullRank(
+void SolveBlockDiagonalQR_CUDA_FullRank(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -57,7 +57,7 @@ void SolveQRBlockDiagonalCUDA_FullRank(
         open3d::core::Dtype data_type,
         const open3d::core::Device &device
 );
-void SolveQRBlockDiagonalCUDA_General(
+void SolveBlockDiagonalQR_CUDA_General(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,

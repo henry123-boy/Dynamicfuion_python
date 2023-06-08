@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/24/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
 //  ================================================================
 #pragma once
 // stdlib includes
+
 // third-party includes
-#include <open3d/core/Tensor.h>
+
 // local includes
-#include "core/platform_independence/Macros.h"
+#include <open3d/core/Tensor.h>
 
 namespace nnrt::core::linalg {
 
-void SolveBlockDiagonalCholesky(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B);
+void SolveCholeskyBlockSparse(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B);
 
 namespace internal{
 void SolveBlockDiagonalCholeskyCPU(
@@ -46,5 +47,6 @@ void SolveBlockDiagonalCUDACholesky(
 		const open3d::core::Device& device
 );
 
-}
+} // internal
+
 } // namespace nnrt::core::linalg

@@ -202,9 +202,9 @@ void DeformableMeshToImageFitter::FitToImage(
 
 
 		// compute (J_d^T)J_d, i.e. hessian approximation for the data term
-		open3d::core::Tensor hessian_approximation_blocks_depth;
+		open3d::core::Tensor hessian_blocks_depth_diagonal;
 		kernel::ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
-				hessian_approximation_blocks_depth, pixel_jacobians,
+				hessian_blocks_depth_diagonal, pixel_jacobians,
 				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode
 		);
 
@@ -217,6 +217,7 @@ void DeformableMeshToImageFitter::FitToImage(
 				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
 		);
 
+		open3d::core::Tensor motion_updates;
 		if (use_regularization_term) {
 			int64_t first_layer_node_count = warp_field.GetRegularizationLevel(0).node_indices.GetLength();
 
@@ -232,15 +233,19 @@ void DeformableMeshToImageFitter::FitToImage(
 					functional::ComputeArapBlockSparseHessianApproximation(warp_field.GetEdges(), edge_jacobians, first_layer_node_count,
 					                                                       warp_field.GetNodePositions(false).GetLength());
 
+			o3c::Tensor hessian_blocks_diagonal = arap_hessian_blocks_diagonal + hessian_blocks_depth_diagonal;
+			if (preconditioning_dampening_factor > 0.0) {
+				kernel::PreconditionDiagonalBlocks(hessian_blocks_diagonal, preconditioning_dampening_factor);
+			}
+
+
+
+		} else {
+			if (preconditioning_dampening_factor > 0.0) {
+				kernel::PreconditionDiagonalBlocks(hessian_blocks_depth_diagonal, preconditioning_dampening_factor);
+			}
+			core::linalg::SolveBlockDiagonalCholesky(motion_updates, hessian_blocks_depth_diagonal, negative_gradient_depth);
 		}
-
-
-		if (preconditioning_dampening_factor > 0.0) {
-			kernel::PreconditionDiagonalBlocks(hessian_approximation_blocks_depth, preconditioning_dampening_factor);
-		}
-
-		open3d::core::Tensor motion_updates;
-		core::linalg::SolveCholeskyBlockDiagonal(motion_updates, hessian_approximation_blocks_depth, negative_gradient_depth);
 
 
 		o3c::Tensor rotation_matrix_updates;

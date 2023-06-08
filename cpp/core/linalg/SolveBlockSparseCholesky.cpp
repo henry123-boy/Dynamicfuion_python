@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 1/24/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/8/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -18,24 +18,4 @@
 // third-party includes
 
 // local includes
-#include "core/linalg/SolveBlockDiagonalCholesky.h"
-#include "core/linalg/SolveBlockDiagonalGeneric.h"
-
-
-namespace o3c = open3d::core;
-namespace utility = open3d::utility;
-
-namespace nnrt::core::linalg {
-
-void SolveBlockDiagonalCholesky(open3d::core::Tensor &X,
-                                const open3d::core::Tensor &A_blocks,
-                                const open3d::core::Tensor &B) {
-	SolveBlockDiagonal_Generic(
-			X, A_blocks, B,
-			internal::SolveBlockDiagonalCholeskyCPU,
-			internal::SolveBlockDiagonalCUDACholesky
-	);
-}
-
-
-} // namespace nnrt::core::linalg
+#include "SolveBlockSparseCholesky.h"

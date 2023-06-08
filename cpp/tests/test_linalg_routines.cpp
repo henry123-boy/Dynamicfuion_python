@@ -98,7 +98,7 @@ void TestCholeskyBlockDiagonalSolver(const o3c::Device& device) {
 	}, {18, 2}, o3c::Float32, device);
 
 	o3c::Tensor X;
-	nnrt::core::linalg::SolveCholeskyBlockDiagonal(X, A_blocks, B);
+	nnrt::core::linalg::SolveBlockDiagonalCholesky(X, A_blocks, B);
 
 	REQUIRE(expected_X.AllClose(X));
 }

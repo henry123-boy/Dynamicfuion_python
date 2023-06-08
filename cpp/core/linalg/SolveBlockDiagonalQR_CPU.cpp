@@ -26,7 +26,7 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t, bool BAssumeFullRank>
-inline void SolveQRBlockDiagonalCPU_Generic(
+inline void SolveBlockDiagonalQR_CPU_Generic(
         void *A_blocks_data,
         void *B_data,
         const int64_t A_and_B_block_row_count,
@@ -72,7 +72,7 @@ inline void SolveQRBlockDiagonalCPU_Generic(
     }
 }
 
-void SolveQRBlockDiagonalCPU_FullRank(
+void SolveBlockDiagonalQR_CPU_FullRank(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -82,11 +82,11 @@ void SolveQRBlockDiagonalCPU_FullRank(
         const open3d::core::Device &device
 ) {
     DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
-        SolveQRBlockDiagonalCPU_Generic<scalar_t, true>(A_blocks_data, B_data, A_and_B_block_row_count,
-                                                  B_column_count, block_count);
+	    SolveBlockDiagonalQR_CPU_Generic<scalar_t, true>(A_blocks_data, B_data, A_and_B_block_row_count,
+	                                                     B_column_count, block_count);
     });
 }
-void SolveQRBlockDiagonalCPU_General(
+void SolveBlockDiagonalQR_CPU_General(
         void *A_blocks_data,
         void *B_data,
         int64_t A_and_B_block_row_count,
@@ -96,8 +96,8 @@ void SolveQRBlockDiagonalCPU_General(
         const open3d::core::Device &device
 ) {
     DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
-        SolveQRBlockDiagonalCPU_Generic<scalar_t, false>(A_blocks_data, B_data, A_and_B_block_row_count,
-                                                        B_column_count, block_count);
+	    SolveBlockDiagonalQR_CPU_Generic<scalar_t, false>(A_blocks_data, B_data, A_and_B_block_row_count,
+	                                                      B_column_count, block_count);
     });
 }
 } // namespace nnrt::core::linalg::internal

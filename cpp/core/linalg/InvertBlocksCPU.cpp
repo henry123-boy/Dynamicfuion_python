@@ -50,7 +50,7 @@ void InvertTriangularBlocksCPU_Generic(
 						// triangular upper/lower variant "flips" because matrix layout also flips (row->col major) during the computation
 						LAPACK_COL_MAJOR, uplo == UpLoTriangular::UPPER ? 'L' : 'U', 'N', block_size, A_block_data, block_size
 				),
-				"potrf failed in SolveCholeskyBlockDiagonalCPU"
+				"potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);
 	}
 }

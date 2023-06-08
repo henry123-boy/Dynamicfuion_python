@@ -437,7 +437,7 @@ set(
     core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h
     core/linalg/UpLoTriangular.h core/linalg/InvertBlocksCPU.cpp
     core/linalg/InvertBlocksCUDA.cu
-    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h core/CUDAUtils.h core/linalg/PointerAggregationForBatchOperationsCUDA.cuh)
+    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h core/CUDAUtils.h core/linalg/PointerAggregationForBatchOperationsCUDA.cuh core/linalg/SolveBlockSparseCholesky.cpp core/linalg/SolveBlockSparseCholesky.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
