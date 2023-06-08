@@ -24,7 +24,7 @@
 #include "core/linalg/LinalgUtils.h"
 #include "Matmul3D.h"
 #include "core/linalg/BlasWrapper.h"
-#include "core/linalg/PointerAggregationForBatchOperations.h"
+#include "core/linalg/PointerAggregationForBatchOperationsCPU.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -44,7 +44,7 @@ void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void*
 		const scalar_t* B_array[batch_size];
 		scalar_t* C_array[batch_size];
 
-		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
+		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
 
 		const scalar_t** A_array_device;
 		const scalar_t** B_array_device;

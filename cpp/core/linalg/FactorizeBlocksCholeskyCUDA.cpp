@@ -28,7 +28,7 @@
 #include "core/linalg/FactorizeBlocksCholesky.h"
 #include "core/linalg/LinalgUtils.h"
 #include "core/linalg/LapackWrapper.h"
-#include "core/linalg/PointerAggregationForBatchOperations.h"
+#include "core/linalg/PointerAggregationForBatchOperationsCPU.h"
 
 
 namespace utility = open3d::utility;
@@ -41,7 +41,7 @@ void FactorizeBlocksCholeskyCUDA_Generic(
 		int64_t block_count
 ) {
 	scalar_t* A_array[block_count];
-	GetMatrixPointersFromContiguousArrayOfMatrices(A_array, block_data, block_size, block_size, block_count);
+	GetMatrixPointersFromContiguousArrayOfMatrices_CPU(A_array, block_data, block_size, block_size, block_count);
 	scalar_t** A_array_device;
 
 	auto size_of_pointer_array = block_count * sizeof(scalar_t*);

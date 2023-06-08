@@ -121,7 +121,7 @@ set(
     core/linalg/SolveBlockDiagonalCholesky.h
     core/linalg/SolveBlockDiagonalCholesky.cpp
     core/linalg/SolveBlockDiagonalCholeskyCUDA.cpp
-    core/linalg/PointerAggregationForBatchOperations.h
+    core/linalg/PointerAggregationForBatchOperationsCPU.h
     core/linalg/Rodrigues.cpp
     core/linalg/Rodrigues.h
     core/linalg/RodriguesImpl.h
@@ -436,8 +436,8 @@ set(
     core/linalg/FactorizeBlocksCholeskyCUDA.cpp
     core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h
     core/linalg/UpLoTriangular.h core/linalg/InvertBlocksCPU.cpp
-    core/linalg/InvertBlocksCUDA.cpp
-    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h)
+    core/linalg/InvertBlocksCUDA.cu
+    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h core/CUDAUtils.h core/linalg/PointerAggregationForBatchOperationsCUDA.cuh)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

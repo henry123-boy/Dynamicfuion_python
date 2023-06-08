@@ -24,7 +24,7 @@
 namespace nnrt::core::linalg::internal {
 //TODO: come up with CUDA versions of these routines (for large batch sizes)
 template<typename scalar_t>
-inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC(
+inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU(
 		const scalar_t* A_array[], const scalar_t* B_array[], scalar_t* C_array[],
 		const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
 		const int64_t batch_size
@@ -49,7 +49,7 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_ABC(
 }
 
 template<typename scalar_t>
-inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB(
+inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB_CPU(
 		scalar_t* A_array[], scalar_t* B_array[],
 		void* A, void* B,
 		const int64_t A_and_B_row_count,
@@ -73,7 +73,7 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB(
 }
 
 template<typename scalar_t>
-inline void GetMatrixPointersFromContiguousArrayOfMatrices_constA_B(
+inline void GetMatrixPointersFromContiguousArrayOfMatrices_constA_B_CPU(
 		const scalar_t* A_array[], scalar_t* B_array[],
 		const void* A, void* B,
 		const int64_t A_and_B_row_count,
@@ -98,7 +98,7 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_constA_B(
 
 
 template<typename scalar_t>
-inline void GetMatrixPointersFromContiguousArrayOfMatrices(
+inline void GetMatrixPointersFromContiguousArrayOfMatrices_CPU(
 		scalar_t* A_array[],
 		void* A,
 		const int64_t A_row_count,

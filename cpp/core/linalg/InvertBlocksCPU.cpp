@@ -59,7 +59,7 @@ void InvertTriangularBlocksCPU(
 		void* block_data,
 		int64_t block_size,
 		int64_t block_count,
-		open3d::core::Dtype data_type,
+		const open3d::core::Dtype& data_type,
 		const open3d::core::Device& device,
 		nnrt::core::linalg::UpLoTriangular uplo
 ) {

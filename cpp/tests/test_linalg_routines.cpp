@@ -188,69 +188,99 @@ TEST_CASE("Test Factorize Cholesky Blocks - CUDA") {
 	TestBlockCholeskyFactorization(device);
 }
 
-void TestInvertTriangularBlocks(const o3c::Device& device) {
+void TestInvertTriangularBlocks_Lower(const o3c::Device& device) {
 	o3c::Tensor blocks(std::vector<float>{
-			2.76851404, 0., 0., 0., 0., 0.,
-			2.68071639, 2.02364177, 0., 0., 0., 0.,
-			2.87869895, 1.13900561, 1.80458278, 0., 0., 0.,
-			1.95635062, 1.171081, 0.56803857, 1.75302268, 0., 0.,
-			1.98265892, 0.39765487, 0.86099527, 0.24256751, 1.29478047, 0.,
-			2.27306967, 1.08559576, 0.41883431, 0.18648396, 0.34334677, 1.38120727,
+			1, 0, 0,
+			2, 3, 0,
+			4, 5, 6,
 
-			3.3210767, 0., 0., 0., 0., 0.,
-			2.40793853, 1.94961078, 0., 0., 0., 0.,
-			2.58988409, 1.1032934, 1.53373818, 0., 0., 0.,
-			2.39083292, 0.99521331, 0.00367201, 1.5346118, 0., 0.,
-			2.6861229, 1.07898468, 0.56842502, 0.5210026, 1.60608635, 0.,
-			1.8933667, 1.08587386, 0.34517927, -0.1056762, 0.27898787, 1.26080075,
+			7, 0, 0,
+			8, 9, 0,
+			10, 11, 12,
 
-			3.12521045, 0., 0., 0., 0., 0.,
-			2.24581665, 2.13306225, 0., 0., 0., 0.,
-			2.07420317, 0.89121322, 2.21865817, 0., 0., 0.,
-			2.24008102, 1.13149065, 0.28206431, 1.5432392, 0., 0.,
-			2.35318397, 1.11406001, 0.58081754, 0.95750445, 1.76616867, 0.,
-			1.9020643, 0.94444546, 0.99354588, 0.59512121, 0.08067067, 1.80529265
-	}, {3, 6, 6}, o3c::Float32, device);
+			13, 0, 0,
+			14, 15, 0,
+			16, 17, 18
+	}, {3, 3, 3}, o3c::Float32, device);
 
 	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertTriangularBlocks(blocks, nnrt::core::linalg::UpLoTriangular::LOWER);
-	
+
 	o3c::Tensor inverted_blocks_gt(std::vector<float>{
-			 0.3612046 ,  0.        ,  0.        , -0.        ,  0.        , -0.        ,
-			-0.4784874 ,  0.49415861, -0.        , -0.        ,  0.        , -0.        ,
-			-0.27419051, -0.31190003,  0.55414471,  0.        ,  0.        , -0.        ,
-			 0.00539379, -0.22904924, -0.17956161,  0.57044328,  0.        , -0.        ,
-			-0.22482908,  0.09854935, -0.33485226, -0.10686832,  0.7723317 , -0.        ,
-			-0.08005348, -0.28738963, -0.06055501, -0.0504527 , -0.19198972,  0.7240043 ,
+			1., -0., 0.,
+			-0.6666667, 0.33333334, -0.,
+			-0.11111111, -0.2777778, 0.16666667,
 
-			 0.30110717, -0.        ,  0.        , -0.        ,  0.        , -0.        ,
-			-0.37189349,  0.51292289,  0.        , -0.        ,  0.        , -0.        ,
-			-0.24093097, -0.3689707 ,  0.65200177, -0.        ,  0.        , -0.        ,
-			-0.22735318, -0.33175349, -0.00156011,  0.6516306 ,  0.        , -0.        ,
-			-0.09472759, -0.10638241, -0.23024995, -0.21138417,  0.62263153, -0.        ,
-			-0.06401524, -0.34500897, -0.12768506,  0.10139228, -0.13777486,  0.79314673,
+			0.14285715, 0., -0.,
+			-0.12698413, 0.11111111, 0.,
+			-0.0026455, -0.10185185, 0.08333334,
 
-			 0.31997845, -0.        ,  0.        , -0.        ,  0.        , -0.        ,
-			-0.33689262,  0.46880957,  0.        , -0.        ,  0.        , -0.        ,
-			-0.16381846, -0.18831621,  0.45072288, -0.        ,  0.        , -0.        ,
-			-0.18751433, -0.30930809, -0.08238051,  0.64798769,  0.        , -0.        ,
-			-0.05829292, -0.06609831, -0.10356205, -0.35129776,  0.56619734, -0.        ,
-			-0.0063067 , -0.03670113, -0.21627133, -0.1979135 , -0.02530089,  0.55392681
-	}, {3, 6, 6}, o3c::Float32, device);
+			0.07692308, 0., 0.,
+			-0.07179487, 0.06666667, 0.,
+			-0.0005698, -0.06296296, 0.05555556
+	}, {3, 3, 3}, o3c::Float32, device);
 	//__DEBUG
 	auto inverted_blocks_cpu = inverted_blocks.To(o3c::Device("CPU:0"));
 	auto inverted_blocks_gt_cpu = inverted_blocks_gt.To(o3c::Device("CPU:0"));
 
+	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
+}
+
+TEST_CASE("Test Invert Triangular Blocks Lower - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestInvertTriangularBlocks_Lower(device);
+}
+
+TEST_CASE("Test Invert Triangular Blocks Lower - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestInvertTriangularBlocks_Lower(device);
+}
+
+
+void TestInvertTriangularBlocks_Upper(const o3c::Device& device) {
+	o3c::Tensor blocks(std::vector<float>{
+			4, 5, 6,
+			0, 2, 3,
+			0, 0, 1,
+
+			10, 11, 12,
+			0, 8, 9,
+			0, 0, 7,
+
+			16, 17, 18,
+			0, 14, 15,
+			0, 0, 13
+	}, {3, 3, 3}, o3c::Float32, device);
+
+	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertTriangularBlocks(blocks, nnrt::core::linalg::UpLoTriangular::UPPER);
+
+	o3c::Tensor inverted_blocks_gt(std::vector<float>{
+			0.25, -0.625, 0.375,
+			0., 0.5, -1.5,
+			0., 0., 1.,
+
+			0.1, -0.1375, 0.00535714,
+			0., 0.125, -0.16071428,
+			0., 0., 0.14285715,
+
+			0.0625, -0.07589286, 0.00103022,
+			0., 0.07142857, -0.08241758,
+			0., 0., 0.07692308
+	}, {3, 3, 3}, o3c::Float32, device);
+	//__DEBUG
+	auto inverted_blocks_cpu = inverted_blocks.To(o3c::Device("CPU:0"));
+	auto inverted_blocks_gt_cpu = inverted_blocks_gt.To(o3c::Device("CPU:0"));
 
 	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
 
 }
 
-TEST_CASE("Test Invert Triangular Blocks - CPU") {
+TEST_CASE("Test Invert Triangular Blocks Upper - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestInvertTriangularBlocks(device);
+	TestInvertTriangularBlocks_Upper(device);
 }
 
-TEST_CASE("Test Invert Triangular Blocks - CUDA") {
+TEST_CASE("Test Invert Triangular Blocks Upper - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestInvertTriangularBlocks(device);
+	TestInvertTriangularBlocks_Upper(device);
 }
+

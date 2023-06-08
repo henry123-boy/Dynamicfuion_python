@@ -298,68 +298,68 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
     return U_diag_upper_left + U_diag_lower_right, U_upper_left + U_upper_right
 
 
-def build_sparse_row_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):
-    row_dict = {}
+def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):
+    dict = {}
     if transpose:
         for (i, j, block) in indexed_blocks:
-            if j not in row_dict:
-                row_dict[j] = []
-            row_dict[j].append((i, block.T))
+            if j not in dict:
+                dict[j] = []
+            dict[j].append((i, block.T))
     else:
         for (i, j, block) in indexed_blocks:
-            if i not in row_dict:
-                row_dict[i] = []
-            row_dict[i].append((j, block))
-    return row_dict
+            if i not in dict:
+                dict[i] = []
+            dict[i].append((j, block))
+    return dict
 
 
 def solve_triangular_sparse_back_substitution(u_blocks_diagonal: List[np.ndarray],
                                               u_blocks_upper: List[Tuple[int, int, np.ndarray]],
-                                              b: np.ndarray):
+                                              y: np.ndarray):
     block_row_count = len(u_blocks_diagonal)
     block_size = u_blocks_diagonal[0].shape[0]
-    assert b.shape == (block_row_count * block_size,)
+    assert y.shape == (block_row_count * block_size,)
     solution = np.ndarray((block_row_count * block_size))
-    row_dict = build_sparse_row_lookup_structure(u_blocks_upper, transpose=False)
+    row_dict = build_sparse_lookup_structure(u_blocks_upper, transpose=False)
     for i_block_row in range(block_row_count - 1, -1, -1):
         row_u_diag = u_blocks_diagonal[i_block_row]
         i_block_start = i_block_row * block_size
         i_block_end = (i_block_row + 1) * block_size
-        row_b_prime = b[i_block_start:i_block_end].copy()
+        row_y_prime = y[i_block_start:i_block_end].copy()
         if i_block_row in row_dict:
-            for (j_block_row, block) in row_dict[i_block_row]:
-                j_block_start = j_block_row * block_size
-                j_block_end = (j_block_row + 1) * block_size
+            for (j, block) in row_dict[i_block_row]:
+                j_block_start = j * block_size
+                j_block_end = (j + 1) * block_size
                 row_j_x = solution[j_block_start:j_block_end]
-                row_b_prime -= block @ row_j_x
+                row_y_prime -= block @ row_j_x
 
-        row_i_x = scipy.linalg.solve_triangular(row_u_diag, row_b_prime, lower=False)
+        row_i_x = scipy.linalg.solve_triangular(row_u_diag, row_y_prime, lower=False)
         solution[i_block_start:i_block_end] = row_i_x
     return solution
 
 
 def solve_triangular_sparse_forward_substitution(u_blocks_diagonal: List[np.ndarray],
                                                  u_blocks_upper: List[Tuple[int, int, np.ndarray]],
-                                                 y: np.ndarray):
-    block_row_count = len(u_blocks_diagonal)
+                                                 b: np.ndarray):
+    block_column_count = len(u_blocks_diagonal)
     block_size = u_blocks_diagonal[0].shape[0]
-    assert y.shape == (block_row_count * block_size,)
-    solution = np.ndarray((block_row_count * block_size))
-    row_dict = build_sparse_row_lookup_structure(u_blocks_upper, transpose=True)
-    for i_block_row in range(0, block_row_count, 1):
-        row_l_diag = u_blocks_diagonal[i_block_row].T
-        i_block_start = i_block_row * block_size
-        i_block_end = (i_block_row + 1) * block_size
-        row_y_prime = y[i_block_start:i_block_end].copy()
-        if i_block_row in row_dict:
-            for (j_block_row, block) in row_dict[i_block_row]:
-                j_block_start = j_block_row * block_size
-                j_block_end = (j_block_row + 1) * block_size
-                row_j_x = solution[j_block_start:j_block_end]
-                row_y_prime -= block @ row_j_x
+    assert b.shape == (block_column_count * block_size,)
+    solution = np.ndarray((block_column_count * block_size))
+    column_dict = build_sparse_lookup_structure(u_blocks_upper, transpose=True)
+    for j_block_column in range(0, block_column_count, 1):
+        column_l_diag = u_blocks_diagonal[j_block_column].T
+        i_block_start = j_block_column * block_size
+        i_block_end = (j_block_column + 1) * block_size
+        column_b_prime = b[i_block_start:i_block_end].copy()
+        if j_block_column in column_dict:
+            for (i, block) in column_dict[j_block_column]:
+                j_block_start = i * block_size
+                j_block_end = (i + 1) * block_size
+                column_j_x = solution[j_block_start:j_block_end]
+                column_b_prime -= block @ column_j_x
 
-        row_i_x = scipy.linalg.solve_triangular(row_l_diag, row_y_prime, lower=True)
-        solution[i_block_start:i_block_end] = row_i_x
+        row_i_y = scipy.linalg.solve_triangular(column_l_diag, column_b_prime, lower=True)
+        solution[i_block_start:i_block_end] = row_i_y
     return solution
 
 

@@ -52,23 +52,28 @@ open3d::core::Tensor InvertTriangularBlocks(
 	if (block_size == 0 || block_count == 0) {
 		utility::LogError("Input tensor should have no zero dimensions.");
 	}
-	// data will get manipulated in-place by LAPACK routines, make clone
-	o3c::Tensor inverted_blocks = blocks.Clone().Transpose(1, 2);
-	void* block_data = inverted_blocks.GetDataPtr();
 
+	o3c::Tensor inverted_blocks;
 	if (device.IsCUDA()) {
+		// data will get manipulated in-place, make clone
+		inverted_blocks = blocks.Clone();
+		void* block_data = inverted_blocks.GetDataPtr();
 #ifdef BUILD_CUDA_MODULE
 		//TODO: revert InvertTriangularBlocksCUDA signature back to just use one array (and modify in-place). Doesn't seem to make any difference.
-		internal::InvertTriangularBlocksCUDA(blocks.GetDataPtr(), block_data, block_size, block_count, data_type, device, uplo);
+		internal::InvertTriangularBlocksCUDA(block_data, block_size, block_count, data_type, device, uplo);
 #else
 		open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
 	} else {
+		// data will get manipulated in-place by LAPACK routines, make clone and switch to column layout using transpose
+		inverted_blocks = blocks.Clone().Transpose(1, 2);
+		void* block_data = inverted_blocks.GetDataPtr();
 		internal::InvertTriangularBlocksCPU(block_data, block_size, block_count, data_type, device, uplo);
+		inverted_blocks = inverted_blocks.Transpose(1, 2);
 	}
 
 	// Perform column- to row-major reordering using axis swap
-	inverted_blocks = inverted_blocks.Transpose(1, 2);
+
 	return inverted_blocks;
 }
 

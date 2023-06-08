@@ -26,7 +26,7 @@
 #include "core/linalg/SolveBlockDiagonalCholesky.h"
 #include "core/linalg/LapackWrapper.h"
 #include "core/linalg/BlasWrapper.h"
-#include "core/linalg/PointerAggregationForBatchOperations.h"
+#include "core/linalg/PointerAggregationForBatchOperationsCPU.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -43,7 +43,8 @@ inline void SolveCholeskyBlockDiagonalCUDA_Generic(
 ) {
 	scalar_t* A_array[block_count];
 	scalar_t* B_array[block_count];
-	GetMatrixPointersFromContiguousArrayOfMatrices_AB(A_array, B_array, A_blocks_data, B_data, A_and_B_block_row_count, B_column_count, block_count);
+	GetMatrixPointersFromContiguousArrayOfMatrices_AB_CPU(A_array, B_array, A_blocks_data, B_data, A_and_B_block_row_count, B_column_count,
+	                                                      block_count);
 	scalar_t** A_array_device;
 	scalar_t** B_array_device;
 
