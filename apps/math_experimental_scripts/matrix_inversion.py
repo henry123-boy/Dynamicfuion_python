@@ -54,11 +54,8 @@ def multi_block_trtri(matrices: List[np.ndarray], uplo: UpLo) -> List[np.ndarray
         if uplo == UpLo.UPPER:
             for i_col_a in range(N - 1, -1, -1):
                 i_col_b = N - i_col_a - 1
-                # print(f"i_col_b = {i_col_b}")
                 inv_matrix_a[i_col_a, i_col_a] = 1.0 / matrix_a[i_col_a, i_col_a]
                 inv_matrix_b[i_col_b, i_col_b] = 1.0 / matrix_b[i_col_b, i_col_b]
-                # print(f"   matrix_b[{i_col_b},{i_col_b}]]")
-                # print(f"   write inv_matrix_b[{i_col_b},{i_col_b}]]")
                 for i_row in range(i_col_a - 1, -1, -1):
                     matrix_diag_entry = matrix_a[i_row, i_row]
                     sum = 0
@@ -66,16 +63,11 @@ def multi_block_trtri(matrices: List[np.ndarray], uplo: UpLo) -> List[np.ndarray
                         sum += matrix_a[i_row, k] * inv_matrix_a[k, i_col_a]
                     inv_matrix_a[i_row, i_col_a] = -sum / matrix_diag_entry
                 for i_row in range(i_col_b - 1, -1, -1):
-                    # print(f"   i_row = {i_row}")
                     matrix_diag_entry = matrix_b[i_row, i_row]
-                    # print(f"   matrix_b[{i_row},{i_row}]")
                     sum = 0
                     for k in range(i_row + 1, i_col_b + 1, 1):
                         sum += matrix_b[i_row, k] * inv_matrix_b[k, i_col_b]
-                        # print(f"      k = {k}")
-                        # print(f"      matrix_b[{i_row},{k}] = {matrix_b[i_row, k]}, inv_matrix_b[{k},{i_col_b}] = {inv_matrix_b[k, i_col_b]}")
                     inv_matrix_b[i_row, i_col_b] = -sum / matrix_diag_entry
-                    # print(f"   write inv_matrix_b[{i_row},{i_col_b}]")
         else:
             for i_col_a in range(0, N, 1):
                 i_col_b = N - i_col_a - 1
