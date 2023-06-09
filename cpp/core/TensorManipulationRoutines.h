@@ -17,7 +17,9 @@
 
 #include <open3d/core/Tensor.h>
 
+// TODO: move all this to nnrt::core::functional (and update file structure accordingly)
 namespace nnrt::core{
+	// TODO: open3d/core/TensorFunction.h has `Concatenate`, which should deprecate this
 	open3d::core::Tensor VStack(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
 	open3d::core::Tensor Matmul3D(const open3d::core::Tensor& tensor1, const open3d::core::Tensor& tensor2);
     template<typename TElement>

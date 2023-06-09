@@ -20,6 +20,11 @@
 // local includes
 #include "SolveBlockSparseArrowheadCholesky.h"
 #include "core/linalg/FactorizeBlocksCholesky.h"
+#include "core/linalg/InvertBlocks.h"
+#include "core/linalg/Matmul3D.h"
+
+namespace o3c = open3d::core;
+namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg {
 
@@ -28,7 +33,15 @@ void SolveBlockSparseArrowheadCholesky(
 		const nnrt::core::linalg::BlockSparseArrowheadMatrix& A,
 		const open3d::core::Tensor& B
 ) {
-	// L_diagonal = FactorizeBlocksCholesky(A.diagonal_blocks);
+	o3c::Tensor L_diagonal_upper_left;
+	FactorizeBlocksCholesky(L_diagonal_upper_left, A.diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
+	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
+
+	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
+	o3c::Tensor U_upper_right;
+
+
+
 }
 
 } // namespace nnrt::core::linalg

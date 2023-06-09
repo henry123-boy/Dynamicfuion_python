@@ -1,6 +1,6 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 4/12/22.
-//  Copyright (c) 2022 Gregory Kramida
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/23.
+//  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
 //  You may obtain a copy of the License at
@@ -13,16 +13,17 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
+// local includes
+#include "core/functional/Tile.h"
+#include "core/functional/kernel/Tile.h"
 
-#include <open3d/core/Tensor.h>
+namespace nnrt::core::functional {
 
-namespace nnrt::core::linalg {
+open3d::core::Tensor Tile(const open3d::core::Tensor& tensor, int rows, int columns) {
+	open3d::core::Tensor tiled;
+	kernel::Tile(tiled, tensor, rows, columns);
+	return tiled;
+}
 
-void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of_matrices_A, const open3d::core::Tensor& array_of_matrices_B);
+} // namespace nnrt::core::functional
 
-template<open3d::core::Device::DeviceType DeviceType>
-void Matmul3D(const void* A, const void* B, void* C, int64_t a_row_count, int64_t a_column_count, int64_t b_column_count,
-              int64_t batch_size, open3d::core::Dtype dtype);
-
-} // nnrt::core::linalg

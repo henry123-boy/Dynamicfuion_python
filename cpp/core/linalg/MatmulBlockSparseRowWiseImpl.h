@@ -1,0 +1,135 @@
+//  ================================================================
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/23.
+//  Copyright (c) 2023 Gregory Kramida
+//  Licensed under the Apache License, Version 2.0 (the "License");
+//  you may not use this file except in compliance with the License.
+//  You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+//  Unless required by applicable law or agreed to in writing, software
+//  distributed under the License is distributed on an "AS IS" BASIS,
+//  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//  See the License for the specific language governing permissions and
+//  limitations under the License.
+//  ================================================================
+#pragma once
+// stdlib includes
+
+// third-party includes
+#include <open3d/core/ParallelFor.h>
+
+// local includes
+#include "core/linalg/MatmulBlockSparseRowWise.h"
+#include "core/platform_independence/Qualifiers.h"
+#include "LinalgUtils.h"
+#include "core/linalg/BlasWrapper.h"
+#include "core/platform_independence/Atomics.h"
+
+namespace o3c = open3d::core;
+namespace utility = open3d::utility;
+
+namespace nnrt::core::linalg::internal {
+
+template<open3d::core::Device::DeviceType TDeviceType>
+open3d::core::Tensor
+MatmulBlockSparseRowWise(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& blocks_b_coordinates
+) {
+	// counters and checks
+	o3c::Device device = blocks_b.GetDevice();
+	o3c::AssertTensorDtype(blocks_b, o3c::Float32);
+	int64_t block_count = blocks_b.GetShape(0);
+	int64_t block_size = blocks_b.GetShape(1);
+	o3c::AssertTensorShape(blocks_b, { block_count, block_size, block_size });
+
+	o3c::AssertTensorShape(blocks_b_coordinates, { block_count, 2 });
+	o3c::AssertTensorDtype(blocks_b_coordinates, o3c::Int32);
+	o3c::AssertTensorDevice(blocks_b_coordinates, device);
+
+	int64_t rows_to_multiply_count = blocks_a.GetShape(0);
+	o3c::AssertTensorShape(blocks_a, { rows_to_multiply_count, block_size, block_size });
+	o3c::AssertTensorDtype(blocks_a, o3c::Float32);
+	o3c::AssertTensorDevice(blocks_a, device);
+
+	// prep inputs
+	auto blocks_b_data = blocks_b.GetDataPtr<float>();
+	auto blocks_b_coordinate_data = blocks_b_coordinates.GetDataPtr<int32_t>();
+	auto blocks_a_data = blocks_a.GetDataPtr<float>();
+
+	// prep outputs
+	o3c::Tensor product_blocks = o3c::Tensor(blocks_b.GetShape(), o3c::Float32, device);
+	auto blocks_c_data = product_blocks.GetDataPtr<float>();
+
+	// loop over blocks and assign multiplication block triplets
+#ifdef __CUDACC__
+	const float** a_blocks_device;
+	const float** b_blocks_device;
+	float** c_blocks_device;
+	auto size_of_pointer_array =  block_count * sizeof(float*);
+	OPEN3D_CUDA_CHECK(cudaMalloc(&a_blocks_device, size_of_pointer_array));
+	OPEN3D_CUDA_CHECK(cudaMalloc(&b_blocks_device, size_of_pointer_array));
+	OPEN3D_CUDA_CHECK(cudaMalloc(&c_blocks_device, size_of_pointer_array));
+#else
+	const float* a_blocks_device[block_count];
+	const float* b_blocks_device[block_count];
+	float* c_blocks_device[block_count];
+#endif
+	int64_t block_stride = block_size * block_size;
+	NNRT_DECLARE_ATOMIC(int, output_block_count_atomic);
+	NNRT_INITIALIZE_ATOMIC(int, output_block_count_atomic, 0);
+	o3c::ParallelFor(
+			device,
+			block_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
+				int i_row = blocks_b_coordinate_data[i_input_block * 2];
+				a_blocks_device[i_input_block] = blocks_a_data + i_row * block_stride;
+				b_blocks_device[i_input_block] = blocks_b_data + i_input_block * block_stride;
+				c_blocks_device[i_input_block] = blocks_c_data + i_input_block * block_stride;
+			}
+	);
+	auto block_size_int32 = static_cast<int32_t>(block_size);
+	float alpha = 1, beta = 0;
+	int output_block_count = NNRT_GET_ATOMIC_VALUE_HOST(output_block_count_atomic);
+	NNRT_CLEAN_UP_ATOMIC(output_block_count_atomic);
+#ifdef __CUDACC__
+	cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
+	NNRT_CUBLAS_CHECK(
+			// Note: A<->B matrix order flippage is due to difference in layout -- gemm_batched_cuda assumes column-major,
+			// while open3d::core::Tensors are row-major
+			gemm_batched_cuda<float>(
+					handle, CUBLAS_OP_N, CUBLAS_OP_N,
+					block_size_int32, block_size_int32, block_size_int32,
+					&alpha,
+					b_blocks_device, block_size_int32,
+					a_blocks_device, block_size_int32,
+					&beta,
+					c_blocks_device, block_size_int32,
+					output_block_count
+			),
+			"cuda batched gemm failed"
+	);
+#else
+	gemm_batched_cpu<float>(
+			CblasRowMajor, CblasNoTrans, CblasNoTrans,
+			block_size_int32, block_size_int32, block_size_int32,
+			alpha,
+			a_blocks_device, block_size_int32,
+			b_blocks_device, block_size_int32,
+			beta,
+			c_blocks_device, block_size_int32,
+			output_block_count
+	);
+#endif
+
+#ifdef __CUDACC__
+	OPEN3D_CUDA_CHECK(cudaFree(a_blocks_device));
+	OPEN3D_CUDA_CHECK(cudaFree(b_blocks_device));
+	OPEN3D_CUDA_CHECK(cudaFree(c_blocks_device));
+#endif
+	return product_blocks.Slice(0, 0, output_block_count);
+}
+
+} // namespace nnrt::core::linalg::internal

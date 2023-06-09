@@ -27,8 +27,8 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg {
 
 template<>
-void Matmul3D<open3d::core::Device::DeviceType::CPU>(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
-                                                      int64_t batch_size, open3d::core::Dtype dtype) {
+void Matmul3D<open3d::core::Device::DeviceType::CPU>(const void* A, const void* B, void* C, int64_t a_row_count, int64_t a_column_count, int64_t b_column_count,
+                                                     int64_t batch_size, open3d::core::Dtype dtype) {
 
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(dtype, [&]() {
 		scalar_t
@@ -38,9 +38,9 @@ void Matmul3D<open3d::core::Device::DeviceType::CPU>(const void* A, const void* 
 		const scalar_t* B_array[batch_size];
 		scalar_t* C_array[batch_size];
 
-		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
-		gemm_batched_cpu<scalar_t>(CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha,
-		                           A_array, k, B_array, n, beta, C_array, n, batch_size);
+		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU<scalar_t>(A_array, B_array, C_array, A, B, C, a_row_count, a_column_count, b_column_count, batch_size);
+		gemm_batched_cpu<scalar_t>(CblasRowMajor, CblasNoTrans, CblasNoTrans, a_row_count, b_column_count, a_column_count, alpha,
+		                           A_array, a_column_count, B_array, b_column_count, beta, C_array, b_column_count, batch_size);
 	});
 
 }

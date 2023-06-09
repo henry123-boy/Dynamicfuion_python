@@ -825,7 +825,7 @@ if (BUILD_CUDA_MODULE)
     endif ()
 
 
-    # TODO create option in main cmake file to enable USE_SYSTEM_MAGMA
+    # TODO when USE_SYSTEM_MAGMA, run FindMagma
     # MAGMA
     if (NOT USE_SYSTEM_MAGMA)
         include(${NNRT_3RDPARTY_DIR}/magma/magma.cmake)
@@ -836,7 +836,7 @@ if (BUILD_CUDA_MODULE)
             DEPENDS ext_magma
             )
     endif ()
-    # TODO not sure this needs to be happening like so if USE_SYSTEM_MAGMA=TRUE
+#     TODO not sure this needs to be happening like so if USE_SYSTEM_MAGMA=TRUE
     list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_magma)
 endif ()
 

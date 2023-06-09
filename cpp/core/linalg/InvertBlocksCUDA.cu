@@ -28,7 +28,6 @@
 #include "core/linalg/LapackWrapper.h"
 #include "core/linalg/PointerAggregationForBatchOperationsCUDA.cuh"
 #include "core/CUDAUtils.h"
-#include "MagmaManager.h"
 
 
 namespace utility = open3d::utility;

@@ -284,18 +284,18 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
     L_inv_diag_upper_left = [np.linalg.inv(L) for L in L_diag_upper_left]
 
     U_diag_upper_left = [L.T for L in L_diag_upper_left]
-    U_upper_left = [(i, j, L_inv_diag_upper_left[i].dot(U_h)) for (i, j, U_h) in hessian_blocks_upper]
+    U_upper_right = [(i, j, L_inv_diag_upper_left[i].dot(U_h)) for (i, j, U_h) in hessian_blocks_upper]
     block_size = hessian_blocks_diagonal[0].shape[0]
     node_count = len(hessian_blocks_diagonal)
 
-    U_block_dict = indexed_blocks_to_block_lookup_structure(U_upper_left)
+    U_block_dict = indexed_blocks_to_block_lookup_structure(U_upper_right)
     H_block_dict = indexed_blocks_to_block_lookup_structure(hessian_blocks_upper + hessian_blocks_upper_corner)
 
     U_diag_lower_right, U_upper_right = \
         cholesky_blocked_sparse_corner(U_block_dict, H_block_dict, hessian_blocks_diagonal[first_layer_node_count:],
                                        first_layer_node_count, node_count, block_size)
 
-    return U_diag_upper_left + U_diag_lower_right, U_upper_left + U_upper_right
+    return U_diag_upper_left + U_diag_lower_right, U_upper_right + U_upper_right
 
 
 def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):

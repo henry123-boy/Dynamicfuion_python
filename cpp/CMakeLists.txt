@@ -437,7 +437,30 @@ set(
     core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h
     core/linalg/UpLoTriangular.h core/linalg/InvertBlocksCPU.cpp
     core/linalg/InvertBlocksCUDA.cu
-    core/linalg/MagmaManager.cpp core/linalg/MagmaManager.h core/CUDAUtils.h core/linalg/PointerAggregationForBatchOperationsCUDA.cuh core/linalg/SolveBlockSparseArrowheadCholesky.cpp core/linalg/SolveBlockSparseArrowheadCholesky.h core/linalg/BlockSparseArrowheadMatrix.h)
+
+    core/linalg/MagmaManager.cpp
+    core/linalg/MagmaManager.h
+
+    core/CUDAUtils.h
+    core/linalg/PointerAggregationForBatchOperationsCUDA.cuh
+    core/linalg/SolveBlockSparseArrowheadCholesky.cpp
+    core/linalg/SolveBlockSparseArrowheadCholesky.h
+    core/linalg/BlockSparseArrowheadMatrix.h
+    core/linalg/MatmulBlockSparseRowWise.cpp
+    core/linalg/MatmulBlockSparseRowWise.h
+    core/linalg/MatmulBlockSparseRowWiseImpl.h
+    core/linalg/MatmulBlockSparseRowWiseImpl.h
+    core/linalg/instantiations/MatmulBlockSparseRowWiseCPU.cpp
+    core/linalg/instantiations/MatmulBlockSparseRowWiseCUDA.cu
+
+    core/functional/Tile.cpp
+    core/functional/Tile.h
+    core/functional/kernel/Tile.cpp
+    core/functional/kernel/Tile.h
+    core/functional/kernel/TileImpl.h
+    core/functional/kernel/instantiations/TileCPU.cpp
+    core/functional/kernel/instantiations/TileCUDA.cu
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

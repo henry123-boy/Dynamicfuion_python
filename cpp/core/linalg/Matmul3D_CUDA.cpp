@@ -32,25 +32,29 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg {
 
 template<>
-void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void* B, void* C, int64_t m, int64_t k, int64_t n,
-                                                      int64_t batch_size, open3d::core::Dtype dtype) {
+void Matmul3D<open3d::core::Device::DeviceType::CUDA>(
+		const void* A, const void* B, void* C, int64_t a_row_count, int64_t a_column_count, int64_t b_column_count,
+		int64_t batch_size, open3d::core::Dtype dtype
+) {
 
 	cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
 
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(dtype, [&]() {
-		scalar_t alpha = 1, beta = 0;
+		scalar_t
+		alpha = 1, beta = 0;
 
 		const scalar_t* A_array[batch_size];
 		const scalar_t* B_array[batch_size];
 		scalar_t* C_array[batch_size];
 
-		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU<scalar_t>(A_array, B_array, C_array, A, B, C, m, k, n, batch_size);
+		internal::GetMatrixPointersFromContiguousArrayOfMatrices_ABC_CPU<scalar_t>(A_array, B_array, C_array, A, B, C, a_row_count, a_column_count,
+		                                                                           b_column_count, batch_size);
 
 		const scalar_t** A_array_device;
 		const scalar_t** B_array_device;
 		scalar_t** C_array_device;
 
-		auto size_of_pointer_array =  batch_size * sizeof(scalar_t*);
+		auto size_of_pointer_array = batch_size * sizeof(scalar_t * );
 
 		OPEN3D_CUDA_CHECK(cudaMalloc(&A_array_device, size_of_pointer_array));
 		OPEN3D_CUDA_CHECK(cudaMalloc(&B_array_device, size_of_pointer_array));
@@ -61,15 +65,18 @@ void Matmul3D<open3d::core::Device::DeviceType::CUDA>(const void* A, const void*
 		OPEN3D_CUDA_CHECK(cudaMemcpy(C_array_device, C_array, size_of_pointer_array, cudaMemcpyHostToDevice));
 
 		NNRT_CUBLAS_CHECK(
-				gemm_batched_cuda<scalar_t>(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-				                            n, m, k,
-				                            &alpha,
-				                            B_array_device, n,
-				                            A_array_device, k,
-				                            &beta,
-				                            C_array_device, n,
-				                            batch_size),
-				"cuda batched gemm failed");
+				gemm_batched_cuda<scalar_t>(
+						handle, CUBLAS_OP_N, CUBLAS_OP_N,
+						b_column_count, a_row_count, a_column_count,
+						&alpha,
+						B_array_device, b_column_count,
+						A_array_device, a_column_count,
+						&beta,
+						C_array_device, b_column_count,
+						batch_size
+				),
+				"cuda batched gemm failed"
+		);
 		OPEN3D_CUDA_CHECK(cudaFree(A_array_device));
 		OPEN3D_CUDA_CHECK(cudaFree(B_array_device));
 		OPEN3D_CUDA_CHECK(cudaFree(C_array_device));

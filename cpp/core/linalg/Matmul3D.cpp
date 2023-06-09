@@ -59,9 +59,9 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 		o3u::LogError("Tensors A and B should have matching first dimension. Got: {} vs. {}",A_shape[0], B_shape[0]);
 	}
 
-	int64_t m = A_shape[1];
-	int64_t k = A_shape[2];
-	int64_t n = B_shape.size() == 3 ? B_shape[2] : 1;
+	int64_t a_row_count = A_shape[1];
+	int64_t a_column_count = A_shape[2];
+	int64_t b_column_count = B_shape.size() == 3 ? B_shape[2] : 1;
 
 	const int64_t batch_size = A_shape[0];
 
@@ -71,13 +71,13 @@ void Matmul3D(open3d::core::Tensor& output, const open3d::core::Tensor& array_of
 	const void* A_data = A_contiguous.GetDataPtr();
 	const void* B_data = B_contiguous.GetDataPtr();
 
-	output = o3c::Tensor({batch_size, m, n}, dtype, device);
+	output = o3c::Tensor({batch_size, a_row_count, b_column_count}, dtype, device);
 	void* C_data = output.GetDataPtr();
 
 	core::ExecuteOnDevice(
 			device,
-			[&] { Matmul3D<o3c::Device::DeviceType::CPU>(A_data, B_data, C_data, m, k, n, batch_size, dtype); },
-			[&] { NNRT_IF_CUDA(Matmul3D<o3c::Device::DeviceType::CUDA>(A_data, B_data, C_data, m, k, n, batch_size, dtype);); }
+			[&] { Matmul3D<o3c::Device::DeviceType::CPU>(A_data, B_data, C_data, a_row_count, a_column_count, b_column_count, batch_size, dtype); },
+			[&] { NNRT_IF_CUDA(Matmul3D<o3c::Device::DeviceType::CUDA>(A_data, B_data, C_data, a_row_count, a_column_count, b_column_count, batch_size, dtype);); }
 	);
 	output = output.To(dtype_original);
 

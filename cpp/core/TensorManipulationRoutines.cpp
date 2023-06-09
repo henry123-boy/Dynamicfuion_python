@@ -63,6 +63,7 @@ open3d::core::Tensor Matmul3D(const open3d::core::Tensor& tensor1, const open3d:
 }
 
 
+
 template<typename TElement>
 open3d::core::Tensor SingleValueTensor(TElement element, const open3d::core::Device& device) {
     return o3c::Tensor(std::vector<TElement>({element}), {1}, GetDType<TElement>(), device);
