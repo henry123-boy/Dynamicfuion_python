@@ -225,19 +225,14 @@ void DeformableMeshToImageFitter::FitToImage(
 			o3c::Tensor edge_jacobians = functional::ComputeDenseArapEdgeJacobians(warp_field, this->arap_term_weight);
 
 			// compute sparse H_r
-			o3c::Tensor arap_hessian_blocks_upper, arap_hessian_upper_block_coordinates,
-					arap_hessian_upper_block_breadboard, arap_hessian_blocks_diagonal;
-
-			std::tie(arap_hessian_blocks_upper, arap_hessian_upper_block_coordinates,
-			         arap_hessian_upper_block_breadboard, arap_hessian_blocks_diagonal) =
+			core::linalg::BlockSparseArrowheadMatrix hessian_approximation =
 					functional::ComputeArapBlockSparseHessianApproximation(warp_field.GetEdges(), edge_jacobians, first_layer_node_count,
 					                                                       warp_field.GetNodePositions(false).GetLength());
 
-			o3c::Tensor hessian_blocks_diagonal = arap_hessian_blocks_diagonal + hessian_blocks_depth_diagonal;
+			hessian_approximation.diagonal_blocks += hessian_blocks_depth_diagonal;
 			if (preconditioning_dampening_factor > 0.0) {
-				kernel::PreconditionDiagonalBlocks(hessian_blocks_diagonal, preconditioning_dampening_factor);
+				kernel::PreconditionDiagonalBlocks(hessian_approximation.diagonal_blocks, preconditioning_dampening_factor);
 			}
-
 
 
 		} else {

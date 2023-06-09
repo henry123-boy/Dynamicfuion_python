@@ -18,10 +18,11 @@
 // third-party includes
 #include <open3d/core/Tensor.h>
 // local includes
+#include "core/linalg/UpLoTriangular.h"
 
 namespace nnrt::core::linalg {
 
-void FactorizeBlocksCholesky_LowerTriangular(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks);
+void FactorizeBlocksCholesky(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks, UpLoTriangular up_lo);
 
 namespace internal{
 
@@ -30,7 +31,8 @@ void FactorizeBlocksCholeskyCPU(
 		int64_t block_size,
 		int64_t block_count,
 		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
+		const open3d::core::Device& device,
+		UpLoTriangular uplo
 );
 
 
@@ -39,7 +41,8 @@ void FactorizeBlocksCholeskyCUDA(
 		int64_t block_size,
 		int64_t block_count,
 		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
+		const open3d::core::Device& device,
+		UpLoTriangular uplo
 );
 
 } // internal

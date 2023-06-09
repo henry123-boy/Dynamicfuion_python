@@ -114,7 +114,7 @@ TEST_CASE("Test Solve Cholesky Block Diagonal - CUDA") {
 }
 
 void TestBlockCholeskyFactorization(const o3c::Device& device) {
-	o3c::Tensor blocks(std::vector<float>{
+	o3c::Tensor blocks_lower(std::vector<float>{
 			7.66466999, 7.42160096, 7.96971846, 5.41618416, 5.48901906, 6.29302529,
 			7.42160096, 11.28136639, 10.02191478, 7.6142696, 6.11965727, 8.29031205,
 			7.96971846, 10.02191478, 12.84076044, 7.99068493, 7.71414652, 8.53580411,
@@ -136,22 +136,22 @@ void TestBlockCholeskyFactorization(const o3c::Device& device) {
 			7.35419513, 7.66117909, 7.16248224, 8.17335754, 11.15212005, 6.81745422,
 			5.94435122, 6.28624863, 6.99130877, 6.52806757, 6.81745422, 9.11671782
 	}, {3, 6, 6}, o3c::Float32, device);
-	o3c::Tensor factorized_blocks;
-	nnrt::core::linalg::FactorizeBlocksCholesky_LowerTriangular(factorized_blocks, blocks);
-	o3c::Tensor factorized_blocks_cpu = factorized_blocks.To(o3c::Device("CPU:0"));
-	auto factorized_blocks_data = factorized_blocks_cpu.ToFlatVector<float>();
+	o3c::Tensor factorized_blocks_lower;
+	nnrt::core::linalg::FactorizeBlocksCholesky(factorized_blocks_lower, blocks_lower, nnrt::core::linalg::UpLoTriangular::LOWER);
+	o3c::Tensor factorized_blocks_lower_cpu = factorized_blocks_lower.To(o3c::Device("CPU:0"));
+	auto factorized_blocks_lower_data = factorized_blocks_lower_cpu.ToFlatVector<float>();
 	for (int i_block = 0; i_block < 3; i_block++) {
 		for (int i_row = 0; i_row < 6; i_row++) {
 			for (int i_col = 0; i_col < 6; i_col++) {
 				if (i_col > i_row) {
-					factorized_blocks_data[i_block * 36 + i_row * 6 + i_col] = 0.0;
+					factorized_blocks_lower_data[i_block * 36 + i_row * 6 + i_col] = 0.0;
 				}
 			}
 		}
 	}
-	o3c::Tensor factorized_blocks_ut_zeroed(factorized_blocks_data, {3, 6, 6}, o3c::Float32, o3c::Device("CPU:0"));
+	o3c::Tensor factorized_blocks_lower_ut_zeroed(factorized_blocks_lower_data, {3, 6, 6}, o3c::Float32, o3c::Device("CPU:0"));
 
-	o3c::Tensor factorized_blocks_gt(std::vector<float>{
+	o3c::Tensor factorized_blocks_lower_gt(std::vector<float>{
 			2.76851404, 0., 0., 0., 0., 0.,
 			2.68071639, 2.02364177, 0., 0., 0., 0.,
 			2.87869895, 1.13900561, 1.80458278, 0., 0., 0.,
@@ -174,8 +174,51 @@ void TestBlockCholeskyFactorization(const o3c::Device& device) {
 			1.9020643, 0.94444546, 0.99354588, 0.59512121, 0.08067067, 1.80529265
 	}, {3, 6, 6}, o3c::Float32, o3c::Device("CPU:0"));
 
-	REQUIRE(factorized_blocks_ut_zeroed.AllClose(factorized_blocks_gt, 1e-4));
+	REQUIRE(factorized_blocks_lower_ut_zeroed.AllClose(factorized_blocks_lower_gt, 1e-4));
+	
+	o3c::Tensor blocks_upper(std::vector<float>{
+			 16.,  20.,  24.,
+			 20.,  29.,  36.,
+			 24.,  36.,  46.,
 
+			100., 110., 120.,
+			110., 185., 204.,
+			120., 204., 274.,
+
+			256., 272., 288.,
+			272., 485., 516.,
+			288., 516., 718.
+	}, {3, 3, 3}, o3c::Float32, device);
+
+	o3c::Tensor factorized_blocks_upper;
+	nnrt::core::linalg::FactorizeBlocksCholesky(factorized_blocks_upper, blocks_upper, nnrt::core::linalg::UpLoTriangular::UPPER);
+	o3c::Tensor factorized_blocks_upper_cpu = factorized_blocks_upper.To(o3c::Device("CPU:0"));
+	auto factorized_blocks_upper_data = factorized_blocks_upper_cpu.ToFlatVector<float>();
+	for (int i_block = 0; i_block < 3; i_block++) {
+		for (int i_row = 0; i_row < 3; i_row++) {
+			for (int i_col = 0; i_col < 3; i_col++) {
+				if (i_col < i_row) {
+					factorized_blocks_upper_data[i_block * 9 + i_row * 3 + i_col] = 0.0;
+				}
+			}
+		}
+	}
+	o3c::Tensor factorized_blocks_upper_lt_zeroed(factorized_blocks_upper_data, {3, 3, 3}, o3c::Float32, o3c::Device("CPU:0"));
+
+	o3c::Tensor factorized_blocks_upper_gt(std::vector<float>{
+			4, 5, 6,
+			0, 2, 3,
+			0, 0, 1,
+
+			10, 11, 12,
+			0, 8, 9,
+			0, 0, 7,
+
+			16, 17, 18,
+			0, 14, 15,
+			0, 0, 13
+	}, {3, 3, 3}, o3c::Float32, o3c::Device("CPU:0"));
+	REQUIRE(factorized_blocks_upper_lt_zeroed.AllClose(factorized_blocks_upper_gt, 1e-4));
 }
 
 TEST_CASE("Test Factorize Cholesky Blocks - CPU") {
@@ -189,7 +232,7 @@ TEST_CASE("Test Factorize Cholesky Blocks - CUDA") {
 }
 
 void TestInvertTriangularBlocks_Lower(const o3c::Device& device) {
-	o3c::Tensor blocks(std::vector<float>{
+	o3c::Tensor blocks_lower(std::vector<float>{
 			1, 0, 0,
 			2, 3, 0,
 			4, 5, 6,
@@ -203,9 +246,9 @@ void TestInvertTriangularBlocks_Lower(const o3c::Device& device) {
 			16, 17, 18
 	}, {3, 3, 3}, o3c::Float32, device);
 
-	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertTriangularBlocks(blocks, nnrt::core::linalg::UpLoTriangular::LOWER);
+	o3c::Tensor inverted_blocks_lower = nnrt::core::linalg::InvertTriangularBlocks(blocks_lower, nnrt::core::linalg::UpLoTriangular::LOWER);
 
-	o3c::Tensor inverted_blocks_gt(std::vector<float>{
+	o3c::Tensor inverted_blocks_lower_gt(std::vector<float>{
 			1., -0., 0.,
 			-0.6666667, 0.33333334, -0.,
 			-0.11111111, -0.2777778, 0.16666667,
@@ -218,11 +261,8 @@ void TestInvertTriangularBlocks_Lower(const o3c::Device& device) {
 			-0.07179487, 0.06666667, 0.,
 			-0.0005698, -0.06296296, 0.05555556
 	}, {3, 3, 3}, o3c::Float32, device);
-	//__DEBUG
-	auto inverted_blocks_cpu = inverted_blocks.To(o3c::Device("CPU:0"));
-	auto inverted_blocks_gt_cpu = inverted_blocks_gt.To(o3c::Device("CPU:0"));
 
-	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
+	REQUIRE(inverted_blocks_lower.AllClose(inverted_blocks_lower_gt, 1e-4));
 }
 
 TEST_CASE("Test Invert Triangular Blocks Lower - CPU") {
@@ -237,7 +277,7 @@ TEST_CASE("Test Invert Triangular Blocks Lower - CUDA") {
 
 
 void TestInvertTriangularBlocks_Upper(const o3c::Device& device) {
-	o3c::Tensor blocks(std::vector<float>{
+	o3c::Tensor blocks_upper(std::vector<float>{
 			4, 5, 6,
 			0, 2, 3,
 			0, 0, 1,
@@ -251,9 +291,9 @@ void TestInvertTriangularBlocks_Upper(const o3c::Device& device) {
 			0, 0, 13
 	}, {3, 3, 3}, o3c::Float32, device);
 
-	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertTriangularBlocks(blocks, nnrt::core::linalg::UpLoTriangular::UPPER);
+	o3c::Tensor inverted_blocks_upper = nnrt::core::linalg::InvertTriangularBlocks(blocks_upper, nnrt::core::linalg::UpLoTriangular::UPPER);
 
-	o3c::Tensor inverted_blocks_gt(std::vector<float>{
+	o3c::Tensor inverted_blocks_upper_gt(std::vector<float>{
 			0.25, -0.625, 0.375,
 			0., 0.5, -1.5,
 			0., 0., 1.,
@@ -266,11 +306,8 @@ void TestInvertTriangularBlocks_Upper(const o3c::Device& device) {
 			0., 0.07142857, -0.08241758,
 			0., 0., 0.07692308
 	}, {3, 3, 3}, o3c::Float32, device);
-	//__DEBUG
-	auto inverted_blocks_cpu = inverted_blocks.To(o3c::Device("CPU:0"));
-	auto inverted_blocks_gt_cpu = inverted_blocks_gt.To(o3c::Device("CPU:0"));
 
-	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
+	REQUIRE(inverted_blocks_upper.AllClose(inverted_blocks_upper_gt, 1e-4));
 
 }
 

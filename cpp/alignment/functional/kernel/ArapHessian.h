@@ -20,13 +20,11 @@
 #include <open3d/core/Tensor.h>
 
 // local includes
+#include "core/linalg/BlockSparseArrowheadMatrix.h"
 namespace nnrt::alignment::functional::kernel {
 
 void ArapSparseHessianApproximation(
-		open3d::core::Tensor& arap_hessian_blocks_upper,
-		open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		open3d::core::Tensor& arap_hessian_upper_block_breadboard,
-		open3d::core::Tensor& arap_hessian_blocks_diagonal,
+		nnrt::core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
 
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
@@ -36,10 +34,7 @@ void ArapSparseHessianApproximation(
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void ArapSparseHessianApproximation(
-		open3d::core::Tensor& arap_hessian_blocks_upper,
-		open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		open3d::core::Tensor& arap_hessian_upper_block_breadboard,
-		open3d::core::Tensor& arap_hessian_blocks_diagonal,
+		core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
 
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,

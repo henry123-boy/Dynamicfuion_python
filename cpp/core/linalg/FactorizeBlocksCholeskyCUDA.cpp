@@ -32,13 +32,14 @@
 
 
 namespace utility = open3d::utility;
-namespace nnrt::core::linalg::internal{
+namespace nnrt::core::linalg::internal {
 
 template<typename scalar_t>
 void FactorizeBlocksCholeskyCUDA_Generic(
 		void* block_data,
 		int64_t block_size,
-		int64_t block_count
+		int64_t block_count,
+		UpLoTriangular uplo
 ) {
 	scalar_t* A_array[block_count];
 	GetMatrixPointersFromContiguousArrayOfMatrices_CPU(A_array, block_data, block_size, block_size, block_count);
@@ -55,8 +56,12 @@ void FactorizeBlocksCholeskyCUDA_Generic(
 	OPEN3D_CUDA_CHECK(cudaMalloc(&info_array, block_count * sizeof(int)));
 
 	NNRT_CUSOLVER_CHECK(
-			potrf_batched_cuda<scalar_t>(cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER, block_size, A_array_device,
-			                             block_size, info_array, block_count), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
+			potrf_batched_cuda<scalar_t>(
+					cusolver_dn_handle, uplo == UpLoTriangular::LOWER ?
+					                    cublasFillMode_t::CUBLAS_FILL_MODE_UPPER : cublasFillMode_t::CUBLAS_FILL_MODE_LOWER,
+					block_size, A_array_device,
+					block_size, info_array, block_count
+			), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 	);
 
 	OPEN3D_CUDA_CHECK(cudaFree(info_array));
@@ -68,13 +73,15 @@ void FactorizeBlocksCholeskyCUDA(
 		int64_t block_size,
 		int64_t block_count,
 		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
+		const open3d::core::Device& device,
+		UpLoTriangular uplo
 ) {
 	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
 		FactorizeBlocksCholeskyCUDA_Generic<scalar_t>(
 				block_data,
 				block_size,
-				block_count
+				block_count,
+				uplo
 		);
 	});
 }

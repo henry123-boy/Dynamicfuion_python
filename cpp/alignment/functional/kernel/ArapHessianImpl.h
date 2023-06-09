@@ -25,19 +25,19 @@
 #include "core/kernel/MathTypedefs.h"
 #include "core/functional/ParallelPrefixScan.h"
 #include "core/platform_independence/Atomics.h"
+#include "core/linalg/BlockSparseArrowheadMatrix.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
 namespace nnrt::alignment::functional::kernel {
 
+#define BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE 80
+#define BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE 160
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void ArapSparseHessianApproximation(
-		open3d::core::Tensor& arap_hessian_blocks_upper,
-		open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		open3d::core::Tensor& arap_hessian_upper_block_breadboard,
-		open3d::core::Tensor& arap_hessian_blocks_diagonal,
+		core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
 
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
@@ -68,16 +68,16 @@ void ArapSparseHessianApproximation(
 	}
 
 	// input/output prep
-	arap_hessian_blocks_upper = o3c::Tensor({edge_count, 6, 6}, o3c::Float32, device);
-	auto upper_block_data = arap_hessian_blocks_upper.GetDataPtr<float>();
-	arap_hessian_upper_block_coordinates = o3c::Tensor({edge_count, 2}, o3c::Int32, device);
-	auto upper_block_coordinate_data = arap_hessian_upper_block_coordinates.GetDataPtr<int32_t>();
-	arap_hessian_blocks_diagonal = o3c::Tensor({node_count, 6, 6}, o3c::Float32, device);
-	auto diagonal_block_data = arap_hessian_blocks_diagonal.GetDataPtr<float>();
+	arap_hessian_approximation.upper_blocks = o3c::Tensor({edge_count, 6, 6}, o3c::Float32, device);
+	auto upper_block_data = arap_hessian_approximation.upper_blocks.GetDataPtr<float>();
+	arap_hessian_approximation.upper_block_coordinates = o3c::Tensor({edge_count, 2}, o3c::Int32, device);
+	auto upper_block_coordinate_data = arap_hessian_approximation.upper_block_coordinates.GetDataPtr<int32_t>();
+	arap_hessian_approximation.diagonal_blocks = o3c::Tensor({node_count, 6, 6}, o3c::Float32, device);
+	auto diagonal_block_data = arap_hessian_approximation.diagonal_blocks.GetDataPtr<float>();
 	int64_t breadboard_width = node_count - first_layer_node_count;
-	arap_hessian_upper_block_breadboard = o3c::Tensor({node_count, breadboard_width}, o3c::Int16);
-	arap_hessian_upper_block_breadboard.Fill(-1);
-	auto breadboard_data = arap_hessian_upper_block_breadboard.GetDataPtr<int16_t>();
+	arap_hessian_approximation.upper_block_breadboard = o3c::Tensor({node_count, breadboard_width}, o3c::Int16);
+	arap_hessian_approximation.upper_block_breadboard.Fill(-1);
+	auto breadboard_data = arap_hessian_approximation.upper_block_breadboard.GetDataPtr<int16_t>();
 
 	auto edge_data = edges.GetDataPtr<int32_t>();
 	auto edge_jacobian_data = condensed_edge_jacobians.GetDataPtr<float>();

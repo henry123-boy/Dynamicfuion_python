@@ -29,7 +29,7 @@ namespace nnrt::core::linalg {
  * \brief perform cholesky factorization on supplied blocks
  * \details leaves entries in factorized blocks above diagonal same as in the original blocks
  */
-void FactorizeBlocksCholesky_LowerTriangular(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks) {
+void FactorizeBlocksCholesky(open3d::core::Tensor& factorized_blocks, const open3d::core::Tensor& blocks, UpLoTriangular up_lo) {
 	o3c::AssertTensorDtypes(blocks, { o3c::Float32, o3c::Float64 });
 	const o3c::Device device = blocks.GetDevice();
 	const o3c::Dtype data_type = blocks.GetDtype();
@@ -57,12 +57,12 @@ void FactorizeBlocksCholesky_LowerTriangular(open3d::core::Tensor& factorized_bl
 
 	if (device.IsCUDA()) {
 #ifdef BUILD_CUDA_MODULE
-		internal::FactorizeBlocksCholeskyCUDA(block_data, block_size, block_count, data_type, device);
+		internal::FactorizeBlocksCholeskyCUDA(block_data, block_size, block_count, data_type, device, up_lo);
 #else
 		open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
 #endif
 	} else {
-		internal::FactorizeBlocksCholeskyCPU(block_data, block_size, block_count, data_type, device);
+		internal::FactorizeBlocksCholeskyCPU(block_data, block_size, block_count, data_type, device, up_lo);
 	}
 
 	// Perform column- to row-major reordering using axis swap

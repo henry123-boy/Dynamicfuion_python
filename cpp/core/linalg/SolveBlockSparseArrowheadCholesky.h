@@ -17,36 +17,16 @@
 // stdlib includes
 
 // third-party includes
-
-// local includes
 #include <open3d/core/Tensor.h>
+// local includes
+#include "core/linalg/BlockSparseArrowheadMatrix.h"
 
 namespace nnrt::core::linalg {
 
-void SolveCholeskyBlockSparse(open3d::core::Tensor& X, const open3d::core::Tensor& A_blocks, const open3d::core::Tensor& B);
+void SolveBlockSparseArrowheadCholesky(open3d::core::Tensor& X, const BlockSparseArrowheadMatrix& A, const open3d::core::Tensor& B);
 
 namespace internal{
-void SolveBlockDiagonalCholeskyCPU(
-		void* A_blocks_data,
-		void* B_data,
-		const int64_t A_and_B_block_row_count,
-		const int64_t B_column_count,
-		const int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
-);
 
-
-void SolveBlockDiagonalCUDACholesky(
-		void* A_blocks_data,
-		void* B_data,
-		const int64_t A_and_B_block_row_count,
-		const int64_t B_column_count,
-		const int64_t block_count,
-		open3d::core::Dtype data_type,
-		const open3d::core::Device& device
-);
-
-} // internal
+}
 
 } // namespace nnrt::core::linalg

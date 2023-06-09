@@ -20,24 +20,16 @@
 #include <open3d/core/Tensor.h>
 
 // local includes
+#include "core/linalg/BlockSparseArrowheadMatrix.h"
 
 namespace nnrt::alignment::functional {
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+core::linalg::BlockSparseArrowheadMatrix
 ComputeArapBlockSparseHessianApproximation(
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
 		int64_t first_layer_node_count,
 		int64_t node_count
-);
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-FactorArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& arap_hessian_blocks_upper,
-		const open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		const open3d::core::Tensor& arap_hessian_block_breadboard,
-		const open3d::core::Tensor& arap_hessian_blocks_diagonal,
-		int64_t first_layer_node_count
 );
 
 } // namespace nnrt::alignment::functional

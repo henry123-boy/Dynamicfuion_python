@@ -26,20 +26,18 @@ namespace o3c = open3d::core;
 
 namespace nnrt::alignment::functional {
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+core::linalg::BlockSparseArrowheadMatrix
 ComputeArapBlockSparseHessianApproximation(
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
 		int64_t first_layer_node_count,
 		int64_t node_count
 ) {
-	o3c::Tensor arap_hessian_blocks_upper, arap_hessian_upper_block_coordinates, arap_hessian_block_breadboard, arap_hessian_blocks_diagonal;
+	core::linalg::BlockSparseArrowheadMatrix arap_hessian_approximation;
+
 
 	kernel::ArapSparseHessianApproximation(
-			arap_hessian_blocks_upper,
-			arap_hessian_upper_block_coordinates,
-			arap_hessian_block_breadboard,
-			arap_hessian_blocks_diagonal,
+			arap_hessian_approximation,
 
 			edges,
 			condensed_edge_jacobians,
@@ -47,21 +45,7 @@ ComputeArapBlockSparseHessianApproximation(
 			node_count
 	);
 
-	return std::make_tuple(arap_hessian_blocks_upper, arap_hessian_upper_block_coordinates,
-						   arap_hessian_block_breadboard, arap_hessian_blocks_diagonal);
-}
-
-std::tuple<open3d::core::Tensor, open3d::core::Tensor> FactorArapBlockSparseHessianApproximation(
-		const open3d::core::Tensor& arap_hessian_blocks_upper,
-		const open3d::core::Tensor& arap_hessian_upper_block_coordinates,
-		const open3d::core::Tensor& arap_hessian_block_breadboard,
-		const open3d::core::Tensor& arap_hessian_blocks_diagonal,
-		int64_t first_layer_node_count
-) {
-	o3c::Tensor L_diag_upper_left;
-	core::linalg::FactorizeBlocksCholesky_LowerTriangular(L_diag_upper_left, arap_hessian_blocks_diagonal.Slice(0, 0, first_layer_node_count));
-
-
+	return arap_hessian_approximation;
 }
 
 

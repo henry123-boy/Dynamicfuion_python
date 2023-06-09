@@ -301,15 +301,30 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
 def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):
     dict = {}
     if transpose:
+        # column lookup
         for (i, j, block) in indexed_blocks:
             if j not in dict:
                 dict[j] = []
             dict[j].append((i, block.T))
+        # __DEBUG
+        max = 0
+        for key, value in dict.items():
+            if len(value) > max:
+                max = len(value)
+        print(f"Tallest column in blocks: {max}")
     else:
+        # row lookup
         for (i, j, block) in indexed_blocks:
             if i not in dict:
                 dict[i] = []
             dict[i].append((j, block))
+        # __DEBUG
+        max = 0
+        for key, value in dict.items():
+            if len(value) > max:
+                max = len(value)
+        print(f"Longest row in blocks: {max}")
+
     return dict
 
 
@@ -373,9 +388,11 @@ def main():
     node_count = 249
     print(f"Edge count: {len(edges)}")
     H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts)
-    print(f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
+    print(
+        f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
     H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)
-    print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ", np.allclose(H_gt, H))
+    print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ",
+          np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
     U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts)

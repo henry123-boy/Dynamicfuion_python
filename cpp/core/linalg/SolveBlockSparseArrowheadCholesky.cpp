@@ -18,4 +18,18 @@
 // third-party includes
 
 // local includes
-#include "SolveBlockSparseCholesky.h"
+#include "SolveBlockSparseArrowheadCholesky.h"
+#include "core/linalg/FactorizeBlocksCholesky.h"
+
+namespace nnrt::core::linalg {
+
+void SolveBlockSparseArrowheadCholesky(
+		open3d::core::Tensor& X,
+		const nnrt::core::linalg::BlockSparseArrowheadMatrix& A,
+		const open3d::core::Tensor& B
+) {
+	// L_diagonal = FactorizeBlocksCholesky(A.diagonal_blocks);
+}
+
+} // namespace nnrt::core::linalg
+

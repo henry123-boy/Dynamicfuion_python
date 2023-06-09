@@ -38,17 +38,18 @@ void InvertTriangularBlocksCPU_Generic(
 ) {
 	auto* block_data_typed = static_cast<scalar_t*>(block_data);
 	const int64_t block_stride = block_size * block_size;
+	char uplo_char = uplo == UpLoTriangular::UPPER ? 'L' : 'U';
 
 #pragma omp parallel for schedule(static) num_threads(utility::EstimateMaxThreads()) \
     default(none) \
-    firstprivate(block_count, block_stride, block_size, uplo) \
+    firstprivate(block_count, block_stride, block_size, uplo_char) \
     shared(block_data_typed)
 	for (int64_t i_block = 0; i_block < block_count; i_block++) {
 		auto* A_block_data = block_data_typed + block_stride * i_block;
 		NNRT_LAPACK_CHECK(
 				trtri_cpu<scalar_t>(
 						// triangular upper/lower variant "flips" because matrix layout also flips (row->col major) during the computation
-						LAPACK_COL_MAJOR, uplo == UpLoTriangular::UPPER ? 'L' : 'U', 'N', block_size, A_block_data, block_size
+						LAPACK_COL_MAJOR, uplo_char, 'N', block_size, A_block_data, block_size
 				),
 				"potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);

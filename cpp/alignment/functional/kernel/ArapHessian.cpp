@@ -20,14 +20,12 @@
 // local includes
 #include "alignment/functional/kernel/ArapHessian.h"
 #include "core/DeviceSelection.h"
+#include "core/linalg/BlockSparseArrowheadMatrix.h"
 
 namespace nnrt::alignment::functional::kernel {
 
 void ArapSparseHessianApproximation(
-		open3d::core::Tensor& arap_hessian_blocks_upper,
-		open3d::core::Tensor& arap_hessian_block_upper_right_rows,
-		open3d::core::Tensor& arap_hessian_block_breadboard,
-		open3d::core::Tensor& arap_hessian_blocks_diagonal,
+		core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
 
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
@@ -38,10 +36,7 @@ void ArapSparseHessianApproximation(
 			edges.GetDevice(),
 			[&] {
 				ArapSparseHessianApproximation<open3d::core::Device::DeviceType::CPU>(
-						arap_hessian_blocks_upper,
-						arap_hessian_block_upper_right_rows,
-						arap_hessian_block_breadboard,
-						arap_hessian_blocks_diagonal,
+						arap_hessian_approximation,
 
 						edges,
 						condensed_edge_jacobians,
@@ -52,10 +47,7 @@ void ArapSparseHessianApproximation(
 			[&] {
 				NNRT_IF_CUDA (
 						ArapSparseHessianApproximation<open3d::core::Device::DeviceType::CUDA>(
-								arap_hessian_blocks_upper,
-								arap_hessian_block_upper_right_rows,
-								arap_hessian_block_breadboard,
-								arap_hessian_blocks_diagonal,
+								arap_hessian_approximation,
 
 								edges,
 								condensed_edge_jacobians,
