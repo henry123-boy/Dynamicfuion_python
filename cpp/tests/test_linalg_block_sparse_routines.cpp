@@ -112,6 +112,10 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 			 498.,  540.,  582.,
 			 390.,  423.,  456.,
 
+			   0.,    0.,    0.,
+			   0.,    0.,    0.,
+			   0.,    0.,    0.,
+
 			3036., 3114., 3192.,
 			2685., 2754., 2823.,
 			2334., 2394., 2454.,
@@ -124,6 +128,10 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 			 849.,  864.,  879.,
 			 336.,  342.,  348.,
 
+			   0.,    0.,    0.,
+			   0.,    0.,    0.,
+			   0.,    0.,    0.,
+
 			5844., 5922., 6000.,
 			5169., 5238., 5307.,
 			4494., 4554., 4614.,
@@ -134,8 +142,12 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 
 			2226., 2250., 2274.,
 			1389., 1404., 1419.,
-			 552.,  558.,  564.
-	}, {8, 3, 3}, o3c::Float32, device);
+			 552.,  558.,  564.,
+
+			   0.,    0.,    0.,
+			   0.,    0.,    0.,
+			   0.,    0.,    0.
+	}, {11, 3, 3}, o3c::Float32, device);
 
 
 	o3c::Tensor c_blocks = nnrt::core::linalg::MatmulBlockSparseRowWise(a_blocks, b_blocks, b_block_coordinates);

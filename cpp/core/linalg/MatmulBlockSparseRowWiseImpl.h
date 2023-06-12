@@ -49,8 +49,8 @@ MatmulBlockSparseRowWise(
 	o3c::AssertTensorDtype(blocks_b_coordinates, o3c::Int32);
 	o3c::AssertTensorDevice(blocks_b_coordinates, device);
 
-	int64_t rows_to_multiply_count = blocks_a.GetShape(0);
-	o3c::AssertTensorShape(blocks_a, { rows_to_multiply_count, block_size, block_size });
+	int64_t a_block_count = blocks_a.GetShape(0);
+	o3c::AssertTensorShape(blocks_a, { a_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(blocks_a, o3c::Float32);
 	o3c::AssertTensorDevice(blocks_a, device);
 
@@ -77,6 +77,10 @@ MatmulBlockSparseRowWise(
 	const float* b_blocks_device[block_count];
 	float* c_blocks_device[block_count];
 #endif
+	o3c::Tensor padding_block = o3c::Tensor::Zeros({block_size, block_size}, o3c::Float32, device);
+	float* padding_data = padding_block.GetDataPtr<float>();
+
+
 	int64_t block_stride = block_size * block_size;
 	NNRT_DECLARE_ATOMIC(int, output_block_count_atomic);
 	NNRT_INITIALIZE_ATOMIC(int, output_block_count_atomic, 0);
@@ -85,15 +89,19 @@ MatmulBlockSparseRowWise(
 			block_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
 				int i_row = blocks_b_coordinate_data[i_input_block * 2];
-				a_blocks_device[i_input_block] = blocks_a_data + i_row * block_stride;
-				b_blocks_device[i_input_block] = blocks_b_data + i_input_block * block_stride;
+				if (i_row < a_block_count) {
+					a_blocks_device[i_input_block] = blocks_a_data + i_row * block_stride;
+					b_blocks_device[i_input_block] = blocks_b_data + i_input_block * block_stride;
+				} else {
+					a_blocks_device[i_input_block] = padding_data;
+					b_blocks_device[i_input_block] = padding_data;
+				}
 				c_blocks_device[i_input_block] = blocks_c_data + i_input_block * block_stride;
 			}
 	);
 	auto block_size_int32 = static_cast<int32_t>(block_size);
 	float alpha = 1, beta = 0;
-	int output_block_count = NNRT_GET_ATOMIC_VALUE_HOST(output_block_count_atomic);
-	NNRT_CLEAN_UP_ATOMIC(output_block_count_atomic);
+
 #ifdef __CUDACC__
 	cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
 	NNRT_CUBLAS_CHECK(
@@ -107,7 +115,7 @@ MatmulBlockSparseRowWise(
 					a_blocks_device, block_size_int32,
 					&beta,
 					c_blocks_device, block_size_int32,
-					output_block_count
+					block_count
 			),
 			"cuda batched gemm failed"
 	);
@@ -120,7 +128,7 @@ MatmulBlockSparseRowWise(
 			b_blocks_device, block_size_int32,
 			beta,
 			c_blocks_device, block_size_int32,
-			output_block_count
+			block_count
 	);
 #endif
 
@@ -129,7 +137,7 @@ MatmulBlockSparseRowWise(
 	OPEN3D_CUDA_CHECK(cudaFree(b_blocks_device));
 	OPEN3D_CUDA_CHECK(cudaFree(c_blocks_device));
 #endif
-	return product_blocks.Slice(0, 0, output_block_count);
+	return product_blocks;
 }
 
 } // namespace nnrt::core::linalg::internal
