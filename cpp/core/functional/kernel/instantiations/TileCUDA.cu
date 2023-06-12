@@ -22,5 +22,5 @@
 
 namespace nnrt::core::functional::kernel {
 template
-void Tile<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int rows, int columns);
+void Tile<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int row_count, int column_count);
 } // namespace nnrt::core::functional::kernel

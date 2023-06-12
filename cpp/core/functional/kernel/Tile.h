@@ -22,9 +22,9 @@
 // local includes
 namespace nnrt::core::functional::kernel {
 
-void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int rows, int columns);
+void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int row_count, int column_count);
 
 template<typename open3d::core::Device::DeviceType TDeviceType>
-void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int rows, int columns);
+void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int row_count, int column_count);
 
 } // namespace nnrt::core::functional::kernel

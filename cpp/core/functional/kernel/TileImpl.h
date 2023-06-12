@@ -27,20 +27,19 @@ namespace utility = open3d::utility;
 namespace nnrt::core::functional::kernel {
 
 template<typename open3d::core::Device::DeviceType TDeviceType>
-void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int rows, int columns) {
+void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int row_count, int column_count) {
 	int tensor_width = source_tensor.GetShape(1);
 	int tensor_height = source_tensor.GetShape(2);
 	o3c::AssertTensorShape(source_tensor, { tensor_height, tensor_width });
 	o3c::Device device = source_tensor.GetDevice();
-	tiled = o3c::Tensor({tensor_height * rows, tensor_width * columns}, source_tensor.GetDtype(), device);
+	tiled = o3c::Tensor({tensor_height * row_count, tensor_width * column_count}, source_tensor.GetDtype(), device);
 	auto tiled_data = reinterpret_cast<uint8_t*>(tiled.GetDataPtr());
 	auto source_data = reinterpret_cast<const uint8_t*>(source_tensor.GetDataPtr());
 
-
+	int64_t repeat_count = row_count * column_count;
 #ifdef __CUDACC__
 	//TODO: not sure if this works faster than just a bunch of cudaMemcpy calls. Test.
 	auto element_byte_size = source_tensor.GetDtype().ByteSize();
-	int64_t repeat_count = rows * columns;
 	int64_t source_element_count = source_tensor.NumElements();
 	int64_t tiled_element_count = repeat_count * source_element_count;
 	o3c::ParallelFor(
@@ -51,14 +50,16 @@ void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor
 			memcpy(tiled_data + i_output_element * element_byte_size, source_data + i_input_element * element_byte_size, element_byte_size);
 		}
 	);
-#endif
+#else
 	auto source_tensor_byte_size = source_tensor.GetDtype().ByteSize() * source_tensor.NumElements();
-
 #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
     default(none) \
-    firstprivate(source_tensor_byte_size, A_block_stride, B_block_stride, C_block_stride) \
-    shared(A_data, B_data, C_data, A_array, B_array, C_array)
-	for (int i_matrix = 0; i_matrix < batch_size; i_matrix++) {
+    firstprivate(source_tensor_byte_size, repeat_count) \
+    shared(source_data, tiled_data)
+	for (int i_tile = 0; i_tile < repeat_count; i_tile++) {
+		memcpy(tiled_data + i_tile * source_tensor_byte_size, source_data, source_tensor_byte_size);
 	}
+#endif
+}
 
 } // namespace nnrt::core::functional::kernel
