@@ -45,6 +45,7 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t node_count
 ) {
+	//TODO: provisions for translation-only and rotation-only hessians (3x3 blocks)
 	// checks & counts
 	o3c::Device device = edges.GetDevice();
 	int64_t edge_count = edges.GetLength();
@@ -78,20 +79,20 @@ void ArapSparseHessianApproximation(
 	int64_t breadboard_width = node_count - first_layer_node_count;
 	arap_hessian_approximation.upper_block_breadboard = o3c::Tensor({node_count, breadboard_width}, o3c::Int16);
 	arap_hessian_approximation.upper_block_breadboard.Fill(-1);
+	auto breadboard_data = arap_hessian_approximation.upper_block_breadboard.GetDataPtr<int16_t>();
 
 	arap_hessian_approximation.arrow_base_block_index = static_cast<int>(first_layer_node_count);
 
-	arap_hessian_approximation.upper_block_column_lookup = o3c::Tensor({breadboard_width, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2},
-	                                                                   o3c::Int32, device);
-	auto block_column_lookup_data = arap_hessian_approximation.upper_block_column_lookup.GetDataPtr<int32_t>();
-	arap_hessian_approximation.upper_block_row_lookup = o3c::Tensor({node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2}, o3c::Int32,
-	                                                                device);
-	auto block_row_lookup_data = arap_hessian_approximation.upper_block_row_lookup.GetDataPtr<int32_t>();
+	arap_hessian_approximation.upper_column_block_lists = o3c::Tensor({breadboard_width, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2},
+	                                                                  o3c::Int32, device);
+	auto block_column_lookup_data = arap_hessian_approximation.upper_column_block_lists.GetDataPtr<int32_t>();
+	arap_hessian_approximation.upper_row_block_lists = o3c::Tensor({node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2}, o3c::Int32,
+	                                                               device);
+	auto block_row_lookup_data = arap_hessian_approximation.upper_row_block_lists.GetDataPtr<int32_t>();
 
 	core::AtomicCounterArray<TDeviceType> column_block_counts(breadboard_width);
 	core::AtomicCounterArray<TDeviceType> row_block_counts(node_count);
 
-	auto breadboard_data = arap_hessian_approximation.upper_block_breadboard.GetDataPtr<int16_t>();
 
 	auto edge_data = edges.GetDataPtr<int32_t>();
 	auto edge_jacobian_data = condensed_edge_jacobians.GetDataPtr<float>();
@@ -153,8 +154,8 @@ void ArapSparseHessianApproximation(
 
 			}
 	);
-	arap_hessian_approximation.upper_block_column_counts = column_block_counts.AsTensor(true);
-	arap_hessian_approximation.upper_block_row_counts = row_block_counts.AsTensor(true);
+	arap_hessian_approximation.upper_column_block_counts = column_block_counts.AsTensor(true);
+	arap_hessian_approximation.upper_row_block_counts = row_block_counts.AsTensor(true);
 
 #ifndef __CUDACC__
 	std::vector<std::atomic<float>> hessian_blocks_diagonal_atomic(node_count * 36);

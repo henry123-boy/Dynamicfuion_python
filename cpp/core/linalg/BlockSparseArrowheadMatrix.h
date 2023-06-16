@@ -42,10 +42,10 @@ struct BlockSparseArrowheadMatrix {
 	open3d::core::Tensor upper_blocks;
 	open3d::core::Tensor upper_block_coordinates;
 	open3d::core::Tensor upper_block_breadboard;
-	open3d::core::Tensor upper_block_row_lookup;
-	open3d::core::Tensor upper_block_row_counts;
-	open3d::core::Tensor upper_block_column_lookup;
-	open3d::core::Tensor upper_block_column_counts;
+	open3d::core::Tensor upper_row_block_lists;
+	open3d::core::Tensor upper_row_block_counts;
+	open3d::core::Tensor upper_column_block_lists;
+	open3d::core::Tensor upper_column_block_counts;
 	open3d::core::Tensor diagonal_blocks;
 	// (first) index of the block along the diagonal at which the "arrowhead" is attached to the "stem" above and below
 	int arrow_base_block_index;

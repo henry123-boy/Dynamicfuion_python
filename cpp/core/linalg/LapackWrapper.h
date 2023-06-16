@@ -22,6 +22,7 @@
 // local includes
 #include "core/linalg/LinalgHeadersCUDA.h"
 #include "core/linalg/LinalgHeadersCPU.h"
+#include <open3d/core/CUDAUtils.h>
 
 // contains some blas operations currently missing from Open3D LapackWrapper.h,
 // i.e. ?potrf (Cholesky factorization of a symmetric (Hermitian) positive-definite matrix)
@@ -35,7 +36,7 @@ potrf_cpu(
 		char upper_or_lower,
 		NNRT_CPU_LINALG_INT A_leading_dimension,
 		scalar_t* A_data,
-		NNRT_CPU_LINALG_INT A_other_dimension
+		NNRT_CPU_LINALG_INT A_row_and_column_count
 ) {
 	open3d::utility::LogError("Unsupported data type.");
 	return -1;
@@ -47,9 +48,9 @@ inline NNRT_CPU_LINALG_INT potrf_cpu<float>(
 		char upper_or_lower,
 		NNRT_CPU_LINALG_INT A_leading_dimension,
 		float* A_data,
-		NNRT_CPU_LINALG_INT A_other_dimension
+		NNRT_CPU_LINALG_INT A_row_and_column_count
 ) {
-	return LAPACKE_spotrf(layout, upper_or_lower, A_other_dimension, A_data, A_leading_dimension);
+	return LAPACKE_spotrf(layout, upper_or_lower, A_row_and_column_count, A_data, A_leading_dimension);
 }
 
 template<>
@@ -58,10 +59,11 @@ inline NNRT_CPU_LINALG_INT potrf_cpu<double>(
 		char upper_or_lower,
 		NNRT_CPU_LINALG_INT A_leading_dimension,
 		double* A_data,
-		NNRT_CPU_LINALG_INT A_other_dimension
+		NNRT_CPU_LINALG_INT A_row_and_column_count
 ) {
-	return LAPACKE_dpotrf(layout, upper_or_lower, A_other_dimension, A_data, A_leading_dimension);
+	return LAPACKE_dpotrf(layout, upper_or_lower, A_row_and_column_count, A_data, A_leading_dimension);
 }
+
 
 #ifdef BUILD_CUDA_MODULE
 
@@ -106,6 +108,79 @@ inline cusolverStatus_t potrf_batched_cuda<double>(
 ) {
 	return cusolverDnDpotrfBatched(handle, upper_or_lower_triangle, n, A_array, A_leading_dimension,
 	                               out_factorization_result_array, batch_size);
+}
+
+template<typename scalar_t>
+inline cusolverStatus_t potrf_cuda(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int A_leading_dimension,
+		scalar_t* A_data,
+		int A_row_and_column_count
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUSOLVER_STATUS_NOT_SUPPORTED;
+}
+
+namespace internal {
+template<typename scalar_t, typename TDetermineBufferSize, typename TPotrf>
+inline cusolverStatus_t potrf_cuda_generic(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int A_leading_dimension,
+		scalar_t* A_data,
+		int A_row_and_column_count,
+		TDetermineBufferSize&& determine_buffer_size,
+		TPotrf&& potrf
+) {
+	int l_work = 0;
+	cusolverStatus_t buffer_size_error = determine_buffer_size(handle, upper_or_lower_triangle, A_row_and_column_count, A_data,
+	                                                           A_leading_dimension, &l_work);
+	if (CUSOLVER_STATUS_SUCCESS != buffer_size_error) {
+		return buffer_size_error;
+	}
+	scalar_t* workspace;
+	int* dev_info;
+	OPEN3D_CUDA_CHECK(cudaMalloc(&workspace, sizeof(scalar_t) * l_work));
+	OPEN3D_CUDA_CHECK(cudaMalloc(&dev_info, sizeof(int)));
+	OPEN3D_CUDA_CHECK(cudaMemset(dev_info, 0, sizeof(int)));
+	cusolverStatus_t potrf_status = potrf(
+			handle, CUBLAS_FILL_MODE_UPPER, A_row_and_column_count,
+			A_data, A_leading_dimension,
+			workspace, l_work, dev_info
+	);
+	OPEN3D_CUDA_CHECK(cudaFree(workspace));
+	OPEN3D_CUDA_CHECK(cudaFree(dev_info));
+	return potrf_status;
+}
+} // namespace internal
+
+
+template<>
+inline cusolverStatus_t potrf_cuda<float>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int A_leading_dimension,
+		float* A_data,
+		int A_row_and_column_count
+) {
+	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count,
+	                                    cusolverDnSpotrf_bufferSize, cusolverDnSpotrf);
+}
+
+
+template<>
+inline cusolverStatus_t potrf_cuda<double>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int A_leading_dimension,
+		double* A_data,
+		int A_row_and_column_count
+) {
+	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count,
+	                                    cusolverDnDpotrf_bufferSize, cusolverDnDpotrf);
+}
+
 }
 
 #endif
@@ -213,8 +288,9 @@ trtri_cpu<double>(
 }
 
 // --- CUDA (batched) ---
+//deprecated("See by trtri_batched_cuda in LinalgKernels.cuh, this is probably NOT what you want")]]
 template<typename scalar_t>
-inline void trtri_batched_cuda(
+inline void trtri_diag_batched_cuda(
 		magma_uplo_t uplo,
 		magma_diag_t diag,
 		magma_int_t n,
@@ -228,8 +304,9 @@ inline void trtri_batched_cuda(
 	open3d::utility::LogError("Unsupported data type.");
 }
 
+
 template<>
-inline void trtri_batched_cuda<float>(
+inline void trtri_diag_batched_cuda<float>(
 		magma_uplo_t uplo,
 		magma_diag_t diag,
 		magma_int_t n,
@@ -244,7 +321,7 @@ inline void trtri_batched_cuda<float>(
 }
 
 template<>
-inline void trtri_batched_cuda<double>(
+inline void trtri_diag_batched_cuda<double>(
 		magma_uplo_t uplo,
 		magma_diag_t diag,
 		magma_int_t n,
@@ -256,6 +333,42 @@ inline void trtri_batched_cuda<double>(
 		magma_queue_t queue
 ) {
 	magmablas_dtrtri_diag_batched(uplo, diag, n, dA_array, ldda, dinvA_array, resetozero, batchCount, queue);
+}
+
+template<typename scalar_t>
+inline void trtri_cuda(
+		magma_uplo_t uplo,
+		magma_diag_t diag,
+		magma_int_t n,
+		scalar_t* A,
+		magma_int_t ldda,
+		magma_int_t* info
+) {
+	open3d::utility::LogError("Unsupported data type.");
+}
+
+template<>
+inline void trtri_cuda<float>(
+		magma_uplo_t uplo,
+		magma_diag_t diag,
+		magma_int_t n,
+		float* A,
+		magma_int_t ldda,
+		magma_int_t* info
+) {
+	magma_strtri_gpu(uplo, diag, n, A, ldda, info);
+}
+
+template<>
+inline void trtri_cuda<double>(
+		magma_uplo_t uplo,
+		magma_diag_t diag,
+		magma_int_t n,
+		double* A,
+		magma_int_t ldda,
+		magma_int_t* info
+) {
+	magma_dtrtri_gpu(uplo, diag, n, A, ldda, info);
 }
 
 

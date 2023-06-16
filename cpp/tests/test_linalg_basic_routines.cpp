@@ -28,7 +28,7 @@
 #include "core/TensorManipulationRoutines.h"
 
 namespace o3c = open3d::core;
-
+// TODO reorganize along with test_linalg_block_sparse_routines.cpp into descriptive files / test suites
 void TestCholeskyBlockDiagonalSolver(const o3c::Device& device) {
 	o3c::Tensor A_blocks(std::vector<float>{
 			7.66466999, 7.42160096, 7.96971846, 5.41618416, 5.48901906, 6.29302529,

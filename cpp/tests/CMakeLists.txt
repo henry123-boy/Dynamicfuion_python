@@ -130,7 +130,7 @@ if (BUILD_CPP_TESTS)
         test_utils/geometry.h
         test_utils/fitter_testing.cpp
         test_utils/fitter_testing.h
-    )
+        test_block_sparse_arrowhead_solver.cpp)
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -235,6 +235,22 @@ if (BUILD_CPP_TESTS)
         images/berlin_000029_mask.png
     )
 
+    nnrt_add_test_data_download_target(
+        test_data_block_sparse_arrowhead
+        URL https://algomorph.com/storage/reco/block_sparse_arrowhead_test_data.7z
+        SHA256 392034bfdf3bf09fe4b6eaffe63572a8015bf563e4079557a7d486d51ecf9e37
+        DESTINATION block_sparse_arrowhead_test_data.7z
+        EXTRACTED_NAMES
+        arrays/breadboard.npy
+        arrays/U_diag_upper_left.npy
+        arrays/U_upper_right.npy
+        arrays/U_lower_right_dense.npy
+        arrays/upper_column_block_lists.npy
+        arrays/upper_column_block_counts.npy
+        arrays/upper_row_block_lists.npy
+        arrays/upper_row_block_counts.npy
+    )
+
 
     ### add tests ###
     nnrt_add_test(test_graph_proc)
@@ -274,5 +290,6 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_sorting)
     nnrt_add_test(test_rasterize DEPENDENCIES test_data_plane_and_cube_rendering test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array suzanne_and_bunny_res_4_2_rasterization_test)
     nnrt_add_test(test_interpolate_vertex_attributes DEPENDENCIES test_data_rendered_normals test_data_mesh_bunny_res4 test_data_mesh_bunny_res2 test_data_mesh_64_bunny_array)
+    nnrt_add_test(test_block_sparse_arrowhead_solver DEPENDENCIES test_data_block_sparse_arrowhead)
 
 endif ()

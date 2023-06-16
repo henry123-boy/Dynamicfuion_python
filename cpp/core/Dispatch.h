@@ -46,8 +46,8 @@
     }()
 #endif
 
-#ifndef DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE
-#define DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(SIZE, ELEMENT_TYPE, ...) \
+#ifndef DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE
+#define DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(SIZE, ELEMENT_TYPE, ...) \
     [&]{                                                                   \
         switch(SIZE){                                                      \
          case 1:{                                                          \
@@ -64,6 +64,26 @@
             }                                                              \
         case 4:{                                                           \
             using vector_t = Eigen::Vector<ELEMENT_TYPE, 4>;               \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        default:                                                           \
+            open3d::utility::LogError("Unsupported size, {}."              \
+            " Only sizes 2-4 are supported.", SIZE);                       \
+            return;                                                        \
+        }                                                                  \
+    }()
+#endif
+
+#ifndef DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE
+#define DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE(SIZE,  ...)               \
+    [&]{                                                                   \
+        switch(SIZE){                                                      \
+         case 3:{                                                          \
+            using matrix_t = Eigen::Matrix<float, 3, 3, Eigen::RowMajor>;  \
+            return __VA_ARGS__();                                          \
+            }                                                              \
+        case 6:{                                                           \
+            using matrix_t = Eigen::Matrix<float, 6, 6, Eigen::RowMajor>;  \
             return __VA_ARGS__();                                          \
             }                                                              \
         default:                                                           \

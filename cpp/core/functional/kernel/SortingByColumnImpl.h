@@ -73,14 +73,14 @@ void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor
 	}
 	//TODO a more-versatile d-type dispatching macro
 	if (unsorted.GetDtype() == o3c::Int32) {
-		DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
+		DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
 			SortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(sorted, unsorted, column, in_place);
 		});
 	} else {
 		DISPATCH_FLOAT_DTYPE_TO_TEMPLATE(
 				unsorted.GetDtype(),
 				[&]() {
-					DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
+					DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
 						SortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(sorted, unsorted, column, in_place);
 					});
 				}
@@ -121,14 +121,14 @@ void ArgSortTensorByColumn(open3d::core::Tensor& index, const open3d::core::Tens
 	}
 	//TODO a more-versatile d-type dispatching macro
 	if (unsorted.GetDtype() == o3c::Int32) {
-		DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
+		DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
 			ArgSortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(index, unsorted, column);
 		});
 	} else {
 		DISPATCH_FLOAT_DTYPE_TO_TEMPLATE(
 				unsorted.GetDtype(),
 				[&]() {
-					DISPATCH_VECTOR_2_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
+					DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t, [&]() {
 						ArgSortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(index, unsorted, column);
 					});
 				}

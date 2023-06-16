@@ -460,7 +460,7 @@ set(
     core/functional/kernel/TileImpl.h
     core/functional/kernel/instantiations/TileCPU.cpp
     core/functional/kernel/instantiations/TileCUDA.cu
-)
+    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h core/linalg/LinalgKernels.cuh)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

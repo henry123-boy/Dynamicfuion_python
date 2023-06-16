@@ -15,6 +15,7 @@
 #  ================================================================
 import math
 import sys
+from pathlib import Path
 from typing import List, Tuple, Dict
 
 import numpy as np
@@ -152,13 +153,13 @@ def compute_sparse_H(edges: np.ndarray, edge_jacobians: np.ndarray,
 
 
 def fill_sparse_blocks(matrix: np.array, sparse_blocks: List[Tuple[int, int, np.ndarray]], flip_i_and_j: bool = False,
-                       transpose: bool = False):
+                       transpose: bool = False, block_offsets: Tuple[int, int] = (0, 0)):
     block_size = sparse_blocks[0][2].shape[0]
 
     def fill_block(matrix, i, j):
-        i_start = i * block_size
+        i_start = (i - block_offsets[0]) * block_size
         i_end = i_start + block_size
-        j_start = j * block_size
+        j_start = (j - block_offsets[1]) * block_size
         j_end = j_start + block_size
         matrix[i_start:i_end, j_start:j_end] = block.T if transpose else block
 
@@ -276,7 +277,7 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
 def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.ndarray],
                                             hessian_blocks_upper: List[Tuple[int, int, np.ndarray]],
                                             hessian_blocks_upper_corner: List[Tuple[int, int, np.ndarray]],
-                                            layer_node_counts: np.ndarray) \
+                                            layer_node_counts: np.ndarray, save_cpp_test_data: bool = False) \
         -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]]]:
     first_layer_node_count = layer_node_counts[0]
     L_diag_upper_left = [scipy.linalg.cholesky(block, lower=True) for block in
@@ -284,18 +285,31 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
     L_inv_diag_upper_left = [np.linalg.inv(L) for L in L_diag_upper_left]
 
     U_diag_upper_left = [L.T for L in L_diag_upper_left]
-    U_upper_right = [(i, j, L_inv_diag_upper_left[i].dot(U_h)) for (i, j, U_h) in hessian_blocks_upper]
+    U_upper_right = [(i, j, L_inv_diag_upper_left[i] @ U_h) for (i, j, U_h) in hessian_blocks_upper]
     block_size = hessian_blocks_diagonal[0].shape[0]
     node_count = len(hessian_blocks_diagonal)
 
     U_block_dict = indexed_blocks_to_block_lookup_structure(U_upper_right)
     H_block_dict = indexed_blocks_to_block_lookup_structure(hessian_blocks_upper + hessian_blocks_upper_corner)
 
-    U_diag_lower_right, U_upper_right = \
+    U_diag_lower_right, U_lower_right = \
         cholesky_blocked_sparse_corner(U_block_dict, H_block_dict, hessian_blocks_diagonal[first_layer_node_count:],
                                        first_layer_node_count, node_count, block_size)
 
-    return U_diag_upper_left + U_diag_lower_right, U_upper_right + U_upper_right
+    if save_cpp_test_data:
+        corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
+        np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_diag_upper_left.npy",
+                np.array(U_diag_upper_left + ([np.zeros((6, 6), dtype=np.float32)] * corner_size_blocks)))
+        np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper_right.npy",
+                np.array([block for _, _, block in U_upper_right]))
+        U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
+                                       dtype=np.float32)
+        fill_sparse_blocks(U_lower_right_dense, U_lower_right,
+                           block_offsets=(first_layer_node_count, first_layer_node_count))
+        fill_in_diagonal_blocks(U_lower_right_dense, U_diag_lower_right)
+        np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_lower_right_dense.npy", U_lower_right_dense)
+
+    return U_diag_upper_left + U_diag_lower_right, U_upper_right + U_lower_right
 
 
 def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):
@@ -378,6 +392,48 @@ def solve_triangular_sparse_forward_substitution(u_blocks_diagonal: List[np.ndar
     return solution
 
 
+BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE = 80
+BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE = 160
+
+
+def generate_cpp_test_block_sparse_arrowhead_input_data(
+        diagonal_blocks: List[np.array],
+        upper_blocks: List[Tuple[int, int, np.ndarray]],
+        layer_node_counts: np.ndarray,
+        base_path: str = "/mnt/Data/Reconstruction/output/matrix_experiments"
+):
+    first_layer_node_count = layer_node_counts[0]
+    node_count = len(diagonal_blocks)
+    breadboard_width_nodes = node_count - first_layer_node_count
+    breadboard = np.zeros((node_count, breadboard_width_nodes), np.int16)
+    breadboard -= 1
+    upper_column_block_lists = \
+        np.zeros((breadboard_width_nodes, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2), np.int32)
+    upper_column_block_counts = np.zeros((breadboard_width_nodes,), np.int32)
+    upper_row_block_lists = \
+        np.zeros((node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2), np.int32)
+    upper_row_block_counts = np.zeros((node_count,), np.int32)
+
+    for i_block, (i, j, block) in enumerate(upper_blocks):
+        j_breadboard = j - first_layer_node_count
+        breadboard[i, j_breadboard] = i_block
+
+        i_block_in_column = upper_column_block_counts[j_breadboard]
+        upper_column_block_counts[j_breadboard] += 1
+        upper_column_block_lists[j_breadboard, i_block_in_column, 0] = i
+        upper_column_block_lists[j_breadboard, i_block_in_column, 1] = i_block
+
+        j_block_in_row = upper_row_block_counts[i]
+        upper_row_block_counts[i] += 1
+        upper_row_block_lists[i, j_block_in_row, 0] = j
+        upper_row_block_lists[i, j_block_in_row, 1] = i_block
+    np.save(str(Path(base_path) / "breadboard.npy"), breadboard)
+    np.save(str(Path(base_path) / "upper_column_block_lists.npy"), upper_column_block_lists)
+    np.save(str(Path(base_path) / "upper_column_block_counts.npy"), upper_column_block_counts)
+    np.save(str(Path(base_path) / "upper_row_block_lists.npy"), upper_row_block_lists)
+    np.save(str(Path(base_path) / "upper_row_block_counts.npy"), upper_row_block_counts)
+
+
 def main():
     np.set_printoptions(suppress=True, linewidth=350, edgeitems=100)
     J = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/J.npy")
@@ -391,14 +447,19 @@ def main():
     print(
         f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
     H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)
+    save_cpp_test_data = True
+    if save_cpp_test_data:
+        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
     print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ",
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
-    U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts)
+    U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts,
+                                                              save_cpp_test_data=save_cpp_test_data)
     U = sparse_U_to_dense(U_diag, U_upper)
     H_aug = H + np.eye(H.shape[0]) * lm_factor
     U_gt = scipy.linalg.cholesky(H_aug, lower=False)
+
     print("Block-sparse H factorized successfully: ", np.allclose(U, U_gt))
 
     dummy_negJr = np.random.rand(node_count * 6)

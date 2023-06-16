@@ -151,8 +151,6 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 
 
 	o3c::Tensor c_blocks = nnrt::core::linalg::MatmulBlockSparseRowWise(a_blocks, b_blocks, b_block_coordinates);
-
-
 	REQUIRE(c_blocks.AllClose(c_blocks_gt));
 }
 
