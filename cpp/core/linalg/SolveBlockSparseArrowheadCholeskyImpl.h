@@ -62,10 +62,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	o3c::AssertTensorDtype(factorized_upper_blocks, o3c::Float32);
 	o3c::AssertTensorDevice(factorized_upper_blocks, device);
 
-	o3c::AssertTensorShape(A.upper_block_coordinates, { upper_block_count, 2 });
-	o3c::AssertTensorDtype(A.upper_block_coordinates, o3c::Int32);
-	o3c::AssertTensorDevice(A.upper_block_coordinates, device);
-
 	auto source_upper_block_data = A.upper_blocks.GetDataPtr<float>();
 	auto factorized_upper_block_data = factorized_upper_blocks.GetDataPtr<float>();
 	// breadboard will be updated with non-zero blocks in the corner region

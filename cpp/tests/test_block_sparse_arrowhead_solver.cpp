@@ -13,8 +13,30 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// stdlib includes
-
 // third-party includes
+#include <open3d/core/Tensor.h>
 
 // local includes
+#include "test_main.hpp"
+#include "test_utils/test_utils.hpp"
+
+// code being tested
+#include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
+
+namespace o3c = open3d::core;
+
+nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(){
+	nnrt::core::linalg::BlockSparseArrowheadMatrix matrix;
+	matrix.upper_block_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "breadboard.npy");
+	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_column_block_lists.npy");
+	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_column_block_counts.npy");
+	matrix.upper_row_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_row_block_lists.npy");
+	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_row_block_counts.npy");
+
+}
+
+void TestCholeskyBlockArrowheadFactorization(const o3c::Device& device) {
+	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_diag_upper_left.npy");
+	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_upper_right.npy");
+	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_lower_right_dense.npy");
+}
