@@ -129,8 +129,7 @@ if (BUILD_CPP_TESTS)
         test_utils/geometry.cpp
         test_utils/geometry.h
         test_utils/fitter_testing.cpp
-        test_utils/fitter_testing.h
-        test_block_sparse_arrowhead_solver.cpp)
+        test_utils/fitter_testing.h)
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)

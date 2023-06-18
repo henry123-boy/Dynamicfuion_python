@@ -33,9 +33,30 @@ void TestMatmul3D(const o3c::Device& device) {
 	// Be sure to run moveaxis in numpy before copy/pasting the values for testing:
 	// np.moveaxis(A, (0,1,2),(0,2,1)).flatten()
 
-	std::vector<float> A_data = {7., 2., 1., 5., 4., 4., 2., 9., 7., 2., 8., 7., 1., 1., 2., 9., 6.,0.};
+	std::vector<float> A_data = {
+			7., 2., 1.,
+			5., 4., 4.,
+
+			2., 9., 7.,
+			2., 8., 7.,
+
+			1., 1., 2.,
+			9., 6.,0.
+	};
 	o3c::Tensor A(A_data, {3, 2, 3}, o3c::Dtype::Float32, device);
-	std::vector<float> B_data = {9.,  4.,  6.,  9.,  5., 10.,  2.,  6.,  3.,  6.,  5.,  1.,  6., 4.,  7.,  4.,  2.,  5.};
+	std::vector<float> B_data = {
+			9.,  4.,
+			6.,  9.,
+			5., 10.,
+
+			2.,  6.,
+			3.,  6.,
+			5.,  1.,
+
+			6., 4.,
+			7.,  4.,
+			2.,  5.
+	};
 	o3c::Tensor B(B_data, {3, 3, 2}, o3c::Dtype::Float32, device);
 
 	auto C = core::Matmul3D(A,B);

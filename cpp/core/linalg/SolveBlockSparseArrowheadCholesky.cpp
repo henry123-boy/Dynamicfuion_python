@@ -35,12 +35,12 @@ void SolveBlockSparseArrowheadCholesky(
 		const open3d::core::Tensor& B
 ) {
 	o3c::Tensor U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right;
-	std::tie(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right) = FactorizeBlockSparseArrowheadCholesky_Upper(A, B);
+	std::tie(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right) = FactorizeBlockSparseArrowheadCholesky_Upper(A);
 	utility::LogError("Not implemented");
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A, const open3d::core::Tensor& B) {
+FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A) {
 	o3c::Tensor L_diagonal_upper_left;
 	FactorizeBlocksCholesky(L_diagonal_upper_left, A.diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
 	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);

@@ -22,5 +22,7 @@
 namespace nnrt::core::linalg::internal {
 template
 void
-FactorizeBlockSparseCholeskyCorner<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& workload_idx, const BlockSparseArrowheadMatrix& A);
+FactorizeBlockSparseCholeskyCorner<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& factorized_upper_dense_corner,
+                                                                          const open3d::core::Tensor& factorized_upper_blocks,
+                                                                          const BlockSparseArrowheadMatrix& A);
 } // namespace nnrt::core::linalg::internal

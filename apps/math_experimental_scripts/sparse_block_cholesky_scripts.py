@@ -233,14 +233,19 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
     corner_U_upper_blocks = []
 
     i_diagonal = 0
+
+    #__DEBUG
+    product_count = 0
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
+        row_product_count = 0
         block_sum = np.zeros((block_size, block_size), dtype=np.float64)
         # use block column at index i to augment the matrix diagonal entry
         for k in range(0, i):
             if (k, i) in U_block_dict:
                 U_ki = U_block_dict[(k, i)]
                 block_sum += U_ki.transpose() @ U_ki
+                row_product_count += 1
 
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
@@ -258,6 +263,7 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                     U_ki = U_block_dict[(k, i)]
                     U_kj = U_block_dict[(k, j)]
                     block_sum += U_ki.transpose() @ U_kj
+                    row_product_count += 1
 
             # update "inner" matrix blocks
             if (i, j) in H_block_dict:
@@ -270,6 +276,12 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             U_block_dict[(i, j)] = U_ij
             corner_U_upper_blocks.append((i, j, U_ij))
         i_diagonal += 1
+        #__DEBUG
+        print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
+        product_count += row_product_count
+
+    #__DEBUG
+    print(f"Total product count during \"arrowhead\" corner factorization: {product_count}")
 
     return corner_U_diagonal_blocks, corner_U_upper_blocks
 

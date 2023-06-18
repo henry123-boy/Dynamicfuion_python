@@ -32,11 +32,27 @@ nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(){
 	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_column_block_counts.npy");
 	matrix.upper_row_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_row_block_lists.npy");
 	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "upper_row_block_counts.npy");
-
+	return matrix;
 }
 
-void TestCholeskyBlockArrowheadFactorization(const o3c::Device& device) {
-	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_diag_upper_left.npy");
-	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_upper_right.npy");
-	o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_lower_right_dense.npy");
+void TestCholeskyBlockSparseArrowheadFactorization(const o3c::Device& device) {
+	auto matrix = LoadSparseArrowheadInputs();
+
+	o3c::Tensor U_diag, U_upper, U_lower_right_dense;
+	std::tie(U_diag, U_upper, U_lower_right_dense) = nnrt::core::linalg::FactorizeBlockSparseArrowheadCholesky_Upper(matrix);
+
+
+	o3c::Tensor U_diag_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_diag_upper_left.npy");
+	o3c::Tensor U_upper_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_upper_right.npy");
+	o3c::Tensor U_lower_right_dense_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "U_lower_right_dense.npy");
+}
+
+TEST_CASE("Test Factorize Block-Sparse Arrowhead CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestCholeskyBlockSparseArrowheadFactorization(device);
+}
+
+TEST_CASE("Test Factorize Block-Sparse Arrowhead CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestCholeskyBlockSparseArrowheadFactorization(device);
 }

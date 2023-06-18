@@ -181,8 +181,6 @@ inline cusolverStatus_t potrf_cuda<double>(
 	                                    cusolverDnDpotrf_bufferSize, cusolverDnDpotrf);
 }
 
-}
-
 #endif
 
 // endregion =========================================================================================================================================

@@ -23,15 +23,123 @@
 #include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
 #include "core/functional/ParallelPrefixScan.h"
 #include "core/platform_independence/Qualifiers.h"
+#include "core/platform_independence/Atomics.h"
 #include "core/kernel/MathTypedefs.h"
 #include "core/Dispatch.h"
 #include "core/linalg/LinalgUtils.h"
-#include "LapackWrapper.h"
+#include "core/linalg/LapackWrapper.h"
+#include "core/linalg/BlasWrapper.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg::internal {
+
+#define ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT 2000
+
+
+//TODO: need a proper AtomicTensor type, compatible with Open3D tensor, with a method to fill values atomically in a cross-platform fashion
+static void RunBlockSumChecks(
+		o3c::Tensor& sums, int sum_count, const o3c::Tensor& blocks, const o3c::Tensor& block_sum_indices, int block_count
+) {
+	// counters & checks
+	o3c::Device device = blocks.GetDevice();
+	o3c::AssertTensorDtype(sums, o3c::Float32);
+	o3c::AssertTensorDtype(blocks, o3c::Float32);
+	o3c::AssertTensorDtype(block_sum_indices, o3c::Int32);
+	int64_t block_size = blocks.GetShape(1);
+	int64_t max_block_count = blocks.GetShape(0);
+	int64_t max_sum_count = sums.GetShape(0);
+	o3c::AssertTensorShape(sums, { max_sum_count, block_size, block_size });
+	o3c::AssertTensorShape(blocks, { max_block_count, block_size, block_size });
+	o3c::AssertTensorShape(block_sum_indices, { max_block_count });
+
+	o3c::AssertTensorDevice(sums, device);
+	o3c::AssertTensorDevice(block_sum_indices, device);
+
+	if (block_count > max_block_count) {
+		utility::LogError("Block count, {}, exceeds allowed maximum, {}.", block_count, max_block_count);
+	}
+	if (sum_count > max_sum_count) {
+		utility::LogError("Sum count, {}, exceeds allowed maximum, {}.", sum_count, max_sum_count);
+	}
+}
+
+#ifdef __CUDACC__
+void ComputeBlockSumsCUDA(o3c::Tensor& sums, int sum_count, const o3c::Tensor& blocks, const o3c::Tensor& block_sum_indices, int block_count) {
+	RunBlockSumChecks(sums, sum_count, blocks, block_sum_indices, block_count);
+	sums.Fill(0);
+	o3c::Device device = blocks.GetDevice();
+	int64_t block_size = blocks.GetShape(1);
+	int64_t block_stride = block_size * block_size;
+	auto sum_data = sums.GetDataPtr<float>();
+	auto block_sum_index_data = block_sum_indices.GetDataPtr<int32_t>();
+	auto block_data = blocks.GetDataPtr<float>();
+
+	o3c::ParallelFor(
+			device,
+			block_count * block_stride,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				int64_t i_block = workload_idx / block_stride;
+				int64_t i_coefficient = workload_idx % block_stride;
+				int32_t i_sum = block_sum_index_data[i_block];
+				atomicAdd(sum_data + i_sum * block_stride + i_coefficient, block_data[workload_idx]);
+			}
+	);
+}
+
+#else
+
+void ComputeBlockSumsCPU(
+		o3c::Tensor& sums, std::vector<std::atomic<float>>& sum_blocks_atomic,
+		int sum_count, const o3c::Tensor& blocks, const o3c::Tensor& block_sum_indices, int block_count
+) {
+	RunBlockSumChecks(sums, sum_count, blocks, block_sum_indices, block_count);
+
+	o3c::Device device = blocks.GetDevice();
+	int64_t block_size = blocks.GetShape(1);
+	int64_t block_stride = block_size * block_size;
+
+	int64_t max_sum_count = sums.GetShape(0);
+	if (sum_blocks_atomic.size() != static_cast<unsigned long>(max_sum_count * block_stride)) {
+		utility::LogError("Expecting atomics array to have the same length as block tensor element count, but the former is {} and the latter is {}.",
+		                  sum_blocks_atomic.size(), max_sum_count * block_stride);
+	}
+
+	o3c::ParallelFor(
+			device,
+			sum_count * block_stride,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				sum_blocks_atomic[workload_idx].store(0);
+			}
+	);
+
+	auto sum_data = sums.GetDataPtr<float>();
+	auto block_sum_index_data = block_sum_indices.GetDataPtr<int32_t>();
+	auto block_data = blocks.GetDataPtr<float>();
+
+	o3c::ParallelFor(
+			device,
+			block_count * block_stride,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				int64_t i_block = workload_idx / block_stride;
+				int64_t i_coefficient = workload_idx % block_stride;
+				int32_t i_sum = block_sum_index_data[i_block];
+				atomicAdd_CPU(sum_blocks_atomic[i_sum * block_stride + i_coefficient], block_data[workload_idx]);
+			}
+	);
+
+	// copy over data from atomics to tensor on CPU
+	o3c::ParallelFor(
+			device,
+			sum_count * block_stride,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				sum_data[workload_idx] = sum_blocks_atomic[workload_idx].load();
+			}
+	);
+}
+
+#endif
 
 
 template<typename TMatrix, open3d::core::Device::DeviceType TDeviceType>
@@ -46,7 +154,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 
 	o3c::AssertTensorShape(A.diagonal_blocks, { diagonal_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(A.diagonal_blocks, o3c::Float32);
-
 
 	int breadboard_width = diagonal_block_count - A.arrow_base_block_index;
 	o3c::AssertTensorShape(A.upper_block_breadboard, { diagonal_block_count, breadboard_width });
@@ -64,21 +171,43 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 
 	auto source_upper_block_data = A.upper_blocks.GetDataPtr<float>();
 	auto factorized_upper_block_data = factorized_upper_blocks.GetDataPtr<float>();
-	// breadboard will be updated with non-zero blocks in the corner region
-	auto factorized_breadboard = A.upper_block_breadboard.Clone();
 	//TODO: return this too
 	auto source_breadboard_data = A.upper_block_breadboard.GetDataPtr<int16_t>();
-	auto factorized_breadboard_data = factorized_breadboard.GetDataPtr<int16_t>();
 
 
 	int64_t dense_corner_size = breadboard_width * block_size;
 	factorized_dense_corner_block = o3c::Tensor({dense_corner_size, dense_corner_size}, o3c::Float32, device);
 	auto factorized_upper_dense_data = factorized_dense_corner_block.GetDataPtr<float>();
 
+
+	int64_t block_stride = block_size * block_size;
+
+	// for holding temporary block sums
 	o3c::Tensor sums = o3c::Tensor({breadboard_width, block_size, block_size}, o3c::Float32, device);
 	auto sum_data = sums.GetDataPtr<float>();
 
-	int64_t block_stride = block_size * block_size;
+	// for holding temporary block products
+	o3c::Tensor products = o3c::Tensor({ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, block_size, block_size}, o3c::Float32, device);
+	auto product_data = products.GetDataPtr<float>();
+	auto product_addresses = reinterpret_cast<float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, device)
+	);
+	o3c::ParallelFor(
+			device,
+			ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+				product_addresses[workload_idx] = product_data + workload_idx * block_stride;
+			}
+	);
+	auto product_lhs_addresses = reinterpret_cast<const float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, device)
+	);
+	auto product_rhs_addresses = reinterpret_cast<const float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, device)
+	);
+	o3c::Tensor product_sum_indices = o3c::Tensor({ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT}, o3c::Int32, device);
+	auto product_sum_index_data = product_sum_indices.GetDataPtr<int32_t>();
+
 
 #ifndef __CUDACC__
 	std::vector<std::atomic<float>> sum_blocks_atomic(breadboard_width * block_stride);
@@ -86,19 +215,23 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	// ~breadboard column
 	int i = 0;
 	for (int i_diagonal_block = A.arrow_base_block_index; i_diagonal_block < diagonal_block_count; i_diagonal_block++, i++) {
-		sums.Fill(0);
 		int32_t block_count_in_row_or_column = diagonal_block_count - i_diagonal_block;
-		int32_t i_start_breadboard_column = breadboard_width - block_count_in_row_or_column;
 		int32_t block_count_above_blocks_in_row_i = i_diagonal_block - 1;
-		int32_t non_diagonal_blocks_in_row_count = block_count_in_row_or_column - 1;
-		int32_t block_count_to_check_for_non_diagonal = non_diagonal_blocks_in_row_count * block_count_above_blocks_in_row_i;
 
-		// compute sums
+
+		// determine block addresses for products
+		NNRT_DECLARE_ATOMIC(int, product_count_atomic);
+		NNRT_INITIALIZE_ATOMIC(int, product_count_atomic, 0);
+
 		o3c::ParallelFor(
 				device,
-				block_count_above_blocks_in_row_i + block_count_to_check_for_non_diagonal,
+				block_count_in_row_or_column * block_count_above_blocks_in_row_i,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-					if (workload_idx < block_count_above_blocks_in_row_i) {
+					int j = static_cast<int32_t>(workload_idx) / block_count_above_blocks_in_row_i;
+					int i_product = NNRT_ATOMIC_ADD(product_count_atomic, 1);
+					product_sum_index_data[i_product] = j;
+					if (j == 0) {
+						// first "block_count_above_blocks_in_row_i" blocks are above the diagonal block
 						int64_t k = workload_idx;
 						const float* block_data;
 						if (k < A.arrow_base_block_index) {
@@ -108,20 +241,12 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 						} else {
 							block_data = factorized_upper_dense_data + (k * block_size * dense_corner_size) + (i * block_size);
 						}
-						Eigen::Map<const TMatrix> factorized_block(block_data);
-						auto product = factorized_block.transpose() * factorized_block;
-						for (int i_coefficient = 0; i_coefficient < block_stride; i_coefficient++) {
-#ifdef __CUDACC__
-							atomicAdd(sum_data + i_coefficient, product.coeff(i_coefficient));
-#else
-							atomicAdd_CPU(sum_blocks_atomic[i_coefficient], product.coeff(i_coefficient));
-#endif
-						}
+						product_lhs_addresses[i_product] = block_data;
+						product_rhs_addresses[i_product] = block_data;
 
 					} else {
 						auto offset_workload_idx = static_cast<int32_t>(workload_idx - block_count_above_blocks_in_row_i);
 						int k = offset_workload_idx % block_count_above_blocks_in_row_i;
-						int j = i_start_breadboard_column + offset_workload_idx / block_count_above_blocks_in_row_i;
 						const float* block_ki_data;
 						const float* block_kj_data;
 						if (k < A.arrow_base_block_index) {
@@ -135,38 +260,52 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							block_ki_data = factorized_upper_dense_data + (k * block_size * dense_corner_size) + (i * block_size);
 							block_kj_data = factorized_upper_dense_data + (k * block_size * dense_corner_size) + (j * block_size);
 						}
-						Eigen::Map<const TMatrix> factorized_block_ki(block_ki_data);
-						Eigen::Map<const TMatrix> factorized_block_kj(block_kj_data);
-						auto product = factorized_block_ki.transpose() * factorized_block_kj;
-
-#ifdef __CUDACC__
-						auto block_sum_data = sum_data + j * block_stride;
-#endif
-						for (int i_coefficient = 0; i_coefficient < block_stride; i_coefficient++) {
-#ifdef __CUDACC__
-							atomicAdd(block_sum_data + i_coefficient, product.coeff(i_coefficient));
-#else
-							atomicAdd_CPU(sum_blocks_atomic[j * block_stride + i_coefficient], product.coeff(i_coefficient));
-#endif
-						}
+						product_lhs_addresses[i_product] = block_ki_data;
+						product_rhs_addresses[i_product] = block_kj_data;
 					}
 				}
 		);
-#ifndef __CUDACC__
-		// copy over data from atomics to tensor on CPU
-		o3c::ParallelFor(
-				device,
-				block_count_in_row_or_column * block_stride,
-				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-					sum_data[workload_idx] = sum_blocks_atomic[workload_idx].load();
-				}
+		int product_count = NNRT_GET_ATOMIC_VALUE_HOST(product_count_atomic); NNRT_CLEAN_UP_ATOMIC(product_count_atomic);
+		float alpha = 1.f, beta = 0.f;
+
+#ifdef __CUDACC__
+		cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
+		NNRT_CUBLAS_CHECK(
+				gemm_batched_cuda<float>(
+						handle, CUBLAS_OP_T, CUBLAS_OP_N,
+						block_size, block_size, block_size,
+						&alpha,
+						product_lhs_addresses, block_size,
+						product_rhs_addresses, block_size,
+						&beta,
+						product_addresses, block_size,
+						product_count
+				),
+				"cuda batched gemm failed"
 		);
+#else
+		gemm_batched_cpu<float>(CblasRowMajor, CblasTrans, CblasNoTrans,
+								block_size, block_size, block_size,
+								alpha,
+		                        product_lhs_addresses, block_size,
+								product_rhs_addresses, block_size,
+								beta,
+								product_addresses, block_size,
+								product_count);
 #endif
+
+#ifdef __CUDACC__
+		ComputeBlockSumsCUDA(sums, block_count_in_row_or_column, products, product_sum_indices, product_count);
+#else
+		ComputeBlockSumsCPU(sums, sum_blocks_atomic, block_count_in_row_or_column, products, product_sum_indices, product_count);
+#endif
+
 		o3c::Tensor factorized_U_diagonal_block = A.diagonal_blocks.GetItem(o3c::TensorKey::Index(i_diagonal_block)).Clone();
 		o3c::Tensor uTu_blocks_above_diagonal_sum = sums.GetItem(o3c::TensorKey::Index(0));
 		factorized_U_diagonal_block -= uTu_blocks_above_diagonal_sum;
 
-		factorized_U_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1); // layout-flip
+		//__DEBUG
+		// factorized_U_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1); // layout-flip
 		auto factorized_U_diagonal_block_data = factorized_U_diagonal_block.GetDataPtr<float>();
 		CuSolverContext::GetInstance()->GetHandle();
 #ifdef __CUDACC__
@@ -174,7 +313,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		NNRT_CUSOLVER_CHECK(
 				potrf_cuda<float>(
 						cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_LOWER,
-						block_size, factorized_diagonal_block_data, block_size
+						block_size, factorized_U_diagonal_block_data, block_size
 				), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 		);
 #else
@@ -184,7 +323,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				"potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);
 #endif
-		o3c::Tensor inverted_factorized_L_diagonal_block = factorized_U_diagonal_block.Clone();
+		o3c::Tensor inverted_factorized_L_diagonal_block = factorized_U_diagonal_block.Clone().Transpose(0, 1);
 		auto inverted_factorized_L_diagonal_block_data = inverted_factorized_L_diagonal_block.GetDataPtr<float>();
 
 #ifdef __CUDACC__
@@ -199,10 +338,10 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				"trtri failed in FactorizeBlockSparseCholeskyCorner_TypeDispatched"
 		);
 #endif
-		factorized_U_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1);
-		factorized_U_diagonal_block_data = factorized_U_diagonal_block.GetDataPtr<float>();
-		inverted_factorized_L_diagonal_block = inverted_factorized_L_diagonal_block.Transpose(0, 1);
-		inverted_factorized_L_diagonal_block_data = inverted_factorized_L_diagonal_block.GetDataPtr<float>();
+		//__DEBUG
+		// factorized_U_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1);
+		// factorized_U_diagonal_block_data = factorized_U_diagonal_block.GetDataPtr<float>();
+		// inverted_factorized_L_diagonal_block_data = inverted_factorized_L_diagonal_block.GetDataPtr<float>();
 
 		auto factorized_upper_dense_row_data = factorized_upper_dense_data + (i * block_size * dense_corner_size);
 		o3c::MemoryManager::Memcpy(
@@ -210,6 +349,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				device, factorized_U_diagonal_block_data, device, block_stride * sizeof(float)
 		);
 
+		int32_t non_diagonal_blocks_in_row_count = block_count_in_row_or_column - 1; // for clarity
 		o3c::ParallelFor(
 				device,
 				non_diagonal_blocks_in_row_count,
@@ -220,7 +360,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 					if (i_block == -1) {
 						source_block = TMatrix::Zero();
 					} else {
-						source_block = source_upper_block_data[i_block * block_size];
+						source_block = Eigen::Map<const TMatrix>(source_upper_block_data + i_block * block_stride);
 					}
 					Eigen::Map<TMatrix> inv_L_diagonal(inverted_factorized_L_diagonal_block_data);
 					Eigen::Map<TMatrix> factorized_target_block(factorized_upper_dense_row_data + (j * block_stride));
@@ -228,6 +368,9 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				}
 		);
 	}
+	o3c::MemoryManager::Free(product_lhs_addresses, device);
+	o3c::MemoryManager::Free(product_rhs_addresses, device);
+	o3c::MemoryManager::Free(product_addresses, device);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
