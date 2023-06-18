@@ -350,23 +350,39 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		);
 
 		int32_t non_diagonal_blocks_in_row_count = block_count_in_row_or_column - 1; // for clarity
+		int64_t j_offset = diagonal_block_count - non_diagonal_blocks_in_row_count;
+
+		// calculate "updated" blocks, i.e. source_block - sum_block, and store them again in sum block array
+
+		auto non_diagonal_sum_data = sum_data + block_stride;
+
+		o3c::ParallelFor(
+				device,
+				non_diagonal_blocks_in_row_count * block_stride,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
+					int64_t j = j_offset + workload_idx / block_stride;
+					int64_t i_coefficient_in_block = workload_idx % block_stride;
+					int16_t i_block = source_breadboard_data[i_diagonal_block * breadboard_width + j];
+					if (i_block == -1) {
+						non_diagonal_sum_data[workload_idx] = -non_diagonal_sum_data[workload_idx];
+					} else {
+						non_diagonal_sum_data[workload_idx] =
+								source_upper_block_data[i_block * block_stride + i_coefficient_in_block] - non_diagonal_sum_data[workload_idx];
+					}
+				}
+		);
+
 		o3c::ParallelFor(
 				device,
 				non_diagonal_blocks_in_row_count,
-				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t j) {
-					Eigen::Map<TMatrix> sum_block(sum_data + (j + 1) * block_stride);
-					int16_t i_block = source_breadboard_data[i_diagonal_block * breadboard_width + i];
-					TMatrix source_block;
-					if (i_block == -1) {
-						source_block = TMatrix::Zero();
-					} else {
-						source_block = Eigen::Map<const TMatrix>(source_upper_block_data + i_block * block_stride);
-					}
-					Eigen::Map<TMatrix> inv_L_diagonal(inverted_factorized_L_diagonal_block_data);
-					Eigen::Map<TMatrix> factorized_target_block(factorized_upper_dense_row_data + (j * block_stride));
-					factorized_target_block = inv_L_diagonal * (source_block - sum_block);
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_nondiagonal_block) {
+					int64_t j = j_offset + i_nondiagonal_block;
+					product_lhs_addresses[i_nondiagonal_block] = inverted_factorized_L_diagonal_block_data;
+					product_rhs_addresses[i_nondiagonal_block] = non_diagonal_sum_data + i_nondiagonal_block * block_stride;
+					product_addresses[i_nondiagonal_block] = factorized_upper_dense_row_data + (j * block_stride);
 				}
 		);
+		//TODO: use magmablas_strmm_vbatched
 	}
 	o3c::MemoryManager::Free(product_lhs_addresses, device);
 	o3c::MemoryManager::Free(product_rhs_addresses, device);
