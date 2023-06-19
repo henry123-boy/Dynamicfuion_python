@@ -426,6 +426,9 @@ def generate_cpp_test_block_sparse_arrowhead_input_data(
         np.zeros((node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2), np.int32)
     upper_row_block_counts = np.zeros((node_count,), np.int32)
 
+    upper_block_list = []
+    coordinate_list = []
+
     for i_block, (i, j, block) in enumerate(upper_blocks):
         j_breadboard = j - first_layer_node_count
         breadboard[i, j_breadboard] = i_block
@@ -439,6 +442,12 @@ def generate_cpp_test_block_sparse_arrowhead_input_data(
         upper_row_block_counts[i] += 1
         upper_row_block_lists[i, j_block_in_row, 0] = j
         upper_row_block_lists[i, j_block_in_row, 1] = i_block
+        upper_block_list.append(block)
+        coordinate_list.append((i, j))
+
+    np.save(str(Path(base_path) / "diagonal_blocks.npy"), np.array(diagonal_blocks))
+    np.save(str(Path(base_path) / "upper_blocks.npy"), np.array(upper_block_list))
+    np.save(str(Path(base_path) / "upper_block_coordinates.npy"), np.array(coordinate_list))
     np.save(str(Path(base_path) / "breadboard.npy"), breadboard)
     np.save(str(Path(base_path) / "upper_column_block_lists.npy"), upper_column_block_lists)
     np.save(str(Path(base_path) / "upper_column_block_counts.npy"), upper_column_block_counts)
@@ -454,18 +463,20 @@ def main():
     edge_jacobians = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/edge_jacobians.npy")
     layer_node_counts = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/layer_node_counts.npy")
     node_count = 249
+    print(f"Node count: {node_count}")
+    print(f"Count of blocks at arrowhead base: {layer_node_counts[0]}")
     print(f"Edge count: {len(edges)}")
     H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts)
     print(
         f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
     H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)
-    save_cpp_test_data = True
-    if save_cpp_test_data:
-        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
     print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ",
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
+    save_cpp_test_data = True
+    if save_cpp_test_data:
+        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
     U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts,
                                                               save_cpp_test_data=save_cpp_test_data)
     U = sparse_U_to_dense(U_diag, U_upper)

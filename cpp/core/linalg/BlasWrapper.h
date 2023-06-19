@@ -72,7 +72,6 @@ inline void gemm_batched_cpu<float>(
 #ifdef USE_BLAS
 	open3d::utility::LogError("Not currently supported with usage of USE_BLAS (OpenBLAS + LAPACKE).");
 #else
-
 	cblas_sgemm_batch(layout, &transpose_A, &transpose_B, &m, &n, &k, &alpha, A_array, &A_leading_dimension, B_array,
 	                  &B_leading_dimension, &beta, C_array, &C_leading_dimension, 1, &batch_size);
 #endif
@@ -111,27 +110,26 @@ inline void gemm_batched_cpu<double>(
 template<typename scalar_t>
 inline cublasStatus_t gemm_batched_cuda(
 		cublasHandle_t
-handle,
-cublasOperation_t transpose_A,
+		handle,
+		cublasOperation_t transpose_A,
 		cublasOperation_t
-transpose_B,
-int m,
-int n,
-int k,
-const scalar_t* alpha,
-const scalar_t* A_array[],
-int A_leading_dimension,
-const scalar_t* B_array[],
-int B_leading_dimension,
-const scalar_t* beta,
+		transpose_B,
+		int m,
+		int n,
+		int k,
+		const scalar_t* alpha,
+		const scalar_t* A_array[],
+		int A_leading_dimension,
+		const scalar_t* B_array[],
+		int B_leading_dimension,
+		const scalar_t* beta,
 		scalar_t
-* C_array[],
-int C_leading_dimension,
-int batch_count
+		* C_array[],
+		int C_leading_dimension,
+		int batch_count
 ) {
-open3d::utility::LogError("Unsupported data type.");
-return
-CUBLAS_STATUS_NOT_SUPPORTED;
+	open3d::utility::LogError("Unsupported data type.");
+	return CUBLAS_STATUS_NOT_SUPPORTED;
 }
 
 template<>
@@ -319,9 +317,118 @@ inline cublasStatus_t trsm_batched_cuda<double>(
 
 
 #endif
+
 // endregion
+// region ============================= ?trmm: Matrix product with one of the arguments being a triangular matrix ====================================
+// region ----- CPU -------
+template<typename scalar_t>
+inline void trmm_cpu(
+		const CBLAS_LAYOUT Layout, const CBLAS_SIDE Side, const CBLAS_UPLO Uplo,
+		const CBLAS_TRANSPOSE TransA, const CBLAS_DIAG Diag,
+		const NNRT_CPU_LINALG_INT M,
+		const NNRT_CPU_LINALG_INT N,
+		const scalar_t alpha,
+		const scalar_t* A, const NNRT_CPU_LINALG_INT lda,
+		scalar_t* B, const NNRT_CPU_LINALG_INT ldb
+) {
+	open3d::utility::LogError("Unsupported data type.");
+}
+
+template<>
+inline void trmm_cpu<float>(
+		const CBLAS_LAYOUT Layout, const CBLAS_SIDE Side, const CBLAS_UPLO Uplo,
+		const CBLAS_TRANSPOSE TransA, const CBLAS_DIAG Diag,
+		const NNRT_CPU_LINALG_INT M, const NNRT_CPU_LINALG_INT N,
+		const float alpha,
+		const float* A, const NNRT_CPU_LINALG_INT lda,
+		float* B, const NNRT_CPU_LINALG_INT ldb
+) {
+	cblas_strmm(
+			Layout, Side, Uplo,
+			TransA, Diag,
+			M, N,
+			alpha,
+			A, lda,
+			B, ldb
+	);
+}
+
+template<>
+inline void trmm_cpu<double>(
+		const CBLAS_LAYOUT Layout, const CBLAS_SIDE Side, const CBLAS_UPLO Uplo,
+		const CBLAS_TRANSPOSE TransA, const CBLAS_DIAG Diag,
+		const NNRT_CPU_LINALG_INT M, const NNRT_CPU_LINALG_INT N,
+		const double alpha,
+		const double* A, const NNRT_CPU_LINALG_INT lda,
+		double* B, const NNRT_CPU_LINALG_INT ldb
+) {
+	cblas_dtrmm(
+			Layout, Side, Uplo,
+			TransA, Diag,
+			M, N,
+			alpha,
+			A, lda,
+			B, ldb
+	);
+}
 
 
+// endregion
+// region ----- CUDA ------
+#ifdef BUILD_CUDA_MODULE
+
+template<typename scalar_t>
+inline void trmm_batched_cuda_inplace(
+		magma_side_t side, magma_uplo_t uplo, magma_trans_t transA, magma_diag_t diag,
+		magma_int_t m, magma_int_t n,
+		scalar_t alpha,
+		scalar_t** dA_array, magma_int_t ldda,
+		scalar_t** dB_array, magma_int_t lddb,
+		magma_int_t batchCount, magma_queue_t queue
+) {
+	open3d::utility::LogError("Unsupported data type.");
+}
+
+template<>
+inline void trmm_batched_cuda_inplace<float>(
+		magma_side_t side, magma_uplo_t uplo, magma_trans_t transA, magma_diag_t diag,
+		magma_int_t m, magma_int_t n,
+		float alpha,
+		float** dA_array, magma_int_t ldda,
+		float** dB_array, magma_int_t lddb,
+		magma_int_t batchCount, magma_queue_t queue
+) {
+	magmablas_strmm_batched(
+			side, uplo, transA, diag,
+			m, n,
+			alpha,
+			dA_array, ldda,
+			dB_array, lddb,
+			batchCount, queue
+	);
+}
+
+template<>
+inline void trmm_batched_cuda_inplace<double>(
+		magma_side_t side, magma_uplo_t uplo, magma_trans_t transA, magma_diag_t diag,
+		magma_int_t m, magma_int_t n,
+		double alpha,
+		double** dA_array, magma_int_t ldda,
+		double** dB_array, magma_int_t lddb,
+		magma_int_t batchCount, magma_queue_t queue
+) {
+	magmablas_dtrmm_batched(
+			side, uplo, transA, diag,
+			m, n,
+			alpha,
+			dA_array, ldda,
+			dB_array, lddb,
+			batchCount, queue
+	);
+}
 
 
+// endregion
+#endif
+// endregion
 } // nnrt::core

@@ -238,13 +238,12 @@ inline NNRT_CPU_LINALG_INT gelsy_cpu<double>(
 }
 // endregion
 // region ================================ GEQP3: rank-revealing QR factorization with column-pivoting ===============================================
-// TODO: port from MAGMA
+// TODO: port from MAGMA or remove region
 // endregion =========================================================================================================================================
 
 // region ==================================== ?TRTRI: inversion of triangluar matrices (non-batched for CPU, batched for CUDA) ======================
-#ifdef BUILD_CUDA_MODULE
 
-// --- CPU (non-batched) ---
+// region --- CPU ---
 template<typename scalar_t>
 inline NNRT_CPU_LINALG_INT
 trtri_cpu(
@@ -284,8 +283,9 @@ trtri_cpu<double>(
 ) {
 	return LAPACKE_dtrtri(matrix_layout, uplo, diag, n, a, lda);
 }
-
-// --- CUDA (batched) ---
+// endregion
+// region --- CUDA ---
+#ifdef BUILD_CUDA_MODULE
 //deprecated("See by trtri_batched_cuda in LinalgKernels.cuh, this is probably NOT what you want")]]
 template<typename scalar_t>
 inline void trtri_diag_batched_cuda(
@@ -368,6 +368,7 @@ inline void trtri_cuda<double>(
 ) {
 	magma_dtrtri_gpu(uplo, diag, n, A, ldda, info);
 }
+//endregion
 
 
 #endif

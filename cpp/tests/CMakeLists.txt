@@ -237,7 +237,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test_data_download_target(
         test_data_block_sparse_arrowhead
         URL https://algomorph.com/storage/reco/block_sparse_arrowhead_test_data.7z
-        SHA256 392034bfdf3bf09fe4b6eaffe63572a8015bf563e4079557a7d486d51ecf9e37
+        SHA256 71812aeb739c623e35124a15c28674c3231000a80432950d174e46b2639cdb16
         DESTINATION block_sparse_arrowhead_test_data.7z
         EXTRACTED_NAMES
         arrays/breadboard.npy
