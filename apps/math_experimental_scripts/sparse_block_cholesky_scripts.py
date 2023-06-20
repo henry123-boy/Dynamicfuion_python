@@ -236,8 +236,13 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
 
     #__DEBUG
     product_count = 0
+    #__DEBUG
+    inspected_row = 209
+
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
+        #__DEBUG
+        block_row = []
         row_product_count = 0
         block_sum = np.zeros((block_size, block_size), dtype=np.float64)
         # use block column at index i to augment the matrix diagonal entry
@@ -246,12 +251,17 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 U_ki = U_block_dict[(k, i)]
                 block_sum += U_ki.transpose() @ U_ki
                 row_product_count += 1
+                #__DEBUG
+                if i == inspected_row:
+                    print(f"[{k},{i},{k},{i}],")
 
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
         U_ii = scipy.linalg.cholesky(H_ii - block_sum, lower=False)
         corner_U_diagonal_blocks.append(U_ii)
         L_kk_inv = np.linalg.inv(U_ii.T)
+        #__DEBUG
+        block_row.append(U_ii)
 
         # Update U-matrix blocks above the diagonal
         # j is the index of block column in output
@@ -264,6 +274,9 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                     U_kj = U_block_dict[(k, j)]
                     block_sum += U_ki.transpose() @ U_kj
                     row_product_count += 1
+                    #__DEBUG
+                    if i == inspected_row:
+                        print(f"[{k},{i},{k},{j}],")
 
             # update "inner" matrix blocks
             if (i, j) in H_block_dict:
@@ -272,11 +285,27 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 H_ij = np.zeros((block_size, block_size), dtype=np.float64)
             H_ij_new = H_ij - block_sum
 
+            #__DEBUG
+            # if i == inspected_row and j == 244:
+            #     print(f"H_ij for i=={inspected_row}, j==244:")
+            #     print(H_ij)
+            #     print(f"block_sum for i=={inspected_row}, j==244:")
+            #     print(block_sum)
+            #     print(f"H_ij_new for i=={inspected_row}, j==244:")
+            #     print(H_ij_new)
+            #     print(f"L_kk_inv for i=={inspected_row}, j==244:")
+            #     print(L_kk_inv)
+
             U_ij = L_kk_inv @ H_ij_new
             U_block_dict[(i, j)] = U_ij
             corner_U_upper_blocks.append((i, j, U_ij))
+            #__DEBUG
+            block_row.append(U_ij)
         i_diagonal += 1
         #__DEBUG
+        if i == inspected_row:
+            print(f"Block row for i={i}:")
+            print(np.array(block_row))
         print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
         product_count += row_product_count
 
@@ -474,7 +503,7 @@ def main():
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
-    save_cpp_test_data = True
+    save_cpp_test_data = False
     if save_cpp_test_data:
         generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
     U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts,
