@@ -340,7 +340,7 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
     if save_cpp_test_data:
         corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_diag_upper_left.npy",
-                np.array(U_diag_upper_left + ([np.zeros((6, 6), dtype=np.float32)] * corner_size_blocks)))
+                np.array(U_diag_upper_left))
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper_right.npy",
                 np.array([block for _, _, block in U_upper_right]))
         U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
@@ -503,7 +503,7 @@ def main():
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
-    save_cpp_test_data = False
+    save_cpp_test_data = True
     if save_cpp_test_data:
         generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
     U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts,

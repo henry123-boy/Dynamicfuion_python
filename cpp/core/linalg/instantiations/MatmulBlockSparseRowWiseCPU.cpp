@@ -18,7 +18,7 @@
 namespace nnrt::core::linalg::internal {
 
 template
-open3d::core::Tensor
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,

@@ -177,6 +177,12 @@ set(
     core/functional/kernel/instantiations/ParallelPrefixScanCPU.cpp
     core/functional/kernel/instantiations/ParallelPrefixScanCUDA.cu
 
+    core/linalg/ZeroOutTriangularBlocks.cpp
+    core/linalg/ZeroOutTriangularBlocks.h
+    core/linalg/ZeroOutTriangularBlocksImpl.h
+    core/linalg/instantiations/ZeroOutTriangularBlocksCPU.cpp
+    core/linalg/instantiations/ZeroOutTriangularBlocksCUDA.cu
+
     string/split_string.h
     string/split_string.cpp
     string/join_string_separator.cpp
@@ -460,7 +466,9 @@ set(
     core/functional/kernel/TileImpl.h
     core/functional/kernel/instantiations/TileCPU.cpp
     core/functional/kernel/instantiations/TileCUDA.cu
-    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h core/linalg/LinalgKernels.cuh core/linalg/BlasAuxiliary.h)
+    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h core/linalg/LinalgKernels.cuh core/linalg/BlasAuxiliary.h
+
+    )
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

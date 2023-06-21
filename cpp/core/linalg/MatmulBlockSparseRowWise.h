@@ -27,9 +27,9 @@ namespace nnrt::core::linalg {
  * \param blocks_a dense array A - has to consist of square block matrices of the same size as ones in B
  * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same as ones in A
  * \param blocks_b_coordinates coordinates of blocks in B (in blocks, not scalar block coefficients)
- * \return list of resulting product blocks
+ * \return tuple containing (1) list of resulting product blocks and (2) their coordinates
  */
-open3d::core::Tensor
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
@@ -39,7 +39,7 @@ MatmulBlockSparseRowWise(
 namespace internal {
 
 template<open3d::core::Device::DeviceType TDeviceType>
-open3d::core::Tensor
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,

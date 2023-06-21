@@ -222,11 +222,11 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	// ~breadboard column
 	int i_block_row_in_corner = 0;
 	//__DEBUG (remove below)
+	// for (int i_block_row_in_matrix = A.arrow_base_block_index;
+	//      i_block_row_in_matrix < A.arrow_base_block_index + 2; i_block_row_in_matrix++, i_block_row_in_corner++) {
+	//__DEBUG (restore below)
 	for (int i_block_row_in_matrix = A.arrow_base_block_index;
-	     i_block_row_in_matrix < A.arrow_base_block_index + 2; i_block_row_in_matrix++, i_block_row_in_corner++) {
-		//__DEBUG (restore below)
-		// for (int i_block_row_in_matrix = A.arrow_base_block_index;
-		//      i_block_row_in_matrix < diagonal_block_count; i_block_row_in_matrix++, i_block_row_in_corner++) {
+	     i_block_row_in_matrix < diagonal_block_count; i_block_row_in_matrix++, i_block_row_in_corner++) {
 		int32_t block_count_in_row_or_column = diagonal_block_count - i_block_row_in_matrix;
 
 
@@ -248,19 +248,22 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 					int workload_idx_int = static_cast<int32_t>(workload_idx);
 					// block row above
-					int k = workload_idx_int / block_count_in_row_or_column;
+					int k_matrix = workload_idx_int / block_count_in_row_or_column;
+					int k_corner = k_matrix - A.arrow_base_block_index;
 					// block column in breadboard
-					int j_breadboard = i_block_row_in_corner + workload_idx_int % block_count_in_row_or_column;
+					int i_nonzero_block_in_row = workload_idx_int % block_count_in_row_or_column;
+					int j_breadboard = i_block_row_in_corner + i_nonzero_block_in_row;
 					// first "block_count_above_blocks_in_row_i" blocks are above the diagonal block, i.e. block at j == 0
-					if (j_breadboard == i_block_row_in_corner) {
+					if (i_nonzero_block_in_row == 0) {
 						const float* block_data;
-						if (k < A.arrow_base_block_index) {
-							int16_t i_edge = source_breadboard_data[k * breadboard_width + i_block_row_in_corner];
+						if (k_matrix < A.arrow_base_block_index) {
+							int16_t i_edge = source_breadboard_data[k_matrix * breadboard_width + i_block_row_in_corner];
 							if (i_edge == -1) return;
 							block_data = factorized_upper_block_data + i_edge * 36;
 						} else {
 							block_data =
-									factorized_corner_block_data + (k * breadboard_width + i_block_row_in_corner) * block_stride;
+									factorized_corner_block_data +
+									(k_corner * breadboard_width + i_block_row_in_corner) * block_stride;
 						}
 						int i_product = NNRT_ATOMIC_ADD(product_count_atomic, 1);
 						if (i_product > ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT) {
@@ -268,24 +271,24 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							       "maximum, %d. Factorization will be inaccurate. Try adjusting the allowed maximum in the code\n",
 							       ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT);
 						} else {
-							product_sum_index_data[i_product] = j_breadboard;
+							product_sum_index_data[i_product] = i_nonzero_block_in_row;
 							product_lhs_addresses[i_product] = block_data;
 							product_rhs_addresses[i_product] = block_data;
 						}
 					} else {
 						const float* block_ki_data;
 						const float* block_kj_data;
-						if (k < A.arrow_base_block_index) {
-							int16_t i_block_ki = source_breadboard_data[k * breadboard_width + i_block_row_in_corner];
+						if (k_matrix < A.arrow_base_block_index) {
+							int16_t i_block_ki = source_breadboard_data[k_matrix * breadboard_width + i_block_row_in_corner];
 							if (i_block_ki == -1) return;
-							int16_t i_block_kj = source_breadboard_data[k * breadboard_width + j_breadboard];
+							int16_t i_block_kj = source_breadboard_data[k_matrix * breadboard_width + j_breadboard];
 							if (i_block_kj == -1) return;
 							block_ki_data = factorized_upper_block_data + i_block_ki * 36;
 							block_kj_data = factorized_upper_block_data + i_block_kj * 36;
 						} else {
 							block_ki_data =
-									factorized_corner_block_data + (k * breadboard_width + i_block_row_in_corner) * block_stride;
-							block_kj_data = factorized_corner_block_data  + (k * breadboard_width + j_breadboard) * block_stride;
+									factorized_corner_block_data + (k_corner * breadboard_width + i_block_row_in_corner) * block_stride;
+							block_kj_data = factorized_corner_block_data + (k_corner * breadboard_width + j_breadboard) * block_stride;
 						}
 						int i_product = NNRT_ATOMIC_ADD(product_count_atomic, 1);
 						if (i_product > ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT) {
@@ -293,7 +296,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							       "maximum, %d. Factorization will be inaccurate. Try adjusting the allowed maximum in the code.\n",
 							       ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT);
 						} else {
-							product_sum_index_data[i_product] = j_breadboard;
+							product_sum_index_data[i_product] = i_nonzero_block_in_row;
 							product_lhs_addresses[i_product] = block_ki_data;
 							product_rhs_addresses[i_product] = block_kj_data;
 						}

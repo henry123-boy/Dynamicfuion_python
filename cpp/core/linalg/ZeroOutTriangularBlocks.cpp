@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/21/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,16 +13,23 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+// stdlib includes
+
+// third-party includes
+
 // local includes
-#include "core/linalg/MatmulBlockSparseRowWiseImpl.h"
-namespace nnrt::core::linalg::internal {
+#include "ZeroOutTriangularBlocks.h"
+#include "core/DeviceSelection.h"
 
-template
-std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(
-		const open3d::core::Tensor& blocks_a,
-		const open3d::core::Tensor& blocks_b,
-		const open3d::core::Tensor& blocks_b_coordinates
-);
+namespace o3c = open3d::core;
+namespace nnrt::core::linalg {
 
-} // namespace nnrt::core::linalg::internal
+void ZeroOutTriangularBlocks(open3d::core::Tensor& blocks, nnrt::core::linalg::UpLoTriangular up_lo_triangular) {
+	nnrt::core::ExecuteOnDevice(
+			blocks.GetDevice(),
+			[&] { internal::ZeroOutTriangularBlocks<o3c::Device::DeviceType::CPU>(blocks, up_lo_triangular); },
+			[&] { NNRT_IF_CUDA(internal::ZeroOutTriangularBlocks<o3c::Device::DeviceType::CUDA>(blocks, up_lo_triangular);); }
+	);
+}
+
+} // namespace nnrt::core::linalg

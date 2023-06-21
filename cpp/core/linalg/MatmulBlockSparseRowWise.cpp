@@ -20,27 +20,27 @@
 #include "core/DeviceSelection.h"
 
 namespace nnrt::core::linalg {
-open3d::core::Tensor MatmulBlockSparseRowWise(
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
 		const open3d::core::Tensor& blocks_b_coordinates
 ) {
 
-	open3d::core::Tensor matrices;
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> matrices_and_coordinates;
 	core::ExecuteOnDevice(
 			blocks_b.GetDevice(),
 			[&]() {
-				matrices = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(blocks_a,
+				matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(blocks_a,
 				                                                                          blocks_b, blocks_b_coordinates);
 			},
 			[&]() {
 				NNRT_IF_CUDA(
-						matrices = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(blocks_a,
+						matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(blocks_a,
 						                                                                           blocks_b, blocks_b_coordinates);
 				);
 			}
 	);
-	return matrices;
+	return matrices_and_coordinates;
 }
 
 }// namespace nnrt::core::linalg

@@ -32,7 +32,7 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 
 template<open3d::core::Device::DeviceType TDeviceType>
-open3d::core::Tensor
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
@@ -82,8 +82,8 @@ MatmulBlockSparseRowWise(
 
 
 	int64_t block_stride = block_size * block_size;
-	NNRT_DECLARE_ATOMIC(int, output_block_count_atomic);
-	NNRT_INITIALIZE_ATOMIC(int, output_block_count_atomic, 0);
+	o3c::Tensor mask({block_count}, o3c::Bool, device);
+	auto mask_data = mask.GetDataPtr<bool>();
 	o3c::ParallelFor(
 			device,
 			block_count,
@@ -92,9 +92,11 @@ MatmulBlockSparseRowWise(
 				if (i_row < a_block_count) {
 					a_blocks_device[i_input_block] = blocks_a_data + i_row * block_stride;
 					b_blocks_device[i_input_block] = blocks_b_data + i_input_block * block_stride;
+					mask_data[i_input_block] = true;
 				} else {
 					a_blocks_device[i_input_block] = padding_data;
 					b_blocks_device[i_input_block] = padding_data;
+					mask_data[i_input_block] = false;
 				}
 				c_blocks_device[i_input_block] = blocks_c_data + i_input_block * block_stride;
 			}
@@ -137,7 +139,10 @@ MatmulBlockSparseRowWise(
 	OPEN3D_CUDA_CHECK(cudaFree(b_blocks_device));
 	OPEN3D_CUDA_CHECK(cudaFree(c_blocks_device));
 #endif
-	return product_blocks;
+	o3c::TensorKey mask_key = o3c::TensorKey::IndexTensor(mask);
+	o3c::Tensor filtered_product_blocks = product_blocks.GetItem(mask_key);
+	o3c::Tensor filtered_coordinates = blocks_b_coordinates.GetItem(mask_key);
+	return std::make_tuple(filtered_product_blocks, filtered_coordinates);
 }
 
 } // namespace nnrt::core::linalg::internal

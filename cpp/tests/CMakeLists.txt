@@ -129,7 +129,8 @@ if (BUILD_CPP_TESTS)
         test_utils/geometry.cpp
         test_utils/geometry.h
         test_utils/fitter_testing.cpp
-        test_utils/fitter_testing.h)
+        test_utils/fitter_testing.h
+        )
 
     target_link_libraries(test_utils PUBLIC NNRT::3rdparty_libpng Python3::Module nnrt_cpp NNRT::3rdparty_fmt)
     target_include_directories(test_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test_utils)
@@ -237,7 +238,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test_data_download_target(
         test_data_block_sparse_arrowhead
         URL https://algomorph.com/storage/reco/block_sparse_arrowhead_test_data.7z
-        SHA256 71812aeb739c623e35124a15c28674c3231000a80432950d174e46b2639cdb16
+        SHA256 a06ea19daaa19fdef52d1b0ddb60b148c53e5c8b0bc9ef31840f898263b44a82
         DESTINATION block_sparse_arrowhead_test_data.7z
         EXTRACTED_NAMES
         arrays/breadboard.npy
@@ -283,7 +284,7 @@ if (BUILD_CPP_TESTS)
         test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
     )
     nnrt_add_test(test_linalg_basic_routines)
-    nnrt_add_test(test_linalg_block_sparse_routines)
+    nnrt_add_test(test_linalg_matmul_block_sparse_row_wise)
     nnrt_add_test(test_rodrigues)
     nnrt_add_test(test_mesh_to_adjacency_array_conversion)
     nnrt_add_test(test_sorting)
