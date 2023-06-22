@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/9/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/21/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,17 +13,10 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// local includes
-#include "core/linalg/MatmulBlockSparseRowWiseImpl.h"
+#include "core/linalg/FillInDiagonalBlocksImpl.h"
 namespace nnrt::core::linalg::internal {
-
 template
-std::tuple<open3d::core::Tensor, open3d::core::Tensor>
-MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(
-		const open3d::core::Tensor& blocks_a,
-		const open3d::core::Tensor& blocks_b,
-		const open3d::core::Tensor& blocks_b_coordinates,
-		bool padded
-);
-
+void FillInDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
+template
+open3d::core::Tensor GetDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(const open3d::core::Tensor& matrix, int block_size);
 } // namespace nnrt::core::linalg::internal

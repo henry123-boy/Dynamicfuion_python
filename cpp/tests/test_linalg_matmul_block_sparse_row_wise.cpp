@@ -163,11 +163,60 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 			// 3, 2
 	}, {8, 2}, o3c::Int32, device);
 
+	o3c::Tensor c_blocks_padded_gt(std::vector<float>{
+			228.,  306.,  384.,
+			201.,  270.,  339.,
+			174.,  234.,  294.,
+
+			606.,  657.,  708.,
+			498.,  540.,  582.,
+			390.,  423.,  456.,
+
+			0.,    0.,    0.,
+			0.,    0.,    0.,
+			0.,    0.,    0.,
+
+			3036., 3114., 3192.,
+			2685., 2754., 2823.,
+			2334., 2394., 2454.,
+
+			2442., 2493., 2544.,
+			2010., 2052., 2094.,
+			1578., 1611., 1644.,
+
+			1362., 1386., 1410.,
+			849.,  864.,  879.,
+			336.,  342.,  348.,
+
+			0.,    0.,    0.,
+			0.,    0.,    0.,
+			0.,    0.,    0.,
+
+			5844., 5922., 6000.,
+			5169., 5238., 5307.,
+			4494., 4554., 4614.,
+
+			4278., 4329., 4380.,
+			3522., 3564., 3606.,
+			2766., 2799., 2832.,
+
+			2226., 2250., 2274.,
+			1389., 1404., 1419.,
+			552.,  558.,  564.,
+
+			0.,    0.,    0.,
+			0.,    0.,    0.,
+			0.,    0.,    0.
+	}, {11, 3, 3}, o3c::Float32, device);
+
 
 	o3c::Tensor c_blocks, c_block_coordinates;
 	std::tie(c_blocks, c_block_coordinates) = nnrt::core::linalg::MatmulBlockSparseRowWise(a_blocks, b_blocks, b_block_coordinates);
 	REQUIRE(c_blocks.AllClose(c_blocks_gt));
 	REQUIRE(c_block_coordinates.AllClose(c_block_coordinates_gt));
+
+	o3c::Tensor c_blocks_padded = nnrt::core::linalg::MatmulBlockSparseRowWisePadded(a_blocks, b_blocks, b_block_coordinates);
+	REQUIRE(c_blocks_padded.AllClose(c_blocks_padded_gt));
 }
 
 TEST_CASE("Test Matmul Block Sparse Row-Wise - CPU") {

@@ -36,7 +36,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
-		const open3d::core::Tensor& blocks_b_coordinates
+		const open3d::core::Tensor& blocks_b_coordinates,
+		bool padded
 ) {
 	// counters and checks
 	o3c::Device device = blocks_b.GetDevice();
@@ -139,10 +140,14 @@ MatmulBlockSparseRowWise(
 	OPEN3D_CUDA_CHECK(cudaFree(b_blocks_device));
 	OPEN3D_CUDA_CHECK(cudaFree(c_blocks_device));
 #endif
-	o3c::TensorKey mask_key = o3c::TensorKey::IndexTensor(mask);
-	o3c::Tensor filtered_product_blocks = product_blocks.GetItem(mask_key);
-	o3c::Tensor filtered_coordinates = blocks_b_coordinates.GetItem(mask_key);
-	return std::make_tuple(filtered_product_blocks, filtered_coordinates);
+	if (padded) {
+		o3c::TensorKey mask_key = o3c::TensorKey::IndexTensor(mask);
+		o3c::Tensor filtered_product_blocks = product_blocks.GetItem(mask_key);
+		o3c::Tensor filtered_coordinates = blocks_b_coordinates.GetItem(mask_key);
+		return std::make_tuple(filtered_product_blocks, filtered_coordinates);
+	} else {
+		return std::make_tuple(product_blocks, o3c::Tensor());
+	}
 }
 
 } // namespace nnrt::core::linalg::internal

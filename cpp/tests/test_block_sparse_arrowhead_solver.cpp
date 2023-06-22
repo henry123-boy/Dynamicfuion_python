@@ -23,6 +23,7 @@
 // code being tested
 #include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
 #include "core/linalg/ZeroOutTriangularBlocks.h"
+#include "core/linalg/FillInDiagonalBlocks.h"
 
 namespace o3c = open3d::core;
 
@@ -47,20 +48,29 @@ void TestCholeskyBlockSparseArrowheadFactorization(const o3c::Device& device) {
 	std::tie(U_diag, U_upper, U_lower_right_dense) = nnrt::core::linalg::FactorizeBlockSparseArrowheadCholesky_Upper(matrix);
 
 	o3c::Tensor U_diag_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_diag_upper_left.npy").To(device).To(o3c::Float32);
-	o3c::Tensor U_upper_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_upper_right.npy").To(device).To(o3c::Float32);
+	o3c::Tensor U_upper_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_upper.npy").To(device).To(o3c::Float32);
 	o3c::Tensor U_lower_right_dense_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_lower_right_dense.npy").To(device).To(o3c::Float32);
 
 	U_diag = U_diag.Contiguous();
 	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag, nnrt::core::linalg::UpLoTriangular::LOWER);
 
-	// std::cout << std::endl << U_diag.ToString() << std::endl << std::endl;
-	//
-	// std::cout << U_diag_gt.ToString() << std::endl;
+	//__DEBUG
+	std::cout << std::endl << U_lower_right_dense.ToString() << std::endl << std::endl;
+	std::cout << "GT:" << std::endl;
+	std::cout << U_lower_right_dense_gt.ToString() << std::endl;
+
+	int block_size = static_cast<int32_t>(U_diag.GetShape(1));
+	o3c::Tensor U_diag_corner = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense, block_size);
+	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag_corner, nnrt::core::linalg::UpLoTriangular::LOWER);
+	nnrt::core::linalg::FillInDiagonalBlocks(U_lower_right_dense, U_diag_corner);
 
 	//__DEBUG
+	o3c::Tensor U_diag_corner_gt = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense_gt, block_size);
+
 	REQUIRE(U_diag.AllClose(U_diag_gt));
-	REQUIRE(U_upper.AllClose(U_upper_gt));
-	// REQUIRE(U_lower_right_dense.AllClose(U_lower_right_dense_gt));
+	REQUIRE(U_upper.AllClose(U_upper_gt,0,1e-7));
+	REQUIRE(U_diag_corner.AllClose(U_diag_corner_gt, 0, 1e-7));
+	REQUIRE(U_lower_right_dense.AllClose(U_lower_right_dense_gt, 0, 1e-5));
 }
 
 TEST_CASE("Test Factorize Block-Sparse Arrowhead CPU") {

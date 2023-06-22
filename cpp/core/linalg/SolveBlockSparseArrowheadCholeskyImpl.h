@@ -162,12 +162,12 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	o3c::AssertTensorDtype(A.upper_block_breadboard, o3c::Int16);
 	o3c::AssertTensorDevice(A.upper_block_breadboard, device);
 
-	int64_t upper_block_count = A.upper_blocks.GetShape(0);
-	o3c::AssertTensorShape(A.upper_blocks, { upper_block_count, block_size, block_size });
+	int64_t A_upper_block_count = A.upper_blocks.GetShape(0);
+	o3c::AssertTensorShape(A.upper_blocks, { A_upper_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(A.upper_blocks, o3c::Float32);
 	o3c::AssertTensorDevice(A.upper_blocks, device);
 
-	o3c::AssertTensorShape(factorized_upper_blocks, { upper_block_count, block_size, block_size });
+	o3c::AssertTensorShape(factorized_upper_blocks, { A_upper_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(factorized_upper_blocks, o3c::Float32);
 	o3c::AssertTensorDevice(factorized_upper_blocks, device);
 
@@ -176,10 +176,13 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	//TODO: return this too
 	auto source_breadboard_data = A.upper_block_breadboard.GetDataPtr<int16_t>();
 
-
 	// int64_t dense_corner_size = breadboard_width * block_size;
 	o3c::Tensor factorized_corner_blocks = o3c::Tensor::Zeros({breadboard_width, breadboard_width, block_size, block_size}, o3c::Float32, device);
 	auto factorized_corner_block_data = factorized_corner_blocks.GetDataPtr<float>();
+
+	//__DEBUG
+	auto row1 = factorized_corner_blocks.Slice(0,0,1);
+	auto row2 = factorized_corner_blocks.Slice(0,1,2);
 
 	int64_t block_stride = block_size * block_size;
 
@@ -221,10 +224,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 #endif
 	// ~breadboard column
 	int i_block_row_in_corner = 0;
-	//__DEBUG (remove below)
-	// for (int i_block_row_in_matrix = A.arrow_base_block_index;
-	//      i_block_row_in_matrix < A.arrow_base_block_index + 2; i_block_row_in_matrix++, i_block_row_in_corner++) {
-	//__DEBUG (restore below)
 	for (int i_block_row_in_matrix = A.arrow_base_block_index;
 	     i_block_row_in_matrix < diagonal_block_count; i_block_row_in_matrix++, i_block_row_in_corner++) {
 		int32_t block_count_in_row_or_column = diagonal_block_count - i_block_row_in_matrix;
@@ -445,17 +444,22 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	factorized_dense_corner_matrix = o3c::Tensor({corner_matrix_size, corner_matrix_size}, o3c::Float32, device);
 	auto factorized_dense_corner_matrix_data = factorized_dense_corner_matrix.GetDataPtr<float>();
 
+	//TODO: potential speedups: 1) investigate whether creative use of lda or ldda would allow us to forgo this step altogether
+	// 2) if (1) is not possible, this can be potentially optimized by not using a temporary 'factorized_corner_blocks'
+	// instead using shared memory on GPU as temporary storage for blocks and then just copying each block row to the correct memory location
+	// (enabling use of reshape(corner_matrix_size,corner_matrix_size) on the factorized_dense_corner_matrix Tensor)
 	o3c::ParallelFor(
 			device,
-			corner_matrix_size * corner_matrix_size,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t i = workload_idx / corner_matrix_size;
-				int64_t j = workload_idx % corner_matrix_size;
-				int64_t i_block = i / breadboard_width;
-				int64_t j_block = j / breadboard_width;
-				int64_t i_block_element = i % block_size * block_size + j % block_size;
-				factorized_dense_corner_matrix_data[i * corner_matrix_size + j] =
-						factorized_corner_block_data[i_block * breadboard_width * block_stride + j_block * block_stride + i_block_element];
+			factorized_corner_blocks.NumElements(),
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_element) {
+				int64_t i_block = i_block_element / block_stride;
+				int64_t i_block_row = i_block / breadboard_width;
+				int64_t i_block_column = i_block % breadboard_width;
+				int64_t i_element_within_block = i_block_element % block_stride;
+				int64_t i_matrix_row = i_block_row * block_size + i_element_within_block / block_size;
+				int64_t i_matrix_column = i_block_column * block_size + i_element_within_block % block_size;
+				factorized_dense_corner_matrix_data[i_matrix_row * corner_matrix_size + i_matrix_column] =
+						factorized_corner_block_data[i_block_element];
 			}
 	);
 }

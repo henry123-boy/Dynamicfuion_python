@@ -34,25 +34,23 @@ void SolveBlockSparseArrowheadCholesky(
 		const nnrt::core::linalg::BlockSparseArrowheadMatrix& A,
 		const open3d::core::Tensor& B
 ) {
-	o3c::Tensor U_diagonal_upper_left, U_sparse_blocks, U_sparse_block_coordinates, U_factorized_dense_lower_right;
-	std::tie(U_diagonal_upper_left, U_sparse_blocks, U_sparse_block_coordinates, U_factorized_dense_lower_right) = FactorizeBlockSparseArrowheadCholesky_Upper(A);
+	o3c::Tensor U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right;
+	std::tie(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right) = FactorizeBlockSparseArrowheadCholesky_Upper(A);
 	utility::LogError("Not implemented");
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
+std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A) {
 	o3c::Tensor L_diagonal_upper_left;
 	FactorizeBlocksCholesky(L_diagonal_upper_left, A.diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
 	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
 
 	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
-	o3c::Tensor U_sparse_blocks, U_spase_block_coordinates;
-	std::tie(U_sparse_blocks, U_spase_block_coordinates) =
-			core::linalg::MatmulBlockSparseRowWise(L_inv_diagonal_upper_left, A.upper_blocks, A.upper_block_coordinates);
+	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_blocks, A.upper_block_coordinates);
 
-	o3c::Tensor U_factorized_dense_lower_right;
-	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_lower_right, U_sparse_blocks, A);
-	return std::make_tuple(U_diagonal_upper_left, U_sparse_blocks, U_spase_block_coordinates, U_factorized_dense_lower_right);
+	o3c::Tensor U_factorized_dense_corner;
+	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_corner, U_sparse_blocks, A);
+	return std::make_tuple(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_corner);
 }
 
 namespace internal {

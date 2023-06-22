@@ -25,12 +25,26 @@ namespace nnrt::core::linalg {
 /**
  * \brief Product of all square blocks listed in (dense) array A by blocks in rows of block-sparse matrix B, with one A block per B row.
  * \param blocks_a dense array A - has to consist of square block matrices of the same size as ones in B
- * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same as ones in A
+ * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same size as ones in A
  * \param blocks_b_coordinates coordinates of blocks in B (in blocks, not scalar block coefficients)
  * \return tuple containing (1) list of resulting product blocks and (2) their coordinates
  */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& blocks_b_coordinates
+);
+
+/**
+ * \brief Product of all square blocks listed in (dense) array A by blocks in rows of block-sparse matrix B, with one A block per B row.
+ * \param blocks_a dense array A - has to consist of square block matrices of the same size as ones in B
+ * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same size as ones in A
+ * \param blocks_b_coordinates coordinates of blocks in B (in blocks, not scalar block coefficients)
+ * \return list of resulting product blocks
+ */
+open3d::core::Tensor
+MatmulBlockSparseRowWisePadded(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
 		const open3d::core::Tensor& blocks_b_coordinates
@@ -43,7 +57,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
-		const open3d::core::Tensor& blocks_b_coordinates
+		const open3d::core::Tensor& blocks_b_coordinates,
+		bool padded
 );
 
 } // namespace internal

@@ -30,17 +30,43 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MatmulBlockSparseRowWise(
 	core::ExecuteOnDevice(
 			blocks_b.GetDevice(),
 			[&]() {
-				matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(blocks_a,
-				                                                                          blocks_b, blocks_b_coordinates);
+				matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(
+						blocks_a, blocks_b, blocks_b_coordinates, true
+				);
 			},
 			[&]() {
 				NNRT_IF_CUDA(
-						matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(blocks_a,
-						                                                                           blocks_b, blocks_b_coordinates);
+						matrices_and_coordinates = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(
+								blocks_a, blocks_b, blocks_b_coordinates, true
+						);
 				);
 			}
 	);
 	return matrices_and_coordinates;
+}
+
+open3d::core::Tensor MatmulBlockSparseRowWisePadded(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& blocks_b_coordinates
+) {
+	open3d::core::Tensor matrices, coordinates;
+	core::ExecuteOnDevice(
+			blocks_b.GetDevice(),
+			[&]() {
+				std::tie(matrices, coordinates) = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(
+						blocks_a, blocks_b, blocks_b_coordinates, false
+				);
+			},
+			[&]() {
+				NNRT_IF_CUDA(
+						std::tie(matrices, coordinates) = internal::MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(
+								blocks_a, blocks_b, blocks_b_coordinates, false
+						);
+				);
+			}
+	);
+	return matrices;
 }
 
 }// namespace nnrt::core::linalg

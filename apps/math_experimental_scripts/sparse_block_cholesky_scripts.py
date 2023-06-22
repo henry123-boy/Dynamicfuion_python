@@ -252,9 +252,12 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 block_sum += U_ki.transpose() @ U_ki
                 row_product_count += 1
                 #__DEBUG
-                if i == inspected_row:
-                    print(f"[{k},{i},{k},{i}],")
+                # if i == inspected_row:
+                #     print(f"[{k},{i},{k},{i}],")
 
+        #__DEBUG
+        print(f"Level {i} above-diagonal-block sum: ")
+        print(block_sum)
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
         U_ii = scipy.linalg.cholesky(H_ii - block_sum, lower=False)
@@ -275,8 +278,8 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                     block_sum += U_ki.transpose() @ U_kj
                     row_product_count += 1
                     #__DEBUG
-                    if i == inspected_row:
-                        print(f"[{k},{i},{k},{j}],")
+                    # if i == inspected_row:
+                    #     print(f"[{k},{i},{k},{j}],")
 
             # update "inner" matrix blocks
             if (i, j) in H_block_dict:
@@ -303,9 +306,9 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             block_row.append(U_ij)
         i_diagonal += 1
         #__DEBUG
-        if i == inspected_row:
-            print(f"Block row for i={i}:")
-            print(np.array(block_row))
+        # if i == inspected_row:
+        #     print(f"Block row for i={i}:")
+        #     print(np.array(block_row))
         print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
         product_count += row_product_count
 
@@ -341,8 +344,10 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
         corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_diag_upper_left.npy",
                 np.array(U_diag_upper_left))
-        np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper_right.npy",
-                np.array([block for _, _, block in U_upper_right]))
+        U_upper = [L_inv_diag_upper_left[i] @ U_h if i < first_layer_node_count else np.zeros((block_size, block_size))
+                   for (i, j, U_h) in hessian_blocks_upper + hessian_blocks_upper_corner]
+        np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper.npy",
+                np.array(U_upper))
         U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
                                        dtype=np.float32)
         fill_sparse_blocks(U_lower_right_dense, U_lower_right,

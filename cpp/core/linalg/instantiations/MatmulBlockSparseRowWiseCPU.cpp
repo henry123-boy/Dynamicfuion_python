@@ -22,7 +22,8 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_b,
-		const open3d::core::Tensor& blocks_b_coordinates
+		const open3d::core::Tensor& blocks_b_coordinates,
+		bool padded
 );
 
 } // namespace nnrt::core::linalg::internal
