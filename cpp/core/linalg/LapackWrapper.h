@@ -140,17 +140,17 @@ inline cusolverStatus_t potrf_cuda_generic(
 		return buffer_size_error;
 	}
 	scalar_t* workspace;
-	int* dev_info;
+	int* info_device;
 	OPEN3D_CUDA_CHECK(cudaMalloc(&workspace, sizeof(scalar_t) * l_work));
-	OPEN3D_CUDA_CHECK(cudaMalloc(&dev_info, sizeof(int)));
-	OPEN3D_CUDA_CHECK(cudaMemset(dev_info, 0, sizeof(int)));
+	OPEN3D_CUDA_CHECK(cudaMalloc(&info_device, sizeof(int)));
+	OPEN3D_CUDA_CHECK(cudaMemset(info_device, 0, sizeof(int)));
 	cusolverStatus_t potrf_status = potrf(
 			handle, CUBLAS_FILL_MODE_UPPER, A_row_and_column_count,
 			A_data, A_leading_dimension,
-			workspace, l_work, dev_info
+			workspace, l_work, info_device
 	);
 	OPEN3D_CUDA_CHECK(cudaFree(workspace));
-	OPEN3D_CUDA_CHECK(cudaFree(dev_info));
+	OPEN3D_CUDA_CHECK(cudaFree(info_device));
 	return potrf_status;
 }
 } // namespace internal
@@ -286,6 +286,7 @@ trtri_cpu<double>(
 // endregion
 // region --- CUDA ---
 #ifdef BUILD_CUDA_MODULE
+
 //deprecated("See by trtri_batched_cuda in LinalgKernels.cuh, this is probably NOT what you want")]]
 template<typename scalar_t>
 inline void trtri_diag_batched_cuda(
@@ -333,41 +334,65 @@ inline void trtri_diag_batched_cuda<double>(
 	magmablas_dtrtri_diag_batched(uplo, diag, n, dA_array, ldda, dinvA_array, resetozero, batchCount, queue);
 }
 
+
 template<typename scalar_t>
 inline void trtri_cuda(
-		magma_uplo_t uplo,
-		magma_diag_t diag,
-		magma_int_t n,
-		scalar_t* A,
-		magma_int_t ldda,
-		magma_int_t* info
+		cusolverDnHandle_t handle,
+		cusolver_int_t n,
+		scalar_t* d_A,
+		cusolver_int_t lda,
+		cublasFillMode_t uplo,
+		cublasDiagType_t diag
 ) {
-	open3d::utility::LogError("Unsupported data type.");
+	void* d_work = nullptr;
+	size_t d_lwork = 0;
+	void* h_work = nullptr;
+	size_t h_lwork = 0;
+
+	int* info_device;
+	OPEN3D_CUDA_CHECK(cudaMalloc(&info_device, sizeof(int)));
+
+	try {
+		NNRT_CUSOLVER_CHECK(cusolverDnXtrtri_bufferSize(
+				handle,
+				uplo,
+				diag,
+				n,
+				cusolver_traits<scalar_t>::cuda_data_type,
+				(void*) d_A,
+				lda,
+				&d_lwork,
+				&h_lwork), "cusolverDnXtrtri_bufferSize failed.");
+		OPEN3D_CUDA_CHECK(cudaMalloc((void**) &d_work, d_lwork));
+		if (h_lwork) {
+			h_work = malloc(h_lwork);
+			if (h_work == nullptr) {
+				throw std::bad_alloc();
+			}
+		}
+		NNRT_CUSOLVER_CHECK(cusolverDnXtrtri(
+				handle,
+				uplo,
+				diag,
+				n,
+				cusolver_traits<scalar_t>::cuda_data_type,
+				d_A,
+				lda,
+				d_work,
+				d_lwork,
+				h_work,
+				h_lwork,
+				info_device), "cusolverDnXtrtri failed.");
+	}
+	catch (const std::exception& e) {
+		fprintf(stderr, "error: %s\n", e.what());
+	}
+
+	OPEN3D_CUDA_CHECK(cudaFree(info_device));
+	if (d_work) OPEN3D_CUDA_CHECK(cudaFree(d_work));
+	if (h_lwork && h_work) free(h_work);
 }
 
-template<>
-inline void trtri_cuda<float>(
-		magma_uplo_t uplo,
-		magma_diag_t diag,
-		magma_int_t n,
-		float* A,
-		magma_int_t ldda,
-		magma_int_t* info
-) {
-	magma_strtri_gpu(uplo, diag, n, A, ldda, info);
-}
-
-template<>
-inline void trtri_cuda<double>(
-		magma_uplo_t uplo,
-		magma_diag_t diag,
-		magma_int_t n,
-		double* A,
-		magma_int_t ldda,
-		magma_int_t* info
-) {
-	magma_dtrtri_gpu(uplo, diag, n, A, ldda, info);
-}
 //endregion
 
 

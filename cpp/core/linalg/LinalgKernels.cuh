@@ -76,7 +76,7 @@ inline void trtri_batched_generic(
 
 	copy_triangular(matrix_size, i_column_in_a, i_column_in_b, matrix_a, matrix_b, matrix_a_inverted_shared, matrix_b_inverted_shared);
 }
-
+//
 // template<typename scalar_t>
 // __device__
 // inline void trtri_generic(
@@ -93,14 +93,29 @@ inline void trtri_batched_generic(
 // 	auto shared_block_data = reinterpret_cast<scalar_t*>(shared_block_data_raw);
 //
 // 	const int i_column = i_thread; // for clarity
-// 	const int i_column_in_block = i_column / block_size;
+// 	const int i_column_in_block = i_column % block_size;
 //
 // 	scalar_t* matrix_shared = shared_block_data + i_column_in_block;
-// 	scalar_t* number_of_nonzero_columns
+// 	scalar_t* matrix_inverted_shared = shared_block_data + block_size * matrix_size + i_column_in_block;
+// 	scalar_t* nonzero_column_element_count = i_column + 1;
 //
-// 	for (int i_row = 0; i_row < matrix_size; i_row++){
-// 		matrix_shared[]
+// 	for (int i_row = matrix_size - nonzero_column_element_count; i_row < matrix_size; i_row++) {
+// 		matrix_shared[i_row * matrix_size + i_column_in_block] = matrix[i_row * matrix_size + i_column_in_block];
 // 	}
+// 	__syncthreads();
+//
+// 	matrix_inverted_shared[i_column * matrix_size + i_column_in_block] =
+// 			1.f / matrix_shared[i_column * matrix_size + i_column_in_block];
+//
+// 	for (int i_row = i_column - 1; i_row >= 0; i_row--) {
+// 		float matrix_diag_entry = matrix_shared[i_row * matrix_size + i_row];
+// 		float sum = 0;
+// 		for (int k = i_row + 1; k < i_column_in_a + 1; k++) {
+// 			sum += matrix_a_shared[i_row * matrix_size + k] * matrix_a_inverted_shared[k * matrix_size + i_column_in_a];
+// 		}
+// 		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum / matrix_diag_entry;
+// 	}
+//
 //
 // 	//TODO
 //
@@ -166,7 +181,7 @@ inline void trtri_batched_upper_non_diagonal(
 		scalar_t* matrix_a_inverted_shared,
 		scalar_t* matrix_b_inverted_shared
 ) {
-	// compute upper diagonal entries of both matrices in pair
+	// compute upper-triangular entries of both matrices in pair
 	for (int i_row = i_column_in_a - 1; i_row >= 0; i_row--) {
 		float matrix_diag_entry = matrix_a_shared[i_row * matrix_size + i_row];
 		float sum = 0;
@@ -197,7 +212,7 @@ inline void trtri_batched_lower_non_diagonal(
 		scalar_t* matrix_a_inverted_shared,
 		scalar_t* matrix_b_inverted_shared
 ) {
-	// compute lower diagonal entries of both matrices in pair
+	// compute lower-triangular entries of both matrices in pair
 	for (int i_row = i_column_in_a + 1; i_row < matrix_size; i_row++) {
 		float matrix_diag_entry = matrix_a_shared[i_row * matrix_size + i_row];
 		float sum = 0;
@@ -244,25 +259,25 @@ void trtri_batched_lower(
 	);
 }
 
-//square matrices are assumed
-template<typename scalar_t>
-__global__
-void trtri_cuda_upper(
-	scalar_t* matrix, int matrix_size, int global_thread_cutoff
-) {
-	trtri_generic(matrix, matrix_size, global_thread_cutoff);
-}
+// //square matrices are assumed
+// template<typename scalar_t>
+// __global__
+// void trtri_cuda_upper(
+// 	scalar_t* matrix, int matrix_size, int global_thread_cutoff
+// ) {
+// 	trtri_generic(matrix, matrix_size, global_thread_cutoff);
+// }
+//
+// //square matrices are assumed
+// template<typename scalar_t>
+// __global__
+// void trtri_cuda_lower(
+// 		scalar_t* matrix, int matrix_size, int global_thread_cutoff
+// ) {
+//
+// }
 
-//square matrices are assumed
-template<typename scalar_t>
-__global__
-void trtri_cuda_lower(
-		scalar_t* matrix, int matrix_size, int global_thread_cutoff
-) {
-
-}
-
-
+//TODO: potentially, replace with equivalent routine from kblas (https://github.com/ecrc/kblas-gpu)
 template<typename TElement>
 void trtri_batched_cuda(
 		TElement** matrices, int matrix_count, int matrix_size,
@@ -295,7 +310,7 @@ void trtri_batched_cuda(
 			break;
 	}
 }
-
+//
 // template<typename TElement>
 // void trtri_cuda(
 // 		TElement* matrix, int matrix_size,

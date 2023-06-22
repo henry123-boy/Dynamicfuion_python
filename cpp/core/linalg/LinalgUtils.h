@@ -119,4 +119,17 @@ private:
     static std::shared_ptr<CuBLASContext> instance_;
 };
 #endif
+
+template <typename T>
+struct cusolver_traits;
+template <>
+struct cusolver_traits <float>
+{
+	static constexpr cudaDataType cuda_data_type = CUDA_R_32F;
+};
+template <>
+struct cusolver_traits <double>
+{
+	static constexpr cudaDataType cuda_data_type = CUDA_R_64F;
+};
 }  // namespace nnrt::core

@@ -55,9 +55,9 @@ void TestCholeskyBlockSparseArrowheadFactorization(const o3c::Device& device) {
 	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag, nnrt::core::linalg::UpLoTriangular::LOWER);
 
 	//__DEBUG
-	std::cout << std::endl << U_lower_right_dense.ToString() << std::endl << std::endl;
-	std::cout << "GT:" << std::endl;
-	std::cout << U_lower_right_dense_gt.ToString() << std::endl;
+	// std::cout << std::endl << U_lower_right_dense.ToString() << std::endl << std::endl;
+	// std::cout << "GT:" << std::endl;
+	// std::cout << U_lower_right_dense_gt.ToString() << std::endl;
 
 	int block_size = static_cast<int32_t>(U_diag.GetShape(1));
 	o3c::Tensor U_diag_corner = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense, block_size);

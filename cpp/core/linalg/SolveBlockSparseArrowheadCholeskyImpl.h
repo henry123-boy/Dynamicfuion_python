@@ -192,6 +192,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	auto product_addresses = reinterpret_cast<float**>(
 			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, device)
 	);
+
 	o3c::ParallelFor(
 			device,
 			ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT,
@@ -214,6 +215,9 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 #endif
 	auto product_rhs_addresses = reinterpret_cast<const float**>(
 			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT, device)
+	);
+	auto non_diagonal_block_addresses = reinterpret_cast<float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * ESTIMATE_MAX_CORNER_ROW_NON_DIAGONAL_BLOCK_COUNT, device)
 	);
 	o3c::Tensor product_sum_indices = o3c::Tensor({ESTIMATE_MAX_POSSIBLE_CHOLESKY_BLOCK_ROW_PRODUCT_COUNT}, o3c::Int32, device);
 	auto product_sum_index_data = product_sum_indices.GetDataPtr<int32_t>();
@@ -248,7 +252,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 					int workload_idx_int = static_cast<int32_t>(workload_idx);
 					// block row above
 					int k_matrix = workload_idx_int / block_count_in_row_or_column;
-					int k_corner = k_matrix - A.arrow_base_block_index;
 					// block column in breadboard
 					int i_nonzero_block_in_row = workload_idx_int % block_count_in_row_or_column;
 					int j_breadboard = i_block_row_in_corner + i_nonzero_block_in_row;
@@ -260,6 +263,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							if (i_edge == -1) return;
 							block_data = factorized_upper_block_data + i_edge * 36;
 						} else {
+							int k_corner = k_matrix - A.arrow_base_block_index;
 							block_data =
 									factorized_corner_block_data +
 									(k_corner * breadboard_width + i_block_row_in_corner) * block_stride;
@@ -273,6 +277,14 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							product_sum_index_data[i_product] = i_nonzero_block_in_row;
 							product_lhs_addresses[i_product] = block_data;
 							product_rhs_addresses[i_product] = block_data;
+							//__DEBUG
+							// if(i_block_row_in_matrix == 210){
+							// 	if(k_matrix < A.arrow_base_block_index){
+							// 		printf("%i, %i, %i,    %f, %f, %f   %f\n", k_matrix, i_product, source_breadboard_data[k_matrix * breadboard_width + i_block_row_in_corner], block_data[3], block_data[4], block_data[5], block_data[35]);
+							// 	}else{
+							// 		printf("%i, %i, -1,\n", k_matrix, i_product);
+							// 	}
+							// }
 						}
 					} else {
 						const float* block_ki_data;
@@ -285,6 +297,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							block_ki_data = factorized_upper_block_data + i_block_ki * 36;
 							block_kj_data = factorized_upper_block_data + i_block_kj * 36;
 						} else {
+							int k_corner = k_matrix - A.arrow_base_block_index;
 							block_ki_data =
 									factorized_corner_block_data + (k_corner * breadboard_width + i_block_row_in_corner) * block_stride;
 							block_kj_data = factorized_corner_block_data + (k_corner * breadboard_width + j_breadboard) * block_stride;
@@ -299,7 +312,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							product_lhs_addresses[i_product] = block_ki_data;
 							product_rhs_addresses[i_product] = block_kj_data;
 						}
-
 					}
 				}
 		);
@@ -331,7 +343,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                        product_addresses, block_size,
 		                        product_count);
 #endif
-
 #ifdef __CUDACC__
 		ComputeBlockSumsCUDA(block_row, block_count_in_row_or_column, products, product_sum_indices, product_count);
 #else
@@ -366,9 +377,17 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		o3c::Tensor inverted_factorized_L_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1).Contiguous();
 		auto inverted_factorized_L_diagonal_block_data = inverted_factorized_L_diagonal_block.GetDataPtr<float>();
 
+
+
 #ifdef __CUDACC__
-		magma_int_t info;
-		trtri_cuda(magma_uplo_t::MagmaUpper, magma_diag_t::MagmaNonUnit, block_size, inverted_factorized_L_diagonal_block_data, block_size, &info);
+		// MagmaManager::GetInstance().SetDevice(device.GetID());
+		// magma_int_t info;
+		// trtri_cuda(magma_uplo_t::MagmaUpper, magma_diag_t::MagmaNonUnit, block_size, inverted_factorized_L_diagonal_block_data, block_size, &info,
+		// 		   MagmaManager::GetInstance().GetDefaultQueue());
+
+		trtri_cuda(cusolver_dn_handle, block_size, inverted_factorized_L_diagonal_block_data, block_size, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+				   cublasDiagType_t::CUBLAS_DIAG_NON_UNIT);
+
 #else
 		NNRT_LAPACK_CHECK(
 				trtri_cpu<float>(
@@ -405,12 +424,13 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 			);
 		}
 
+
 		o3c::ParallelFor(
 				device,
 				non_diagonal_blocks_in_row_count,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_nondiagonal_block) {
 					repeated_inv_block_address[i_nondiagonal_block] = inverted_factorized_L_diagonal_block_data;
-					product_addresses[i_nondiagonal_block] = non_diagonal_sum_data + i_nondiagonal_block * block_stride;
+					non_diagonal_block_addresses[i_nondiagonal_block] = non_diagonal_sum_data + i_nondiagonal_block * block_stride;
 				}
 		);
 
@@ -422,7 +442,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 								  block_size, block_size,
 								  alpha,
 								  repeated_inv_block_address, block_size,
-								  product_addresses, block_size,
+								  non_diagonal_block_addresses, block_size,
 								  non_diagonal_blocks_in_row_count,
 								  MagmaManager::GetInstance().GetDefaultQueue());
 #else
@@ -431,7 +451,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                                block_size, block_size,
 		                                alpha,
 		                                repeated_inv_block_address, block_size,
-		                                product_addresses, block_size,
+		                                non_diagonal_block_addresses, block_size,
 		                                non_diagonal_blocks_in_row_count);
 #endif
 	}
@@ -439,6 +459,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 	o3c::MemoryManager::Free(product_rhs_addresses, device);
 	o3c::MemoryManager::Free(repeated_inv_block_address, device);
 	o3c::MemoryManager::Free(product_addresses, device);
+	o3c::MemoryManager::Free(non_diagonal_block_addresses, device);
 
 	int64_t corner_matrix_size = breadboard_width * block_size;
 	factorized_dense_corner_matrix = o3c::Tensor({corner_matrix_size, corner_matrix_size}, o3c::Float32, device);
