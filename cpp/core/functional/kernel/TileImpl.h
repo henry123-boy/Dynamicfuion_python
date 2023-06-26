@@ -28,8 +28,8 @@ namespace nnrt::core::functional::kernel {
 
 template<typename open3d::core::Device::DeviceType TDeviceType>
 void Tile(open3d::core::Tensor& tiled, const open3d::core::Tensor& source_tensor, int row_count, int column_count) {
-	int tensor_width = source_tensor.GetShape(1);
-	int tensor_height = source_tensor.GetShape(2);
+	int64_t tensor_height = source_tensor.GetShape(0);
+	int64_t tensor_width = source_tensor.GetShape(1);
 	o3c::AssertTensorShape(source_tensor, { tensor_height, tensor_width });
 	o3c::Device device = source_tensor.GetDevice();
 	tiled = o3c::Tensor({tensor_height * row_count, tensor_width * column_count}, source_tensor.GetDtype(), device);

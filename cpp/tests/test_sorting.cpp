@@ -187,3 +187,63 @@ TEST_CASE("Test Sorting Along Last Dimension By Key - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestSortingAlongLastDimensionByKey(device);
 }
+
+void TestArgsortAlongLastDimension(const o3c::Device& device) {
+	o3c::Tensor unsorted_tensor_2d(std::vector<float>{
+			1.f, 3.f, 4.f, 2.f, 5.f,    // 0, 1, 2, 3, 4
+			4.f, -1.f, -2.f, 3.f, -1.f, // 0, 1, 2, 3, 4
+			0.f, -1.f, -4.f, 2.f, 1.f   // 0, 1, 2, 3, 4
+	}, {3, 5}, o3c::Float32, device);
+
+	o3c::Tensor index_2d_gt_asc(std::vector<int64_t>{
+			0, 3, 1, 2, 4,
+			2, 1, 4, 3, 0,
+			2, 1, 0, 4, 3
+	}, {3, 5}, o3c::Int64, device);
+
+	o3c::Tensor index_2d_asc = nnrt::core::functional::ArgSortTensorAlongLastDimension(unsorted_tensor_2d, false,
+	                                                                                   nnrt::core::functional::SortOrder::ASC);
+	REQUIRE(index_2d_asc.AllEqual(index_2d_gt_asc));
+
+	o3c::Tensor unsorted_tensor_1d(std::vector<float>{
+			4.f, -1.f, -2.f, 3.f, -1.f, // 0, 1, 2, 3, 4,
+	}, {5}, o3c::Float32, device);
+
+	o3c::Tensor index_1d_gt_asc(std::vector<int64_t>{
+			2, 1, 4, 3, 0,
+	}, {5}, o3c::Int64, device);
+
+	o3c::Tensor index_1d_asc = nnrt::core::functional::ArgSortTensorAlongLastDimension(unsorted_tensor_1d, false,
+	                                                                                   nnrt::core::functional::SortOrder::ASC);
+	REQUIRE(index_1d_asc.AllEqual(index_1d_gt_asc));
+
+	o3c::Tensor unsorted_tensor_3d(std::vector<float>{
+			1.f, 3.f, 4.f, 2.f, 5.f,    // 0, 1, 2, 3, 4
+			4.f, -1.f, -2.f, 3.f, -1.f, // 0, 1, 2, 3, 4
+
+			0.f, -1.f, -4.f, 2.f, 1.f,  // 0, 1, 2, 3, 4
+			1.f, 3.f, 4.f, 2.f, 5.f     // 0, 1, 2, 3, 4
+	}, {2, 2, 5}, o3c::Float32, device);
+
+	o3c::Tensor index_3d_gt_asc(std::vector<int64_t>{
+			0, 3, 1, 2, 4,
+			2, 1, 4, 3, 0,
+
+			2, 1, 0, 4, 3,
+			0, 3, 1, 2, 4
+	}, {2, 2, 5}, o3c::Int64, device);
+
+	o3c::Tensor index_3d_asc = nnrt::core::functional::ArgSortTensorAlongLastDimension(unsorted_tensor_3d, false,
+	                                                                                   nnrt::core::functional::SortOrder::ASC);
+	REQUIRE(index_3d_asc.AllEqual(index_3d_gt_asc));
+}
+
+TEST_CASE("Test Argsort Along Last Dimension - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestArgsortAlongLastDimension(device);
+}
+
+TEST_CASE("Test Argsort Along Last Dimension - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestArgsortAlongLastDimension(device);
+}

@@ -22,8 +22,12 @@
 
 namespace nnrt::core::functional {
 
+//TODO: generalize these to "along any dimension/axis" -- will involve adaptation of some row structures/pointers to use in std::sort & BubbleSort,
+// add corresponding arg, and remove "Dimension" from name
 open3d::core::Tensor SortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order = SortOrder::ASC);
 std::tuple<open3d::core::Tensor, open3d::core::Tensor> SortTensorAlongLastDimensionByKey(const open3d::core::Tensor& values, const open3d::core::Tensor& keys, bool non_negative_first, SortOrder order = SortOrder::ASC);
+open3d::core::Tensor ArgSortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order = SortOrder::ASC);
+
 open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column);
 open3d::core::Tensor SortTensorByColumns(const open3d::core::Tensor& unsorted, const open3d::core::SizeVector& columns);
 

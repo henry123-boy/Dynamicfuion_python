@@ -16,6 +16,7 @@
 // local
 #include "core/functional/Sorting.h"
 #include "core/functional/kernel/Sorting.h"
+#include "core/functional/kernel/Tile.h"
 
 namespace o3c = open3d::core;
 
@@ -43,6 +44,30 @@ SortTensorAlongLastDimensionByKey(const open3d::core::Tensor& values, const open
 	return std::make_tuple(sorted_values, sorted_keys);
 }
 
+
+open3d::core::Tensor ArgSortTensorAlongLastDimension(const open3d::core::Tensor& unsorted, bool non_negative_first, SortOrder order) {
+	o3c::Tensor unsorted_index_untiled =
+			o3c::Tensor::Arange(0, unsorted.GetShape(-1), 1, o3c::Int64, unsorted.GetDevice())
+			.Reshape({-1, unsorted.GetShape(-1)});
+	o3c::Tensor unsorted_index_tiled;
+	int64_t tile_count = 1;
+	size_t last_dimension = unsorted.GetShape().size() - 1;
+	size_t current_dimension = 0;
+	for(auto extent : unsorted.GetShape()){
+		if(current_dimension < last_dimension){
+			tile_count *= extent;
+		}
+		current_dimension++;
+	}
+	functional::kernel::Tile(unsorted_index_tiled, unsorted_index_untiled, static_cast<int>(tile_count), 1);
+	unsorted_index_tiled = unsorted_index_tiled.Reshape(unsorted.GetShape());
+
+	o3c::Tensor sorted_index, sorted;
+	std::tie(sorted_index, sorted) = SortTensorAlongLastDimensionByKey(unsorted_index_tiled, unsorted, non_negative_first, order);
+	return sorted_index;
+}
+
+
 open3d::core::Tensor SortTensorByColumn(const open3d::core::Tensor& unsorted, int column) {
 	if (unsorted.NumDims() == 0 || unsorted.NumElements() == 0) {
 		return unsorted;
@@ -68,6 +93,7 @@ open3d::core::Tensor ArgSortByColumn(const open3d::core::Tensor& unsorted, int c
 	kernel::ArgSortTensorByColumn(index, unsorted, column);
 	return index;
 }
+
 
 
 } // nnrt::core::functional

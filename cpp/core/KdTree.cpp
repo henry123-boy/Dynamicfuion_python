@@ -68,7 +68,6 @@ void KdTree::FindKNearestToPoints(
 		} else {
 			kernel::kdtree::FindKNearestKdTreePoints<kernel::kdtree::NeighborTrackingStrategy::PLAIN>(
 					*this->nodes, this->node_count, nearest_neighbor_indices, distances, query_points, k, this->points);
-			//TODO: this is wrong, sort by distance, not index!
 			std::tie(nearest_neighbor_indices, distances) =
 					core::functional::SortTensorAlongLastDimensionByKey(nearest_neighbor_indices, distances, false,
 					                                                    core::functional::SortOrder::ASC);

@@ -318,11 +318,20 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		int product_count = NNRT_GET_ATOMIC_VALUE_HOST(product_count_atomic);NNRT_CLEAN_UP_ATOMIC(product_count_atomic);
 		float alpha = 1.f, beta = 0.f;
 
+		//__DEBUG
+		if(i_block_row_in_matrix == 210) {
+			auto psi = product_sum_indices.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
+
+			auto P = products.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
+			o3c::Tensor U_Z = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
+			printf("zero\n");
+		}
+
 #ifdef __CUDACC__
 		cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
 		NNRT_CUBLAS_CHECK(
 				gemm_batched_cuda<float>(
-						handle, CUBLAS_OP_T, CUBLAS_OP_N,
+						handle, CUBLAS_OP_N, CUBLAS_OP_T,
 						block_size, block_size, block_size,
 						&alpha,
 						product_lhs_addresses, block_size,
@@ -343,11 +352,18 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                        product_addresses, block_size,
 		                        product_count);
 #endif
+
 #ifdef __CUDACC__
 		ComputeBlockSumsCUDA(block_row, block_count_in_row_or_column, products, product_sum_indices, product_count);
 #else
 		ComputeBlockSumsCPU(block_row, sum_blocks_atomic, block_count_in_row_or_column, products, product_sum_indices, product_count);
 #endif
+		//__DEBUG
+		if(i_block_row_in_matrix == 210) {
+			o3c::Tensor U_sum = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
+			printf("sum\n");
+		}
+
 		o3c::Tensor factorized_U_diagonal_block = A.diagonal_blocks.GetItem(o3c::TensorKey::Index(i_block_row_in_matrix)).Clone();
 		o3c::Tensor uTu_blocks_above_diagonal_sum = block_row.GetItem(o3c::TensorKey::Index(0));
 		factorized_U_diagonal_block -= uTu_blocks_above_diagonal_sum;
@@ -380,14 +396,8 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 
 
 #ifdef __CUDACC__
-		// MagmaManager::GetInstance().SetDevice(device.GetID());
-		// magma_int_t info;
-		// trtri_cuda(magma_uplo_t::MagmaUpper, magma_diag_t::MagmaNonUnit, block_size, inverted_factorized_L_diagonal_block_data, block_size, &info,
-		// 		   MagmaManager::GetInstance().GetDefaultQueue());
-
 		trtri_cuda(cusolver_dn_handle, block_size, inverted_factorized_L_diagonal_block_data, block_size, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
 				   cublasDiagType_t::CUBLAS_DIAG_NON_UNIT);
-
 #else
 		NNRT_LAPACK_CHECK(
 				trtri_cpu<float>(
@@ -434,6 +444,12 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				}
 		);
 
+		//__DEBUG
+		if(i_block_row_in_matrix == 210) {
+			o3c::Tensor L_inv = inverted_factorized_L_diagonal_block.To(o3c::Device("CPU:0"));
+			o3c::Tensor H_prime = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
+			printf("hi\n");
+		}
 
 #ifdef __CUDACC__
 		MagmaManager::GetInstance().SetDevice(device.GetID());
@@ -454,6 +470,10 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                                non_diagonal_block_addresses, block_size,
 		                                non_diagonal_blocks_in_row_count);
 #endif
+		if(i_block_row_in_matrix == 210) {
+			o3c::Tensor U = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
+			printf("bye\n");
+		}
 	}
 	o3c::MemoryManager::Free(product_lhs_addresses, device);
 	o3c::MemoryManager::Free(product_rhs_addresses, device);
