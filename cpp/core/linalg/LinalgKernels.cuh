@@ -76,50 +76,6 @@ inline void trtri_batched_generic(
 
 	copy_triangular(matrix_size, i_column_in_a, i_column_in_b, matrix_a, matrix_b, matrix_a_inverted_shared, matrix_b_inverted_shared);
 }
-//
-// template<typename scalar_t>
-// __device__
-// inline void trtri_generic(
-// 	scalar_t* matrix, int matrix_size, int global_thread_cutoff
-// 		){
-// 	const int i_thread_in_block = static_cast<int>(threadIdx.x);
-// 	const int i_block = static_cast<int>(blockIdx.x);
-// 	const int block_size = static_cast<int>(blockDim.x);
-// 	const int i_thread = i_thread_in_block + i_block * block_size;
-// 	if (i_thread >= global_thread_cutoff) {
-// 		return;
-// 	}
-// 	extern __shared__ char shared_block_data_raw[];
-// 	auto shared_block_data = reinterpret_cast<scalar_t*>(shared_block_data_raw);
-//
-// 	const int i_column = i_thread; // for clarity
-// 	const int i_column_in_block = i_column % block_size;
-//
-// 	scalar_t* matrix_shared = shared_block_data + i_column_in_block;
-// 	scalar_t* matrix_inverted_shared = shared_block_data + block_size * matrix_size + i_column_in_block;
-// 	scalar_t* nonzero_column_element_count = i_column + 1;
-//
-// 	for (int i_row = matrix_size - nonzero_column_element_count; i_row < matrix_size; i_row++) {
-// 		matrix_shared[i_row * matrix_size + i_column_in_block] = matrix[i_row * matrix_size + i_column_in_block];
-// 	}
-// 	__syncthreads();
-//
-// 	matrix_inverted_shared[i_column * matrix_size + i_column_in_block] =
-// 			1.f / matrix_shared[i_column * matrix_size + i_column_in_block];
-//
-// 	for (int i_row = i_column - 1; i_row >= 0; i_row--) {
-// 		float matrix_diag_entry = matrix_shared[i_row * matrix_size + i_row];
-// 		float sum = 0;
-// 		for (int k = i_row + 1; k < i_column_in_a + 1; k++) {
-// 			sum += matrix_a_shared[i_row * matrix_size + k] * matrix_a_inverted_shared[k * matrix_size + i_column_in_a];
-// 		}
-// 		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum / matrix_diag_entry;
-// 	}
-//
-//
-// 	//TODO
-//
-// }
 
 
 template<typename scalar_t>
@@ -183,20 +139,20 @@ inline void trtri_batched_upper_non_diagonal(
 ) {
 	// compute upper-triangular entries of both matrices in pair
 	for (int i_row = i_column_in_a - 1; i_row >= 0; i_row--) {
-		float matrix_diag_entry = matrix_a_shared[i_row * matrix_size + i_row];
-		float sum = 0;
+		float reciprocal_matrix_diag_entry = matrix_a_inverted_shared[i_row * matrix_size + i_row];
+		float sum = 0.f;
 		for (int k = i_row + 1; k < i_column_in_a + 1; k++) {
 			sum += matrix_a_shared[i_row * matrix_size + k] * matrix_a_inverted_shared[k * matrix_size + i_column_in_a];
 		}
-		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum / matrix_diag_entry;
+		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum * reciprocal_matrix_diag_entry;
 	}
 	for (int i_row = i_column_in_b - 1; i_row >= 0; i_row--) {
-		float matrix_diag_entry = matrix_b_shared[i_row * matrix_size + i_row];
+		float reciprocal_matrix_diag_entry = matrix_b_inverted_shared[i_row * matrix_size + i_row];
 		float sum = 0;
 		for (int k = i_row + 1; k < i_column_in_b + 1; k++) {
 			sum += matrix_b_shared[i_row * matrix_size + k] * matrix_b_inverted_shared[k * matrix_size + i_column_in_b];
 		}
-		matrix_b_inverted_shared[i_row * matrix_size + i_column_in_b] = -sum / matrix_diag_entry;
+		matrix_b_inverted_shared[i_row * matrix_size + i_column_in_b] = -sum * reciprocal_matrix_diag_entry;
 	}
 	__syncthreads();
 }
@@ -214,20 +170,20 @@ inline void trtri_batched_lower_non_diagonal(
 ) {
 	// compute lower-triangular entries of both matrices in pair
 	for (int i_row = i_column_in_a + 1; i_row < matrix_size; i_row++) {
-		float matrix_diag_entry = matrix_a_shared[i_row * matrix_size + i_row];
+		float reciprocal_matrix_diag_entry = matrix_a_inverted_shared[i_row * matrix_size + i_row];
 		float sum = 0;
 		for (int k = i_column_in_a; k < i_row; k++) {
 			sum += matrix_a_shared[i_row * matrix_size + k] * matrix_a_inverted_shared[k * matrix_size + i_column_in_a];
 		}
-		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum / matrix_diag_entry;
+		matrix_a_inverted_shared[i_row * matrix_size + i_column_in_a] = -sum * reciprocal_matrix_diag_entry;
 	}
 	for (int i_row = i_column_in_b + 1; i_row < matrix_size; i_row++) {
-		float matrix_diag_entry = matrix_b_shared[i_row * matrix_size + i_row];
+		float reciprocal_matrix_diag_entry = matrix_b_inverted_shared[i_row * matrix_size + i_row];
 		float sum = 0;
 		for (int k = i_column_in_b; k < i_row; k++) {
 			sum += matrix_b_shared[i_row * matrix_size + k] * matrix_b_inverted_shared[k * matrix_size + i_column_in_b];
 		}
-		matrix_b_inverted_shared[i_row * matrix_size + i_column_in_b] = -sum / matrix_diag_entry;
+		matrix_b_inverted_shared[i_row * matrix_size + i_column_in_b] = -sum * reciprocal_matrix_diag_entry;
 	}
 	__syncthreads();
 }
@@ -259,24 +215,6 @@ void trtri_batched_lower(
 	);
 }
 
-// //square matrices are assumed
-// template<typename scalar_t>
-// __global__
-// void trtri_cuda_upper(
-// 	scalar_t* matrix, int matrix_size, int global_thread_cutoff
-// ) {
-// 	trtri_generic(matrix, matrix_size, global_thread_cutoff);
-// }
-//
-// //square matrices are assumed
-// template<typename scalar_t>
-// __global__
-// void trtri_cuda_lower(
-// 		scalar_t* matrix, int matrix_size, int global_thread_cutoff
-// ) {
-//
-// }
-
 //TODO: potentially, replace with equivalent routine from kblas (https://github.com/ecrc/kblas-gpu)
 template<typename TElement>
 void trtri_batched_cuda(
@@ -284,7 +222,7 @@ void trtri_batched_cuda(
 		nnrt::core::linalg::UpLoTriangular uplo, const open3d::core::Device& device
 ) {
 	int cuda_threads_per_thread_block = OPTIMAL_CUDA_BLOCK_THREAD_COUNT;
-	int matrix_pair_count_per_thread_block = ceildiv(cuda_threads_per_thread_block, matrix_size);
+	int matrix_pair_count_per_thread_block = cuda_threads_per_thread_block / matrix_size;
 	int matrix_pair_count = ceildiv(matrix_count, 2);
 	int cuda_thread_block_count = ceildiv(matrix_pair_count, matrix_pair_count_per_thread_block);
 	int jobs_per_block = matrix_pair_count_per_thread_block * matrix_size;
@@ -310,38 +248,6 @@ void trtri_batched_cuda(
 			break;
 	}
 }
-//
-// template<typename TElement>
-// void trtri_cuda(
-// 		TElement* matrix, int matrix_size,
-// 		nnrt::core::linalg::UpLoTriangular uplo, const open3d::core::Device& device
-// ) {
-// 	int shared_mem_bytes_per_column = matrix_size * 2 * sizeof(TElement);
-// 	// TODO: can be increased by using "lower" block of zeros as the output for an "upper" block input, resulting in potentially higher throughput
-// 	int max_count_columns_per_block = ASSUMED_SHARED_BLOCK_MEMORY_SIZE / shared_mem_bytes_per_column;
-// 	if (max_count_columns_per_block == 0) {
-// 		utility::LogError("Matrix size {} too large for nnrt::core::linalg::internal::trtri_cuda...", matrix_size);
-// 	}
-// 	int cuda_threads_per_thread_block = std::min(ceildiv(matrix_size, max_count_columns_per_block), OPTIMAL_CUDA_BLOCK_THREAD_COUNT);
-// 	auto thread_block_memory_size = max_count_columns_per_block * sizeof(TElement);
-//
-// 	int cuda_thread_block_count = ceildiv(matrix_size, cuda_threads_per_thread_block);
-// 	int thread_count_before_cutoff = matrix_size; // for clarity
-//
-// 	open3d::core::CUDAScopedDevice scoped_device(device);
-// 	switch (uplo) {
-// 		case UpLoTriangular::UPPER: tritri_upper(matrix, matrix_size, thread_count_before_cutoff);
-// 			trtri_cuda_upper<<<cuda_thread_block_count, cuda_threads_per_thread_block, thread_block_memory_size, open3d::core::cuda::GetStream()>>>(
-// 					matrix, matrix_size, thread_count_before_cutoff
-// 			);
-// 			break;
-// 		case UpLoTriangular::LOWER: tritri_lower(matrix, matrix_size, thread_count_before_cutoff);
-// 			trtri_cuda_lower<<<cuda_thread_block_count, cuda_threads_per_thread_block, thread_block_memory_size, open3d::core::cuda::GetStream()>>>(
-// 					matrix, matrix_size, thread_count_before_cutoff
-// 			);
-// 			break;
-// 	}
-//
-// }
+
 
 } // namespace nnrt::core::linalg::internal

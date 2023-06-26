@@ -237,7 +237,7 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
     #__DEBUG
     product_count = 0
     #__DEBUG
-    inspected_row = 245
+    inspected_row = 210
 
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
@@ -259,15 +259,18 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 # if i == inspected_row:
                 #     print(f"[{k},{i},{k},{i}],")
 
-        #__DEBUG
-        if i == inspected_row:
-            print(f"Level {i} above-diagonal-block sum: ")
-            print(block_sum)
+
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
         U_ii = scipy.linalg.cholesky(H_ii - block_sum, lower=False)
         corner_U_diagonal_blocks.append(U_ii)
         L_kk_inv = np.linalg.inv(U_ii.T)
+        #__DEBUG
+        if i == inspected_row:
+            # print(f"Level {i} above-diagonal-block sum: ")
+            # print(block_sum)
+            print(f"Level {i} facturized UT block: ")
+            print(U_ii)
         #__DEBUG
         block_row.append(U_ii)
 
@@ -292,9 +295,9 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             else:
                 H_ij = np.zeros((block_size, block_size), dtype=np.float64)
 
-            if i == inspected_row:
-                print(f"Level {i} above-{j}-block sum: ")
-                print(block_sum)
+            # if i == inspected_row and j == inspected_row + 1:
+            #     print(f"Level {i} above-{j}-block sum: ")
+            #     print(block_sum)
             H_ij_new = H_ij - block_sum
 
             #__DEBUG
@@ -312,13 +315,18 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             U_block_dict[(i, j)] = U_ij
             corner_U_upper_blocks.append((i, j, U_ij))
             #__DEBUG
+            if i == inspected_row and j == inspected_row + 1:
+                print(f"Level {i} facturized U block at {i},{j}: ")
+                print(U_ij)
+            #__DEBUG
             block_row.append(U_ij)
         i_diagonal += 1
         #__DEBUG
         # if i == inspected_row:
         #     print(f"Block row for i={i}:")
         #     print(np.array(block_row))
-        print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
+        #__DEBUG
+        # print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
         product_count += row_product_count
 
     #__DEBUG

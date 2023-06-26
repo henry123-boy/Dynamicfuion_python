@@ -27,7 +27,7 @@
 namespace o3c = open3d::core;
 
 
-void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
+void TestMatmulBlockSparseRowWise_Small(const o3c::Device& device) {
 	o3c::Tensor a_blocks(std::vector<float>{
 			27., 26., 25.,
 			24., 23., 22.,
@@ -219,12 +219,12 @@ void TestMatmulBlockSparseRowWise(const o3c::Device& device) {
 	REQUIRE(c_blocks_padded.AllClose(c_blocks_padded_gt));
 }
 
-TEST_CASE("Test Matmul Block Sparse Row-Wise - CPU") {
+TEST_CASE("Test Matmul Block Sparse Row-Wise (Small) - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestMatmulBlockSparseRowWise(device);
+	TestMatmulBlockSparseRowWise_Small(device);
 }
 
-TEST_CASE("Test Matmul Block Sparse Row-Wise - CUDA") {
+TEST_CASE("Test Matmul Block Sparse Row-Wise (Small) - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestMatmulBlockSparseRowWise(device);
+	TestMatmulBlockSparseRowWise_Small(device);
 }

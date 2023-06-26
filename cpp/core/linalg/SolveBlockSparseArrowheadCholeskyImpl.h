@@ -249,7 +249,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		NNRT_INITIALIZE_ATOMIC(int, product_count_atomic, 0);
 
 		//__DEBUG
-		int inspected_row = 245;
+		int inspected_row = 210;
 
 		o3c::ParallelFor(
 				device,
@@ -396,7 +396,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		);
 #endif
 
-		o3c::Tensor inverted_factorized_LT_diagonal_block = factorized_UT_diagonal_block.Contiguous().Transpose(0, 1);
+		o3c::Tensor inverted_factorized_LT_diagonal_block = factorized_UT_diagonal_block.Transpose(0, 1).Contiguous();
 		auto inverted_factorized_LT_diagonal_block_data = inverted_factorized_LT_diagonal_block.GetDataPtr<float>();
 
 		//__DEBUG
