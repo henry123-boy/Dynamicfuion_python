@@ -31,6 +31,9 @@
 #include "core/linalg/BlasAuxiliary.h"
 #include "MagmaManager.h"
 
+//__DEBUG
+#include "core/functional/Sorting.h"
+
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
@@ -245,6 +248,9 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		NNRT_DECLARE_ATOMIC(int, product_count_atomic);
 		NNRT_INITIALIZE_ATOMIC(int, product_count_atomic, 0);
 
+		//__DEBUG
+		int inspected_row = 245;
+
 		o3c::ParallelFor(
 				device,
 				block_count_in_row_or_column * i_block_row_in_matrix,
@@ -278,7 +284,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 							product_lhs_addresses[i_product] = block_data;
 							product_rhs_addresses[i_product] = block_data;
 							//__DEBUG
-							// if(i_block_row_in_matrix == 210){
+							// if(i_block_row_in_matrix == inspected_row){
 							// 	if(k_matrix < A.arrow_base_block_index){
 							// 		printf("%i, %i, %i,    %f, %f, %f   %f\n", k_matrix, i_product, source_breadboard_data[k_matrix * breadboard_width + i_block_row_in_corner], block_data[3], block_data[4], block_data[5], block_data[35]);
 							// 	}else{
@@ -318,15 +324,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		int product_count = NNRT_GET_ATOMIC_VALUE_HOST(product_count_atomic);NNRT_CLEAN_UP_ATOMIC(product_count_atomic);
 		float alpha = 1.f, beta = 0.f;
 
-		//__DEBUG
-		if(i_block_row_in_matrix == 210) {
-			auto psi = product_sum_indices.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
-
-			auto P = products.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
-			o3c::Tensor U_Z = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
-			printf("zero\n");
-		}
-
 #ifdef __CUDACC__
 		cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
 		NNRT_CUBLAS_CHECK(
@@ -342,6 +339,7 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				),
 				"cuda batched gemm failed"
 		);
+		//Note: since products were transposed for CUDA version, output non-diagonal blocks are now transposed
 #else
 		gemm_batched_cpu<float>(CblasRowMajor, CblasTrans, CblasNoTrans,
 		                        block_size, block_size, block_size,
@@ -353,60 +351,90 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                        product_count);
 #endif
 
+		// __DEBUG
+		if(i_block_row_in_matrix == inspected_row) {
+			auto psi = product_sum_indices.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
+			auto P = products.Slice(0, 0, product_count).To(o3c::Device("CPU:0"));
+			auto index = core::functional::ArgSortTensorAlongLastDimension(psi, false);
+			psi = psi.GetItem(o3c::TensorKey::IndexTensor(index));
+			P = P.GetItem(o3c::TensorKey::IndexTensor(index));
+			o3c::Tensor U_Z = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
+			printf("zero\n");
+		}
+
 #ifdef __CUDACC__
 		ComputeBlockSumsCUDA(block_row, block_count_in_row_or_column, products, product_sum_indices, product_count);
 #else
 		ComputeBlockSumsCPU(block_row, sum_blocks_atomic, block_count_in_row_or_column, products, product_sum_indices, product_count);
 #endif
+
 		//__DEBUG
-		if(i_block_row_in_matrix == 210) {
+		if(i_block_row_in_matrix == inspected_row) {
 			o3c::Tensor U_sum = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
 			printf("sum\n");
 		}
 
-		o3c::Tensor factorized_U_diagonal_block = A.diagonal_blocks.GetItem(o3c::TensorKey::Index(i_block_row_in_matrix)).Clone();
+		o3c::Tensor factorized_UT_diagonal_block = A.diagonal_blocks.GetItem(o3c::TensorKey::Index(i_block_row_in_matrix)).Clone();
 		o3c::Tensor uTu_blocks_above_diagonal_sum = block_row.GetItem(o3c::TensorKey::Index(0));
-		factorized_U_diagonal_block -= uTu_blocks_above_diagonal_sum;
+		factorized_UT_diagonal_block -= uTu_blocks_above_diagonal_sum;
 
-		auto factorized_U_diagonal_block_data = factorized_U_diagonal_block.GetDataPtr<float>();
+		auto factorized_UT_diagonal_block_data = factorized_UT_diagonal_block.GetDataPtr<float>();
 #ifdef __CUDACC__
 		cusolverDnHandle_t cusolver_dn_handle = CuSolverContext::GetInstance()->GetHandle();
 		NNRT_CUSOLVER_CHECK(
 				potrf_cuda<float>(
-						// cuSOLVER uses col-major order, therefore have to flip upper-->lower here
-						cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_LOWER,
-						block_size, factorized_U_diagonal_block_data, block_size
+						// cuSOLVER uses col-major order, therefore this will produce lower-triangular (LT) result here for row-major ordering
+						cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+						block_size, factorized_UT_diagonal_block_data, block_size
 				), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 		);
 #else
 		NNRT_LAPACK_CHECK(
 				potrf_cpu<float>(
-						LAPACK_ROW_MAJOR, 'U', block_size, factorized_U_diagonal_block_data, block_size),
+						LAPACK_ROW_MAJOR, 'U', block_size, factorized_UT_diagonal_block_data, block_size),
 				"potrf failed in SolveBlockDiagonalCholeskyCPU"
 		);
 #endif
 
-		o3c::MemoryManager::Memcpy(
-				block_row_data, device, factorized_U_diagonal_block_data, device, block_stride * sizeof(float)
-		);
+		o3c::Tensor inverted_factorized_LT_diagonal_block = factorized_UT_diagonal_block.Contiguous().Transpose(0, 1);
+		auto inverted_factorized_LT_diagonal_block_data = inverted_factorized_LT_diagonal_block.GetDataPtr<float>();
 
-		o3c::Tensor inverted_factorized_L_diagonal_block = factorized_U_diagonal_block.Transpose(0, 1).Contiguous();
-		auto inverted_factorized_L_diagonal_block_data = inverted_factorized_L_diagonal_block.GetDataPtr<float>();
-
-
+		//__DEBUG
+		if(i_block_row_in_matrix == inspected_row) {
+			auto factorized_U_diagonal_block_CPU = factorized_UT_diagonal_block.To(o3c::Device("CPU:0"));
+			printf("hi\n");
+		}
 
 #ifdef __CUDACC__
-		trtri_cuda(cusolver_dn_handle, block_size, inverted_factorized_L_diagonal_block_data, block_size, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+		// for CUDA, copy the transposed version instead, since the non-transposed one is in col-major order
+		o3c::MemoryManager::Memcpy(
+				block_row_data, device, inverted_factorized_LT_diagonal_block_data, device, block_stride * sizeof(float)
+		);
+#else
+		o3c::MemoryManager::Memcpy(
+				block_row_data, device, factorized_UT_diagonal_block_data, device, block_stride * sizeof(float)
+		);
+#endif
+
+		// invert diagonal lower-triangular block
+#ifdef __CUDACC__
+		// column-major ordering here
+		trtri_cuda(cusolver_dn_handle, block_size, inverted_factorized_LT_diagonal_block_data, block_size, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
 				   cublasDiagType_t::CUBLAS_DIAG_NON_UNIT);
 #else
 		NNRT_LAPACK_CHECK(
 				trtri_cpu<float>(
 						// triangular upper/lower variant "flips" because matrix layout also flips (row->col major) during the computation
-						LAPACK_COL_MAJOR, 'U', 'N', block_size, inverted_factorized_L_diagonal_block_data, block_size
+						LAPACK_COL_MAJOR, 'U', 'N', block_size, inverted_factorized_LT_diagonal_block_data, block_size
 				),
 				"trtri failed in FactorizeBlockSparseCholeskyCorner_TypeDispatched"
 		);
 #endif
+		//__DEBUG
+		if(i_block_row_in_matrix == inspected_row) {
+			auto inverted_factorized_L_diagonal_block_CPU = inverted_factorized_LT_diagonal_block.To(o3c::Device("CPU:0"));
+			printf("hi\n");
+		}
 
 		// calculate "updated" blocks, i.e. source_block - sum_block, and store them again in sum block array
 		auto non_diagonal_sum_data = block_row_data + block_stride;
@@ -439,21 +467,21 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				device,
 				non_diagonal_blocks_in_row_count,
 				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_nondiagonal_block) {
-					repeated_inv_block_address[i_nondiagonal_block] = inverted_factorized_L_diagonal_block_data;
+					repeated_inv_block_address[i_nondiagonal_block] = inverted_factorized_LT_diagonal_block_data;
 					non_diagonal_block_addresses[i_nondiagonal_block] = non_diagonal_sum_data + i_nondiagonal_block * block_stride;
 				}
 		);
 
 		//__DEBUG
-		if(i_block_row_in_matrix == 210) {
-			o3c::Tensor L_inv = inverted_factorized_L_diagonal_block.To(o3c::Device("CPU:0"));
+		if(i_block_row_in_matrix == inspected_row) {
+			o3c::Tensor L_inv = inverted_factorized_LT_diagonal_block.To(o3c::Device("CPU:0"));
 			o3c::Tensor H_prime = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
 			printf("hi\n");
 		}
 
 #ifdef __CUDACC__
 		MagmaManager::GetInstance().SetDevice(device.GetID());
-		trmm_batched_cuda_inplace(magma_side_t::MagmaLeft, magma_uplo_t::MagmaUpper,
+		trmm_batched_cuda_inplace(magma_side_t::MagmaLeft, magma_uplo_t::MagmaLower,
 								  magma_trans_t::MagmaNoTrans, magma_diag_t::MagmaNonUnit,
 								  block_size, block_size,
 								  alpha,
@@ -461,6 +489,8 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 								  non_diagonal_block_addresses, block_size,
 								  non_diagonal_blocks_in_row_count,
 								  MagmaManager::GetInstance().GetDefaultQueue());
+		//TODO instead of appearing here, can be optimized out into the final block tiling (see end of impl.)
+		block_row.Slice(0, 1, -1) = block_row.Slice(0, 1, -1).Transpose(1, 2);
 #else
 		trmm_batched_cpu_inplace<float>(CblasRowMajor, CBLAS_SIDE::CblasLeft, CblasLower,
 		                                CblasNoTrans, CBLAS_DIAG::CblasNonUnit,
@@ -470,7 +500,8 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 		                                non_diagonal_block_addresses, block_size,
 		                                non_diagonal_blocks_in_row_count);
 #endif
-		if(i_block_row_in_matrix == 210) {
+		if(i_block_row_in_matrix == inspected_row) {
+			o3c::Tensor UD = block_row.GetItem(o3c::TensorKey::Index(0)).To(o3c::Device("CPU:0"));
 			o3c::Tensor U = block_row.GetItem(o3c::TensorKey::Index(1)).To(o3c::Device("CPU:0"));
 			printf("bye\n");
 		}

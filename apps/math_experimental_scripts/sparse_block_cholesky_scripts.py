@@ -237,7 +237,7 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
     #__DEBUG
     product_count = 0
     #__DEBUG
-    inspected_row = 209
+    inspected_row = 245
 
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
@@ -251,16 +251,16 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 U_ki = U_block_dict[(k, i)]
                 block_sum += U_ki.transpose() @ U_ki
                 row_product_count += 1
-                if i == 210:
-                    print(f"Level {i} above-diagonal-block sum product for [{k}, {i}]: ")
-                    print(U_ki)
-                    print(U_ki.transpose() @ U_ki)
+                # if i == inspected_row:
+                #     print(f"Level {i} above-diagonal-block sum product for [{k}, {i}]: ")
+                #     print(U_ki)
+                #     print(U_ki.transpose() @ U_ki)
                 #__DEBUG
                 # if i == inspected_row:
                 #     print(f"[{k},{i},{k},{i}],")
 
         #__DEBUG
-        if i == 210:
+        if i == inspected_row:
             print(f"Level {i} above-diagonal-block sum: ")
             print(block_sum)
         # Update U-matrix diagonal blocks
@@ -292,7 +292,7 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             else:
                 H_ij = np.zeros((block_size, block_size), dtype=np.float64)
 
-            if i == 210:
+            if i == inspected_row:
                 print(f"Level {i} above-{j}-block sum: ")
                 print(block_sum)
             H_ij_new = H_ij - block_sum
