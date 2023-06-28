@@ -43,21 +43,11 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A) {
 	o3c::Tensor L_diagonal_upper_left;
 	FactorizeBlocksCholesky(L_diagonal_upper_left, A.diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
-	//__DEBUG
-	// L_diagonal_upper_left.Save("/mnt/Data/Reconstruction/output/matrix_experiments/L_diag_blocks_cpu.npy");
 
 	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
 	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
 
-	//__DEBUG
-	o3c::Tensor L_inv_diagonal_upper_left_CPU = L_inv_diagonal_upper_left.To(o3c::Device("CPU:0"));
-	// L_inv_diagonal_upper_left_CPU.Save("/mnt/Data/Reconstruction/output/matrix_experiments/L_diag_inv_blocks_cuda.npy");
-
 	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_blocks, A.upper_block_coordinates);
-
-	//__DEBUG
-	o3c::Tensor U_sparse_blocks_CPU = U_sparse_blocks.To(o3c::Device("CPU:0"));
-	// U_sparse_blocks_CPU.Save("/mnt/Data/Reconstruction/output/matrix_experiments/U_sparse_blocks_cuda.npy");
 
 	o3c::Tensor U_factorized_dense_corner;
 	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_corner, U_sparse_blocks, A);

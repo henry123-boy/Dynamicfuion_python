@@ -122,7 +122,10 @@ void TestDeformableImageFitter_25NodeSurface(
 	o3c::Tensor edges = o3c::Tensor::Load(
 			test::static_array_test_data_directory.ToString() + "/edges_25-node_plane.npy").To(device);
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, 1);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(
+			node_positions, node_coverage, false, 4, 0,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE, 1
+	);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 	                                                    use_perspective_correction, max_depth, false, 0.01, 0.001);
@@ -181,7 +184,9 @@ void TestDeformableImageFitter_BERLIN_28_29(
 	o3c::Tensor node_positions = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/berlin_000028_node_coords.npy");
 
 	nnrt::geometry::HierarchicalGraphWarpField warp_field(
-			node_positions, node_coverage, false, 4, 0, 3, 4,
+			node_positions, node_coverage, false, 4, 0,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE,
+			3, 4,
 			[&layer_decimation_factor](int i_layer, float node_coverage) {
 				return node_coverage * powf(layer_decimation_factor, static_cast<float>(i_layer));
 			}

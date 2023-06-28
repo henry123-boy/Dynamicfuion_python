@@ -19,9 +19,12 @@
 // third-party includes
 #include <open3d/core/Device.h>
 
+
 // local includes
 #include "core/CUDAUtils.h"
 #include "core/linalg/UpLoTriangular.h"
+
+namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg::internal {
 
@@ -215,7 +218,53 @@ void trtri_batched_lower(
 	);
 }
 
+template<typename scalar_t>
+__global__
+void transpose_batched_cuda_kernel(
+		scalar_t** matrices, int matrix_size, int matrix_count_per_block,
+		int jobs_per_block, int global_thread_cutoff
+) {
+	const int i_thread_in_block = static_cast<int>(threadIdx.x);
+	const int i_block = static_cast<int>(blockIdx.x);
+	const int block_size = static_cast<int>(blockDim.x);
+	const int i_thread = i_thread_in_block + i_block * block_size;
+	if (i_thread >= global_thread_cutoff || i_thread_in_block >= jobs_per_block) {
+		return;
+	}
+	extern __shared__ char shared_block_data_raw[];
+	auto shared_block_data = reinterpret_cast<scalar_t*>(shared_block_data_raw);
+	const int i_matrix_in_block = i_thread_in_block / matrix_size;
+	const int i_matrix = i_block * matrix_count_per_block + i_matrix_in_block;
+
+	const int i_column_in_matrix = i_thread_in_block % matrix_size;
+	scalar_t* matrix = matrices[i_matrix];
+	const int matrix_element_count = matrix_size * matrix_size;
+	scalar_t* matrix_shared = shared_block_data + (i_matrix_in_block * matrix_element_count);
+
+	// copy
+	for (int i_row = 0; i_row < matrix_size; i_row++) {
+		matrix_shared[i_row * matrix_size + i_column_in_matrix] = matrix[i_row * matrix_size + i_column_in_matrix];
+	}
+	__syncthreads();
+
+	// paste transposed
+	for (int i_row = 0; i_row < matrix_size; i_row++) {
+		matrix[i_column_in_matrix * matrix_size + i_row] = matrix_shared[i_row * matrix_size + i_column_in_matrix];
+	}
+}
+
+
 //TODO: potentially, replace with equivalent routine from kblas (https://github.com/ecrc/kblas-gpu)
+
+/**
+ * \brief Invert a multitude of small(ish) square upper- or lower-triangular matrices
+ * \tparam TElement
+ * \param matrices
+ * \param matrix_count
+ * \param matrix_size
+ * \param uplo
+ * \param device
+ */
 template<typename TElement>
 void trtri_batched_cuda(
 		TElement** matrices, int matrix_count, int matrix_size,
@@ -247,6 +296,40 @@ void trtri_batched_cuda(
 			);
 			break;
 	}
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("trtri_batched_cuda failed.");
+}
+
+/**
+ * \brief Transpose a multitude of small(ish) square matrices
+ * \tparam TElement
+ * \param matrices
+ * \param matrix_count
+ * \param matrix_size
+ * \param device
+ */
+template<typename TElement>
+void transpose_batched_cuda(
+		TElement** matrices, int matrix_count, int matrix_size, const open3d::core::Device& device
+) {
+	if(matrix_count == 0) return;
+
+	int cuda_threads_per_thread_block = OPTIMAL_CUDA_BLOCK_THREAD_COUNT;
+	int matrix_count_per_thread_block = cuda_threads_per_thread_block / matrix_size;
+	int cuda_thread_block_count = ceildiv(matrix_count, matrix_count_per_thread_block);
+	int jobs_per_block = matrix_count_per_thread_block * matrix_size;
+	int last_block_job_count = matrix_count * matrix_size - (jobs_per_block * (cuda_thread_block_count - 1));
+	int thread_count_before_cutoff = cuda_threads_per_thread_block * (cuda_thread_block_count - 1) + last_block_job_count;
+
+	auto thread_block_memory_size = jobs_per_block * matrix_size * sizeof(TElement);
+	if (matrix_size > OPTIMAL_CUDA_BLOCK_THREAD_COUNT || thread_block_memory_size > ASSUMED_SHARED_BLOCK_MEMORY_SIZE) {
+		utility::LogError("Matrix size {} too large for nnrt::core::linalg::internal::transpose_batched_cuda...", matrix_size);
+	}
+
+	open3d::core::CUDAScopedDevice scoped_device(device);
+	transpose_batched_cuda_kernel<<<cuda_thread_block_count, cuda_threads_per_thread_block, thread_block_memory_size, open3d::core::cuda::GetStream()>>>(
+			matrices, matrix_size, matrix_count_per_thread_block, jobs_per_block, thread_count_before_cutoff
+	);
+	open3d::core::OPEN3D_GET_LAST_CUDA_ERROR("transpose_batched_cuda failed.");
 }
 
 

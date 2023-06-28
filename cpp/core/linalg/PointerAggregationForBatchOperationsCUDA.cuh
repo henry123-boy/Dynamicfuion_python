@@ -65,6 +65,27 @@ template<typename scalar_t>
 inline void GetMatrixPointersFromContiguousArrayOfMatrices_CUDA(
 		scalar_t* A_array[],
 		void* A,
+		const int64_t A_row_count,
+		const int64_t A_column_count,
+		const int64_t batch_size,
+		const o3c::Device& device
+) {
+	auto A_data = static_cast<scalar_t*>(A);
+
+	auto A_block_stride = A_row_count * A_column_count;
+	o3c::ParallelFor(
+			device,
+			batch_size,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_batch) {
+				A_array[i_batch] = A_data + i_batch * A_block_stride;
+			}
+	);
+}
+
+template<typename scalar_t>
+inline void GetMatrixPointersFromContiguousArrayOfMatricesPadded_CUDA(
+		scalar_t* A_array[],
+		void* A,
 		void* A_padding,
 		const int64_t A_row_count,
 		const int64_t A_column_count,
@@ -86,7 +107,6 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_CUDA(
 					int64_t i_batch_padding = i_batch - batch_size;
 					A_array[i_batch] = A_padding_data + i_batch_padding * A_block_stride;
 				}
-
 			}
 	);
 }

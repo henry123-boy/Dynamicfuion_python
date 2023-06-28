@@ -234,15 +234,8 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
 
     i_diagonal = 0
 
-    #__DEBUG
-    product_count = 0
-    #__DEBUG
-    inspected_row = 210
-
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
-        #__DEBUG
-        block_row = []
         row_product_count = 0
         block_sum = np.zeros((block_size, block_size), dtype=np.float64)
         # use block column at index i to augment the matrix diagonal entry
@@ -251,28 +244,12 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 U_ki = U_block_dict[(k, i)]
                 block_sum += U_ki.transpose() @ U_ki
                 row_product_count += 1
-                # if i == inspected_row:
-                #     print(f"Level {i} above-diagonal-block sum product for [{k}, {i}]: ")
-                #     print(U_ki)
-                #     print(U_ki.transpose() @ U_ki)
-                #__DEBUG
-                # if i == inspected_row:
-                #     print(f"[{k},{i},{k},{i}],")
-
 
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
         U_ii = scipy.linalg.cholesky(H_ii - block_sum, lower=False)
         corner_U_diagonal_blocks.append(U_ii)
         L_kk_inv = np.linalg.inv(U_ii.T)
-        #__DEBUG
-        if i == inspected_row:
-            # print(f"Level {i} above-diagonal-block sum: ")
-            # print(block_sum)
-            print(f"Level {i} facturized UT block: ")
-            print(U_ii)
-        #__DEBUG
-        block_row.append(U_ii)
 
         # Update U-matrix blocks above the diagonal
         # j is the index of block column in output
@@ -285,52 +262,19 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                     U_kj = U_block_dict[(k, j)]
                     block_sum += U_ki.transpose() @ U_kj
                     row_product_count += 1
-                    #__DEBUG
-                    # if i == inspected_row:
-                    #     print(f"[{k},{i},{k},{j}],")
 
             # update "inner" matrix blocks
             if (i, j) in H_block_dict:
                 H_ij = H_block_dict[(i, j)]
             else:
                 H_ij = np.zeros((block_size, block_size), dtype=np.float64)
-
-            # if i == inspected_row and j == inspected_row + 1:
-            #     print(f"Level {i} above-{j}-block sum: ")
-            #     print(block_sum)
             H_ij_new = H_ij - block_sum
-
-            #__DEBUG
-            # if i == inspected_row and j == 244:
-            #     print(f"H_ij for i=={inspected_row}, j==244:")
-            #     print(H_ij)
-            #     print(f"block_sum for i=={inspected_row}, j==244:")
-            #     print(block_sum)
-            #     print(f"H_ij_new for i=={inspected_row}, j==244:")
-            #     print(H_ij_new)
-            #     print(f"L_kk_inv for i=={inspected_row}, j==244:")
-            #     print(L_kk_inv)
 
             U_ij = L_kk_inv @ H_ij_new
             U_block_dict[(i, j)] = U_ij
             corner_U_upper_blocks.append((i, j, U_ij))
-            #__DEBUG
-            if i == inspected_row and j == inspected_row + 1:
-                print(f"Level {i} facturized U block at {i},{j}: ")
-                print(U_ij)
-            #__DEBUG
-            block_row.append(U_ij)
-        i_diagonal += 1
-        #__DEBUG
-        # if i == inspected_row:
-        #     print(f"Block row for i={i}:")
-        #     print(np.array(block_row))
-        #__DEBUG
-        # print(f"Product count during \"arrowhead\" corner factorization for level {i}: {row_product_count}")
-        product_count += row_product_count
 
-    #__DEBUG
-    print(f"Total product count during \"arrowhead\" corner factorization: {product_count}")
+        i_diagonal += 1
 
     return corner_U_diagonal_blocks, corner_U_upper_blocks
 
@@ -383,24 +327,12 @@ def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarra
             if j not in dict:
                 dict[j] = []
             dict[j].append((i, block.T))
-        # __DEBUG
-        max = 0
-        for key, value in dict.items():
-            if len(value) > max:
-                max = len(value)
-        print(f"Tallest column in blocks: {max}")
     else:
         # row lookup
         for (i, j, block) in indexed_blocks:
             if i not in dict:
                 dict[i] = []
             dict[i].append((j, block))
-        # __DEBUG
-        max = 0
-        for key, value in dict.items():
-            if len(value) > max:
-                max = len(value)
-        print(f"Longest row in blocks: {max}")
 
     return dict
 

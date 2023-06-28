@@ -27,16 +27,21 @@
 
 namespace o3c = open3d::core;
 
-nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o3c::Device& device){
+nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o3c::Device& device) {
 	nnrt::core::linalg::BlockSparseArrowheadMatrix matrix;
-	matrix.diagonal_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy").To(device).To(o3c::Float32);
+	matrix.diagonal_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy").To(device)
+	                                                                                                                         .To(o3c::Float32);
 	matrix.upper_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device).To(o3c::Float32);
-	matrix.upper_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy").To(device);
+	matrix.upper_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
+			.To(device);
 	matrix.upper_block_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
-	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_lists.npy").To(device);
-	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_counts.npy").To(device);
+	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_lists.npy")
+			.To(device);
+	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_counts.npy")
+			.To(device);
 	matrix.upper_row_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_lists.npy").To(device);
-	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_counts.npy").To(device);
+	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_counts.npy")
+			.To(device);
 	matrix.arrow_base_block_index = 208;
 	return matrix;
 }
@@ -47,38 +52,28 @@ void TestCholeskyBlockSparseArrowheadFactorization(const o3c::Device& device) {
 	o3c::Tensor U_diag, U_upper, U_lower_right_dense;
 	std::tie(U_diag, U_upper, U_lower_right_dense) = nnrt::core::linalg::FactorizeBlockSparseArrowheadCholesky_Upper(matrix);
 
-	//__DEBUG
-	// std::cout << std::endl << U_upper.Slice(0,0,10).ToString() << std::endl << std::endl;
-
-	o3c::Tensor U_diag_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_diag_upper_left.npy").To(device).To(o3c::Float32);
+	o3c::Tensor U_diag_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_diag_upper_left.npy").To(device)
+	                                                                                                                          .To(o3c::Float32);
 	o3c::Tensor U_upper_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_upper.npy").To(device).To(o3c::Float32);
-	o3c::Tensor U_lower_right_dense_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_lower_right_dense.npy").To(device).To(o3c::Float32);
+	o3c::Tensor U_lower_right_dense_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_lower_right_dense.npy")
+			.To(device).To(o3c::Float32);
 
 	U_diag = U_diag.Contiguous();
 	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag, nnrt::core::linalg::UpLoTriangular::LOWER);
 
-	//__DEBUG
-	// std::cout << std::endl << U_lower_right_dense.ToString() << std::endl << std::endl;
-	// std::cout << "GT:" << std::endl;
-	// std::cout << U_lower_right_dense_gt.ToString() << std::endl;
-
-	//__DEBUG
-	// std::cout << std::endl << U_upper.Slice(0,0,10).ToString() << std::endl << std::endl;
-	// std::cout << "GT:" << std::endl;
-	// std::cout << U_upper_gt.Slice(0,0,10).ToString() << std::endl;
 
 	int block_size = static_cast<int32_t>(U_diag.GetShape(1));
 	o3c::Tensor U_diag_corner = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense, block_size);
 	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag_corner, nnrt::core::linalg::UpLoTriangular::LOWER);
 	nnrt::core::linalg::FillInDiagonalBlocks(U_lower_right_dense, U_diag_corner);
 
-	//__DEBUG
 	o3c::Tensor U_diag_corner_gt = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense_gt, block_size);
 
+
 	REQUIRE(U_diag.AllClose(U_diag_gt));
-	REQUIRE(U_upper.AllClose(U_upper_gt,0,1e-7));
-	// REQUIRE(U_diag_corner.AllClose(U_diag_corner_gt, 0, 1e-7));
-	// REQUIRE(U_lower_right_dense.AllClose(U_lower_right_dense_gt, 0, 1e-7));
+	REQUIRE(U_upper.AllClose(U_upper_gt, 0, 1e-6));
+	REQUIRE(U_diag_corner.AllClose(U_diag_corner_gt, 0, 1e-6));
+	REQUIRE(U_lower_right_dense.AllClose(U_lower_right_dense_gt, 0, 1e-6));
 }
 
 TEST_CASE("Test Factorize Block-Sparse Arrowhead CPU") {

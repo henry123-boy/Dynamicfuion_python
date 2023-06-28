@@ -59,8 +59,9 @@ void InvertTriangularBlocksCUDA_Generic(
 	scalar_t** A_array_device;
 	auto size_of_pointer_array = effective_block_count * sizeof(scalar_t*);
 	OPEN3D_CUDA_CHECK(cudaMalloc(&A_array_device, size_of_pointer_array));
-	GetMatrixPointersFromContiguousArrayOfMatrices_CUDA(A_array_device, A_block_data, A_padding, block_size, block_size, block_count, padding_count,
-	                                                    device);
+	GetMatrixPointersFromContiguousArrayOfMatricesPadded_CUDA(A_array_device, A_block_data, A_padding, block_size, block_size, block_count,
+	                                                          padding_count,
+	                                                          device);
 
 	trtri_batched_cuda(A_array_device, effective_block_count, block_size, uplo, device);
 
