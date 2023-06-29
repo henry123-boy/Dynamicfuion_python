@@ -16,7 +16,7 @@
 // third-party includes
 
 // local includes
-#include "MatmulBlockSparseRowWise.h"
+#include "MatmulBlockSparse.h"
 #include "core/DeviceSelection.h"
 
 namespace nnrt::core::linalg {

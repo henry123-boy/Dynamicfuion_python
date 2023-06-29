@@ -22,7 +22,7 @@
 #include "test_main.hpp"
 
 // code being tested
-#include "core/linalg/MatmulBlockSparseRowWise.h"
+#include "core/linalg/MatmulBlockSparse.h"
 
 namespace o3c = open3d::core;
 

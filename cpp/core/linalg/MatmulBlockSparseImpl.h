@@ -20,7 +20,7 @@
 #include <open3d/core/ParallelFor.h>
 
 // local includes
-#include "core/linalg/MatmulBlockSparseRowWise.h"
+#include "core/linalg/MatmulBlockSparse.h"
 #include "core/platform_independence/Qualifiers.h"
 #include "LinalgUtils.h"
 #include "core/linalg/BlasWrapper.h"

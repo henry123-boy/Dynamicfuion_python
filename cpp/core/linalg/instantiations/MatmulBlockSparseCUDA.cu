@@ -14,7 +14,7 @@
 //  limitations under the License.
 //  ================================================================
 // local includes
-#include "core/linalg/MatmulBlockSparseRowWiseImpl.h"
+#include "core/linalg/MatmulBlockSparseImpl.h"
 namespace nnrt::core::linalg::internal {
 
 template

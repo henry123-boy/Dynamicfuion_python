@@ -283,7 +283,7 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
                                             hessian_blocks_upper: List[Tuple[int, int, np.ndarray]],
                                             hessian_blocks_upper_corner: List[Tuple[int, int, np.ndarray]],
                                             layer_node_counts: np.ndarray, save_cpp_test_data: bool = False) \
-        -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]]]:
+        -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]], np.ndarray]:
     first_layer_node_count = layer_node_counts[0]
     L_diag_upper_left = [scipy.linalg.cholesky(block, lower=True) for block in
                          hessian_blocks_diagonal[:first_layer_node_count]]
@@ -301,22 +301,23 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
         cholesky_blocked_sparse_corner(U_block_dict, H_block_dict, hessian_blocks_diagonal[first_layer_node_count:],
                                        first_layer_node_count, node_count, block_size)
 
+    corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
+    U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
+                                   dtype=np.float32)
+    fill_sparse_blocks(U_lower_right_dense, U_lower_right,
+                       block_offsets=(first_layer_node_count, first_layer_node_count))
+    fill_in_diagonal_blocks(U_lower_right_dense, U_diag_lower_right)
+
     if save_cpp_test_data:
-        corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_diag_upper_left.npy",
                 np.array(U_diag_upper_left))
         U_upper = [L_inv_diag_upper_left[i] @ U_h if i < first_layer_node_count else np.zeros((block_size, block_size))
                    for (i, j, U_h) in hessian_blocks_upper + hessian_blocks_upper_corner]
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper.npy",
                 np.array(U_upper))
-        U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
-                                       dtype=np.float32)
-        fill_sparse_blocks(U_lower_right_dense, U_lower_right,
-                           block_offsets=(first_layer_node_count, first_layer_node_count))
-        fill_in_diagonal_blocks(U_lower_right_dense, U_diag_lower_right)
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_lower_right_dense.npy", U_lower_right_dense)
 
-    return U_diag_upper_left + U_diag_lower_right, U_upper_right + U_lower_right
+    return U_diag_upper_left + U_diag_lower_right, U_upper_right + U_lower_right, U_lower_right_dense
 
 
 def build_sparse_lookup_structure(indexed_blocks: List[Tuple[int, int, np.ndarray]], transpose: bool = False):
@@ -460,8 +461,11 @@ def main():
     save_cpp_test_data = False
     if save_cpp_test_data:
         generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
-    U_diag, U_upper = cholesky_upper_triangular_from_sparse_H(H_diag, H_upper, H_upper_corner, layer_node_counts,
-                                                              save_cpp_test_data=save_cpp_test_data)
+    U_diag, U_upper, U_corner_dense = cholesky_upper_triangular_from_sparse_H(
+        H_diag, H_upper, H_upper_corner,
+        layer_node_counts,
+        save_cpp_test_data=save_cpp_test_data
+    )
     U = sparse_U_to_dense(U_diag, U_upper)
     H_aug = H + np.eye(H.shape[0]) * lm_factor
     U_gt = scipy.linalg.cholesky(H_aug, lower=False)
@@ -477,6 +481,26 @@ def main():
     delta = solve_triangular_sparse_back_substitution(U_diag, U_upper, y)
     delta_gt = scipy.linalg.solve(H_aug, dummy_negJr)
     print("Lx=y block-sparse back-substitution finished successfully: ", np.allclose(delta, delta_gt))
+
+    block_size = H_diag[0].shape[0]
+    arrowhead_base_index = layer_node_counts[0] * block_size
+    D = H_aug[:arrowhead_base_index, :arrowhead_base_index]
+    B = H_aug[:arrowhead_base_index, arrowhead_base_index:]
+    C = H_aug[arrowhead_base_index:, arrowhead_base_index:]
+
+    b_data = dummy_negJr[:arrowhead_base_index]
+    b_reg = dummy_negJr[arrowhead_base_index:]
+
+    C_prime = C - B.T @ scipy.linalg.inv(D) @ B
+    b_reg_prime = b_reg - B.T @ scipy.linalg.inv(D) @ b_data
+    delta_C = np.linalg.solve(C_prime, b_reg_prime)
+    delta_D = scipy.linalg.inv(D) @ (b_data - B @ delta_C)
+
+    delta_schur = np.concatenate((delta_D, delta_C))
+    print("Schur approach to solver finished successfully: ", np.allclose(delta_schur, delta_gt))
+
+    U_C_prime = scipy.linalg.cholesky(C_prime)
+    print("Schur complement decomposition equivalent to U_corner_dense:", np.allclose(U_C_prime, U_corner_dense))
 
     return 0
 

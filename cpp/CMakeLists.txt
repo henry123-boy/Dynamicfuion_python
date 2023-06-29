@@ -452,12 +452,12 @@ set(
     core/linalg/SolveBlockSparseArrowheadCholesky.cpp
     core/linalg/SolveBlockSparseArrowheadCholesky.h
     core/linalg/BlockSparseArrowheadMatrix.h
-    core/linalg/MatmulBlockSparseRowWise.cpp
-    core/linalg/MatmulBlockSparseRowWise.h
-    core/linalg/MatmulBlockSparseRowWiseImpl.h
-    core/linalg/MatmulBlockSparseRowWiseImpl.h
-    core/linalg/instantiations/MatmulBlockSparseRowWiseCPU.cpp
-    core/linalg/instantiations/MatmulBlockSparseRowWiseCUDA.cu
+    core/linalg/MatmulBlockSparse.cpp
+    core/linalg/MatmulBlockSparse.h
+    core/linalg/MatmulBlockSparseImpl.h
+    core/linalg/MatmulBlockSparseImpl.h
+    core/linalg/instantiations/MatmulBlockSparseCPU.cpp
+    core/linalg/instantiations/MatmulBlockSparseCUDA.cu
 
     core/functional/Tile.cpp
     core/functional/Tile.h

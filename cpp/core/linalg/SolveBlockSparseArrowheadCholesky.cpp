@@ -21,7 +21,7 @@
 #include "SolveBlockSparseArrowheadCholesky.h"
 #include "core/linalg/FactorizeBlocksCholesky.h"
 #include "core/linalg/InvertBlocks.h"
-#include "core/linalg/MatmulBlockSparseRowWise.h"
+#include "core/linalg/MatmulBlockSparse.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;
