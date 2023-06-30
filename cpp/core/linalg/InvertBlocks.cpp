@@ -79,7 +79,7 @@ open3d::core::Tensor InvertTriangularBlocks(
 	return inverted_blocks;
 }
 
-open3d::core::Tensor InvertBlocks(const open3d::core::Tensor& blocks) {
+open3d::core::Tensor InvertSymmetricPositiveDefiniteBlocks(const open3d::core::Tensor& blocks) {
 	o3c::AssertTensorDtypes(blocks, { o3c::Float32, o3c::Float64 });
 	const o3c::Device device = blocks.GetDevice();
 	const o3c::Dtype data_type = blocks.GetDtype();

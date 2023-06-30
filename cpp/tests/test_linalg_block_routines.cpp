@@ -172,7 +172,7 @@ void TestInvertBlocks(const o3c::Device& device) {
 			288, 516, 718
 	}, {3, 3, 3}, o3c::Float32, device);
 
-	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertBlocks(blocks);
+	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertSymmetricPositiveDefiniteBlocks(blocks);
 
 	o3c::Tensor inverted_blocks_gt(std::vector<float>{
 			 0.59375   , -0.875     ,  0.375     ,

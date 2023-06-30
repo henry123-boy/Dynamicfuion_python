@@ -24,7 +24,7 @@
 
 namespace nnrt::core::linalg {
 
-open3d::core::Tensor InvertBlocks(const open3d::core::Tensor& blocks);
+open3d::core::Tensor InvertSymmetricPositiveDefiniteBlocks(const open3d::core::Tensor& blocks);
 open3d::core::Tensor InvertTriangularBlocks(const open3d::core::Tensor& blocks, nnrt::core::linalg::UpLoTriangular uplo);
 
 namespace internal {
