@@ -439,6 +439,20 @@ def generate_cpp_test_block_sparse_arrowhead_input_data(
     np.save(str(Path(base_path) / "upper_row_block_counts.npy"), upper_row_block_counts)
 
 
+# region --- Triangular indexing -----
+
+def triangular_number(i):
+    return i * (i + 1) // 2
+
+
+def k2ij_upper_triangular(k, n):
+    rv = triangular_number(n) - k
+    i_inv = int(math.sqrt(8 * rv) - 1) // 2
+    i = n - i_inv - 1
+    j = n - rv + triangular_number(i_inv)
+    return i, j
+# endregion
+
 def main():
     np.set_printoptions(suppress=True, linewidth=350, edgeitems=100)
     J = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/J.npy")
