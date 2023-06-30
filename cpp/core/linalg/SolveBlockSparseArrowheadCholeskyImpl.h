@@ -31,6 +31,7 @@
 #include "core/linalg/BlasAuxiliary.h"
 #include "core/linalg/MagmaManager.h"
 #include "core/platform_independence/AtomicTensor.h"
+#include "BlockSums.h"
 
 #ifdef __CUDACC__
 #include "core/linalg/LinalgKernels.cuh"
@@ -45,49 +46,6 @@ namespace nnrt::core::linalg::internal {
 #define ESTIMATE_MAX_CORNER_ROW_NON_DIAGONAL_BLOCK_COUNT 200
 
 
-//TODO: need a proper AtomicTensor type, compatible with Open3D tensor, with a method to fill values atomically in a cross-platform fashion
-static void RunBlockSumChecks(const o3c::Tensor& blocks, const o3c::Tensor& block_sum_indices, int block_count
-) {
-	// counters & checks
-	o3c::Device device = blocks.GetDevice();
-	o3c::AssertTensorDtype(blocks, o3c::Float32);
-	o3c::AssertTensorDtype(block_sum_indices, o3c::Int32);
-	int64_t block_size = blocks.GetShape(1);
-	int64_t max_block_count = blocks.GetShape(0);
-	o3c::AssertTensorShape(blocks, { max_block_count, block_size, block_size });
-	o3c::AssertTensorShape(block_sum_indices, { max_block_count });
-	o3c::AssertTensorDevice(block_sum_indices, device);
-	if (block_count > max_block_count) {
-		utility::LogError("Block count, {}, exceeds allowed maximum, {}.", block_count, max_block_count);
-	}
-}
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void ComputeBlockSums(
-		core::AtomicTensor<TDeviceType, float>& sums,
-		const o3c::Tensor& blocks,
-		const o3c::Tensor& block_sum_indices,
-		int block_count
-) {
-	RunBlockSumChecks(blocks, block_sum_indices, block_count);
-	o3c::Device device = blocks.GetDevice();
-	int64_t block_size = blocks.GetShape(1);
-	int64_t block_stride = block_size * block_size;
-	auto block_sum_index_data = block_sum_indices.GetDataPtr<int32_t>();
-	auto block_data = blocks.GetDataPtr<float>();
-
-	o3c::ParallelFor(
-			device,
-			block_count * block_stride,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				int64_t i_block = workload_idx / block_stride;
-				int64_t i_coefficient = workload_idx % block_stride;
-				int32_t i_sum = block_sum_index_data[i_block];
-				sums.FetchAdd(i_sum * block_stride + i_coefficient, block_data[workload_idx]);
-			}
-	);
-}
-
 
 template<open3d::core::Device::DeviceType TDeviceType>
 void FactorizeBlockSparseCholeskyCorner(
@@ -95,31 +53,31 @@ void FactorizeBlockSparseCholeskyCorner(
 		const open3d::core::Tensor& factorized_upper_blocks,
 		const BlockSparseArrowheadMatrix& A
 ) {
-	auto diagonal_block_count = static_cast<int32_t>(A.diagonal_blocks.GetShape(0));
-	auto device = A.diagonal_blocks.GetDevice();
-	int64_t block_size = A.diagonal_blocks.GetShape(1);
+	auto diagonal_block_count = static_cast<int32_t>(A.stem_diagonal_blocks.GetShape(0));
+	auto device = A.stem_diagonal_blocks.GetDevice();
+	int64_t block_size = A.stem_diagonal_blocks.GetShape(1);
 
-	o3c::AssertTensorShape(A.diagonal_blocks, { diagonal_block_count, block_size, block_size });
-	o3c::AssertTensorDtype(A.diagonal_blocks, o3c::Float32);
+	o3c::AssertTensorShape(A.stem_diagonal_blocks, { diagonal_block_count, block_size, block_size });
+	o3c::AssertTensorDtype(A.stem_diagonal_blocks, o3c::Float32);
 
 	int breadboard_width = diagonal_block_count - A.arrow_base_block_index;
-	o3c::AssertTensorShape(A.upper_block_breadboard, { diagonal_block_count, breadboard_width });
-	o3c::AssertTensorDtype(A.upper_block_breadboard, o3c::Int16);
-	o3c::AssertTensorDevice(A.upper_block_breadboard, device);
+	o3c::AssertTensorShape(A.upper_right_arrow_wing_breadboard, { diagonal_block_count, breadboard_width });
+	o3c::AssertTensorDtype(A.upper_right_arrow_wing_breadboard, o3c::Int16);
+	o3c::AssertTensorDevice(A.upper_right_arrow_wing_breadboard, device);
 
-	int64_t A_upper_block_count = A.upper_blocks.GetShape(0);
-	o3c::AssertTensorShape(A.upper_blocks, { A_upper_block_count, block_size, block_size });
-	o3c::AssertTensorDtype(A.upper_blocks, o3c::Float32);
-	o3c::AssertTensorDevice(A.upper_blocks, device);
+	int64_t A_upper_block_count = A.upper_right_wing_blocks.GetShape(0);
+	o3c::AssertTensorShape(A.upper_right_wing_blocks, { A_upper_block_count, block_size, block_size });
+	o3c::AssertTensorDtype(A.upper_right_wing_blocks, o3c::Float32);
+	o3c::AssertTensorDevice(A.upper_right_wing_blocks, device);
 
 	o3c::AssertTensorShape(factorized_upper_blocks, { A_upper_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(factorized_upper_blocks, o3c::Float32);
 	o3c::AssertTensorDevice(factorized_upper_blocks, device);
 
-	auto source_upper_block_data = A.upper_blocks.GetDataPtr<float>();
+	auto source_upper_block_data = A.upper_right_wing_blocks.GetDataPtr<float>();
 	auto factorized_upper_block_data = factorized_upper_blocks.GetDataPtr<float>();
 	//TODO: return this too
-	auto source_breadboard_data = A.upper_block_breadboard.GetDataPtr<int16_t>();
+	auto source_breadboard_data = A.upper_right_arrow_wing_breadboard.GetDataPtr<int16_t>();
 
 	// int64_t dense_corner_size = breadboard_width * block_size;
 	o3c::Tensor factorized_corner_blocks = o3c::Tensor::Zeros({breadboard_width, breadboard_width, block_size, block_size}, o3c::Float32, device);
@@ -286,9 +244,9 @@ void FactorizeBlockSparseCholeskyCorner(
 		);
 #endif
 		row_product_sums_atomic.Reset();
-		ComputeBlockSums(row_product_sums_atomic, row_products, product_sum_indices, product_count);
+		internal::ComputeBlockSums(row_product_sums_atomic, block_count_in_row_or_column, row_products, product_sum_indices, product_count);
 
-		o3c::Tensor factorized_UT_diagonal_block = A.diagonal_blocks.GetItem(o3c::TensorKey::Index(i_block_row_in_matrix)).Clone();
+		o3c::Tensor factorized_UT_diagonal_block = A.stem_diagonal_blocks.GetItem(o3c::TensorKey::Index(i_block_row_in_matrix)).Clone();
 		o3c::Tensor uTu_blocks_above_diagonal_sum = row_product_sums.GetItem(o3c::TensorKey::Index(0));
 #ifdef __CUDACC__
 		factorized_UT_diagonal_block -= uTu_blocks_above_diagonal_sum.Transpose(0, 1);

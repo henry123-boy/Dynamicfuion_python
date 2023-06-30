@@ -42,12 +42,12 @@ void SolveBlockSparseArrowheadCholesky(
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
 FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A) {
 	o3c::Tensor L_diagonal_upper_left;
-	FactorizeBlocksCholesky(L_diagonal_upper_left, A.diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
+	FactorizeBlocksCholesky(L_diagonal_upper_left, A.stem_diagonal_blocks.Slice(0, 0, A.arrow_base_block_index), UpLoTriangular::LOWER);
 
 	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
 	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
 
-	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_blocks, A.upper_block_coordinates);
+	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_right_wing_blocks, A.upper_right_wing_block_coordinates);
 
 	o3c::Tensor U_factorized_dense_corner;
 	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_corner, U_sparse_blocks, A);
@@ -63,7 +63,7 @@ void FactorizeBlockSparseCholeskyCorner(
 		const BlockSparseArrowheadMatrix& A
 ) {
 	core::ExecuteOnDevice(
-			A.diagonal_blocks.GetDevice(),
+			A.stem_diagonal_blocks.GetDevice(),
 			[&]() {
 				internal::FactorizeBlockSparseCholeskyCorner<open3d::core::Device::DeviceType::CPU>(
 						factorized_upper_dense_corner, factorized_upper_blocks, A

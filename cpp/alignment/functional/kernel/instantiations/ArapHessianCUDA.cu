@@ -28,7 +28,9 @@ void ArapSparseHessianApproximation<open3d::core::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
 		int64_t first_layer_node_count,
-		int64_t node_count
+		int64_t second_layer_node_count,
+		int64_t node_count,
+		int64_t max_vertex_degree
 );
 
 } // namespace nnrt::alignment::functional::kernel

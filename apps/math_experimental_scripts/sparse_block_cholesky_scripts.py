@@ -104,7 +104,8 @@ def set_block(matrix: np.ndarray, block_size: int, i: int, j: int, block: np.nda
 
 
 def compute_sparse_H(edges: np.ndarray, edge_jacobians: np.ndarray,
-                     node_count: int, layer_node_counts: np.ndarray) \
+                     node_count: int, layer_node_counts: np.ndarray,
+                     verbose: bool = False) \
         -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]], List[Tuple[int, int, np.ndarray]]]:
     node_jacobians = {}
     # associate jacobians with their node / block column
@@ -134,6 +135,9 @@ def compute_sparse_H(edges: np.ndarray, edge_jacobians: np.ndarray,
             hessian_blocks_upper.append((i, j, H_ij))
 
     hessian_blocks_diagonal = np.ndarray((node_count, 6, 6))
+
+    diagonal_block_component_count = 0
+
     for i_node, node_edge_jacobian_list in node_jacobians.items():
         J_virtual_column = np.ndarray((len(node_edge_jacobian_list) * 3, 6))
         for i_node_edge_jacobian, (J_edge_condensed, J_type) in enumerate(node_edge_jacobian_list):
@@ -148,7 +152,11 @@ def compute_sparse_H(edges: np.ndarray, edge_jacobians: np.ndarray,
                 dEj_dt = np.eye(3) * J_edge_condensed[4]
                 dEj = np.hstack((np.zeros((3, 3)), dEj_dt))
                 J_virtual_column[i_start_virtual_row:i_end_virtual_row] = dEj
+            diagonal_block_component_count += 1
         hessian_blocks_diagonal[i_node] = (J_virtual_column.T.dot(J_virtual_column))
+
+    if verbose:
+        print(f"Block-sparse diagonal block total component count: {diagonal_block_component_count}")
     return list(hessian_blocks_diagonal), hessian_blocks_upper, hessian_blocks_upper_corner
 
 
@@ -498,7 +506,8 @@ def main():
     print(f"Node count: {node_count}")
     print(f"Count of blocks at arrowhead base: {layer_node_counts[0]}")
     print(f"Edge count: {len(edges)}")
-    H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts)
+    H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts,
+                                                       verbose=True)
     print(
         f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
     H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)

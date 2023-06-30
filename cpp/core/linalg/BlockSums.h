@@ -13,25 +13,44 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#pragma once
 // stdlib includes
 
 // third-party includes
 
 // local includes
-#include "SchurComplement.h"
-#include "InvertBlocks.h"
-#include "MatmulBlockSparse.h"
+#include "core/platform_independence/AtomicTensor.h"
 
-
-namespace o3c = open3d::core;
 namespace nnrt::core::linalg {
 
+open3d::core::Tensor ComputeBlockSums(
+		int sum_count,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& block_sum_indices,
+		int block_count
+);
 
-open3d::core::Tensor ComputeSchurComplementOfArrowStem(const BlockSparseArrowheadMatrix& a) {
-	o3c::Tensor stem = a.stem_diagonal_blocks.Slice(0, 0, a.arrow_base_block_index);
-	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(stem);
+namespace internal {
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void ComputeBlockSums(
+		open3d::core::Tensor& sums,
+		int sum_count,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& block_sum_indices,
+		int block_count
+);
 
 
-}
+template<open3d::core::Device::DeviceType TDeviceType, typename TElement>
+void ComputeBlockSums(
+		core::AtomicTensor<TDeviceType, TElement>& sums,
+		int sum_count,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& block_sum_indices,
+		int block_count
+);
+
+} // namespace internal
 
 } // namespace nnrt::core::linalg

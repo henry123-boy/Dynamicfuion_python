@@ -41,9 +41,8 @@ ComputeArapBlockSparseHessianApproximation(
 
 			edges,
 			condensed_edge_jacobians,
-			first_layer_node_count,
-			node_count
-	);
+			first_layer_node_count, 0,
+			node_count, 4);
 
 	return arap_hessian_approximation;
 }

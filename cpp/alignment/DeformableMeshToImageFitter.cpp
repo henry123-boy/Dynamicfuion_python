@@ -229,9 +229,9 @@ void DeformableMeshToImageFitter::FitToImage(
 					functional::ComputeArapBlockSparseHessianApproximation(warp_field.GetEdges(), edge_jacobians, first_layer_node_count,
 					                                                       warp_field.GetNodePositions(false).GetLength());
 
-			hessian_approximation.diagonal_blocks += hessian_blocks_depth_diagonal;
+			hessian_approximation.stem_diagonal_blocks += hessian_blocks_depth_diagonal;
 			if (preconditioning_dampening_factor > 0.0) {
-				kernel::PreconditionDiagonalBlocks(hessian_approximation.diagonal_blocks, preconditioning_dampening_factor);
+				kernel::PreconditionDiagonalBlocks(hessian_approximation.stem_diagonal_blocks, preconditioning_dampening_factor);
 			}
 
 

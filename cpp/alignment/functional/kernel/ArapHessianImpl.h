@@ -27,6 +27,8 @@
 #include "core/platform_independence/Atomics.h"
 #include "core/linalg/BlockSparseArrowheadMatrix.h"
 #include "core/platform_independence/AtomicCounterArray.h"
+#include "core/platform_independence/AtomicTensor.h"
+#include "core/linalg/BlockSums.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -39,13 +41,17 @@ namespace nnrt::alignment::functional::kernel {
 template<open3d::core::Device::DeviceType TDeviceType>
 void ArapSparseHessianApproximation(
 		core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
-
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
 		int64_t first_layer_node_count,
-		int64_t node_count
+		int64_t second_layer_node_count,
+		int64_t node_count,
+		int64_t max_vertex_degree
 ) {
 	//TODO: provisions for translation-only and rotation-only hessians (3x3 blocks)
+	const int block_size = 6;
+	const int block_stride = block_size * block_size;
+
 	// checks & counts
 	o3c::Device device = edges.GetDevice();
 	int64_t edge_count = edges.GetLength();
@@ -69,28 +75,55 @@ void ArapSparseHessianApproximation(
 		utility::LogError("node_count (currently, {}) cannot exceed int16_t max, which is 32767.", node_count);
 	}
 
+	const auto first_layer_vertex_degree = std::min(max_vertex_degree, second_layer_node_count);
+	const auto arrow_base_block_index = static_cast<int32_t>(first_layer_node_count); // for clarity
+	const auto upper_right_wing_block_count = edge_count - first_layer_node_count * first_layer_vertex_degree;
+	const auto corner_non_diagonal_block_count = edge_count - upper_right_wing_block_count;
+
+
 	// input/output prep
-	arap_hessian_approximation.upper_blocks = o3c::Tensor({edge_count, 6, 6}, o3c::Float32, device);
-	auto upper_block_data = arap_hessian_approximation.upper_blocks.GetDataPtr<float>();
-	arap_hessian_approximation.upper_block_coordinates = o3c::Tensor({edge_count, 2}, o3c::Int32, device);
-	auto upper_block_coordinate_data = arap_hessian_approximation.upper_block_coordinates.GetDataPtr<int32_t>();
-	arap_hessian_approximation.diagonal_blocks = o3c::Tensor({node_count, 6, 6}, o3c::Float32, device);
-	auto diagonal_block_data = arap_hessian_approximation.diagonal_blocks.GetDataPtr<float>();
-	int64_t breadboard_width = node_count - first_layer_node_count;
-	arap_hessian_approximation.upper_block_breadboard = o3c::Tensor({node_count, breadboard_width}, o3c::Int16);
-	arap_hessian_approximation.upper_block_breadboard.Fill(-1);
-	auto breadboard_data = arap_hessian_approximation.upper_block_breadboard.GetDataPtr<int16_t>();
+	arap_hessian_approximation.upper_right_wing_blocks = o3c::Tensor({upper_right_wing_block_count, block_size, block_size}, o3c::Float32, device);
+	auto upper_right_wing_block_data = arap_hessian_approximation.upper_right_wing_blocks.GetDataPtr<float>();
+	arap_hessian_approximation.upper_right_wing_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
+	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.upper_right_wing_block_coordinates.GetDataPtr<int32_t>();
 
-	arap_hessian_approximation.arrow_base_block_index = static_cast<int>(first_layer_node_count);
+	//TODO fill
+	// arap_hessian_approximation.stem_diagonal_blocks = o3c::Tensor({first_layer_node_count, block_size, block_size}, o3c::Float32, device);
+	// auto stem_diagonal_block_data = arap_hessian_approximation.stem_diagonal_blocks.GetDataPtr<float>();
+	o3c::Tensor diagonal_components = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Float32, device);
+	auto diagonal_component_data = diagonal_components.GetDataPtr<float>();
+	o3c::Tensor diagonal_component_block_indices = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Int32, device);
+	auto diagonal_component_block_index_data = diagonal_components.GetDataPtr<int>();
 
-	arap_hessian_approximation.upper_column_block_lists = o3c::Tensor({breadboard_width, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2},
+	const int64_t breadboard_width_blocks = node_count - first_layer_node_count;
+	arap_hessian_approximation.upper_right_arrow_wing_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
+	arap_hessian_approximation.upper_right_arrow_wing_breadboard.Fill(-1);
+	auto breadboard_data = arap_hessian_approximation.upper_right_arrow_wing_breadboard.GetDataPtr<int16_t>();
+
+	arap_hessian_approximation.corner_dense_matrix =
+			o3c::Tensor({breadboard_width_blocks * block_size, breadboard_width_blocks * block_size}, o3c::Float32, device);
+	auto corner_dense_matrix_data = arap_hessian_approximation.corner_dense_matrix.GetDataPtr<float>();
+
+	o3c::Tensor corner_upper_blocks = o3c::Tensor({corner_non_diagonal_block_count, block_size, block_size}, o3c::Float32, device);
+	auto corner_upper_block_data = corner_upper_blocks.GetDataPtr<float>();
+	o3c::Tensor corner_upper_block_coordinates = o3c::Tensor({corner_non_diagonal_block_count, 2}, o3c::Int32, device);
+	auto corner_upper_block_coordinate_data = corner_upper_block_coordinates.GetDataPtr<int32_t>();
+
+	//TODO: fill
+	// o3c::Tensor corner_diagonal_blocks = o3c::Tensor({breadboard_width_blocks, block_size, block_size}, o3c::Float32, device);
+	//TODO: fill
+	// auto corner_diagonal_block_data = corner_upper_blocks.GetDataPtr<float>();
+
+	arap_hessian_approximation.arrow_base_block_index = arrow_base_block_index;
+
+	arap_hessian_approximation.upper_column_block_lists = o3c::Tensor({breadboard_width_blocks, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2},
 	                                                                  o3c::Int32, device);
 	auto block_column_lookup_data = arap_hessian_approximation.upper_column_block_lists.GetDataPtr<int32_t>();
 	arap_hessian_approximation.upper_row_block_lists = o3c::Tensor({node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2}, o3c::Int32,
 	                                                               device);
 	auto block_row_lookup_data = arap_hessian_approximation.upper_row_block_lists.GetDataPtr<int32_t>();
 
-	core::AtomicCounterArray<TDeviceType> column_block_counts(breadboard_width);
+	core::AtomicCounterArray<TDeviceType> column_block_counts(breadboard_width_blocks);
 	core::AtomicCounterArray<TDeviceType> row_block_counts(node_count);
 
 
@@ -103,57 +136,67 @@ void ArapSparseHessianApproximation(
 			edge_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_edge) {
 				Eigen::Map<const Eigen::Vector3f> dEi_dR_dense(edge_jacobian_data + i_edge * 5);
+				int32_t i_node;
+				int32_t j_node;
 
-				{ // scoped to reduce register usage on GPU
-					core::kernel::Matrix3x6f dEi;
-					dEi.leftCols(3) = Eigen::SkewSymmetricMatrix3<float>(dEi_dR_dense); //dEi_dR
-					dEi.rightCols(3) = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 3]; //dEi_dt
-					core::kernel::Matrix3x6f dEj = core::kernel::Matrix3x6f::Zero();
-					dEj.rightCols(3) = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 4]; //dEj_dt
+				core::kernel::Matrix3x6f dEi;
+				dEi.leftCols(3) = Eigen::SkewSymmetricMatrix3<float>(dEi_dR_dense); //dEi_dR
+				dEi.rightCols(3) = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 3]; //dEi_dt
+				core::kernel::Matrix3x6f dEj = core::kernel::Matrix3x6f::Zero();
+				dEj.rightCols(3) = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 4]; //dEj_dt
 
-					Eigen::Map<core::kernel::Matrix6f> upper_block(upper_block_data + i_edge * 36);
+				i_node = edge_data[i_edge * 2];
+				j_node = edge_data[i_edge * 2 + 1];
+
+				if (i_node < arrow_base_block_index) {
+					int64_t i_upper_right_wing_block = i_edge - corner_non_diagonal_block_count;
+					Eigen::Map<core::kernel::Matrix6f> upper_block(upper_right_wing_block_data + i_upper_right_wing_block * block_stride);
 					upper_block = dEi.transpose() * dEj;
-				}
 
-				int32_t i_node = edge_data[i_edge * 2];
-				int32_t j_node = edge_data[i_edge * 2 + 1];
+					// fill breadboard
+					int i_breadboard_column = j_node - arrow_base_block_index;
+					breadboard_data[i_node * breadboard_width_blocks + i_breadboard_column] = static_cast<int16_t>(i_upper_right_wing_block);
 
-				// fill breadboard
-				int i_breadboard_column = j_node - first_layer_node_count;
-				breadboard_data[i_node * breadboard_width + i_breadboard_column] = static_cast<int16_t>(i_edge);
+					// fill block coordinate list
+					upper_right_wing_block_coordinate_data[i_upper_right_wing_block * 2] = i_node;
+					upper_right_wing_block_coordinate_data[i_upper_right_wing_block * 2 + 1] = j_node;
 
-				// fill block coordinate list
-				upper_block_coordinate_data[i_edge * 2] = i_node;
-				upper_block_coordinate_data[i_edge * 2 + 1] = j_node;
+					// fill column lookup
+					int i_block_in_column = column_block_counts.FetchAdd(i_breadboard_column, 1);
+					if (i_block_in_column > BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE) {
+						printf("Warning: encountered %i blocks for column %i, which is greater than the allowed maximum, %i. "
+						       "Please either increase the BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE in code or reduce input size. "
+						       "Continuing, but block-sparse matrix lookup data will be incomplete.\n", i_block_in_column, j_node,
+						       BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE);
+					} else {
+						int i_column_lookup_item = i_breadboard_column * BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE + i_block_in_column;
+						block_column_lookup_data[i_column_lookup_item * 2] = i_node;
+						block_column_lookup_data[i_column_lookup_item * 2 + 1] = static_cast<int32_t>(i_edge);
+					}
 
-				// fill column lookup
-				int i_block_in_column = column_block_counts.FetchAdd(i_breadboard_column, 1);
-				if (i_block_in_column > BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE) {
-					printf("Warning: encountered %i blocks for column %i, which is greater than the allowed maximum, %i. "
-					       "Please either increase the BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE in code or reduce input size. "
-					       "Continuing, but block-sparse matrix lookup data will be incomplete.\n", i_block_in_column, j_node,
-					       BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE);
+					// fill row lookup
+					int i_block_in_row = row_block_counts.FetchAdd(i_node, 1);
+					if (i_block_in_row > BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE) {
+						printf("Warning: encountered %i blocks for row %i, which is greater than the allowed maximum, %i. "
+						       "Please either increase the BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE in code or reduce input size. "
+						       "Continuing, but block-sparse matrix lookup data will be incomplete.\n", i_block_in_row, i_node,
+						       BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE);
+					} else {
+						int i_row_lookup_item = i_node * BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE + i_block_in_row;
+						block_row_lookup_data[i_row_lookup_item * 2] = j_node;
+						block_row_lookup_data[i_row_lookup_item * 2 + 1] = static_cast<int32_t>(i_edge);
+					}
 				} else {
-					int i_column_lookup_item = i_breadboard_column * BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE + i_block_in_column;
-					block_column_lookup_data[i_column_lookup_item * 2] = i_node;
-					block_column_lookup_data[i_column_lookup_item * 2 + 1] = static_cast<int32_t>(i_edge);
-				}
+					Eigen::Map<core::kernel::Matrix6f> upper_block(corner_upper_block_data + i_edge * block_stride);
+					upper_block = dEi.transpose() * dEj;
 
-				// fill row lookup
-				int i_block_in_row = row_block_counts.FetchAdd(i_node, 1);
-				if (i_block_in_row > BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE) {
-					printf("Warning: encountered %i blocks for row %i, which is greater than the allowed maximum, %i. "
-					       "Please either increase the BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE in code or reduce input size. "
-					       "Continuing, but block-sparse matrix lookup data will be incomplete.\n", i_block_in_row, i_node,
-					       BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE);
-				} else {
-					int i_row_lookup_item = i_node * BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE + i_block_in_row;
-					block_row_lookup_data[i_row_lookup_item * 2] = j_node;
-					block_row_lookup_data[i_row_lookup_item * 2 + 1] = static_cast<int32_t>(i_edge);
+					// fill block coordinate list
+					corner_upper_block_coordinate_data[i_edge * 2] = i_node;
+					corner_upper_block_coordinate_data[i_edge * 2 + 1] = j_node;
 				}
-
 			}
 	);
+
 	arap_hessian_approximation.upper_column_block_counts = column_block_counts.AsTensor(true);
 	arap_hessian_approximation.upper_row_block_counts = row_block_counts.AsTensor(true);
 
@@ -166,10 +209,12 @@ void ArapSparseHessianApproximation(
 			edge_count * 2,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				int64_t i_edge = workload_idx / 2;
+
 				int64_t i_node_in_edge = workload_idx % 2;
 				int64_t node_index = edge_data[workload_idx];
 
-				core::kernel::Matrix6f h_block_update;
+				Eigen::Map<core::kernel::Matrix6f> h_block_update(diagonal_component_data + workload_idx * block_stride);
+				diagonal_component_block_index_data[workload_idx] = static_cast<int>(node_index);
 				if (i_node_in_edge == 0) { // "i"
 					core::kernel::Matrix3x6f dEi;
 					Eigen::Map<const Eigen::Vector3f> dEi_dR_dense(edge_jacobian_data + i_edge * 5);
@@ -181,19 +226,16 @@ void ArapSparseHessianApproximation(
 					dEj.rightCols(3) = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 4]; //dEj_dt
 					h_block_update = dEj.transpose() * dEj;
 				}
-#ifdef __CUDACC__
-				auto current_diagonal_block_data = diagonal_block_data + node_index * 36;
-#endif
-				for (int i_coefficient = 0; i_coefficient < 36; i_coefficient++) {
-#ifdef __CUDACC__
-					atomicAdd(current_diagonal_block_data + i_coefficient, h_block_update.coeff(i_coefficient));
-#else
-					atomicAdd_CPU(hessian_blocks_diagonal_atomic[node_index * 36 + i_coefficient], h_block_update.coeff(i_coefficient));
-#endif
-				}
-
 			}
 	);
+
+	core::AtomicTensor<TDeviceType, float> diagonal_blocks_atomic({node_count, block_size, block_size}, device);
+	core::linalg::internal::ComputeBlockSums(diagonal_blocks_atomic, node_count, diagonal_components, diagonal_component_block_indices, edge_count * 2);
+	auto diagonal_blocks = diagonal_blocks_atomic.AsTensor(false);
+
+	arap_hessian_approximation.stem_diagonal_blocks = diagonal_blocks.Slice(0, 0, arrow_base_block_index);
+
+	//TODO: fill dense corner
 
 
 #ifndef __CUDACC__
@@ -202,7 +244,7 @@ void ArapSparseHessianApproximation(
 			device,
 			node_count * 36,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				diagonal_block_data[workload_idx] = hessian_blocks_diagonal_atomic[workload_idx].load();
+				diagonal_component_data[workload_idx] = hessian_blocks_diagonal_atomic[workload_idx].load();
 			}
 	);
 #endif

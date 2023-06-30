@@ -29,12 +29,12 @@ namespace o3c = open3d::core;
 
 nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o3c::Device& device) {
 	nnrt::core::linalg::BlockSparseArrowheadMatrix matrix;
-	matrix.diagonal_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy").To(device)
-	                                                                                                                         .To(o3c::Float32);
-	matrix.upper_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device).To(o3c::Float32);
-	matrix.upper_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
+	matrix.stem_diagonal_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy").To(device)
+	                                                                                                                              .To(o3c::Float32);
+	matrix.upper_right_wing_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device).To(o3c::Float32);
+	matrix.upper_right_wing_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
 			.To(device);
-	matrix.upper_block_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
+	matrix.upper_right_arrow_wing_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
 	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_lists.npy")
 			.To(device);
 	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_counts.npy")

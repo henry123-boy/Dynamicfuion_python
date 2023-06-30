@@ -19,8 +19,36 @@
 #include <open3d/core/Dtype.h>
 #include <Eigen/Dense>
 
+#ifndef DISPATCH_ATOMIC_DTYPE_TO_TEMPLATE
+#define DISPATCH_ATOMIC_DTYPE_TO_TEMPLATE(DTYPE, ...)            \
+    [&] {                                                        \
+        [&] {                                                    \
+        if (DTYPE == open3d::core::Float32) {                    \
+            using scalar_t = float;                              \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::Float64) {             \
+            using scalar_t = double;                             \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::Int16) {               \
+            using scalar_t = int16_t;                            \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::Int32) {               \
+            using scalar_t = int32_t;                            \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::UInt16) {              \
+            using scalar_t = uint16_t;                           \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::UInt32) {              \
+            using scalar_t = uint32_t;                           \
+            return __VA_ARGS__();                                \
+        } else {                                                 \
+            open3d::utility::LogError("Unsupported data type."); \
+        }                                                        \
+    }()
+#endif
+
 #ifndef DISPATCH_SIGNED_DTYPE_TO_TEMPLATE
-#define DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(DTYPE, ...)                   \
+#define DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(DTYPE, ...)            \
     [&] {                                                        \
         if (DTYPE == open3d::core::Float32) {                    \
             using scalar_t = float;                              \
@@ -75,7 +103,7 @@
 #endif
 
 #ifndef DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE
-#define DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE(SIZE,  ...)               \
+#define DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE(SIZE, ...)               \
     [&]{                                                                   \
         switch(SIZE){                                                      \
          case 3:{                                                          \
