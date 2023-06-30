@@ -148,8 +148,8 @@ void ComputeBlockSumsCPU(
 #endif
 
 
-template<typename TMatrix, open3d::core::Device::DeviceType TDeviceType>
-void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
+template<open3d::core::Device::DeviceType TDeviceType>
+void FactorizeBlockSparseCholeskyCorner(
 		open3d::core::Tensor& factorized_dense_corner_matrix,
 		const open3d::core::Tensor& factorized_upper_blocks,
 		const BlockSparseArrowheadMatrix& A
@@ -493,21 +493,6 @@ void FactorizeBlockSparseCholeskyCorner_TypeDispatched(
 				int64_t i_matrix_column = i_block_column * block_size + i_element_within_block % block_size;
 				factorized_dense_corner_matrix_data[i_matrix_row * corner_matrix_size + i_matrix_column] =
 						factorized_corner_block_data[i_block_element];
-			}
-	);
-}
-
-template<open3d::core::Device::DeviceType TDeviceType>
-void FactorizeBlockSparseCholeskyCorner(
-		open3d::core::Tensor& factorized_upper_dense_corner,
-		const open3d::core::Tensor& factorized_blocks_upper,
-		const BlockSparseArrowheadMatrix& A
-) {
-	int64_t block_size = A.diagonal_blocks.GetShape(1);
-	DISPATCH_MATRIX_BLOCK_SIZE_TO_EIGEN_TYPE(
-			block_size,
-			[&]() {
-				FactorizeBlockSparseCholeskyCorner_TypeDispatched<matrix_t, TDeviceType>(factorized_upper_dense_corner, factorized_blocks_upper, A);
 			}
 	);
 }
