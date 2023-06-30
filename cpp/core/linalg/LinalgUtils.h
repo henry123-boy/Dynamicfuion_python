@@ -90,6 +90,34 @@ inline void NNRT_CUSOLVER_CHECK_WITH_DINFO(cusolverStatus_t status,
     }
 }
 
+inline void NNRT_CUSOLVER_CHECK_WITH_MULTIPLE_DINFO(cusolverStatus_t status,
+                                           const std::string& msg,
+                                           int* dinfo,
+										   int info_count,
+                                           const open3d::core::Device& device) {
+	std::vector<int> hinfo(info_count);
+	open3d::core::MemoryManager::MemcpyToHost(hinfo.data(), dinfo, device, info_count * sizeof(int));
+	int i_info = 0;
+	for (auto hinfo_instance : hinfo) {
+		if (status != CUSOLVER_STATUS_SUCCESS || hinfo_instance != 0) {
+			if (hinfo_instance < 0) {
+				open3d::utility::LogError("{}: {}-th parameter is invalid.", msg, i_info);
+			} else if (hinfo_instance > 0) {
+				open3d::utility::LogError("{}: leading submatrix of order {} of {}-th matrix is not positive definite.", msg, hinfo, i_info);
+			} else {
+				open3d::utility::LogError("{}: status error code = {}.", msg, status);
+			}
+		}
+		i_info++;
+	}
+}
+
+inline void NNRT_MAGMA_CHECK(magma_int_t status,  const std::string& msg) {
+	if (MAGMA_SUCCESS != status) {
+		open3d::utility::LogError("{}: MAGMA error {}", msg, magma_strerror(status));
+	}
+}
+
 class CuSolverContext {
 public:
     static std::shared_ptr<CuSolverContext> GetInstance();

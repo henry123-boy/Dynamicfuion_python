@@ -44,9 +44,21 @@ inline void GetMatrixPointersFromContiguousArrayOfMatrices_AB_CUDA(
 		void* A, void* B,
 		const int64_t A_and_B_row_count,
 		const int64_t B_column_count,
-		const int64_t batch_size
+		const int64_t batch_size,
+		const o3c::Device& device
 ) {
-	utility::LogError("Not implemented");
+	auto A_data = static_cast<scalar_t*>(A);
+	auto B_data = static_cast<scalar_t*>(B);
+	auto A_block_stride = A_and_B_row_count * A_and_B_row_count;
+	auto B_block_stride = A_and_B_row_count * B_column_count;
+	o3c::ParallelFor(
+			device,
+			batch_size,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_batch) {
+				A_array[i_batch] = A_data + i_batch * A_block_stride;
+				B_array[i_batch] = B_data + i_batch * B_block_stride;
+			}
+	);
 }
 
 template<typename scalar_t>

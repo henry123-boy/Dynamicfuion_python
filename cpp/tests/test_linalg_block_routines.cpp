@@ -155,3 +155,49 @@ TEST_CASE("Test Transpose Blocks - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestTransposeBlocks(device);
 }
+
+
+void TestInvertBlocks(const o3c::Device& device) {
+	o3c::Tensor blocks(std::vector<float>{
+			 16,  20,  24,
+			 20,  29,  36,
+			 24,  36,  46,
+
+			100, 110, 120,
+			110, 185, 204,
+			120, 204, 274,
+
+			256, 272, 288,
+			272, 485, 516,
+			288, 516, 718
+	}, {3, 3, 3}, o3c::Float32, device);
+
+	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertBlocks(blocks);
+
+	o3c::Tensor inverted_blocks_gt(std::vector<float>{
+			 0.59375   , -0.875     ,  0.375     ,
+			-0.875     ,  2.5       , -1.5       ,
+			 0.375     , -1.5       ,  1.        ,
+
+			 0.02893495, -0.01804847,  0.00076531,
+			-0.01804847,  0.04145408, -0.02295918,
+			 0.00076531, -0.02295918,  0.02040816,
+
+			 0.00966704, -0.00550583,  0.00007925,
+			-0.00550583,  0.0118947 , -0.00633981,
+			 0.00007925, -0.00633981,  0.00591716
+	}, {3, 3, 3}, o3c::Float32, device);
+
+	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
+
+}
+
+TEST_CASE("Test Invert Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestInvertBlocks(device);
+}
+
+TEST_CASE("Test Invert Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestInvertBlocks(device);
+}

@@ -24,9 +24,28 @@
 
 namespace nnrt::core::linalg {
 
+open3d::core::Tensor InvertBlocks(const open3d::core::Tensor& blocks);
 open3d::core::Tensor InvertTriangularBlocks(const open3d::core::Tensor& blocks, nnrt::core::linalg::UpLoTriangular uplo);
 
 namespace internal {
+
+void SolveBlocksCPU(
+		void* a_block_data,
+		void* b_block_data,
+		int64_t block_size,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
+);
+
+void SolveBlocksCUDA(
+		void* a_block_data,
+		void* b_block_data,
+		int64_t block_size,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
+);
 
 void InvertTriangularBlocksCPU(
 		void* A_block_data,

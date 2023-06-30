@@ -19,6 +19,8 @@
 
 // local includes
 #include "InvertBlocks.h"
+#include "core/DeviceSelection.h"
+#include "core/functional/Tile.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -73,6 +75,52 @@ open3d::core::Tensor InvertTriangularBlocks(
 	}
 
 	// Perform column- to row-major reordering using axis swap
+
+	return inverted_blocks;
+}
+
+open3d::core::Tensor InvertBlocks(const open3d::core::Tensor& blocks) {
+	o3c::AssertTensorDtypes(blocks, { o3c::Float32, o3c::Float64 });
+	const o3c::Device device = blocks.GetDevice();
+	const o3c::Dtype data_type = blocks.GetDtype();
+
+
+	o3c::SizeVector blocks_shape = blocks.GetShape();
+	if (blocks_shape.size() != 3) {
+		utility::LogError("Tensor blocks must have three dimensions, got {}.", blocks_shape.size());
+	}
+	if (blocks_shape[1] != blocks_shape[2]) {
+		utility::LogError("Tensor blocks must consist of square blocks, "
+		                  "i.e. dimensions at indices 1 and 2 must be equal. "
+		                  "Got dimensions: {} and {}..", blocks_shape[1], blocks_shape[2]);
+	}
+
+	int64_t block_size = blocks_shape[1];
+	int64_t block_count = blocks_shape[0];
+
+	if (block_size == 0 || block_count == 0) {
+		utility::LogError("Input tensor should have no zero dimensions.");
+	}
+	// data will get manipulated in-place by LAPACK routines, make clone
+	o3c::Tensor factorized_blocks = blocks.Clone().Transpose(1, 2).Contiguous();
+	o3c::Tensor inverted_blocks =
+			core::functional::Tile(o3c::Tensor::Eye(block_size, data_type, device), static_cast<int>(block_count), 1).Reshape(blocks_shape);
+
+	void* factorized_block_data = factorized_blocks.GetDataPtr();
+	void* inverted_block_data = inverted_blocks.GetDataPtr();
+
+	if (device.IsCUDA()) {
+#ifdef BUILD_CUDA_MODULE
+		internal::SolveBlocksCUDA(factorized_block_data, inverted_block_data, block_size, block_count, data_type, device);
+#else
+		open3d::utility::LogError("Not compiled with CUDA, but CUDA device is used.");
+#endif
+	} else {
+		internal::SolveBlocksCPU(factorized_block_data, inverted_block_data, block_size, block_count, data_type, device);
+	}
+
+	// Perform column- to row-major reordering using axis swap
+	inverted_blocks = inverted_blocks.Transpose(1, 2).Contiguous();
 
 	return inverted_blocks;
 }

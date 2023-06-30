@@ -24,6 +24,7 @@ namespace nnrt::core::linalg {
 
 /**
  * \brief Product of all square blocks listed in (dense) array A by blocks in rows of block-sparse matrix B, with one A block per B row.
+ * \details Equivalent to mathematical matrix multiplication DB, where D is a block-diagonal matrix consisting of blocks in A.
  * \param blocks_a dense array A - has to consist of square block matrices of the same size as ones in B
  * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same size as ones in A
  * \param blocks_b_coordinates coordinates of blocks in B (in blocks, not scalar block coefficients)
@@ -38,10 +39,13 @@ MatmulBlockSparseRowWise(
 
 /**
  * \brief Product of all square blocks listed in (dense) array A by blocks in rows of block-sparse matrix B, with one A block per B row.
+ * \details In the non-padded part (read on), equivalent to mathematical matrix multiplication DB, where D is a block-diagonal matrix consisting of
+ * blocks in A. If there are fewer blocks in A than rows in B, pads lower rows of output with zero blocks such that the output has blocks in every
+ * position where B has blocks (i.e. blocks_b_coordinates can be also used to access output blocks).
  * \param blocks_a dense array A - has to consist of square block matrices of the same size as ones in B
  * \param blocks_b list of blocks in the block-sparse matrix B, blocks must be the same size as ones in A
  * \param blocks_b_coordinates coordinates of blocks in B (in blocks, not scalar block coefficients)
- * \return list of resulting product blocks
+ * \return list of resulting product blocks,
  */
 open3d::core::Tensor
 MatmulBlockSparseRowWisePadded(

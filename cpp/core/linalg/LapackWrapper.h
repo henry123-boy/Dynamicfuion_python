@@ -70,16 +70,19 @@ inline NNRT_CPU_LINALG_INT potrf_cpu<double>(
 // See https://docs.nvidia.com/cuda/cusolver/#cusolverdn-t-potrfbatched
 template<typename scalar_t>
 inline cusolverStatus_t potrf_batched_cuda(
-		cusolverDnHandle_t handle,
-		cublasFillMode_t upper_or_lower_triangle,
-		int n,
-		scalar_t* A_array[],
-		int A_leading_dimension,
-		int* out_factorization_result_array,
-		int batch_size
+		cusolverDnHandle_t
+handle,
+cublasFillMode_t upper_or_lower_triangle,
+int n,
+		scalar_t
+* A_array[],
+int A_leading_dimension,
+int* out_factorization_result_array,
+int batch_size
 ) {
-	open3d::utility::LogError("Unsupported data type.");
-	return CUSOLVER_STATUS_NOT_SUPPORTED;
+open3d::utility::LogError("Unsupported data type.");
+return
+CUSOLVER_STATUS_NOT_SUPPORTED;
 }
 
 template<>
@@ -184,6 +187,143 @@ inline cusolverStatus_t potrf_cuda<double>(
 #endif
 
 // endregion =========================================================================================================================================
+// region ================================ POTRS: solve linear equations with Cholesky-factored symmetric (Hermitian) positive-definite matrices =====
+template<typename scalar_t>
+inline NNRT_CPU_LINALG_INT
+potrs_cpu(
+		int matrix_layout, char uplo,
+		NNRT_CPU_LINALG_INT n, NNRT_CPU_LINALG_INT nrhs,
+		const scalar_t* a, NNRT_CPU_LINALG_INT lda,
+		scalar_t* b, NNRT_CPU_LINALG_INT ldb
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return -1;
+}
+
+template<>
+inline NNRT_CPU_LINALG_INT potrs_cpu<float>(
+		int matrix_layout, char uplo,
+		NNRT_CPU_LINALG_INT n, NNRT_CPU_LINALG_INT nrhs,
+		const float* a, NNRT_CPU_LINALG_INT lda,
+		float* b, NNRT_CPU_LINALG_INT ldb
+) {
+	return LAPACKE_spotrs(matrix_layout, uplo, n, nrhs, a, lda, b, ldb);
+}
+
+template<>
+inline NNRT_CPU_LINALG_INT potrs_cpu<double>(
+		int matrix_layout, char uplo,
+		NNRT_CPU_LINALG_INT n, NNRT_CPU_LINALG_INT nrhs,
+		const double* a, NNRT_CPU_LINALG_INT lda,
+		double* b, NNRT_CPU_LINALG_INT ldb
+) {
+	return LAPACKE_dpotrs(matrix_layout, uplo, n, nrhs, a, lda, b, ldb);
+}
+
+#ifdef BUILD_CUDA_MODULE
+
+// See https://docs.nvidia.com/cuda/cusolver/index.html#cusolverdn-t-potrsbatched
+template<typename scalar_t>
+inline cusolverStatus_t potrs_batched_cuda_limited(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		scalar_t* A_array[],
+		int A_leading_dimension,
+		scalar_t* B_array[],
+		int B_leading_dimension,
+		int* factorization_result_array,
+		int batch_size
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUSOLVER_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cusolverStatus_t potrs_batched_cuda_limited<float>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		float* A_array[],
+		int A_leading_dimension,
+		float* B_array[],
+		int B_leading_dimension,
+		int* factorization_result_array,
+		int batch_size
+) {
+	return cusolverDnSpotrsBatched(handle, upper_or_lower_triangle, n, 1,
+	                               A_array, A_leading_dimension,
+	                               B_array, B_leading_dimension,
+	                               factorization_result_array, batch_size);
+}
+
+template<>
+inline cusolverStatus_t potrs_batched_cuda_limited<double>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		double* A_array[],
+		int A_leading_dimension,
+		double* B_array[],
+		int B_leading_dimension,
+		int* factorization_result_array,
+		int batch_size
+) {
+	return cusolverDnDpotrsBatched(handle, upper_or_lower_triangle, n, 1,
+	                               A_array, A_leading_dimension,
+	                               B_array, B_leading_dimension,
+	                               factorization_result_array, batch_size);
+}
+
+template<typename scalar_t>
+inline NNRT_CPU_LINALG_INT potrs_batched_cuda(
+		magma_uplo_t uplo,
+		NNRT_CPU_LINALG_INT n,
+		NNRT_CPU_LINALG_INT nrhs,
+		scalar_t** dA_array,
+		NNRT_CPU_LINALG_INT ldda,
+		scalar_t** dB_array,
+		NNRT_CPU_LINALG_INT lddb,
+		NNRT_CPU_LINALG_INT batchCount,
+		magma_queue_t queue
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return MAGMA_ERR_NOT_SUPPORTED;
+}
+
+template<>
+inline NNRT_CPU_LINALG_INT potrs_batched_cuda<float>(
+		magma_uplo_t uplo,
+		NNRT_CPU_LINALG_INT n,
+		NNRT_CPU_LINALG_INT nrhs,
+		float** dA_array,
+		NNRT_CPU_LINALG_INT ldda,
+		float** dB_array,
+		NNRT_CPU_LINALG_INT lddb,
+		NNRT_CPU_LINALG_INT batchCount,
+		magma_queue_t queue
+) {
+	return magma_spotrs_batched(uplo, n, nrhs, dA_array, ldda, dB_array, lddb, batchCount, queue);
+}
+
+template<>
+inline NNRT_CPU_LINALG_INT potrs_batched_cuda<double>(
+		magma_uplo_t uplo,
+		NNRT_CPU_LINALG_INT n,
+		NNRT_CPU_LINALG_INT nrhs,
+		double** dA_array,
+		NNRT_CPU_LINALG_INT ldda,
+		double** dB_array,
+		NNRT_CPU_LINALG_INT lddb,
+		NNRT_CPU_LINALG_INT batchCount,
+		magma_queue_t queue
+) {
+	return magma_dpotrs_batched(uplo, n, nrhs, dA_array, ldda, dB_array, lddb, batchCount, queue);
+}
+
+#endif
+
+// endregion  ========================================================================================================================================
 // region ================================ GELSY: linear equation solver using rank-revealing QR factorization =======================================
 template<typename scalar_t>
 inline NNRT_CPU_LINALG_INT gelsy_cpu(

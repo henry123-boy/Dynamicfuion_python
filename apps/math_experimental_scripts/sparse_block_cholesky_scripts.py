@@ -225,7 +225,7 @@ def blocks_as_diag_coordinate_indexed(blocks: List[np.ndarray], start: int, end:
 def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarray],
                                    H_block_dict: Dict[Tuple[int, int], np.ndarray],
                                    H_corner_diagonal_blocks: List[np.ndarray],
-                                   corner_offset: int, node_count: int, block_size: int) \
+                                   corner_offset: int, node_count: int, block_size: int, verbose=False) \
         -> Tuple[List[np.ndarray], List[Tuple[int, int, np.ndarray]]]:
     assert len(H_corner_diagonal_blocks) == node_count - corner_offset
 
@@ -233,6 +233,9 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
     corner_U_upper_blocks = []
 
     i_diagonal = 0
+
+    breadboard_product_count = 0
+    corner_product_count = 0
 
     # i -- index of current block row in output
     for i in range(corner_offset, node_count):
@@ -244,6 +247,10 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                 U_ki = U_block_dict[(k, i)]
                 block_sum += U_ki.transpose() @ U_ki
                 row_product_count += 1
+                if k < corner_offset:
+                    breadboard_product_count += 1
+                else:
+                    corner_product_count += 1
 
         # Update U-matrix diagonal blocks
         H_ii = H_corner_diagonal_blocks[i_diagonal]
@@ -262,6 +269,10 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
                     U_kj = U_block_dict[(k, j)]
                     block_sum += U_ki.transpose() @ U_kj
                     row_product_count += 1
+                    if k < corner_offset:
+                        breadboard_product_count += 1
+                    else:
+                        corner_product_count += 1
 
             # update "inner" matrix blocks
             if (i, j) in H_block_dict:
@@ -273,8 +284,13 @@ def cholesky_blocked_sparse_corner(U_block_dict: Dict[Tuple[int, int], np.ndarra
             U_ij = L_kk_inv @ H_ij_new
             U_block_dict[(i, j)] = U_ij
             corner_U_upper_blocks.append((i, j, U_ij))
-
+        if verbose:
+            print(f"Corne factorization row {i} product count: {row_product_count}")
         i_diagonal += 1
+    if verbose:
+        print(f"Corner factorization breadboard product count: {breadboard_product_count}")
+    if verbose:
+        print(f"Corner factorization in-corner product count: {corner_product_count}")
 
     return corner_U_diagonal_blocks, corner_U_upper_blocks
 
@@ -299,7 +315,7 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
 
     U_diag_lower_right, U_lower_right = \
         cholesky_blocked_sparse_corner(U_block_dict, H_block_dict, hessian_blocks_diagonal[first_layer_node_count:],
-                                       first_layer_node_count, node_count, block_size)
+                                       first_layer_node_count, node_count, block_size, verbose=True)
 
     corner_size_blocks = len(hessian_blocks_diagonal) - len(U_diag_upper_left)
     U_lower_right_dense = np.zeros((corner_size_blocks * block_size, corner_size_blocks * block_size),
@@ -451,7 +467,25 @@ def k2ij_upper_triangular(k, n):
     i = n - i_inv - 1
     j = n - rv + triangular_number(i_inv)
     return i, j
+
+
 # endregion
+
+def compute_block_sparse_BTB_block_product_count(
+        a: List[Tuple[int, int, np.ndarray]],
+        b_i_start: int, b_i_end: int,
+        b_j_start: int, b_j_end: int
+) -> int:
+    coordinate_set = set([(i, j) for (i, j, block) in a])
+    count = 0
+    for j_t in range(b_j_start, b_j_end):
+        for i in range(b_i_start, b_i_end):
+            if (i, j_t) in coordinate_set:
+                for j in range(b_j_start, b_j_end):
+                    if (i, j) in coordinate_set:
+                        count += 1
+    return count
+
 
 def main():
     np.set_printoptions(suppress=True, linewidth=350, edgeitems=100)
@@ -515,6 +549,11 @@ def main():
 
     U_C_prime = scipy.linalg.cholesky(C_prime)
     print("Schur complement decomposition equivalent to U_corner_dense:", np.allclose(U_C_prime, U_corner_dense))
+
+    btb_block_product_count = compute_block_sparse_BTB_block_product_count(H_upper, 0, layer_node_counts[0],
+                                                                           layer_node_counts[0], node_count)
+
+    print(f"B^T @ D^-1 @ B block product count: {btb_block_product_count}")
 
     return 0
 

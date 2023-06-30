@@ -25,6 +25,7 @@
 #include "core/linalg/LinalgUtils.h"
 #include "core/linalg/LapackWrapper.h"
 
+namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 
 namespace nnrt::core::linalg::internal {
@@ -73,5 +74,61 @@ void InvertTriangularBlocksCPU(
 		);
 	});
 }
+
+
+template<typename scalar_t>
+void SolveBlocksCPU_TypeDispatched(
+		void* a_block_data,
+		void* b_block_data,
+		int64_t block_size,
+		int64_t block_count
+) {
+	auto* a_block_data_typed = static_cast<scalar_t*>(a_block_data);
+	auto* b_block_data_typed = static_cast<scalar_t*>(b_block_data);
+
+	const int64_t block_stride = block_size * block_size;
+
+#pragma omp parallel for schedule(static) num_threads(utility::EstimateMaxThreads()) \
+    default(none) \
+    firstprivate(block_count, block_stride, block_size) \
+    shared(a_block_data_typed, b_block_data_typed)
+	for (int64_t i_block = 0; i_block < block_count; i_block++) {
+		auto* A_block_data = a_block_data_typed + block_stride * i_block;
+		auto* B_block_data = b_block_data_typed + block_stride * i_block;
+		// use Cholesky factorization to compute lower-triangular L, where L(L^T) = A
+		NNRT_LAPACK_CHECK(
+				potrf_cpu<scalar_t>(
+						LAPACK_COL_MAJOR, 'U', block_size, A_block_data, block_size),
+				"potrf failed in SolveBlocksCPU"
+		);
+		// solve resulting system of equations
+		NNRT_LAPACK_CHECK(
+				potrs_cpu<scalar_t>(
+						LAPACK_COL_MAJOR, 'U', block_size, block_size, A_block_data, block_size, B_block_data, block_size),
+				"potrf failed in SolveBlocksCPU"
+		);
+	}
+}
+
+
+void SolveBlocksCPU(
+		void* a_block_data,
+		void* b_block_data,
+		int64_t block_size,
+		int64_t block_count,
+		open3d::core::Dtype data_type,
+		const open3d::core::Device& device
+) {
+	DISPATCH_LINALG_DTYPE_TO_TEMPLATE(data_type, [&]() {
+		SolveBlocksCPU_TypeDispatched<scalar_t>(
+				a_block_data,
+				b_block_data,
+				block_size,
+				block_count
+		);
+	});
+
+}
+
 
 } // nnrt::core::linalg::internal

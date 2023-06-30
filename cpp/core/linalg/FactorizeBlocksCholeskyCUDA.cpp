@@ -22,10 +22,12 @@
 #include <open3d/utility/Parallel.h>
 #include <open3d/core/CUDAUtils.h>
 
-#ifdef BUILD_CUDA_MODULE
 
 // local includes
 #include "core/linalg/FactorizeBlocksCholesky.h"
+
+#ifdef BUILD_CUDA_MODULE
+
 #include "core/linalg/LinalgUtils.h"
 #include "core/linalg/LapackWrapper.h"
 #include "core/linalg/PointerAggregationForBatchOperationsCPU.h"
