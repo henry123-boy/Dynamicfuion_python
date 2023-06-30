@@ -468,7 +468,7 @@ set(
     core/functional/kernel/instantiations/TileCUDA.cu
     core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h core/linalg/LinalgKernels.cuh core/linalg/BlasAuxiliary.h
 
-    core/linalg/FillInDiagonalBlocks.cpp core/linalg/FillInDiagonalBlocks.h core/linalg/instantiations/FillInDiagonalBlocksCUDA.cu core/linalg/instantiations/FillInDiagonalBlocksCPU.cpp core/linalg/FillInDiagonalBlocksImpl.h core/linalg/TransposeBlocks.cu core/linalg/TransposeBlocks.h)
+    core/linalg/FillInDiagonalBlocks.cpp core/linalg/FillInDiagonalBlocks.h core/linalg/instantiations/FillInDiagonalBlocksCUDA.cu core/linalg/instantiations/FillInDiagonalBlocksCPU.cpp core/linalg/FillInDiagonalBlocksImpl.h core/linalg/TransposeBlocks.cu core/linalg/TransposeBlocks.h core/platform_independence/AtomicTensor.h)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
