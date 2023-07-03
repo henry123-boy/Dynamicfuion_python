@@ -13,7 +13,7 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#include "core/linalg/FillInDiagonalBlocksImpl.h"
+#include "core/linalg/DiagonalBlocksImpl.h"
 namespace nnrt::core::linalg::internal {
 template
 void FillInDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);

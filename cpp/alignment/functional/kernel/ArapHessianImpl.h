@@ -87,32 +87,16 @@ void ArapSparseHessianApproximation(
 	arap_hessian_approximation.upper_right_wing_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
 	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.upper_right_wing_block_coordinates.GetDataPtr<int32_t>();
 
-	//TODO fill
-	// arap_hessian_approximation.stem_diagonal_blocks = o3c::Tensor({first_layer_node_count, block_size, block_size}, o3c::Float32, device);
-	// auto stem_diagonal_block_data = arap_hessian_approximation.stem_diagonal_blocks.GetDataPtr<float>();
-	o3c::Tensor diagonal_components = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Float32, device);
-	auto diagonal_component_data = diagonal_components.GetDataPtr<float>();
-	o3c::Tensor diagonal_component_block_indices = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Int32, device);
-	auto diagonal_component_block_index_data = diagonal_components.GetDataPtr<int>();
 
 	const int64_t breadboard_width_blocks = node_count - first_layer_node_count;
 	arap_hessian_approximation.upper_right_arrow_wing_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
 	arap_hessian_approximation.upper_right_arrow_wing_breadboard.Fill(-1);
 	auto breadboard_data = arap_hessian_approximation.upper_right_arrow_wing_breadboard.GetDataPtr<int16_t>();
 
-	arap_hessian_approximation.corner_dense_matrix =
-			o3c::Tensor({breadboard_width_blocks * block_size, breadboard_width_blocks * block_size}, o3c::Float32, device);
-	auto corner_dense_matrix_data = arap_hessian_approximation.corner_dense_matrix.GetDataPtr<float>();
-
 	o3c::Tensor corner_upper_blocks = o3c::Tensor({corner_non_diagonal_block_count, block_size, block_size}, o3c::Float32, device);
 	auto corner_upper_block_data = corner_upper_blocks.GetDataPtr<float>();
 	o3c::Tensor corner_upper_block_coordinates = o3c::Tensor({corner_non_diagonal_block_count, 2}, o3c::Int32, device);
 	auto corner_upper_block_coordinate_data = corner_upper_block_coordinates.GetDataPtr<int32_t>();
-
-	//TODO: fill
-	// o3c::Tensor corner_diagonal_blocks = o3c::Tensor({breadboard_width_blocks, block_size, block_size}, o3c::Float32, device);
-	//TODO: fill
-	// auto corner_diagonal_block_data = corner_upper_blocks.GetDataPtr<float>();
 
 	arap_hessian_approximation.arrow_base_block_index = arrow_base_block_index;
 
@@ -130,7 +114,7 @@ void ArapSparseHessianApproximation(
 	auto edge_data = edges.GetDataPtr<int32_t>();
 	auto edge_jacobian_data = condensed_edge_jacobians.GetDataPtr<float>();
 
-	// compute upper blocks and compile breadboard
+	// compute upper blocks and compile breadboard + any other lookup structures for upper blocks
 	o3c::ParallelFor(
 			device,
 			edge_count,
@@ -203,7 +187,12 @@ void ArapSparseHessianApproximation(
 #ifndef __CUDACC__
 	std::vector<std::atomic<float>> hessian_blocks_diagonal_atomic(node_count * 36);
 #endif
-	// compute diagonal blocks
+	o3c::Tensor diagonal_components = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Float32, device);
+	auto diagonal_component_data = diagonal_components.GetDataPtr<float>();
+
+	o3c::Tensor diagonal_component_block_indices = o3c::Tensor({edge_count * 2, block_size, block_size}, o3c::Int32, device);
+	auto diagonal_component_block_index_data = diagonal_component_block_indices.GetDataPtr<int>();
+	// compute diagonal block components
 	o3c::ParallelFor(
 			device,
 			edge_count * 2,
@@ -233,7 +222,14 @@ void ArapSparseHessianApproximation(
 	core::linalg::internal::ComputeBlockSums(diagonal_blocks_atomic, node_count, diagonal_components, diagonal_component_block_indices, edge_count * 2);
 	auto diagonal_blocks = diagonal_blocks_atomic.AsTensor(false);
 
-	arap_hessian_approximation.stem_diagonal_blocks = diagonal_blocks.Slice(0, 0, arrow_base_block_index);
+	arap_hessian_approximation.stem_diagonal_blocks = diagonal_blocks.Slice(0, 0, arrow_base_block_index).Clone();
+	o3c::Tensor corenr_diagonal_blocks = diagonal_blocks.Slice(0, arrow_base_block_index, node_count);
+
+	arap_hessian_approximation.corner_dense_matrix =
+			o3c::Tensor({breadboard_width_blocks * block_size, breadboard_width_blocks * block_size}, o3c::Float32, device);
+	auto corner_dense_matrix_data = arap_hessian_approximation.corner_dense_matrix.GetDataPtr<float>();
+
+
 
 	//TODO: fill dense corner
 

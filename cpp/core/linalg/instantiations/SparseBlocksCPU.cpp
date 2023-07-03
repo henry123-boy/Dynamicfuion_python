@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/21/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/3/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -13,24 +13,21 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-#pragma once
-// stdlib includes
-
-// third-party includes
-#include <open3d/core/Tensor.h>
-
 // local includes
+#include "core/linalg/SparseBlocksImpl.h"
 
-namespace nnrt::core::linalg {
+namespace nnrt::core::linalg::internal {
 
-void FillInDiagonalBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
-open3d::core::Tensor GetDiagonalBlocks(const open3d::core::Tensor& matrix, int block_size);
+template
+void FillInSparseBlocks<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates
+);
+template
+open3d::core::Tensor
+GetSparseBlocks<open3d::core::Device::DeviceType::CPU>(
+		const open3d::core::Tensor& matrix, int block_size, const open3d::core::Tensor& coordinates
+);
 
-namespace internal {
-template<open3d::core::Device::DeviceType TDeviceType>
-void FillInDiagonalBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
-template<open3d::core::Device::DeviceType TDeviceType>
-open3d::core::Tensor GetDiagonalBlocks(const open3d::core::Tensor& matrix, int block_size);
-}
-
-} // namespace nnrt::core::linalg
+} // namespace nnrt::core::linalg::internal

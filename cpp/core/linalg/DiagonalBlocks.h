@@ -13,12 +13,20 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// local includes
-#include "core/linalg/FillInDiagonalBlocksImpl.h"
-namespace nnrt::core::linalg::internal {
-template
-void FillInDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
-template
-open3d::core::Tensor GetDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(const open3d::core::Tensor& matrix, int block_size);
+#pragma once
+// third-party includes
+#include <open3d/core/Tensor.h>
 
-} // namespace nnrt::core::linalg::internal
+namespace nnrt::core::linalg {
+
+void FillInDiagonalBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
+open3d::core::Tensor GetDiagonalBlocks(const open3d::core::Tensor& matrix, int block_size);
+
+namespace internal {
+template<open3d::core::Device::DeviceType TDeviceType>
+void FillInDiagonalBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks);
+template<open3d::core::Device::DeviceType TDeviceType>
+open3d::core::Tensor GetDiagonalBlocks(const open3d::core::Tensor& matrix, int block_size);
+}
+
+} // namespace nnrt::core::linalg

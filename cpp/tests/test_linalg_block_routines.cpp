@@ -24,6 +24,8 @@
 // code being tested
 #include "core/linalg/TransposeBlocks.h"
 #include "core/linalg/InvertBlocks.h"
+#include "core/linalg/DiagonalBlocks.h"
+#include "core/linalg/SparseBlocks.h"
 
 namespace o3c = open3d::core;
 
@@ -159,9 +161,9 @@ TEST_CASE("Test Transpose Blocks - CUDA") {
 
 void TestInvertBlocks(const o3c::Device& device) {
 	o3c::Tensor blocks(std::vector<float>{
-			 16,  20,  24,
-			 20,  29,  36,
-			 24,  36,  46,
+			16, 20, 24,
+			20, 29, 36,
+			24, 36, 46,
 
 			100, 110, 120,
 			110, 185, 204,
@@ -175,17 +177,17 @@ void TestInvertBlocks(const o3c::Device& device) {
 	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertSymmetricPositiveDefiniteBlocks(blocks);
 
 	o3c::Tensor inverted_blocks_gt(std::vector<float>{
-			 0.59375   , -0.875     ,  0.375     ,
-			-0.875     ,  2.5       , -1.5       ,
-			 0.375     , -1.5       ,  1.        ,
+			0.59375, -0.875, 0.375,
+			-0.875, 2.5, -1.5,
+			0.375, -1.5, 1.,
 
-			 0.02893495, -0.01804847,  0.00076531,
-			-0.01804847,  0.04145408, -0.02295918,
-			 0.00076531, -0.02295918,  0.02040816,
+			0.02893495, -0.01804847, 0.00076531,
+			-0.01804847, 0.04145408, -0.02295918,
+			0.00076531, -0.02295918, 0.02040816,
 
-			 0.00966704, -0.00550583,  0.00007925,
-			-0.00550583,  0.0118947 , -0.00633981,
-			 0.00007925, -0.00633981,  0.00591716
+			0.00966704, -0.00550583, 0.00007925,
+			-0.00550583, 0.0118947, -0.00633981,
+			0.00007925, -0.00633981, 0.00591716
 	}, {3, 3, 3}, o3c::Float32, device);
 
 	REQUIRE(inverted_blocks.AllClose(inverted_blocks_gt, 1e-4));
@@ -200,4 +202,173 @@ TEST_CASE("Test Invert Blocks - CPU") {
 TEST_CASE("Test Invert Blocks - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestInvertBlocks(device);
+}
+
+void TestFillInDiagonalBlocks(const o3c::Device& device) {
+	o3c::Tensor matrix = o3c::Tensor::Zeros({12, 12}, o3c::Float32, device);
+	o3c::Tensor diagonal_blocks = o3c::Tensor::Arange(0, 2 * 2 * 6, 1, o3c::Float32, device).Reshape({6, 2, 2});
+
+	// @formatter:off
+	o3c::Tensor matrix_filled_gt(std::vector<float>{
+			 0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 2.,  3.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  4.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  6.,  7.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  8.,  9.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  0.,  0., 10., 11.,  0.,  0.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  0.,  0., 12., 13.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  0.,  0., 14., 15.,  0.,  0.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 16., 17.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 18., 19.,  0.,  0.,
+			 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 20., 21.,
+			 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 22., 23.
+	}, {12, 12}, o3c::Float32, device);
+	// @formatter:on
+
+	nnrt::core::linalg::FillInDiagonalBlocks(matrix, diagonal_blocks);
+
+	REQUIRE(matrix.AllClose(matrix_filled_gt));
+
+}
+
+TEST_CASE("Test Fill Diagonal Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestFillInDiagonalBlocks(device);
+}
+
+TEST_CASE("Test Fill Diagonal Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestFillInDiagonalBlocks(device);
+}
+
+void TestGetDiagonalBlocks(const o3c::Device& device) {
+
+	// @formatter:off
+	o3c::Tensor matrix(std::vector<float>{
+			0.,  1.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			2.,  3.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  4.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  6.,  7.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  8.,  9.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0., 10., 11.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 12., 13.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 14., 15.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 16., 17.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 18., 19.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 20., 21.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 22., 23.
+	}, {12, 12}, o3c::Float32, device);
+	// @formatter:on
+
+
+	o3c::Tensor diagonal_blocks_gt = o3c::Tensor::Arange(0, 2 * 2 * 6, 1, o3c::Float32, device).Reshape({6, 2, 2});
+
+
+	o3c::Tensor diagonal_blocks = nnrt::core::linalg::GetDiagonalBlocks(matrix, 2);
+
+	REQUIRE(diagonal_blocks.AllClose(diagonal_blocks_gt));
+
+}
+
+TEST_CASE("Test Get Diagonal Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestGetDiagonalBlocks(device);
+}
+
+TEST_CASE("Test Get Diagonal Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestGetDiagonalBlocks(device);
+}
+
+void TestFillInSparseBlocks(const o3c::Device& device) {
+	o3c::Tensor matrix({12, 12}, o3c::Float32, device);
+	o3c::Tensor sparse_blocks = o3c::Tensor::Arange(0, 2 * 2 * 6, 1, o3c::Float32, device).Reshape({6, 2, 2});
+	o3c::Tensor coordinates(std::vector<int32_t>{
+		0, 0,
+		0, 1,
+		2, 0,
+		3, 3,
+		4, 4,
+		2, 5,
+		6, 6
+	}, {12, 2}, o3c::Int32, device);
+
+	// @formatter:off
+	o3c::Tensor matrix_filled_gt(std::vector<float>{
+			0.,  1.,  4.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			2.,  3.,  6.,  7.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			8.,  9.,  0.,  0.,  0.,  0.,  0.,  0., 16., 17.,  0.,  0.,
+		   10., 11.,  0.,  0.,  0.,  0.,  0.,  0., 18., 19.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 12., 13.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 14., 15.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 20., 21.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 22., 23.
+	}, {12, 12}, o3c::Float32, device);
+	// @formatter:on
+
+	nnrt::core::linalg::FillInSparseBlocks(matrix, sparse_blocks, coordinates);
+
+	REQUIRE(matrix.AllClose(matrix_filled_gt));
+
+}
+
+TEST_CASE("Test Fill Sparse Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestFillInSparseBlocks(device);
+}
+
+TEST_CASE("Test Fill Sparse Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestFillInSparseBlocks(device);
+}
+
+void TestGetSparseBlocks(const o3c::Device& device) {
+	o3c::Tensor coordinates(std::vector<int32_t>{
+			0, 0,
+			0, 1,
+			2, 0,
+			3, 3,
+			4, 4,
+			2, 5,
+			6, 6
+	}, {12, 2}, o3c::Int32, device);
+
+	// @formatter:off
+	o3c::Tensor matrix(std::vector<float>{
+			0.,  1.,  4.,  5.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			2.,  3.,  6.,  7.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			8.,  9.,  0.,  0.,  0.,  0.,  0.,  0., 16., 17.,  0.,  0.,
+			10., 11.,  0.,  0.,  0.,  0.,  0.,  0., 18., 19.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 12., 13.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 14., 15.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 20., 21.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 22., 23.
+	}, {12, 12}, o3c::Float32, device);
+	// @formatter:on
+
+	o3c::Tensor sparse_blocks_gt = o3c::Tensor::Arange(0, 2 * 2 * 6, 1, o3c::Float32, device).Reshape({6, 2, 2});
+
+
+	o3c::Tensor sparse_blocks = nnrt::core::linalg::GetSparseBlocks(matrix, 2, coordinates);
+
+	REQUIRE(sparse_blocks.AllClose(sparse_blocks_gt));
+
+}
+
+TEST_CASE("Test Get Sparse Blocks - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestGetSparseBlocks(device);
+}
+
+TEST_CASE("Test Get Sparse Blocks - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestGetSparseBlocks(device);
 }

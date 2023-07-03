@@ -17,7 +17,7 @@
 // third-party includes
 #include "open3d/core/ParallelFor.h"
 // local includes
-#include "core/linalg/FillInDiagonalBlocks.h"
+#include "core/linalg/DiagonalBlocks.h"
 #include "core/platform_independence/Qualifiers.h"
 
 namespace o3c = open3d::core;

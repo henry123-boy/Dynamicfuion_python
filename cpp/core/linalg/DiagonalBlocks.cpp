@@ -18,7 +18,7 @@
 // third-party includes
 
 // local includes
-#include "FillInDiagonalBlocks.h"
+#include "DiagonalBlocks.h"
 #include "core/DeviceSelection.h"
 
 namespace o3c = open3d::core;

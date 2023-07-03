@@ -23,7 +23,7 @@
 // code being tested
 #include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
 #include "core/linalg/ZeroOutTriangularBlocks.h"
-#include "core/linalg/FillInDiagonalBlocks.h"
+#include "core/linalg/DiagonalBlocks.h"
 
 namespace o3c = open3d::core;
 
