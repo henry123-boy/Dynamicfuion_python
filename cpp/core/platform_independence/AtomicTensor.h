@@ -95,6 +95,7 @@ public:
 		if(device.GetType() != DeviceType){
 			open3d::utility::LogError("Device, {}, needs to have matching device type with {}.", device.GetType(), DeviceType);
 		}
+		Reset();
 	};
 	inline TElement FetchAdd(int index, TElement amount) {
 		return atomicAdd_CPU(atomic_storage[index], amount);

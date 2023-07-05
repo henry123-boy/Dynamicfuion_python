@@ -17,6 +17,7 @@
 // third-party includes
 #include <open3d/core/Tensor.h>
 // local includes
+#include "core/linalg/MatrixPreprocessingOperation.h"
 
 
 namespace nnrt::core::linalg {
@@ -54,6 +55,16 @@ MatmulBlockSparseRowWisePadded(
 		const open3d::core::Tensor& blocks_b_coordinates
 );
 
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+MatmulBlockSparse(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& blocks_b_breadboard,
+		MatrixPreprocessingOperation matrix_b_preprocessing
+);
+
 namespace internal {
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -63,6 +74,17 @@ MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_b,
 		const open3d::core::Tensor& blocks_b_coordinates,
 		bool padded
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+MatmulBlockSparse(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& a_block_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& b_block_breadboard,
+		MatrixPreprocessingOperation matrix_b_preprocessing
 );
 
 } // namespace internal

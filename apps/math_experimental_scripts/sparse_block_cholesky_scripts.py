@@ -562,7 +562,7 @@ def main():
     btb_block_product_count = compute_block_sparse_BTB_block_product_count(H_upper, 0, layer_node_counts[0],
                                                                            layer_node_counts[0], node_count)
 
-    print(f"B^T @ D^-1 @ B block product count: {btb_block_product_count}")
+    print(f"B^T @ (D^-1 @ B) block product count: {btb_block_product_count}")
 
     return 0
 

@@ -31,8 +31,7 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree,
-		float levenberg_marquardt_factor
+		int64_t max_vertex_degree
 ) {
 	core::ExecuteOnDevice(
 			edges.GetDevice(),
@@ -43,9 +42,7 @@ void ArapSparseHessianApproximation(
 						edges,
 						condensed_edge_jacobians,
 						first_layer_node_count, 0,
-						node_count, 4,
-						levenberg_marquardt_factor
-				);
+						node_count, 4);
 			},
 			[&] {
 				NNRT_IF_CUDA (
@@ -55,9 +52,7 @@ void ArapSparseHessianApproximation(
 								edges,
 								condensed_edge_jacobians,
 								first_layer_node_count, 0,
-								node_count, 4,
-								levenberg_marquardt_factor
-						);
+								node_count, 4);
 				);
 			}
 	);

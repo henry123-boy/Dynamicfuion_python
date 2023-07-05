@@ -26,7 +26,7 @@ namespace nnrt::core::linalg {
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
         FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A);
 
-void SolveBlockSparseArrowheadCholesky(open3d::core::Tensor& X, const BlockSparseArrowheadMatrix& A, const open3d::core::Tensor& B);
+void SolveBlockSparseArrowheadCholesky(open3d::core::Tensor& x, const BlockSparseArrowheadMatrix& a, const open3d::core::Tensor& b);
 
 
 namespace internal {

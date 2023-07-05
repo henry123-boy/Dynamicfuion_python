@@ -21,15 +21,42 @@
 #include "SchurComplement.h"
 #include "InvertBlocks.h"
 #include "MatmulBlockSparse.h"
+#include "DiagonalBlocks.h"
+#include "SparseBlocks.h"
 
 
 namespace o3c = open3d::core;
 namespace nnrt::core::linalg {
 
 
-open3d::core::Tensor ComputeSchurComplementOfArrowStem(const BlockSparseArrowheadMatrix& a) {
-	o3c::Tensor stem = a.stem_diagonal_blocks.Slice(0, 0, a.arrow_base_block_index);
-	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(stem);
+open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a) {
+	// Formula for Schur complement of arrow stem (D) for matrix A:
+	// A/D = (C - B^(T)D^(-1)B
+
+
+
+	o3c::Device device = a.GetDevice();
+	int64_t corner_size_blocks = a.diagonal_block_count - a.arrow_base_block_index;
+	int64_t block_size = a.GetBlockSize();
+
+	o3c::Tensor corner_dense_matrix =
+			o3c::Tensor({corner_size_blocks * block_size, corner_size_blocks * block_size}, o3c::Float32, device);
+
+	// compute dense C:
+	core::linalg::FillInDiagonalBlocks(corner_dense_matrix, a.CornerDiagonalBlocks());
+	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates, false);
+	//TODO: not sure if the lower-diagonal blocks are used at all during dense cholesky factorization, so try without filling
+	// them, i.e. without below line.
+	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates, true);
+
+	// compute D^(-1)
+	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
+
+	// compute D^(-1)B
+	o3c::Tensor inverted_stem_times_breadboard_blocks;
+	core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.wing_upper_blocks, a.wing_upper_block_coordinates);
+
+
 
 
 }

@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/30/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/5/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -14,15 +14,11 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// stdlib includes
+namespace nnrt::core::linalg{
 
-// third-party includes
-
-// local includes
-#include "core/linalg/BlockSparseArrowheadMatrix.h"
-
-namespace nnrt::core::linalg {
-
-open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a);
+enum class MatrixPreprocessingOperation{
+	NONE = 0,
+	TRANSPOSE = 1
+};
 
 } // namespace nnrt::core::linalg

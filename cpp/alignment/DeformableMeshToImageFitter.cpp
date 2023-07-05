@@ -39,6 +39,7 @@
 #include "core/linalg/Rodrigues.h"
 #include "alignment/functional/ArapJacobian.h"
 #include "alignment/functional/ArapHessian.h"
+#include "core/linalg/PreconditionDiagonalBlocks.h"
 
 namespace o3tio = open3d::t::io;
 
@@ -227,10 +228,13 @@ void DeformableMeshToImageFitter::FitToImage(
 			// compute sparse H_r
 			core::linalg::BlockSparseArrowheadMatrix hessian_approximation =
 					functional::ComputeArapBlockSparseHessianApproximation(warp_field.GetEdges(), edge_jacobians, first_layer_node_count,
-					                                                       warp_field.GetNodePositions(false).GetLength(),
-																		   levenberg_marquart_factor);
+					                                                       warp_field.GetNodePositions(false).GetLength());
 
-			hessian_approximation.stem_diagonal_blocks += hessian_blocks_depth_diagonal;
+			hessian_approximation.DiagonalBlocks() += hessian_blocks_depth_diagonal;
+
+			if(this->levenberg_marquart_factor > 0.f){
+				core::linalg::PreconditionDiagonalBlocks(hessian_approximation.DiagonalBlocks(), this->levenberg_marquart_factor);
+			}
 
 		} else {
 

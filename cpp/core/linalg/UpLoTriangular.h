@@ -14,12 +14,6 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// stdlib includes
-
-// third-party includes
-
-// local includes
-
 namespace nnrt::core::linalg{
 
 enum class UpLoTriangular{

@@ -30,8 +30,7 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree,
-		float levenberg_marquardt_factor
+		int64_t max_vertex_degree
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>
@@ -42,8 +41,7 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree,
-		float levenberg_marquardt_factor
+		int64_t max_vertex_degree
 );
 
 } // namespace nnrt::alignment::functional::kernel

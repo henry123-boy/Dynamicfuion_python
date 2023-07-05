@@ -69,4 +69,33 @@ open3d::core::Tensor MatmulBlockSparseRowWisePadded(
 	return matrices;
 }
 
+std::tuple<open3d::core::Tensor, open3d::core::Tensor> MatmulBlockSparse(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& blocks_b_breadboard,
+		MatrixPreprocessingOperation matrix_b_preprocessing
+) {
+	std::tuple<open3d::core::Tensor, open3d::core::Tensor> blocks_and_coordinates;
+	core::ExecuteOnDevice(
+			blocks_b.GetDevice(),
+			[&]() {
+				blocks_and_coordinates = internal::MatmulBlockSparse<open3d::core::Device::DeviceType::CPU>(
+						blocks_a, blocks_a_breadboard, matrix_a_preprocessing, blocks_b,
+						blocks_b_breadboard, matrix_b_preprocessing
+				);
+			},
+			[&]() {
+				NNRT_IF_CUDA(
+						blocks_and_coordinates = internal::MatmulBlockSparse<open3d::core::Device::DeviceType::CUDA>(
+								blocks_a, blocks_a_breadboard, matrix_a_preprocessing, blocks_b,
+								blocks_b_breadboard, matrix_b_preprocessing
+						);
+				);
+			}
+	);
+	return blocks_and_coordinates;
+}
+
 }// namespace nnrt::core::linalg

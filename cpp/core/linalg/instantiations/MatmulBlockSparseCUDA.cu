@@ -26,4 +26,14 @@ MatmulBlockSparseRowWise<open3d::core::Device::DeviceType::CUDA>(
 		bool padded
 );
 
+template
+std::tuple<open3d::core::Tensor, open3d::core::Tensor>
+MatmulBlockSparse<open3d::core::Device::DeviceType::CUDA>(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& a_block_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& blocks_b,
+		const open3d::core::Tensor& b_block_breadboard,
+		MatrixPreprocessingOperation matrix_b_preprocessing
+);
 } // namespace nnrt::core::linalg::internal

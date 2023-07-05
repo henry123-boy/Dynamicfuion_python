@@ -49,8 +49,7 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree,
-		float levenberg_marquardt_factor
+		int64_t max_vertex_degree
 ) {
 	//TODO: provisions for translation-only and rotation-only hessians (3x3 blocks)
 	const int block_size = 6;
@@ -85,17 +84,20 @@ void ArapSparseHessianApproximation(
 	const auto corner_non_diagonal_block_count = edge_count - upper_right_wing_block_count;
 
 
+	//TODO: block-sparse arrowhead matrix struct should have a constructor that initializes all of these given counts of things
+	// (instead of doing that here)
+
 	// input/output prep
-	arap_hessian_approximation.upper_right_wing_blocks = o3c::Tensor({upper_right_wing_block_count, block_size, block_size}, o3c::Float32, device);
-	auto upper_right_wing_block_data = arap_hessian_approximation.upper_right_wing_blocks.GetDataPtr<float>();
-	arap_hessian_approximation.upper_right_wing_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
-	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.upper_right_wing_block_coordinates.GetDataPtr<int32_t>();
+	arap_hessian_approximation.wing_upper_blocks = o3c::Tensor({upper_right_wing_block_count, block_size, block_size}, o3c::Float32, device);
+	auto upper_right_wing_block_data = arap_hessian_approximation.wing_upper_blocks.GetDataPtr<float>();
+	arap_hessian_approximation.wing_upper_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
+	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.wing_upper_block_coordinates.GetDataPtr<int32_t>();
 
 
 	const int64_t breadboard_width_blocks = node_count - first_layer_node_count;
-	arap_hessian_approximation.upper_right_arrow_wing_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
-	arap_hessian_approximation.upper_right_arrow_wing_breadboard.Fill(-1);
-	auto breadboard_data = arap_hessian_approximation.upper_right_arrow_wing_breadboard.GetDataPtr<int16_t>();
+	arap_hessian_approximation.wing_upper_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
+	arap_hessian_approximation.wing_upper_breadboard.Fill(-1);
+	auto breadboard_data = arap_hessian_approximation.wing_upper_breadboard.GetDataPtr<int16_t>();
 
 	o3c::Tensor corner_upper_blocks = o3c::Tensor({corner_non_diagonal_block_count, block_size, block_size}, o3c::Float32, device);
 	auto corner_upper_block_data = corner_upper_blocks.GetDataPtr<float>();
@@ -103,6 +105,7 @@ void ArapSparseHessianApproximation(
 	auto corner_upper_block_coordinate_data = corner_upper_block_coordinates.GetDataPtr<int32_t>();
 
 	arap_hessian_approximation.arrow_base_block_index = arrow_base_block_index;
+	arap_hessian_approximation.diagonal_block_count = node_count;
 
 	arap_hessian_approximation.upper_column_block_lists = o3c::Tensor({breadboard_width_blocks, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2},
 	                                                                  o3c::Int32, device);
@@ -224,37 +227,7 @@ void ArapSparseHessianApproximation(
 
 	core::AtomicTensor<TDeviceType, float> diagonal_blocks_atomic({node_count, block_size, block_size}, device);
 	core::linalg::internal::ComputeBlockSums(diagonal_blocks_atomic, node_count, diagonal_components, diagonal_component_block_indices, edge_count * 2);
-	auto diagonal_blocks = diagonal_blocks_atomic.AsTensor(false);
-
-	if(levenberg_marquardt_factor > 0.f){
-		core::linalg::internal::PreconditionDiagonalBlocks<TDeviceType>(diagonal_blocks, levenberg_marquardt_factor);
-	}
-
-	arap_hessian_approximation.stem_diagonal_blocks = diagonal_blocks.Slice(0, 0, arrow_base_block_index).Clone();
-
-
-	arap_hessian_approximation.corner_dense_matrix =
-			o3c::Tensor({breadboard_width_blocks * block_size, breadboard_width_blocks * block_size}, o3c::Float32, device);
-
-	o3c::Tensor corner_diagonal_blocks = diagonal_blocks.Slice(0, arrow_base_block_index, node_count);
-
-	core::linalg::internal::FillInDiagonalBlocks<TDeviceType>(arap_hessian_approximation.corner_dense_matrix, corner_diagonal_blocks);
-	core::linalg::internal::FillInSparseBlocks<TDeviceType>(arap_hessian_approximation.corner_dense_matrix, corner_upper_blocks,
-	                                                        corner_upper_block_coordinates, false);
-
-	// TODO: potentially, optimize-out -- this should be unnecessary for computation
-
-#ifndef __CUDACC__
-	// copy over data from atomics to tensor on CPU
-	o3c::ParallelFor(
-			device,
-			node_count * 36,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
-				diagonal_component_data[workload_idx] = hessian_blocks_diagonal_atomic[workload_idx].load();
-			}
-	);
-#endif
-
+	arap_hessian_approximation.SetDiagonalBlocks(diagonal_blocks_atomic.AsTensor(true));
 }
 
 
