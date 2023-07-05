@@ -455,32 +455,6 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels(
 }
 
 template<open3d::core::Device::DeviceType TDevice>
-void PreconditionDiagonalBlocks(
-		open3d::core::Tensor& blocks,
-		float dampening_factor
-) {
-	if (blocks.GetShape().size() != 3) {
-		utility::LogError("Expecting `blocks` to have three dimensions, got dimension count: {}", blocks.GetShape().size());
-	}
-	int64_t block_size = blocks.GetShape(1);
-	int64_t block_count = blocks.GetShape(0);
-	o3c::AssertTensorShape(blocks, { block_count, block_size, block_size });
-	o3c::AssertTensorDtype(blocks, o3c::Float32);
-	o3c::Device device = blocks.GetDevice();
-
-	int64_t block_size_squared = block_size * block_size;
-	auto* block_data = blocks.GetDataPtr<float>();
-	o3c::ParallelFor(
-			device, block_size * block_count,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_index) {
-				int64_t i_block = workload_index / block_size;
-				int64_t i_position_in_block = workload_index % block_size;
-				block_data[i_block * (block_size_squared) + i_position_in_block * block_size + i_position_in_block] += dampening_factor;
-			}
-	);
-}
-
-template<open3d::core::Device::DeviceType TDevice>
 void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,

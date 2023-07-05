@@ -309,9 +309,47 @@ void TestFillInSparseBlocks(const o3c::Device& device) {
 	}, {12, 12}, o3c::Float32, device);
 	// @formatter:on
 
-	nnrt::core::linalg::FillInSparseBlocks(matrix, sparse_blocks, coordinates);
+	nnrt::core::linalg::FillInSparseBlocks(matrix, sparse_blocks, coordinates, false);
 
 	REQUIRE(matrix.AllClose(matrix_filled_gt));
+
+	// @formatter:off
+	o3c::Tensor blocks_to_transpose(std::vector<float>{
+		4.,  5.,
+		6.,  7.,
+
+		8.,  9.,
+	   10., 11.,
+
+	   16., 17.,
+	   18., 19.,
+	}, {3, 2, 2}, o3c::Float32, device);
+	o3c::Tensor coordinates_to_transpose(std::vector<int32_t>{
+			0, 1,
+			2, 0,
+			2, 4
+	}, {3, 2}, o3c::Int32, device);
+
+
+	o3c::Tensor matrix_filled_gt2(std::vector<float>{
+			0.,  1.,  4.,  5.,  8., 10.,  0.,  0.,  0.,  0.,  0.,  0.,
+			2.,  3.,  6.,  7.,  9., 11.,  0.,  0.,  0.,  0.,  0.,  0.,
+			4.,  6.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			5.,  7.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,
+			8.,  9.,  0.,  0.,  0.,  0.,  0.,  0., 16., 17.,  0.,  0.,
+			10., 11.,  0.,  0.,  0.,  0.,  0.,  0., 18., 19.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 12., 13.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0., 14., 15.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0., 16., 18.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0., 17., 19.,  0.,  0.,  0.,  0.,  0.,  0.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 20., 21.,
+			0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 22., 23.
+	}, {12, 12}, o3c::Float32, device);
+	// @formatter:on
+
+	nnrt::core::linalg::FillInSparseBlocks(matrix, blocks_to_transpose, coordinates_to_transpose, true);
+
+	REQUIRE(matrix.AllClose(matrix_filled_gt2));
 
 }
 

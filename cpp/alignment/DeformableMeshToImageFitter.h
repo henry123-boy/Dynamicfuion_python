@@ -99,7 +99,7 @@ private:
 	bool use_perspective_correction;
 	bool use_tukey_penalty_for_depth_term;
 	float tukey_penalty_cutoff_cm;
-	float preconditioning_dampening_factor;
+	float levenberg_marquart_factor;
 	float arap_term_weight;
 	bool use_huber_penalty_for_arap_term;
 	float huber_penalty_constant;

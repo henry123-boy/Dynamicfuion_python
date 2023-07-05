@@ -53,11 +53,6 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels<open3d::core::Device::Devi
 		IterationMode mode
 );
 
-template
-void PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(
-		open3d::core::Tensor & blocks,
-		float dampening_factor
-);
 
 template
 void ComputeArapResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(

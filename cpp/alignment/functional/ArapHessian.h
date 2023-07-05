@@ -29,7 +29,8 @@ ComputeArapBlockSparseHessianApproximation(
 		const open3d::core::Tensor& edges,
 		const open3d::core::Tensor& condensed_edge_jacobians,
 		int64_t first_layer_node_count,
-		int64_t node_count
+		int64_t node_count,
+		float levenberg_marquart_factor
 );
 
 } // namespace nnrt::alignment::functional

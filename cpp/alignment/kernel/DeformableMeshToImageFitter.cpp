@@ -103,24 +103,6 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels(
 	);
 }
 
-void PreconditionDiagonalBlocks(open3d::core::Tensor& blocks, float dampening_factor) {
-	core::ExecuteOnDevice(
-			blocks.GetDevice(),
-			[&] {
-				PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(
-						blocks, dampening_factor
-				);
-			},
-			[&] {
-				NNRT_IF_CUDA(
-						PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(
-								blocks, dampening_factor
-						);
-				);
-			}
-	);
-}
-
 void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,

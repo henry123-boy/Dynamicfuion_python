@@ -22,7 +22,8 @@ template
 void FillInSparseBlocks<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& matrix,
 		const open3d::core::Tensor& blocks,
-		const open3d::core::Tensor& coordinates
+		const open3d::core::Tensor& coordinates,
+		bool transpose
 );
 template
 open3d::core::Tensor

@@ -30,7 +30,8 @@ void ArapSparseHessianApproximation<open3d::core::Device::DeviceType::CUDA>(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree
+		int64_t max_vertex_degree,
+		float levenberg_marquardt_factor
 );
 
 } // namespace nnrt::alignment::functional::kernel

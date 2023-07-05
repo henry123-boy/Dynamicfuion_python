@@ -1,5 +1,5 @@
 //  ================================================================
-//  Created by Gregory Kramida (https://github.com/Algomorph) on 6/2/23.
+//  Created by Gregory Kramida (https://github.com/Algomorph) on 7/5/23.
 //  Copyright (c) 2023 Gregory Kramida
 //  Licensed under the Apache License, Version 2.0 (the "License");
 //  you may not use this file except in compliance with the License.
@@ -18,20 +18,26 @@
 // third-party includes
 
 // local includes
-#include "alignment/functional/kernel/ArapHessianImpl.h"
+#include "core/linalg/PreconditionDiagonalBlocks.h"
+#include "core/DeviceSelection.h"
 
-namespace nnrt::alignment::functional::kernel {
+namespace nnrt::core::linalg {
+void PreconditionDiagonalBlocks(open3d::core::Tensor& blocks, float dampening_factor) {
+	core::ExecuteOnDevice(
+			blocks.GetDevice(),
+			[&] {
+				internal::PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CPU>(
+						blocks, dampening_factor
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						internal::PreconditionDiagonalBlocks<open3d::core::Device::DeviceType::CUDA>(
+								blocks, dampening_factor
+						);
+				);
+			}
+	);
+}
 
-template
-void ArapSparseHessianApproximation<open3d::core::Device::DeviceType::CPU>(
-		core::linalg::BlockSparseArrowheadMatrix& arap_hessian_approximation,
-		const open3d::core::Tensor& edges,
-		const open3d::core::Tensor& condensed_edge_jacobians,
-		int64_t first_layer_node_count,
-		int64_t second_layer_node_count,
-		int64_t node_count,
-		int64_t max_vertex_degree,
-		float levenberg_marquardt_factor
-);
-
-} // namespace nnrt::alignment::functional::kernel
+} // namespace nnrt::core::linalg

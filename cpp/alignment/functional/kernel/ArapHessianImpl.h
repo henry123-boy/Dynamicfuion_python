@@ -29,6 +29,9 @@
 #include "core/platform_independence/AtomicCounterArray.h"
 #include "core/platform_independence/AtomicTensor.h"
 #include "core/linalg/BlockSums.h"
+#include "core/linalg/DiagonalBlocks.h"
+#include "core/linalg/SparseBlocks.h"
+#include "core/linalg/PreconditionDiagonalBlocks.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -46,7 +49,8 @@ void ArapSparseHessianApproximation(
 		int64_t first_layer_node_count,
 		int64_t second_layer_node_count,
 		int64_t node_count,
-		int64_t max_vertex_degree
+		int64_t max_vertex_degree,
+		float levenberg_marquardt_factor
 ) {
 	//TODO: provisions for translation-only and rotation-only hessians (3x3 blocks)
 	const int block_size = 6;
@@ -222,17 +226,23 @@ void ArapSparseHessianApproximation(
 	core::linalg::internal::ComputeBlockSums(diagonal_blocks_atomic, node_count, diagonal_components, diagonal_component_block_indices, edge_count * 2);
 	auto diagonal_blocks = diagonal_blocks_atomic.AsTensor(false);
 
+	if(levenberg_marquardt_factor > 0.f){
+		core::linalg::internal::PreconditionDiagonalBlocks<TDeviceType>(diagonal_blocks, levenberg_marquardt_factor);
+	}
+
 	arap_hessian_approximation.stem_diagonal_blocks = diagonal_blocks.Slice(0, 0, arrow_base_block_index).Clone();
-	o3c::Tensor corenr_diagonal_blocks = diagonal_blocks.Slice(0, arrow_base_block_index, node_count);
+
 
 	arap_hessian_approximation.corner_dense_matrix =
 			o3c::Tensor({breadboard_width_blocks * block_size, breadboard_width_blocks * block_size}, o3c::Float32, device);
-	auto corner_dense_matrix_data = arap_hessian_approximation.corner_dense_matrix.GetDataPtr<float>();
 
+	o3c::Tensor corner_diagonal_blocks = diagonal_blocks.Slice(0, arrow_base_block_index, node_count);
 
+	core::linalg::internal::FillInDiagonalBlocks<TDeviceType>(arap_hessian_approximation.corner_dense_matrix, corner_diagonal_blocks);
+	core::linalg::internal::FillInSparseBlocks<TDeviceType>(arap_hessian_approximation.corner_dense_matrix, corner_upper_blocks,
+	                                                        corner_upper_block_coordinates, false);
 
-	//TODO: fill dense corner
-
+	// TODO: potentially, optimize-out -- this should be unnecessary for computation
 
 #ifndef __CUDACC__
 	// copy over data from atomics to tensor on CPU

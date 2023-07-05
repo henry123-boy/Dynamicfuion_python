@@ -70,7 +70,7 @@ DeformableMeshToImageFitter::DeformableMeshToImageFitter(
     use_perspective_correction(use_perspective_correction),
     use_tukey_penalty_for_depth_term(use_tukey_penalty_for_data_term),
     tukey_penalty_cutoff_cm(tukey_penalty_cutoff_cm),
-    preconditioning_dampening_factor(preconditioning_dampening_factor),
+    levenberg_marquart_factor(preconditioning_dampening_factor),
     arap_term_weight(arap_term_weight),
     use_huber_penalty_for_arap_term(use_huber_penalty_for_arap_term),
     huber_penalty_constant(huber_penalty_constant) {
@@ -227,18 +227,13 @@ void DeformableMeshToImageFitter::FitToImage(
 			// compute sparse H_r
 			core::linalg::BlockSparseArrowheadMatrix hessian_approximation =
 					functional::ComputeArapBlockSparseHessianApproximation(warp_field.GetEdges(), edge_jacobians, first_layer_node_count,
-					                                                       warp_field.GetNodePositions(false).GetLength());
+					                                                       warp_field.GetNodePositions(false).GetLength(),
+																		   levenberg_marquart_factor);
 
 			hessian_approximation.stem_diagonal_blocks += hessian_blocks_depth_diagonal;
-			if (preconditioning_dampening_factor > 0.0) {
-				kernel::PreconditionDiagonalBlocks(hessian_approximation.stem_diagonal_blocks, preconditioning_dampening_factor);
-			}
-
 
 		} else {
-			if (preconditioning_dampening_factor > 0.0) {
-				kernel::PreconditionDiagonalBlocks(hessian_blocks_depth_diagonal, preconditioning_dampening_factor);
-			}
+
 			core::linalg::SolveBlockDiagonalCholesky(motion_updates, hessian_blocks_depth_diagonal, negative_gradient_depth);
 		}
 

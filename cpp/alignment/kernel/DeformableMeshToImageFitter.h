@@ -98,18 +98,6 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels(
 		IterationMode mode
 );
 
-//TODO: move this kernel function set to core::math::linalg
-void PreconditionDiagonalBlocks(
-		open3d::core::Tensor& blocks,
-		float dampening_factor
-);
-
-template<open3d::core::Device::DeviceType TDevice>
-void PreconditionDiagonalBlocks(
-		open3d::core::Tensor& blocks,
-		float dampening_factor
-);
-
 void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,

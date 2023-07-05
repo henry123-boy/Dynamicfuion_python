@@ -22,11 +22,11 @@ namespace o3c = open3d::core;
 namespace nnrt::core::linalg {
 
 
-void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates) {
+void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose) {
 	nnrt::core::ExecuteOnDevice(
 			blocks.GetDevice(),
-			[&] { internal::FillInSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates); },
-			[&] { NNRT_IF_CUDA(internal::FillInSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates);); }
+			[&] { internal::FillInSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, transpose); },
+			[&] { NNRT_IF_CUDA(internal::FillInSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, transpose);); }
 	);
 }
 
