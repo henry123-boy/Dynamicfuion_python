@@ -68,7 +68,7 @@ void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor
 				int64_t i_block_row = coordinate_data[i_block * 2];
 				int64_t i_block_column = coordinate_data[i_block * 2 + 1];
 				int64_t i_row = i_block_row * block_size + i_coefficient_in_block / block_size;
-				int64_t i_column = i_block_column * block_size * i_coefficient_in_block % block_size;
+				int64_t i_column = i_block_column * block_size + i_coefficient_in_block % block_size;
 				matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
 			}
 
@@ -109,7 +109,7 @@ open3d::core::Tensor GetSparseBlocks(const open3d::core::Tensor& matrix, int blo
 				int64_t i_block_row = coordinate_data[i_block * 2];
 				int64_t i_block_column = coordinate_data[i_block * 2 + 1];
 				int64_t i_row = i_block_row * block_size + i_coefficient_in_block / block_size;
-				int64_t i_column = i_block_column * block_size * i_coefficient_in_block % block_size;
+				int64_t i_column = i_block_column * block_size + i_coefficient_in_block % block_size;
 				block_data[i_block_coefficient] = matrix_data[i_row * matrix_column_count + i_column];
 			}
 	);

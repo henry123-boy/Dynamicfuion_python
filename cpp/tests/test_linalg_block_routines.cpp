@@ -281,17 +281,16 @@ TEST_CASE("Test Get Diagonal Blocks - CUDA") {
 }
 
 void TestFillInSparseBlocks(const o3c::Device& device) {
-	o3c::Tensor matrix({12, 12}, o3c::Float32, device);
+	o3c::Tensor matrix = o3c::Tensor::Zeros({12, 12}, o3c::Float32, device);
 	o3c::Tensor sparse_blocks = o3c::Tensor::Arange(0, 2 * 2 * 6, 1, o3c::Float32, device).Reshape({6, 2, 2});
 	o3c::Tensor coordinates(std::vector<int32_t>{
 		0, 0,
 		0, 1,
 		2, 0,
 		3, 3,
-		4, 4,
-		2, 5,
-		6, 6
-	}, {12, 2}, o3c::Int32, device);
+		2, 4,
+		5, 5
+	}, {6, 2}, o3c::Int32, device);
 
 	// @formatter:off
 	o3c::Tensor matrix_filled_gt(std::vector<float>{
@@ -332,10 +331,9 @@ void TestGetSparseBlocks(const o3c::Device& device) {
 			0, 1,
 			2, 0,
 			3, 3,
-			4, 4,
-			2, 5,
-			6, 6
-	}, {12, 2}, o3c::Int32, device);
+			2, 4,
+			5, 5
+	}, {6, 2}, o3c::Int32, device);
 
 	// @formatter:off
 	o3c::Tensor matrix(std::vector<float>{
