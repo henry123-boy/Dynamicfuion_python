@@ -24,5 +24,6 @@
 namespace nnrt::core::linalg {
 
 open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a);
+open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a, const open3d::core::Tensor& inverted_stem_and_upper_wing_product_blocks);
 
 } // namespace nnrt::core::linalg

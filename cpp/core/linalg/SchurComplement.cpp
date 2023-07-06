@@ -30,6 +30,18 @@ namespace nnrt::core::linalg {
 
 
 open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a) {
+	// compute D^(-1)
+	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
+
+	// compute D^(-1)B
+	o3c::Tensor inverted_stem_and_upper_wing_product_blocks =
+			core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.upper_wing_blocks, a.upper_wing_block_coordinates);
+
+	return ComputeSchurComplementOfArrowStem_Dense(a, inverted_stem_and_upper_wing_product_blocks);
+}
+
+open3d::core::Tensor
+linalg::ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a, const open3d::core::Tensor& inverted_stem_and_upper_wing_product_blocks) {
 	// Formula for Schur complement of arrow stem (D) for matrix A:
 	// A/D = C - B^(T)D^(-1)B
 	o3c::Device device = a.GetDevice();
@@ -51,12 +63,7 @@ open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseAr
 	                                 std::make_tuple(static_cast<int64_t>(-a.arrow_base_block_index),
 	                                                 static_cast<int64_t>(-a.arrow_base_block_index)),
 	                                 true);
-	// compute D^(-1)
-	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
 
-	// compute D^(-1)B
-	o3c::Tensor inverted_stem_and_upper_wing_product_blocks =
-			core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.upper_wing_blocks, a.upper_wing_block_coordinates);
 
 	// compute sparse, then dense B^(T)D^(-1)B
 	o3c::Tensor rhs_operand_blocks, rhs_operand_block_coordinates;

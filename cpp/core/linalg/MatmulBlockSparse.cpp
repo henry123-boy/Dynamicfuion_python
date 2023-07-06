@@ -98,4 +98,32 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MatmulBlockSparse(
 	return blocks_and_coordinates;
 }
 
+open3d::core::Tensor BlockSparseAndVectorProduct(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+) {
+	open3d::core::Tensor out_vector;
+	core::ExecuteOnDevice(
+			blocks_a.GetDevice(),
+			[&]() {
+				internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
+						out_vector,
+						blocks_a, blocks_a_breadboard, matrix_a_preprocessing, vector_b
+				);
+			},
+			[&]() {
+				NNRT_IF_CUDA(
+						out_vector = internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CUDA>(
+								out_vector,
+								blocks_a, blocks_a_breadboard, matrix_a_preprocessing, vector_b
+						);
+				);
+			}
+	);
+	return out_vector;
+}
+
+
 }// namespace nnrt::core::linalg

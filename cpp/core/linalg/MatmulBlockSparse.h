@@ -55,6 +55,26 @@ MatmulBlockSparseRowWisePadded(
 		const open3d::core::Tensor& blocks_b_coordinates
 );
 
+open3d::core::Tensor BlockSparseAndVectorProduct(
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+);
+
+
+/**
+ * \brief Compute product of block-sparse matrix a and block-sparse matrix b.
+ * \details Preprocessing operations may be specified to transpose the argument matrices before product. Inner dimensions of argument matrices, after
+ * any possible preprocessing, must match.
+ * \param blocks_a blocks of matrix A
+ * \param blocks_a_breadboard a rectangular matrix specifying the index of a block in A at each position (or -1 for no block). Must have type Int16.
+ * \param matrix_a_preprocessing preprocessing op for matrix A.
+ * \param blocks_b blocks of matrix B. Individual blocks must have same size as in A, but their count (leading dimension) may differ.
+ * \param blocks_b_breadboard a rectangular matrix specifying the index of a block in B at each position (or -1 for no block). Must have type Int16.
+ * \param matrix_b_preprocessing preprocessing op for matrix B.
+ * \return
+ */
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>
 MatmulBlockSparse(
 		const open3d::core::Tensor& blocks_a,
@@ -74,6 +94,15 @@ MatmulBlockSparseRowWise(
 		const open3d::core::Tensor& blocks_b,
 		const open3d::core::Tensor& blocks_b_coordinates,
 		bool padded
+);
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void BlockSparseAndVectorProduct(
+		open3d::core::Tensor& out_vector,
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
 );
 
 template<open3d::core::Device::DeviceType TDeviceType>

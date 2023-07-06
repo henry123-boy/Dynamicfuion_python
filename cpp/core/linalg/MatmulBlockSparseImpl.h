@@ -285,6 +285,7 @@ MatmulBlockSparse_Generic(
 		dense_product_count = a_block_row_count * b_block_column_count * b_block_row_count;
 	}
 
+	// mark up the addresses for products
 	o3c::ParallelFor(
 			device,
 			dense_product_count,
@@ -435,6 +436,54 @@ MatmulBlockSparse(
 			break;
 	}
 	return std::make_tuple(blocks, coordinates);
+}
+
+template<open3d::core::Device::DeviceType TDeviceType, bool TTransposeA>
+void BlockSparseAndVectorProduct_Generic(
+		open3d::core::Tensor& out_vector,
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		const open3d::core::Tensor& vector_b
+){
+	// counts & checks
+	int64_t block_count = blocks_a.GetShape(0);
+	int64_t block_size = blocks_a.GetShape(1);
+	o3c::Device device = blocks_a.GetDevice();
+	o3c::AssertTensorShape(blocks_a, {block_count, block_size, block_size});
+	o3c::AssertTensorDtype(blocks_a, o3c::Float32);
+
+	int64_t a_block_row_count = blocks_a_breadboard.GetShape(0);
+	int64_t a_block_column_count = blocks_a_breadboard.GetShape(1);
+	o3c::AssertTensorShape(blocks_a_breadboard, {a_block_row_count, a_block_column_count});
+	o3c::AssertTensorDtype(blocks_a_breadboard, o3c::Float32);
+	o3c::AssertTensorDevice(blocks_a_breadboard, device);
+
+	int64_t vector_element_count = vector_b.GetShape(0);
+	o3c::AssertTensorShape(vector_b, {vector_element_count});
+	o3c::AssertTensorDtype(vector_b, o3c::Float32);
+	o3c::AssertTensorDevice(vector_b, device);
+
+	// outputs & accessors
+
+
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void BlockSparseAndVectorProduct(
+		open3d::core::Tensor& out_vector,
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_breadboard,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+){
+	switch (matrix_a_preprocessing) {
+		case MatrixPreprocessingOperation::NONE:
+			BlockSparseAndVectorProduct_Generic<TDeviceType, false>(out_vector, blocks_a, blocks_a_breadboard, vector_b);
+			break;
+		case MatrixPreprocessingOperation::TRANSPOSE:
+			BlockSparseAndVectorProduct_Generic<TDeviceType, true>(out_vector, blocks_a, blocks_a_breadboard, vector_b);
+			break;
+	}
 }
 
 

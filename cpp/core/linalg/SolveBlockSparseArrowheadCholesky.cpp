@@ -23,6 +23,7 @@
 #include "core/linalg/InvertBlocks.h"
 #include "core/linalg/MatmulBlockSparse.h"
 #include "core/DeviceSelection.h"
+#include "SchurComplement.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -34,11 +35,36 @@ void SolveBlockSparseArrowheadCholesky(
 		const nnrt::core::linalg::BlockSparseArrowheadMatrix& a,
 		const open3d::core::Tensor& b
 ) {
-	o3c::Tensor U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right;
-	std::tie(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_lower_right) = FactorizeBlockSparseArrowheadCholesky_Upper(a);
 
-	//TODO
-	utility::LogError("Not implemented");
+	int64_t b_element_count = b.GetShape(0);
+	auto device = a.GetDevice();
+
+	o3c::AssertTensorShape(b, {b_element_count});
+	o3c::AssertTensorDevice(b, device);
+	o3c::AssertTensorDtype(b, o3c::Float32);
+
+	if(a.diagonal_block_count * a.GetBlockSize() != b_element_count){
+		utility::LogError("Size of lhs tensor b must be \\{{}\\}, matching the leading dimension of rhs matrix a, but is {} instead.",
+						  a.diagonal_block_count * a.GetBlockSize(), b_element_count);
+	}
+
+	// compute D^(-1)
+	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
+
+	// compute D^(-1)B
+	o3c::Tensor inverted_stem_and_upper_wing_product_blocks =
+			core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.upper_wing_blocks, a.upper_wing_block_coordinates);
+
+	// compute A/D = C - B^(T)D^(-1)B
+	o3c::Tensor stem_schur_complement = core::linalg::ComputeSchurComplementOfArrowStem_Dense(a, inverted_stem_and_upper_wing_product_blocks);
+
+	//separate b_D and b_C out from b
+	o3c::Tensor b_stem = b.Slice(0, 0, a.arrow_base_block_index * a.GetBlockSize());
+	o3c::Tensor b_corner = b.Slice(0, a.arrow_base_block_index * a.GetBlockSize(), a.diagonal_block_count);
+
+	// compute -B^(T)D^(-1)b_D
+
+
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
