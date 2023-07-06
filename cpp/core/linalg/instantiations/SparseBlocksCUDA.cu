@@ -24,6 +24,20 @@ void FillInSparseBlocks<open3d::core::Device::DeviceType::CUDA>(
 		bool transpose
 );
 template
+void AddSparseBlocks<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		bool transpose
+);
+template
+void SubtractSparseBlocks<open3d::core::Device::DeviceType::CUDA>(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		bool transpose
+);
+template
 open3d::core::Tensor
 GetSparseBlocks<open3d::core::Device::DeviceType::CUDA>(
 		const open3d::core::Tensor& matrix, int block_size, const open3d::core::Tensor& coordinates

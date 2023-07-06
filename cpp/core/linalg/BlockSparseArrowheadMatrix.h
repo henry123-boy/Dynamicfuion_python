@@ -44,9 +44,9 @@ namespace nnrt::core::linalg {
  */
 struct BlockSparseArrowheadMatrix : public open3d::core::IsDevice {
 	//TODO: define general (square-)block-sparse matrix (or matrix slice) type and use it for wing_upper_blocks here
-	open3d::core::Tensor wing_upper_blocks;
-	open3d::core::Tensor wing_upper_block_coordinates;
-	open3d::core::Tensor wing_upper_breadboard;
+	open3d::core::Tensor upper_wing_blocks;
+	open3d::core::Tensor upper_wing_block_coordinates;
+	open3d::core::Tensor upper_wing_breadboard;
 
 	open3d::core::Tensor corner_upper_blocks;
 	open3d::core::Tensor corner_upper_block_coordinates;

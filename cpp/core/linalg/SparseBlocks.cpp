@@ -30,6 +30,15 @@ void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor
 	);
 }
 
+
+void AddSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose) {
+	nnrt::core::ExecuteOnDevice(
+			blocks.GetDevice(),
+			[&] { internal::AddSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, transpose); },
+			[&] { NNRT_IF_CUDA(internal::AddSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, transpose);); }
+	);
+}
+
 open3d::core::Tensor GetSparseBlocks(const open3d::core::Tensor& matrix, int block_size, const open3d::core::Tensor& coordinates) {
 	o3c::Tensor blocks;
 	nnrt::core::ExecuteOnDevice(
@@ -39,5 +48,6 @@ open3d::core::Tensor GetSparseBlocks(const open3d::core::Tensor& matrix, int blo
 	);
 	return blocks;
 }
+
 
 } // namespace nnrt::core::linalg

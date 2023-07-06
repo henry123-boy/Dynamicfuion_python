@@ -88,16 +88,16 @@ void ArapSparseHessianApproximation(
 	// (instead of doing that here)
 
 	// input/output prep
-	arap_hessian_approximation.wing_upper_blocks = o3c::Tensor({upper_right_wing_block_count, block_size, block_size}, o3c::Float32, device);
-	auto upper_right_wing_block_data = arap_hessian_approximation.wing_upper_blocks.GetDataPtr<float>();
-	arap_hessian_approximation.wing_upper_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
-	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.wing_upper_block_coordinates.GetDataPtr<int32_t>();
+	arap_hessian_approximation.upper_wing_blocks = o3c::Tensor({upper_right_wing_block_count, block_size, block_size}, o3c::Float32, device);
+	auto upper_right_wing_block_data = arap_hessian_approximation.upper_wing_blocks.GetDataPtr<float>();
+	arap_hessian_approximation.upper_wing_block_coordinates = o3c::Tensor({upper_right_wing_block_count, 2}, o3c::Int32, device);
+	auto upper_right_wing_block_coordinate_data = arap_hessian_approximation.upper_wing_block_coordinates.GetDataPtr<int32_t>();
 
 
 	const int64_t breadboard_width_blocks = node_count - first_layer_node_count;
-	arap_hessian_approximation.wing_upper_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
-	arap_hessian_approximation.wing_upper_breadboard.Fill(-1);
-	auto breadboard_data = arap_hessian_approximation.wing_upper_breadboard.GetDataPtr<int16_t>();
+	arap_hessian_approximation.upper_wing_breadboard = o3c::Tensor({node_count, breadboard_width_blocks}, o3c::Int16);
+	arap_hessian_approximation.upper_wing_breadboard.Fill(-1);
+	auto breadboard_data = arap_hessian_approximation.upper_wing_breadboard.GetDataPtr<int16_t>();
 
 	o3c::Tensor corner_upper_blocks = o3c::Tensor({corner_non_diagonal_block_count, block_size, block_size}, o3c::Float32, device);
 	auto corner_upper_block_data = corner_upper_blocks.GetDataPtr<float>();

@@ -31,10 +31,7 @@ namespace nnrt::core::linalg {
 
 open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a) {
 	// Formula for Schur complement of arrow stem (D) for matrix A:
-	// A/D = (C - B^(T)D^(-1)B
-
-
-
+	// A/D = C - B^(T)D^(-1)B
 	o3c::Device device = a.GetDevice();
 	int64_t corner_size_blocks = a.diagonal_block_count - a.arrow_base_block_index;
 	int64_t block_size = a.GetBlockSize();
@@ -53,12 +50,19 @@ open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseAr
 	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
 
 	// compute D^(-1)B
-	o3c::Tensor inverted_stem_times_breadboard_blocks;
-	core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.wing_upper_blocks, a.wing_upper_block_coordinates);
+	o3c::Tensor inverted_stem_and_upper_wing_product_blocks =
+			core::linalg::MatmulBlockSparseRowWisePadded(inverted_stem, a.upper_wing_blocks, a.upper_wing_block_coordinates);
 
+	// compute sparse, then dense B^(T)D^(-1)B
+	o3c::Tensor rhs_operand_blocks, rhs_operand_block_coordinates;
+	std::tie(rhs_operand_blocks, rhs_operand_block_coordinates) =
+			core::linalg::MatmulBlockSparse(a.upper_wing_blocks, a.upper_wing_breadboard, MatrixPreprocessingOperation::TRANSPOSE,
+			                                inverted_stem_and_upper_wing_product_blocks, a.upper_wing_breadboard, MatrixPreprocessingOperation::NONE);
 
+	// compute C - B^(T)D^(-1)B
+	core::linalg::SubtractSparseBlocks(corner_dense_matrix, rhs_operand_blocks, rhs_operand_block_coordinates, false);
 
-
+	return corner_dense_matrix;
 }
 
 } // namespace nnrt::core::linalg

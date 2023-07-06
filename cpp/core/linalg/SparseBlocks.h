@@ -20,11 +20,18 @@
 namespace nnrt::core::linalg {
 
 void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
+void AddSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
+void SubtractSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
+
 open3d::core::Tensor GetSparseBlocks(const open3d::core::Tensor& matrix, int block_size, const open3d::core::Tensor& coordinates);
 
 namespace internal {
 template<open3d::core::Device::DeviceType TDeviceType>
 void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
+template<open3d::core::Device::DeviceType TDeviceType>
+void AddSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
+template<open3d::core::Device::DeviceType TDeviceType>
+void SubtractSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose);
 template<open3d::core::Device::DeviceType TDeviceType>
 open3d::core::Tensor GetSparseBlocks(const open3d::core::Tensor& matrix, int block_size,  const open3d::core::Tensor& coordinates);
 }

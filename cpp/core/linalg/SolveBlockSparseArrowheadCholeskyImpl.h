@@ -58,23 +58,23 @@ void FactorizeBlockSparseCholeskyCorner(
 	int64_t block_size = A.GetBlockSize();
 
 	int breadboard_width = diagonal_block_count - A.arrow_base_block_index;
-	o3c::AssertTensorShape(A.wing_upper_breadboard, { diagonal_block_count, breadboard_width });
-	o3c::AssertTensorDtype(A.wing_upper_breadboard, o3c::Int16);
-	o3c::AssertTensorDevice(A.wing_upper_breadboard, device);
+	o3c::AssertTensorShape(A.upper_wing_breadboard, { diagonal_block_count, breadboard_width });
+	o3c::AssertTensorDtype(A.upper_wing_breadboard, o3c::Int16);
+	o3c::AssertTensorDevice(A.upper_wing_breadboard, device);
 
-	int64_t A_upper_block_count = A.wing_upper_blocks.GetShape(0);
-	o3c::AssertTensorShape(A.wing_upper_blocks, { A_upper_block_count, block_size, block_size });
-	o3c::AssertTensorDtype(A.wing_upper_blocks, o3c::Float32);
-	o3c::AssertTensorDevice(A.wing_upper_blocks, device);
+	int64_t A_upper_block_count = A.upper_wing_blocks.GetShape(0);
+	o3c::AssertTensorShape(A.upper_wing_blocks, { A_upper_block_count, block_size, block_size });
+	o3c::AssertTensorDtype(A.upper_wing_blocks, o3c::Float32);
+	o3c::AssertTensorDevice(A.upper_wing_blocks, device);
 
 	o3c::AssertTensorShape(factorized_upper_blocks, { A_upper_block_count, block_size, block_size });
 	o3c::AssertTensorDtype(factorized_upper_blocks, o3c::Float32);
 	o3c::AssertTensorDevice(factorized_upper_blocks, device);
 
-	auto source_upper_block_data = A.wing_upper_blocks.GetDataPtr<float>();
+	auto source_upper_block_data = A.upper_wing_blocks.GetDataPtr<float>();
 	auto factorized_upper_block_data = factorized_upper_blocks.GetDataPtr<float>();
 	//TODO: return this too
-	auto source_breadboard_data = A.wing_upper_breadboard.GetDataPtr<int16_t>();
+	auto source_breadboard_data = A.upper_wing_breadboard.GetDataPtr<int16_t>();
 
 	// int64_t dense_corner_size = breadboard_width * block_size;
 	o3c::Tensor factorized_corner_blocks = o3c::Tensor::Zeros({breadboard_width, breadboard_width, block_size, block_size}, o3c::Float32, device);

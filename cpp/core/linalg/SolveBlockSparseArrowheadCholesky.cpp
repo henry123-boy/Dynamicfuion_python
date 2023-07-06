@@ -49,8 +49,8 @@ FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A)
 	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
 	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
 
-	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.wing_upper_blocks,
-	                                                                           A.wing_upper_block_coordinates);
+	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_wing_blocks,
+	                                                                           A.upper_wing_block_coordinates);
 
 	o3c::Tensor U_factorized_dense_corner;
 	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_corner, U_sparse_blocks, A);

@@ -17,9 +17,22 @@
 #include "core/linalg/SparseBlocksImpl.h"
 
 namespace nnrt::core::linalg::internal {
-
 template
 void FillInSparseBlocks<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		bool transpose
+);
+template
+void AddSparseBlocks<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		bool transpose
+);
+template
+void SubtractSparseBlocks<open3d::core::Device::DeviceType::CPU>(
 		open3d::core::Tensor& matrix,
 		const open3d::core::Tensor& blocks,
 		const open3d::core::Tensor& coordinates,
@@ -30,5 +43,4 @@ open3d::core::Tensor
 GetSparseBlocks<open3d::core::Device::DeviceType::CPU>(
 		const open3d::core::Tensor& matrix, int block_size, const open3d::core::Tensor& coordinates
 );
-
 } // namespace nnrt::core::linalg::internal

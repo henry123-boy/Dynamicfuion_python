@@ -29,12 +29,17 @@ namespace o3c = open3d::core;
 
 nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o3c::Device& device) {
 	nnrt::core::linalg::BlockSparseArrowheadMatrix matrix;
-	matrix.stem_diagonal_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy").To(device)
-	                                                                                                                              .To(o3c::Float32);
-	matrix.wing_upper_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device).To(o3c::Float32);
-	matrix.wing_upper_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
+	matrix.arrow_base_block_index = 208;
+	matrix.diagonal_block_count = 249;
+	matrix.SetDiagonalBlocks(
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy")
+					.To(device).To(o3c::Float32)
+	);
+	matrix.upper_wing_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device)
+	                                                                                                                        .To(o3c::Float32);
+	matrix.upper_wing_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
 			.To(device);
-	matrix.wing_upper_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
+	matrix.upper_wing_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
 	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_lists.npy")
 			.To(device);
 	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_counts.npy")
@@ -42,7 +47,7 @@ nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o
 	matrix.upper_row_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_lists.npy").To(device);
 	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_counts.npy")
 			.To(device);
-	matrix.arrow_base_block_index = 208;
+
 	return matrix;
 }
 
