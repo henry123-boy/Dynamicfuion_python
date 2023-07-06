@@ -97,8 +97,6 @@ void TestSchurComplementComputation(const o3c::Device& device) {
 
 	o3c::Tensor schur_complement = nnrt::core::linalg::ComputeSchurComplementOfArrowStem_Dense(matrix);
 
-	//__DEBUG
-
 	REQUIRE(schur_complement.AllClose(schur_complement_gt, 0, 1e-6));
 }
 
