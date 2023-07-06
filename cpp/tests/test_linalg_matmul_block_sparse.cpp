@@ -314,6 +314,75 @@ void TestMatmulBlockSparse_Small(const o3c::Device& device) {
 
 	REQUIRE(c_blocks.AllClose(c_blocks_gt));
 	REQUIRE(c_block_coordinates.AllClose(c_block_coordinates_gt));
+
+	o3c::Tensor d_blocks, d_block_coordinates;
+	std::tie(d_blocks, d_block_coordinates) =
+			nnrt::core::linalg::MatmulBlockSparse(b_blocks, b_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE,
+			                                      a_blocks, a_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE);
+
+	o3c::Tensor d_blocks_gt(std::vector<float>{
+			15., 23.,
+			22., 34.,
+
+			111., 151.,
+			50., 70.,
+
+			19., 43.,
+			22., 50.
+	}, {3, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor d_block_coordinates_gt(std::vector<int32_t>{
+			0, 0,
+			0, 1,
+			1, 0
+	}, {3, 2}, o3c::Int32, device);
+
+	REQUIRE(d_blocks.AllClose(d_blocks_gt));
+	REQUIRE(d_block_coordinates.AllClose(d_block_coordinates_gt));
+
+	o3c::Tensor e_blocks, e_block_coordinates;
+	std::tie(e_blocks, e_block_coordinates) =
+			nnrt::core::linalg::MatmulBlockSparse(b_blocks, b_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE,
+			                                      b_blocks, b_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::NONE);
+
+	o3c::Tensor e_blocks_gt(std::vector<float>{
+			212., 104.,
+			104., 120.,
+
+			74., 86.,
+			86., 100.
+	}, {2, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor e_block_coordinates_gt(std::vector<int32_t>{
+			0, 0,
+			1, 1
+	}, {2, 2}, o3c::Int32, device);
+
+	REQUIRE(e_blocks.AllClose(e_blocks_gt));
+	REQUIRE(e_block_coordinates.AllClose(e_block_coordinates_gt));
+
+	o3c::Tensor f_blocks, f_block_coordinates;
+	std::tie(f_blocks, f_block_coordinates) =
+			nnrt::core::linalg::MatmulBlockSparse(a_blocks, a_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::NONE,
+			                                      a_blocks, a_breadboard, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE);
+
+	o3c::Tensor f_blocks_gt(std::vector<float>{
+			30., 50.,
+			50., 86.,
+
+			61., 83.,
+			83., 113.
+	}, {2, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor f_block_coordinates_gt(std::vector<int32_t>{
+			0, 0,
+			1, 1
+	}, {2, 2}, o3c::Int32, device);
+
+	REQUIRE(f_blocks.AllClose(f_blocks_gt));
+	REQUIRE(f_block_coordinates.AllClose(f_block_coordinates_gt));
+
+
 }
 
 TEST_CASE("Test Matmul Block Sparse (Small) - CPU") {
