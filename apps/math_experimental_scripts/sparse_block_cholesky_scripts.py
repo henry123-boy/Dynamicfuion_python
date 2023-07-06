@@ -412,55 +412,42 @@ def solve_triangular_sparse_forward_substitution(u_blocks_diagonal: List[np.ndar
     return solution
 
 
-BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE = 80
-BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE = 160
-
 
 def generate_cpp_test_block_sparse_arrowhead_input_data(
         diagonal_blocks: List[np.array],
-        upper_blocks: List[Tuple[int, int, np.ndarray]],
+        upper_wing_blocks: List[Tuple[int, int, np.ndarray]],
+        upper_corner_blocks: List[Tuple[int, int, np.ndarray]],
         layer_node_counts: np.ndarray,
         base_path: str = "/mnt/Data/Reconstruction/output/matrix_experiments"
 ):
     first_layer_node_count = layer_node_counts[0]
     node_count = len(diagonal_blocks)
     breadboard_width_nodes = node_count - first_layer_node_count
-    breadboard = np.zeros((node_count, breadboard_width_nodes), np.int16)
-    breadboard -= 1
-    upper_column_block_lists = \
-        np.zeros((breadboard_width_nodes, BLOCK_ARROWHEAD_COLUMN_BLOCK_MAX_COUNT_ESTIMATE, 2), np.int32)
-    upper_column_block_counts = np.zeros((breadboard_width_nodes,), np.int32)
-    upper_row_block_lists = \
-        np.zeros((node_count, BLOCK_ARROWHEAD_ROW_BLOCK_MAX_COUNT_ESTIMATE, 2), np.int32)
-    upper_row_block_counts = np.zeros((node_count,), np.int32)
+    upper_wing_breadboard = np.zeros((node_count, breadboard_width_nodes), np.int16)
+    upper_wing_breadboard -= 1
 
-    upper_block_list = []
-    coordinate_list = []
+    upper_wing_block_list = []
+    upper_wing_block_coordinate_list = []
 
-    for i_block, (i, j, block) in enumerate(upper_blocks):
+    for i_block, (i, j, block) in enumerate(upper_wing_blocks):
         j_breadboard = j - first_layer_node_count
-        breadboard[i, j_breadboard] = i_block
+        upper_wing_breadboard[i, j_breadboard] = i_block
+        upper_wing_block_list.append(block)
+        upper_wing_block_coordinate_list.append((i, j))
 
-        i_block_in_column = upper_column_block_counts[j_breadboard]
-        upper_column_block_counts[j_breadboard] += 1
-        upper_column_block_lists[j_breadboard, i_block_in_column, 0] = i
-        upper_column_block_lists[j_breadboard, i_block_in_column, 1] = i_block
-
-        j_block_in_row = upper_row_block_counts[i]
-        upper_row_block_counts[i] += 1
-        upper_row_block_lists[i, j_block_in_row, 0] = j
-        upper_row_block_lists[i, j_block_in_row, 1] = i_block
-        upper_block_list.append(block)
-        coordinate_list.append((i, j))
+    corner_block_list = []
+    corner_block_coordinate_list = []
+    for i_block, (i, j, block) in enumerate(upper_corner_blocks):
+        corner_block_list.append(block)
+        corner_block_coordinate_list.append((i, j))
 
     np.save(str(Path(base_path) / "diagonal_blocks.npy"), np.array(diagonal_blocks))
-    np.save(str(Path(base_path) / "upper_blocks.npy"), np.array(upper_block_list))
-    np.save(str(Path(base_path) / "upper_block_coordinates.npy"), np.array(coordinate_list))
-    np.save(str(Path(base_path) / "breadboard.npy"), breadboard)
-    np.save(str(Path(base_path) / "upper_column_block_lists.npy"), upper_column_block_lists)
-    np.save(str(Path(base_path) / "upper_column_block_counts.npy"), upper_column_block_counts)
-    np.save(str(Path(base_path) / "upper_row_block_lists.npy"), upper_row_block_lists)
-    np.save(str(Path(base_path) / "upper_row_block_counts.npy"), upper_row_block_counts)
+    np.save(str(Path(base_path) / "upper_wing_blocks.npy"), np.array(upper_wing_block_list))
+    np.save(str(Path(base_path) / "upper_wing_block_coordinates.npy"), np.array(upper_wing_block_coordinate_list))
+    np.save(str(Path(base_path) / "upper_wing_breadboard.npy"), upper_wing_breadboard)
+
+    np.save(str(Path(base_path) / "corner_upper_blocks.npy"), np.array(corner_block_list))
+    np.save(str(Path(base_path) / "corner_upper_block_coordinates.npy"), np.array(corner_block_coordinate_list))
 
 
 # region --- Triangular indexing -----
@@ -496,6 +483,7 @@ def compute_block_sparse_BTB_block_product_count(
 
 
 def main():
+    base_path: str = "/mnt/Data/Reconstruction/output/matrix_experiments"
     np.set_printoptions(suppress=True, linewidth=350, edgeitems=100)
     J = np.load("/mnt/Data/Reconstruction/output/matrix_experiments/J.npy")
     H_gt = J.T.dot(J)
@@ -515,9 +503,9 @@ def main():
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
-    save_cpp_test_data = False
+    save_cpp_test_data = True
     if save_cpp_test_data:
-        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper + H_upper_corner, layer_node_counts)
+        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper, H_upper_corner, layer_node_counts)
     U_diag, U_upper, U_corner_dense = cholesky_upper_triangular_from_sparse_H(
         H_diag, H_upper, H_upper_corner,
         layer_node_counts,
@@ -548,15 +536,19 @@ def main():
     b_data = dummy_negJr[:arrowhead_base_index]
     b_reg = dummy_negJr[arrowhead_base_index:]
 
-    C_prime = C - B.T @ scipy.linalg.inv(D) @ B
+    C_schur = C - B.T @ scipy.linalg.inv(D) @ B
+    if save_cpp_test_data:
+        np.save(str(Path(base_path) / "stem_schur.npy"), C_schur)
+
+
     b_reg_prime = b_reg - B.T @ scipy.linalg.inv(D) @ b_data
-    delta_C = np.linalg.solve(C_prime, b_reg_prime)
+    delta_C = np.linalg.solve(C_schur, b_reg_prime)
     delta_D = scipy.linalg.inv(D) @ (b_data - B @ delta_C)
 
     delta_schur = np.concatenate((delta_D, delta_C))
     print("Schur approach to solver finished successfully: ", np.allclose(delta_schur, delta_gt))
 
-    U_C_prime = scipy.linalg.cholesky(C_prime)
+    U_C_prime = scipy.linalg.cholesky(C_schur)
     print("Schur complement decomposition equivalent to U_corner_dense:", np.allclose(U_C_prime, U_corner_dense))
 
     btb_block_product_count = compute_block_sparse_BTB_block_product_count(H_upper, 0, layer_node_counts[0],

@@ -51,14 +51,6 @@ struct BlockSparseArrowheadMatrix : public open3d::core::IsDevice {
 	open3d::core::Tensor corner_upper_blocks;
 	open3d::core::Tensor corner_upper_block_coordinates;
 
-	//TODO: not sure if these row/column lists & counts are needed at all
-	open3d::core::Tensor upper_row_block_lists;
-	open3d::core::Tensor upper_row_block_counts;
-	open3d::core::Tensor upper_column_block_lists;
-	open3d::core::Tensor upper_column_block_counts;
-
-
-
 	// (first) index of the block along the diagonal at which the "arrowhead" is attached to the "stem" above and below
 	int arrow_base_block_index;
 	int diagonal_block_count;

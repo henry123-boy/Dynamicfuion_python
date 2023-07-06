@@ -309,7 +309,7 @@ void TestFillInSparseBlocks(const o3c::Device& device) {
 	}, {12, 12}, o3c::Float32, device);
 	// @formatter:on
 
-	nnrt::core::linalg::FillInSparseBlocks(matrix, sparse_blocks, coordinates, false);
+	nnrt::core::linalg::FillInSparseBlocks(matrix, sparse_blocks, coordinates, std::make_tuple((int64_t)0,(int64_t)0), false);
 
 	REQUIRE(matrix.AllClose(matrix_filled_gt));
 
@@ -347,7 +347,7 @@ void TestFillInSparseBlocks(const o3c::Device& device) {
 	}, {12, 12}, o3c::Float32, device);
 	// @formatter:on
 
-	nnrt::core::linalg::FillInSparseBlocks(matrix, blocks_to_transpose, coordinates_to_transpose, true);
+	nnrt::core::linalg::FillInSparseBlocks(matrix, blocks_to_transpose, coordinates_to_transpose, std::make_tuple((int64_t)0,(int64_t)0), true);
 
 	REQUIRE(matrix.AllClose(matrix_filled_gt2));
 

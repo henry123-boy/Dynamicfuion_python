@@ -22,20 +22,49 @@ namespace o3c = open3d::core;
 namespace nnrt::core::linalg {
 
 
-void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose) {
+void FillInSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
 	nnrt::core::ExecuteOnDevice(
 			blocks.GetDevice(),
-			[&] { internal::FillInSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, transpose); },
-			[&] { NNRT_IF_CUDA(internal::FillInSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, transpose);); }
+			[&] { internal::FillInSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, block_coordinate_offset, transpose); },
+			[&] { NNRT_IF_CUDA(internal::FillInSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, block_coordinate_offset,
+			                                                                               transpose);); }
 	);
 }
 
 
-void AddSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose) {
+void AddSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
 	nnrt::core::ExecuteOnDevice(
 			blocks.GetDevice(),
-			[&] { internal::AddSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, transpose); },
-			[&] { NNRT_IF_CUDA(internal::AddSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, transpose);); }
+			[&] { internal::AddSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, block_coordinate_offset, transpose); },
+			[&] { NNRT_IF_CUDA(internal::AddSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates, block_coordinate_offset,
+			                                                                            transpose);); }
+	);
+}
+
+void SubtractSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
+	nnrt::core::ExecuteOnDevice(
+			blocks.GetDevice(),
+			[&] { internal::SubtractSparseBlocks<o3c::Device::DeviceType::CPU>(matrix, blocks, coordinates, block_coordinate_offset, transpose); },
+			[&] { NNRT_IF_CUDA(internal::SubtractSparseBlocks<o3c::Device::DeviceType::CUDA>(matrix, blocks, coordinates,
+			                                                                                 block_coordinate_offset, transpose);); }
 	);
 }
 

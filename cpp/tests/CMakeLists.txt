@@ -237,17 +237,18 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test_data_download_target(
         test_data_block_sparse_arrowhead
         URL https://algomorph.com/storage/reco/block_sparse_arrowhead_test_data.7z
-        SHA256 d9698c6a09194dae4587fdf3560d5e074e2fe7e68fb20c0247bba6a34b8472e3
+        SHA256 d66cc6dc201a72f4c8367e8c20cdf2a39823f35e109b22ecfe32274a97b20a5b
         DESTINATION block_sparse_arrowhead_test_data.7z
         EXTRACTED_NAMES
-        arrays/breadboard.npy
         arrays/U_diag_upper_left.npy
         arrays/U_upper.npy
         arrays/U_lower_right_dense.npy
-        arrays/upper_column_block_lists.npy
-        arrays/upper_column_block_counts.npy
-        arrays/upper_row_block_lists.npy
-        arrays/upper_row_block_counts.npy
+        arrays/upper_wing_blocks.npy
+        arrays/upper_wing_block_coordinates.npy
+        arrays/upper_wing_breadboard.npy
+        arrays/corner_upper_blocks.npy
+        arrays/corner_upper_block_coordinates.npy
+        arrays/stem_schur.npy
     )
 
 

@@ -24,6 +24,7 @@
 #include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
 #include "core/linalg/ZeroOutTriangularBlocks.h"
 #include "core/linalg/DiagonalBlocks.h"
+#include "core/linalg/SchurComplement.h"
 
 namespace o3c = open3d::core;
 
@@ -35,18 +36,15 @@ nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o
 			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/diagonal_blocks.npy")
 					.To(device).To(o3c::Float32)
 	);
-	matrix.upper_wing_blocks = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_blocks.npy").To(device)
-	                                                                                                                        .To(o3c::Float32);
-	matrix.upper_wing_block_coordinates = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_block_coordinates.npy")
-			.To(device);
-	matrix.upper_wing_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/breadboard.npy").To(device);
-	matrix.upper_column_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_lists.npy")
-			.To(device);
-	matrix.upper_column_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_column_block_counts.npy")
-			.To(device);
-	matrix.upper_row_block_lists = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_lists.npy").To(device);
-	matrix.upper_row_block_counts = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_row_block_counts.npy")
-			.To(device);
+	matrix.upper_wing_blocks =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_wing_blocks.npy").To(device).To(o3c::Float32);
+	matrix.upper_wing_block_coordinates =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_wing_block_coordinates.npy").To(device);
+	matrix.upper_wing_breadboard = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/upper_wing_breadboard.npy").To(device);
+	matrix.corner_upper_blocks =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/corner_upper_blocks.npy").To(device).To(o3c::Float32);
+	matrix.corner_upper_block_coordinates =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/corner_upper_block_coordinates.npy").To(device);
 
 	return matrix;
 }
@@ -89,4 +87,27 @@ TEST_CASE("Test Factorize Block-Sparse Arrowhead CPU") {
 TEST_CASE("Test Factorize Block-Sparse Arrowhead CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestCholeskyBlockSparseArrowheadFactorization(device);
+}
+
+void TestSchurComplementComputation(const o3c::Device& device) {
+	auto matrix = LoadSparseArrowheadInputs(device);
+
+	o3c::Tensor schur_complement_gt =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/stem_schur.npy").To(device).To(o3c::Float32);
+
+	o3c::Tensor schur_complement = nnrt::core::linalg::ComputeSchurComplementOfArrowStem_Dense(matrix);
+
+	//__DEBUG
+
+	REQUIRE(schur_complement.AllClose(schur_complement_gt, 0, 1e-6));
+}
+
+TEST_CASE("Test Block-Sparse Arrowhead Stem Schur CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestSchurComplementComputation(device);
+}
+
+TEST_CASE("Test Block-Sparse Arrowhead Stem Schur CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestSchurComplementComputation(device);
 }

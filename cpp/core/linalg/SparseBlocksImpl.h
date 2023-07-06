@@ -28,8 +28,11 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 
 template<open3d::core::Device::DeviceType TDeviceType, typename TOp>
-void SparseBlocksOp_Generic(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates,
-							bool transpose, TOp&& operation) {
+void SparseBlocksOp_Generic(
+		open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose, TOp&& operation
+) {
 	// counts & checks
 	int64_t matrix_row_count = matrix.GetShape(0);
 	int64_t matrix_column_count = matrix.GetShape(1);
@@ -37,6 +40,8 @@ void SparseBlocksOp_Generic(open3d::core::Tensor& matrix, const open3d::core::Te
 	int64_t block_size = blocks.GetShape(1);
 	int64_t block_stride = block_size * block_size;
 	o3c::Device device = blocks.GetDevice();
+	const int64_t block_row_offset = std::get<0>(block_coordinate_offset);
+	const int64_t block_column_offset = std::get<1>(block_coordinate_offset);
 
 	o3c::AssertTensorDevice(matrix, device);
 	o3c::AssertTensorShape(matrix, { matrix_row_count, matrix_column_count });
@@ -59,66 +64,125 @@ void SparseBlocksOp_Generic(open3d::core::Tensor& matrix, const open3d::core::Te
 	auto block_data = blocks.GetDataPtr<float>();
 	auto coordinate_data = coordinates.GetDataPtr<int32_t>();
 
-	// fill matrix with blocks
-	if (transpose) {
-		o3c::ParallelFor(
-				device,
-				block_count * block_stride,
-				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
-					int64_t i_block = i_block_coefficient / block_stride;
-					int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
-					int64_t i_block_row = coordinate_data[i_block * 2 + 1]; // note order flip here, (i, j) --> (j, i)
-					int64_t i_block_column = coordinate_data[i_block * 2];
-					int64_t i_row = i_block_row * block_size + i_coefficient_in_block % block_size; // another in-block flip here
-					int64_t i_column = i_block_column * block_size + i_coefficient_in_block / block_size;
-					operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
-					// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
-				}
-		);
-	} else {
-		o3c::ParallelFor(
-				device,
-				block_count * block_stride,
-				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
-					int64_t i_block = i_block_coefficient / block_stride;
-					int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
-					int64_t i_block_row = coordinate_data[i_block * 2];
-					int64_t i_block_column = coordinate_data[i_block * 2 + 1];
-					int64_t i_row = i_block_row * block_size + i_coefficient_in_block / block_size;
-					int64_t i_column = i_block_column * block_size + i_coefficient_in_block % block_size;
-					operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
-					// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
-				}
+	if (block_row_offset != 0 || block_column_offset != 0) {
+		// fill matrix with offset blocks
+		if (transpose) {
+			o3c::ParallelFor(
+					device,
+					block_count * block_stride,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
+						int64_t i_block = i_block_coefficient / block_stride;
+						int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
+						int64_t i_block_row = coordinate_data[i_block * 2 + 1] + block_row_offset; // note order flip here, (i, j) --> (j, i)
+						int64_t i_block_column = coordinate_data[i_block * 2] + block_column_offset;
+						int64_t i_row = i_block_row * block_size + i_coefficient_in_block % block_size; // another in-block flip here
+						int64_t i_column = i_block_column * block_size + i_coefficient_in_block / block_size;
+						operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
+						// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
+					}
+			);
+		} else {
+			o3c::ParallelFor(
+					device,
+					block_count * block_stride,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
+						int64_t i_block = i_block_coefficient / block_stride;
+						int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
+						int64_t i_block_row = coordinate_data[i_block * 2] + block_row_offset;
+						int64_t i_block_column = coordinate_data[i_block * 2 + 1] + block_column_offset;
+						int64_t i_row = i_block_row * block_size + i_coefficient_in_block / block_size;
+						int64_t i_column = i_block_column * block_size + i_coefficient_in_block % block_size;
+						operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
+						// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
+					}
 
-		);
+			);
+		}
+	} else {
+		// fill matrix with blocks
+		if (transpose) {
+			o3c::ParallelFor(
+					device,
+					block_count * block_stride,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
+						int64_t i_block = i_block_coefficient / block_stride;
+						int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
+						int64_t i_block_row = coordinate_data[i_block * 2 + 1]; // note order flip here, (i, j) --> (j, i)
+						int64_t i_block_column = coordinate_data[i_block * 2];
+						int64_t i_row = i_block_row * block_size + i_coefficient_in_block % block_size; // another in-block flip here
+						int64_t i_column = i_block_column * block_size + i_coefficient_in_block / block_size;
+						operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
+						// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
+					}
+			);
+		} else {
+			o3c::ParallelFor(
+					device,
+					block_count * block_stride,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_block_coefficient) {
+						int64_t i_block = i_block_coefficient / block_stride;
+						int64_t i_coefficient_in_block = i_block_coefficient % block_stride;
+						int64_t i_block_row = coordinate_data[i_block * 2];
+						int64_t i_block_column = coordinate_data[i_block * 2 + 1];
+						int64_t i_row = i_block_row * block_size + i_coefficient_in_block / block_size;
+						int64_t i_column = i_block_column * block_size + i_coefficient_in_block % block_size;
+						operation(matrix_data, i_row * matrix_column_count + i_column, block_data[i_block_coefficient]);
+						// matrix_data[i_row * matrix_column_count + i_column] = block_data[i_block_coefficient];
+					}
+
+			);
+		}
 	}
+
+
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void FillInSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose){
+void FillInSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
 	SparseBlocksOp_Generic<TDeviceType>(
-			matrix, blocks, coordinates, transpose,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand){
+			matrix, blocks, coordinates,
+			block_coordinate_offset, transpose,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand) {
 				matrix_data[datum_index] = operand;
 			}
 	);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void AddSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose){
+void AddSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
 	SparseBlocksOp_Generic<TDeviceType>(
-			matrix, blocks, coordinates, transpose,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand){
+			matrix, blocks, coordinates,
+			block_coordinate_offset, transpose,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand) {
 				matrix_data[datum_index] += operand;
 			}
 	);
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void SubtractSparseBlocks(open3d::core::Tensor& matrix, const open3d::core::Tensor& blocks, const open3d::core::Tensor& coordinates, bool transpose){
+void SubtractSparseBlocks(
+		open3d::core::Tensor& matrix,
+		const open3d::core::Tensor& blocks,
+		const open3d::core::Tensor& coordinates,
+		std::tuple<int64_t, int64_t> block_coordinate_offset,
+		bool transpose
+) {
 	SparseBlocksOp_Generic<TDeviceType>(
-			matrix, blocks, coordinates, transpose,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand){
+			matrix, blocks, coordinates,
+			block_coordinate_offset, transpose,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(float* matrix_data, int64_t datum_index, float operand) {
 				matrix_data[datum_index] -= operand;
 			}
 	);

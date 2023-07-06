@@ -41,10 +41,15 @@ open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseAr
 
 	// compute dense C:
 	core::linalg::FillInDiagonalBlocks(corner_dense_matrix, a.CornerDiagonalBlocks());
-	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates, false);
+	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates,
+									 std::make_tuple(static_cast<int64_t>(-a.arrow_base_block_index),
+									                 static_cast<int64_t>(-a.arrow_base_block_index)), false);
 	//TODO: not sure if the lower-diagonal blocks are used at all during dense cholesky factorization, so try without filling
 	// them, i.e. without below line.
-	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates, true);
+	core::linalg::FillInSparseBlocks(corner_dense_matrix, a.corner_upper_blocks, a.corner_upper_block_coordinates,
+	                                 std::make_tuple(static_cast<int64_t>(-a.arrow_base_block_index),
+	                                                 static_cast<int64_t>(-a.arrow_base_block_index)),
+	                                 true);
 
 	// compute D^(-1)
 	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
@@ -60,7 +65,7 @@ open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseAr
 			                                inverted_stem_and_upper_wing_product_blocks, a.upper_wing_breadboard, MatrixPreprocessingOperation::NONE);
 
 	// compute C - B^(T)D^(-1)B
-	core::linalg::SubtractSparseBlocks(corner_dense_matrix, rhs_operand_blocks, rhs_operand_block_coordinates, false);
+	core::linalg::SubtractSparseBlocks(corner_dense_matrix, rhs_operand_blocks, rhs_operand_block_coordinates, std::make_tuple(0LL, 0LL), false);
 
 	return corner_dense_matrix;
 }
