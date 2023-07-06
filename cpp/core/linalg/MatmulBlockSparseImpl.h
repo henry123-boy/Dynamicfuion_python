@@ -258,7 +258,7 @@ MatmulBlockSparse_Generic(
 	// meshgrid
 	o3c::ParallelFor(
 			device,
-			ESTIMATE_MAX_POSSIBLE_SPARSE_BLOCK_PRODUCT_COUNT,
+			out_block_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t workload_idx) {
 				const int workload_idx_int = static_cast<int32_t>(workload_idx);
 				int i_output_row = workload_idx_int / out_column_count;
@@ -292,28 +292,28 @@ MatmulBlockSparse_Generic(
 				const int workload_idx_int = static_cast<int32_t>(workload_idx);
 				int i_a_block_row, i_a_block_column, i_b_block_row, i_b_block_column, out_i, out_j;
 				if (TTransposeA) {
+					out_i = i_a_block_column = workload_idx_int / b_total_stride;
+					int i_block_in_b = workload_idx_int - i_a_block_column * b_total_stride;
 					if (TTransposeB) {
-						i_b_block_column = workload_idx_int % b_block_row_count;
+						i_b_block_column = i_block_in_b / b_block_row_count;
+						out_j = i_b_block_row = i_block_in_b % b_block_row_count;
 						i_a_block_row = i_b_block_column;
-						out_i = i_a_block_column = workload_idx_int / b_total_stride;
-						out_j = i_b_block_row = (workload_idx_int - i_a_block_column * b_total_stride) / b_block_row_count;
 					} else {
-						i_b_block_row = workload_idx_int % b_block_column_count;
+						i_b_block_row = i_block_in_b / b_block_column_count;
+						out_j = i_b_block_column = i_block_in_b% b_block_column_count;
 						i_a_block_row = i_b_block_row;
-						out_i = i_a_block_column = workload_idx_int / b_total_stride;
-						out_j = i_b_block_column = (workload_idx_int - i_a_block_column * b_total_stride) / b_block_column_count;
 					}
 				} else {
+					out_i = i_a_block_row = workload_idx_int / b_total_stride;
+					int i_block_in_b = workload_idx_int - i_a_block_row * b_total_stride;
 					if (TTransposeB) {
-						i_b_block_column = workload_idx_int % b_block_row_count;
+						i_b_block_column = i_block_in_b / b_block_row_count;
+						out_j = i_b_block_row = i_block_in_b % b_block_row_count;
 						i_a_block_column = i_b_block_column;
-						out_i = i_a_block_row = workload_idx_int / b_total_stride;
-						out_j = i_b_block_row = (workload_idx_int - i_a_block_row * b_total_stride) / b_block_row_count;
 					} else {
-						i_b_block_row = workload_idx_int % b_block_column_count;
+						i_b_block_row = i_block_in_b / b_block_column_count;
+						out_j = i_b_block_column = i_block_in_b % b_block_column_count;
 						i_a_block_column = i_b_block_row;
-						out_i = i_a_block_row = workload_idx_int / b_total_stride;
-						out_j = i_b_block_column = (workload_idx_int - i_a_block_row * b_total_stride) / b_block_column_count;
 					}
 				}
 
@@ -321,8 +321,8 @@ MatmulBlockSparse_Generic(
 				if (i_block_a == -1) return;
 				int16_t i_block_b = b_block_breadboard_data[i_b_block_row * b_block_column_count + i_b_block_column];
 				if (i_block_b == -1) return;
-				const float* block_a_data = a_block_data + i_block_a * 36;
-				const float* block_b_data = b_block_data + i_block_b * 36;
+				const float* block_a_data = a_block_data + i_block_a * block_stride;
+				const float* block_b_data = b_block_data + i_block_b * block_stride;
 
 				int i_product = NNRT_ATOMIC_ADD(product_count_atomic, 1);
 				if (i_product > ESTIMATE_MAX_POSSIBLE_SPARSE_BLOCK_PRODUCT_COUNT) {
@@ -330,7 +330,7 @@ MatmulBlockSparse_Generic(
 					       "maximum, %d. Solution will be incorrect/inaccurate. Try adjusting the allowed maximum in the code.\n",
 					       ESTIMATE_MAX_POSSIBLE_SPARSE_BLOCK_PRODUCT_COUNT);
 				} else {
-					int i_output_block = out_i * out_j;
+					int i_output_block = out_i * out_column_count + out_j;
 					product_sum_index_data[i_product] = i_output_block;
 					out_block_mask_data[i_output_block] = true;
 					product_lhs_addresses[i_product] = block_a_data;

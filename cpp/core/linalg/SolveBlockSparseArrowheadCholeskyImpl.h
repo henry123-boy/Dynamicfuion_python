@@ -159,7 +159,7 @@ void FactorizeBlockSparseCholeskyCorner(
 						if (k_matrix < A.arrow_base_block_index) {
 							int16_t i_edge = source_breadboard_data[k_matrix * breadboard_width + i_block_row_in_corner];
 							if (i_edge == -1) return;
-							block_data = factorized_upper_block_data + i_edge * 36;
+							block_data = factorized_upper_block_data + i_edge * block_stride;
 						} else {
 							int k_corner = k_matrix - A.arrow_base_block_index;
 							block_data =
@@ -184,8 +184,8 @@ void FactorizeBlockSparseCholeskyCorner(
 							if (i_block_ki == -1) return;
 							int16_t i_block_kj = source_breadboard_data[k_matrix * breadboard_width + j_breadboard];
 							if (i_block_kj == -1) return;
-							block_ki_data = factorized_upper_block_data + i_block_ki * 36;
-							block_kj_data = factorized_upper_block_data + i_block_kj * 36;
+							block_ki_data = factorized_upper_block_data + i_block_ki * block_stride;
+							block_kj_data = factorized_upper_block_data + i_block_kj * block_stride;
 						} else {
 							int k_corner = k_matrix - A.arrow_base_block_index;
 							block_ki_data =
