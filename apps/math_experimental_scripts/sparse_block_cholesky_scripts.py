@@ -412,7 +412,6 @@ def solve_triangular_sparse_forward_substitution(u_blocks_diagonal: List[np.ndar
     return solution
 
 
-
 def generate_cpp_test_block_sparse_arrowhead_input_data(
         diagonal_blocks: List[np.array],
         upper_wing_blocks: List[Tuple[int, int, np.ndarray]],
@@ -494,20 +493,20 @@ def main():
     print(f"Node count: {node_count}")
     print(f"Count of blocks at arrowhead base: {layer_node_counts[0]}")
     print(f"Edge count: {len(edges)}")
-    H_diag, H_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts,
-                                                       verbose=True)
+    H_diag, H_wing_upper, H_upper_corner = compute_sparse_H(edges, edge_jacobians, node_count, layer_node_counts,
+                                                            verbose=True)
     print(
-        f"H total block count: {len(H_diag) + len(H_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_upper) + len(H_upper_corner)}")
-    H = sparse_H_to_dense(H_diag, H_upper + H_upper_corner)
+        f"H total block count: {len(H_diag) + len(H_wing_upper) + len(H_upper_corner)}, H diagonal block count: {len(H_diag)}, H upper block count: {len(H_wing_upper) + len(H_upper_corner)}")
+    H = sparse_H_to_dense(H_diag, H_wing_upper + H_upper_corner)
     print("H computed as block-sparse from edges and reconstructed from sparse representation successfully: ",
           np.allclose(H_gt, H))
     lm_factor = 0.001
     precondition_diagonal_blocks(H_diag, lm_factor)
-    save_cpp_test_data = True
+    save_cpp_test_data = False
     if save_cpp_test_data:
-        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_upper, H_upper_corner, layer_node_counts)
+        generate_cpp_test_block_sparse_arrowhead_input_data(H_diag, H_wing_upper, H_upper_corner, layer_node_counts)
     U_diag, U_upper, U_corner_dense = cholesky_upper_triangular_from_sparse_H(
-        H_diag, H_upper, H_upper_corner,
+        H_diag, H_wing_upper, H_upper_corner,
         layer_node_counts,
         save_cpp_test_data=save_cpp_test_data
     )
@@ -540,7 +539,6 @@ def main():
     if save_cpp_test_data:
         np.save(str(Path(base_path) / "stem_schur.npy"), C_schur)
 
-
     b_reg_prime = b_reg - B.T @ scipy.linalg.inv(D) @ b_data
     delta_C = np.linalg.solve(C_schur, b_reg_prime)
     delta_D = scipy.linalg.inv(D) @ (b_data - B @ delta_C)
@@ -551,7 +549,7 @@ def main():
     U_C_prime = scipy.linalg.cholesky(C_schur)
     print("Schur complement decomposition equivalent to U_corner_dense:", np.allclose(U_C_prime, U_corner_dense))
 
-    btb_block_product_count = compute_block_sparse_BTB_block_product_count(H_upper, 0, layer_node_counts[0],
+    btb_block_product_count = compute_block_sparse_BTB_block_product_count(H_wing_upper, 0, layer_node_counts[0],
                                                                            layer_node_counts[0], node_count)
 
     print(f"B^T @ (D^-1 @ B) block product count: {btb_block_product_count}")

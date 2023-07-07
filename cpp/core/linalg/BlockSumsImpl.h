@@ -36,11 +36,19 @@ static void RunBlockSumChecks(
 	o3c::AssertTensorDtype(sums, o3c::Float32);
 	o3c::AssertTensorDtype(blocks, o3c::Float32);
 	o3c::AssertTensorDtype(block_sum_indices, o3c::Int32);
-	int64_t block_size = blocks.GetShape(1);
+	int64_t block_row_count = blocks.GetShape(1);
+
 	int64_t max_block_count = blocks.GetShape(0);
 	int64_t max_sum_count = sums.GetShape(0);
-	o3c::AssertTensorShape(sums, { max_sum_count, block_size, block_size });
-	o3c::AssertTensorShape(blocks, { max_block_count, block_size, block_size });
+	if (blocks.NumDims() > 2) {
+		int64_t block_column_count = blocks.GetShape(2);
+		o3c::AssertTensorShape(sums, { max_sum_count, block_row_count, block_column_count });
+		o3c::AssertTensorShape(blocks, { max_block_count, block_row_count, block_column_count });
+	} else {
+		o3c::AssertTensorShape(sums, { max_sum_count, block_row_count });
+		o3c::AssertTensorShape(blocks, { max_block_count, block_row_count });
+	}
+
 	o3c::AssertTensorShape(block_sum_indices, { max_block_count });
 
 	o3c::AssertTensorDevice(sums, device);
@@ -66,7 +74,7 @@ void ComputeBlockSums(
 	RunBlockSumChecks(sums_tensor, sum_count, blocks, block_sum_indices, block_count);
 	o3c::Device device = blocks.GetDevice();
 	int64_t block_size = blocks.GetShape(1);
-	int64_t block_stride = block_size * block_size;
+	int64_t block_stride = blocks.NumDims() == 2 ? block_size : block_size * block_size;
 	auto block_sum_index_data = block_sum_indices.GetDataPtr<int32_t>();
 	auto block_data = blocks.GetDataPtr<TElement>();
 

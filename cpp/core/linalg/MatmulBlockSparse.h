@@ -57,7 +57,8 @@ MatmulBlockSparseRowWisePadded(
 
 open3d::core::Tensor BlockSparseAndVectorProduct(
 		const open3d::core::Tensor& blocks_a,
-		const open3d::core::Tensor& blocks_a_breadboard,
+		int m,
+		const open3d::core::Tensor& blocks_a_coordinates,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
 );
@@ -99,8 +100,9 @@ MatmulBlockSparseRowWise(
 template<open3d::core::Device::DeviceType TDeviceType>
 void BlockSparseAndVectorProduct(
 		open3d::core::Tensor& out_vector,
+		int m,
 		const open3d::core::Tensor& blocks_a,
-		const open3d::core::Tensor& blocks_a_breadboard,
+		const open3d::core::Tensor& blocks_a_coordinates,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
 );

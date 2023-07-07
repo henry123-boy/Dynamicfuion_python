@@ -394,3 +394,103 @@ TEST_CASE("Test Matmul Block Sparse (Small) - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestMatmulBlockSparse_Small(device);
 }
+
+void TestBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
+	int m = 4;
+	o3c::Tensor a_blocks(std::vector<float>{
+			3., 4.,
+			5., 6.,
+
+			1., 2.,
+			3., 4.,
+
+			5., 6.,
+			7., 8.
+	}, {3, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor a_coordinates(std::vector<int32_t>{
+			0, 0,
+			0, 1,
+			1, 2
+	}, {3, 2}, o3c::Int32, device);
+
+	// A =
+	// [[3., 4., 1., 2., 0., 0.],
+	//  [5., 6., 3., 4., 0., 0.],
+	//  [0., 0., 0., 0., 5., 6.],
+	//  [0., 0., 0., 0., 7., 8.]]
+
+	o3c::Tensor vector_b(std::vector<float>{
+			-2.,
+			-1.,
+			0.,
+			1.,
+			2.,
+			3.,
+	}, {6}, o3c::Float32, device);
+
+	o3c::Tensor vector_c_gt(std::vector<float>{
+			-8.,
+			-12.,
+			28.,
+			38.,
+	}, {4}, o3c::Float32, device);
+
+	o3c::Tensor vector_c =
+			nnrt::core::linalg::BlockSparseAndVectorProduct(
+					a_blocks, m, a_coordinates, nnrt::core::linalg::MatrixPreprocessingOperation::NONE, vector_b
+			);
+
+
+	REQUIRE(vector_c.AllClose(vector_c_gt));
+
+	o3c::Tensor b_blocks(std::vector<float>{
+			1., 2.,
+			3., 4.,
+
+			5., 6.,
+			7., 8.,
+
+			9., 10.,
+			11., 0.
+	}, {3, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor b_coordinates(std::vector<int32_t>{
+			0, 0,
+			1, 1,
+			2, 0
+	}, {3, 2}, o3c::Int32, device);
+
+	// B =
+	//  [[ 1.,  2.,  0.,  0.],
+	//   [ 3.,  4.,  0.,  0.],
+	//   [ 0.,  0.,  5.,  6.],
+	//   [ 0.,  0.,  7.,  8.],
+	//   [ 9., 10.,  0.,  0.],
+	//   [11.,  0.,  0.,  0.]]
+
+	o3c::Tensor vector_d_gt(std::vector<float>{
+			46.,
+			12.,
+			7.,
+			8.,
+	}, {4}, o3c::Float32, device);
+
+	o3c::Tensor vector_d =
+			nnrt::core::linalg::BlockSparseAndVectorProduct(
+					b_blocks, m, b_coordinates, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE, vector_b
+			);
+
+	REQUIRE(vector_d.AllClose(vector_d_gt));
+
+}
+
+TEST_CASE("Test Block-Sparse & Vector Product (Small) - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestBlockSparseAndVectorProduct_Small(device);
+}
+
+TEST_CASE("Test  Block-Sparse & Vector Product (Small) - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestBlockSparseAndVectorProduct_Small(device);
+}

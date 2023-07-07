@@ -41,7 +41,7 @@ open3d::core::Tensor ComputeSchurComplementOfArrowStem_Dense(const BlockSparseAr
 }
 
 open3d::core::Tensor
-linalg::ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a, const open3d::core::Tensor& inverted_stem_and_upper_wing_product_blocks) {
+ComputeSchurComplementOfArrowStem_Dense(const BlockSparseArrowheadMatrix& a, const open3d::core::Tensor& inverted_stem_and_upper_wing_product_blocks) {
 	// Formula for Schur complement of arrow stem (D) for matrix A:
 	// A/D = C - B^(T)D^(-1)B
 	o3c::Device device = a.GetDevice();

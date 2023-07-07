@@ -37,4 +37,15 @@ MatmulBlockSparse<open3d::core::Device::DeviceType::CPU>(
 		MatrixPreprocessingOperation matrix_b_preprocessing
 );
 
+template
+void
+BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& out_vector,
+		int m,
+		const open3d::core::Tensor& blocks_a,
+		const open3d::core::Tensor& blocks_a_coordinates,
+		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+);
+
 } // namespace nnrt::core::linalg::internal
