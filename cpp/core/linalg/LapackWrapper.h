@@ -23,6 +23,7 @@
 #include "core/linalg/LinalgHeadersCUDA.h"
 #include "core/linalg/LinalgHeadersCPU.h"
 #include <open3d/core/CUDAUtils.h>
+#include "core/linalg/LinalgUtils.h"
 
 // contains some blas operations currently missing from Open3D LapackWrapper.h,
 // i.e. ?potrf (Cholesky factorization of a symmetric (Hermitian) positive-definite matrix)
@@ -113,17 +114,6 @@ inline cusolverStatus_t potrf_batched_cuda<double>(
 	                               out_factorization_result_array, batch_size);
 }
 
-template<typename scalar_t>
-inline cusolverStatus_t potrf_cuda(
-		cusolverDnHandle_t handle,
-		cublasFillMode_t upper_or_lower_triangle,
-		int A_leading_dimension,
-		scalar_t* A_data,
-		int A_row_and_column_count
-) {
-	open3d::utility::LogError("Unsupported data type.");
-	return CUSOLVER_STATUS_NOT_SUPPORTED;
-}
 
 namespace internal {
 template<typename scalar_t, typename TDetermineBufferSize, typename TPotrf>
@@ -133,6 +123,7 @@ inline cusolverStatus_t potrf_cuda_generic(
 		int A_leading_dimension,
 		scalar_t* A_data,
 		int A_row_and_column_count,
+		int** info_device,
 		TDetermineBufferSize&& determine_buffer_size,
 		TPotrf&& potrf
 ) {
@@ -143,21 +134,33 @@ inline cusolverStatus_t potrf_cuda_generic(
 		return buffer_size_error;
 	}
 	scalar_t* workspace;
-	int* info_device;
 	OPEN3D_CUDA_CHECK(cudaMalloc(&workspace, sizeof(scalar_t) * l_work));
-	OPEN3D_CUDA_CHECK(cudaMalloc(&info_device, sizeof(int)));
-	OPEN3D_CUDA_CHECK(cudaMemset(info_device, 0, sizeof(int)));
+	OPEN3D_CUDA_CHECK(cudaMalloc(info_device, sizeof(int)));
+	OPEN3D_CUDA_CHECK(cudaMemset(*info_device, 0, sizeof(int)));
 	cusolverStatus_t potrf_status = potrf(
 			handle, CUBLAS_FILL_MODE_UPPER, A_row_and_column_count,
 			A_data, A_leading_dimension,
-			workspace, l_work, info_device
+			workspace, l_work, *info_device
 	);
 	OPEN3D_CUDA_CHECK(cudaFree(workspace));
-	OPEN3D_CUDA_CHECK(cudaFree(info_device));
 	return potrf_status;
 }
 } // namespace internal
 
+
+
+template<typename scalar_t>
+inline cusolverStatus_t potrf_cuda(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int A_leading_dimension,
+		scalar_t* A_data,
+		int A_row_and_column_count,
+		int** info_device
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUSOLVER_STATUS_NOT_SUPPORTED;
+}
 
 template<>
 inline cusolverStatus_t potrf_cuda<float>(
@@ -165,9 +168,10 @@ inline cusolverStatus_t potrf_cuda<float>(
 		cublasFillMode_t upper_or_lower_triangle,
 		int A_leading_dimension,
 		float* A_data,
-		int A_row_and_column_count
+		int A_row_and_column_count,
+		int** info_device
 ) {
-	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count,
+	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count, info_device,
 	                                    cusolverDnSpotrf_bufferSize, cusolverDnSpotrf);
 }
 
@@ -178,9 +182,10 @@ inline cusolverStatus_t potrf_cuda<double>(
 		cublasFillMode_t upper_or_lower_triangle,
 		int A_leading_dimension,
 		double* A_data,
-		int A_row_and_column_count
+		int A_row_and_column_count,
+		int** info_device
 ) {
-	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count,
+	return internal::potrf_cuda_generic(handle, upper_or_lower_triangle, A_leading_dimension, A_data, A_row_and_column_count, info_device,
 	                                    cusolverDnDpotrf_bufferSize, cusolverDnDpotrf);
 }
 
@@ -222,6 +227,55 @@ inline NNRT_CPU_LINALG_INT potrs_cpu<double>(
 
 #ifdef BUILD_CUDA_MODULE
 
+
+template<typename scalar_t>
+inline cusolverStatus_t potrs_cuda(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		int nrhs,
+		const scalar_t* A_data,
+		int lda,
+		scalar_t* B,
+		int ldb,
+		int* dev_info
+){
+	open3d::utility::LogError("Unsupported data type.");
+}
+
+template<>
+inline cusolverStatus_t potrs_cuda<float>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		int nrhs,
+		const float* A,
+		int lda,
+		float *B,
+		int ldb,
+		int* dev_info
+) {
+	//TODO: switch to newer "data-agnostic" cusolverDnXpotrs
+	return cusolverDnSpotrs(handle, upper_or_lower_triangle, n, nrhs, A, lda, B, ldb, dev_info);
+}
+
+template<>
+inline cusolverStatus_t potrs_cuda<double>(
+		cusolverDnHandle_t handle,
+		cublasFillMode_t upper_or_lower_triangle,
+		int n,
+		int nrhs,
+		const double* A,
+		int lda,
+		double *B,
+		int ldb,
+		int* dev_info
+) {
+	return cusolverDnDpotrs(handle, upper_or_lower_triangle, n, nrhs, A, lda, B, ldb, dev_info);
+}
+
+
+
 // See https://docs.nvidia.com/cuda/cusolver/index.html#cusolverdn-t-potrsbatched
 template<typename scalar_t>
 inline cusolverStatus_t potrs_batched_cuda_limited(
@@ -251,6 +305,7 @@ inline cusolverStatus_t potrs_batched_cuda_limited<float>(
 		int* factorization_result_array,
 		int batch_size
 ) {
+	//TODO: switch to newer "data-agnostic" cusolverDnXpotrf
 	return cusolverDnSpotrsBatched(handle, upper_or_lower_triangle, n, 1,
 	                               A_array, A_leading_dimension,
 	                               B_array, B_leading_dimension,
@@ -498,7 +553,7 @@ inline void trtri_cuda(
 				uplo,
 				diag,
 				n,
-				cusolver_traits<scalar_t>::cuda_data_type,
+				nnrt::core::cusolver_traits<scalar_t>::cuda_data_type,
 				(void*) d_A,
 				lda,
 				&d_lwork,
@@ -515,7 +570,7 @@ inline void trtri_cuda(
 				uplo,
 				diag,
 				n,
-				cusolver_traits<scalar_t>::cuda_data_type,
+				nnrt::core::cusolver_traits<scalar_t>::cuda_data_type,
 				d_A,
 				lda,
 				d_work,

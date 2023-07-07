@@ -283,7 +283,7 @@ if (BUILD_CPP_TESTS)
         test_atomic_counter_array/test_atomic_counter_array_CPU.cpp
         test_atomic_counter_array/test_atomic_counter_array_CUDA.cu
     )
-    nnrt_add_test(test_block_cholesky)
+    nnrt_add_test(test_linalg_cholesky)
     nnrt_add_test(test_linalg_block_routines)
     nnrt_add_test(test_linalg_matmul_block_sparse)
     nnrt_add_test(test_rodrigues)

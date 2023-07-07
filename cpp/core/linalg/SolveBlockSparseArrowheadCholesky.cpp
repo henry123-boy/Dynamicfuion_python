@@ -62,7 +62,15 @@ void SolveBlockSparseArrowheadCholesky(
 	o3c::Tensor b_stem = b.Slice(0, 0, a.arrow_base_block_index * a.GetBlockSize());
 	o3c::Tensor b_corner = b.Slice(0, a.arrow_base_block_index * a.GetBlockSize(), a.diagonal_block_count);
 
-	// compute -B^(T)D^(-1)b_D
+	// compute B^(T)D^(-1)b_D = (D^(-1)B)^(T)b_D
+	o3c::Tensor b_corner_update = core::linalg::BlockSparseAndVectorProduct(inverted_stem_and_upper_wing_product_blocks,
+																			a.diagonal_block_count - a.arrow_base_block_index,
+																			a.upper_wing_block_coordinates,
+																			MatrixPreprocessingOperation::TRANSPOSE, b_stem);
+	// compute b_C - B^(T)D^(-1)b_D
+	o3c::Tensor b_corner_prime = b_corner - b_corner_update;
+
+	// solve dense system of equations
 
 
 }

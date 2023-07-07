@@ -247,15 +247,22 @@ void FactorizeBlockSparseCholeskyCorner(
 		factorized_UT_diagonal_block -= uTu_blocks_above_diagonal_sum;
 #endif
 		auto factorized_UT_diagonal_block_data = factorized_UT_diagonal_block.GetDataPtr<float>();
+
 #ifdef __CUDACC__
+		int* device_info = nullptr;
 		cusolverDnHandle_t cusolver_dn_handle = CuSolverContext::GetInstance()->GetHandle();
-		NNRT_CUSOLVER_CHECK(
+		cusolverStatus_t status =
 				potrf_cuda<float>(
 						// cuSOLVER uses col-major order, therefore this will produce lower-triangular (LT) result here for row-major ordering
 						cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-						block_size, factorized_UT_diagonal_block_data, block_size
-				), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
-		);
+						block_size, factorized_UT_diagonal_block_data, block_size, &device_info
+				);
+		if (device_info != nullptr) {
+			NNRT_CUSOLVER_CHECK_WITH_DINFO(status, "potrf failed in SolveBlockSparseArrowheadCholesky on CUDA", device_info, device);
+		} else {
+			NNRT_CUSOLVER_CHECK(status, "potrf failed in SolveBlockSparseArrowheadCholesky on CUDA");
+		}
+		OPEN3D_CUDA_CHECK(cudaFree(device_info));
 #else
 		NNRT_LAPACK_CHECK(
 				potrf_cpu<float>(

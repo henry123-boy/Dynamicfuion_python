@@ -30,6 +30,8 @@
 #include "core/linalg/SolveBlockDiagonalCholesky.h"
 #include "core/linalg/FactorizeBlocksCholesky.h"
 #include "core/TensorManipulationRoutines.h"
+#include "core/linalg/SolveCholesky.h"
+
 namespace o3c = open3d::core;
 
 void TestCholeskyBlockDiagonalSolver(const o3c::Device& device) {
@@ -232,4 +234,36 @@ TEST_CASE("Test Factorize Cholesky Blocks - CPU") {
 TEST_CASE("Test Factorize Cholesky Blocks - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestBlockCholeskyFactorization(device);
+}
+
+void TestCholeskySolver_Small(const o3c::Device& device) {
+	o3c::Tensor matrix_a(std::vector<float>{
+			 39.,  53.,  18.,  26.,  29.,  35.,
+			 53.,  77.,  22.,  32.,  67.,  81.,
+			 18.,  22.,  71.,  97.,   0.,   0.,
+			 26.,  32.,  97., 133.,   0.,   0.,
+			 29.,  67.,   0.,   0., 255., 305.,
+			 35.,  81.,   0.,   0., 305., 365.
+	}, {6, 6}, o3c::Float32, device);
+
+	o3c::Tensor vector_b(std::vector<float>{
+			-2., -1.,  0.,  1.,  2.,  3.
+	}, {6}, o3c::Float32, device);
+
+	o3c::Tensor solution_gt(std::vector<float>{
+			1.37704918, -1.30327869, -4.49180328,  3.32786885, -7.73770492,  6.63114754
+	}, {6}, o3c::Float32, device);
+
+	auto solution = nnrt::core::linalg::SolveCholesky(matrix_a, vector_b);
+	REQUIRE(solution.AllClose(solution_gt, 1e-7));
+}
+
+TEST_CASE("Test Solve Cholesky (Small) - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestCholeskySolver_Small(device);
+}
+
+TEST_CASE("Test Solve Cholesky (Small) - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestCholeskySolver_Small(device);
 }

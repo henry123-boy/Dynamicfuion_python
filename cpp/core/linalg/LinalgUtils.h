@@ -83,7 +83,7 @@ inline void NNRT_CUSOLVER_CHECK_WITH_DINFO(cusolverStatus_t status,
         if (hinfo < 0) {
             open3d::utility::LogError("{}: {}-th parameter is invalid.", msg, -hinfo);
         } else if (hinfo > 0) {
-	        open3d::utility::LogError("{}: singular condition detected.", msg);
+	        open3d::utility::LogError("{}: {}-th parameter.", msg);
         } else {
 	        open3d::utility::LogError("{}: status error code = {}.", msg, status);
         }

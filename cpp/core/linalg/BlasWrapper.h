@@ -109,11 +109,9 @@ inline void gemm_batched_cpu<double>(
 
 template<typename scalar_t>
 inline cublasStatus_t gemm_batched_cuda(
-		cublasHandle_t
-		handle,
+		cublasHandle_t handle,
 		cublasOperation_t transpose_A,
-		cublasOperation_t
-		transpose_B,
+		cublasOperation_t transpose_B,
 		int m,
 		int n,
 		int k,
@@ -430,5 +428,53 @@ inline void trmm_batched_cuda_inplace<double>(
 
 // endregion
 #endif
+// endregion
+// region =============================================== ?geam : matrix-matrix addition/transposition ===============================================
+// region ==== CUDA ====
+#ifdef BUILD_CUDA_MODULE
+template<typename scalar_t>
+inline cublasStatus_t geam_cuda(
+		cublasHandle_t handle,
+		cublasOperation_t transpose_A,
+		cublasOperation_t transpose_B,
+		int m, int n,
+		const scalar_t* alpha,
+		const scalar_t* A, int lda,
+		const scalar_t* beta,
+		const scalar_t* B, int ldb,
+		scalar_t* C, int ldc){
+	open3d::utility::LogError("Unsupported data type.");
+	return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cublasStatus_t geam_cuda<float>(
+		cublasHandle_t handle,
+		cublasOperation_t transpose_A,
+		cublasOperation_t transpose_B,
+		int m, int n,
+		const float* alpha,
+		const float* A, int lda,
+		const float* beta,
+		const float* B, int ldb,
+		float* C, int ldc){
+	return cublasSgeam(handle, transpose_A, transpose_B, m, n, alpha, A, lda, beta, B, ldb, C, ldc);
+}
+
+template<>
+inline cublasStatus_t geam_cuda<double>(
+		cublasHandle_t handle,
+		cublasOperation_t transpose_A,
+		cublasOperation_t transpose_B,
+		int m, int n,
+		const double* alpha,
+		const double* A, int lda,
+		const double* beta,
+		const double* B, int ldb,
+		double* C, int ldc){
+	return cublasDgeam(handle, transpose_A, transpose_B, m, n, alpha, A, lda, beta, B, ldb, C, ldc);
+}
+#endif
+// endregion
 // endregion
 } // nnrt::core
