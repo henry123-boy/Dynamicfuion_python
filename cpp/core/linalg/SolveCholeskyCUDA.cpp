@@ -70,15 +70,24 @@ static void SolveCholeskyCUDA_Generic(open3d::core::Tensor& X, const open3d::cor
 
 	scalar_t alpha = 1.0;
 	NNRT_CUBLAS_CHECK(
-			trsm_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-			                    cublasOperation_t::CUBLAS_OP_N, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, nrhs,
-			                    n, &alpha, A_factorized_data, n, X_data, nrhs),
+			trsm_cuda<scalar_t>(
+					cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+					cublasOperation_t::CUBLAS_OP_N, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT,
+					nrhs, n,
+					&alpha, A_factorized_data, n,
+					X_data, nrhs
+			),
 			"trsm failed in SolveCholeskyCUDA"
 	);
 	NNRT_CUBLAS_CHECK(
-			trsm_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-			                    cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, nrhs,
-			                    n, &alpha, A_factorized_data, n, X_data, nrhs),
+			trsm_cuda<scalar_t>(
+					cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+					cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT,
+					nrhs, n,
+					&alpha,
+					A_factorized_data, n,
+					X_data, nrhs
+			),
 			"trsm failed in SolveCholeskyCUDA"
 	);
 

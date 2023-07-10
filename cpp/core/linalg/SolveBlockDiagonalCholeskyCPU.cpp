@@ -57,25 +57,22 @@ inline void SolveBlockDiagonalCholeskyCPU_Generic(
 		);
 		//solve LY = B
 		trsm_cpu<scalar_t>(
-				CblasColMajor, CblasLeft, CblasUpper, CblasTrans, CblasNonUnit,
-				A_and_B_block_row_count,
+				CblasColMajor, CblasRight, CblasUpper, CblasNoTrans, CblasNonUnit,
 				B_column_count,
-				static_cast<scalar_t>(1),
-				A_block_data,
 				A_and_B_block_row_count,
-				B_block_data, // out: Y
-				A_and_B_block_row_count
+				static_cast<scalar_t>(1),
+				A_block_data, A_and_B_block_row_count,
+				B_block_data, B_column_count // out: Y
 		);
 		//solve LX = B
 		trsm_cpu<scalar_t>(
-				CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit,
-				A_and_B_block_row_count,
+				CblasColMajor, CblasRight, CblasUpper, CblasTrans, CblasNonUnit,
 				B_column_count,
+				A_and_B_block_row_count,
 				static_cast<scalar_t>(1),
 				A_block_data,
 				A_and_B_block_row_count,
-				B_block_data, // out: X
-				A_and_B_block_row_count
+				B_block_data, B_column_count // out: X
 		);
 	}
 

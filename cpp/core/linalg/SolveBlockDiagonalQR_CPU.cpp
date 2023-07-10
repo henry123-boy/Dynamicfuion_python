@@ -37,6 +37,7 @@ inline void SolveBlockDiagonalQR_CPU_Generic(
     auto *B_data_typed = static_cast<scalar_t *>(B_data);
     const int64_t A_block_stride = A_and_B_block_row_count * A_and_B_block_row_count;
     const int64_t B_block_stride = A_and_B_block_row_count * B_column_count;
+	//TODO: need to transpose first due to row major / col major ordering
 #pragma omp parallel for schedule(static) num_threads(utility::EstimateMaxThreads()) \
     default(none) \
     firstprivate(block_count, A_block_stride, A_and_B_block_row_count, B_block_stride, B_column_count) \

@@ -37,13 +37,13 @@ template<typename scalar_t>
 inline void SolveBlockDiagonalCholeskyCUDA_Generic(
 		void* A_blocks_data,
 		void* B_data,
-		const int64_t A_and_B_block_row_count,
-		const int64_t B_column_count,
+		const int64_t n,
+		const int64_t nrhs,
 		const int64_t block_count
 ) {
 	scalar_t* A_array[block_count];
 	scalar_t* B_array[block_count];
-	GetMatrixPointersFromContiguousArrayOfMatrices_AB_CPU(A_array, B_array, A_blocks_data, B_data, A_and_B_block_row_count, B_column_count,
+	GetMatrixPointersFromContiguousArrayOfMatrices_AB_CPU(A_array, B_array, A_blocks_data, B_data, n, nrhs,
 	                                                      block_count);
 	scalar_t** A_array_device;
 	scalar_t** B_array_device;
@@ -62,24 +62,34 @@ inline void SolveBlockDiagonalCholeskyCUDA_Generic(
 	OPEN3D_CUDA_CHECK(cudaMalloc(&info_array, block_count * sizeof(int)));
 
 	NNRT_CUSOLVER_CHECK(
-			potrf_batched_cuda<scalar_t>(cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER, A_and_B_block_row_count, A_array_device,
-			                             A_and_B_block_row_count, info_array, block_count), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
+			potrf_batched_cuda<scalar_t>(cusolver_dn_handle, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER, n, A_array_device,
+			                             n, info_array, block_count), "Batched portf failed in SolveBlockDiagonalCUDACholesky"
 	);
 
 	cublasHandle_t cublas_handle = CuBLASContext::GetInstance()->GetHandle();
 	auto alpha = static_cast<scalar_t>(1);
 	NNRT_CUBLAS_CHECK(
-			trsm_batched_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-			                            cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, A_and_B_block_row_count,
-			                            B_column_count, &alpha, A_array_device, A_and_B_block_row_count, B_array_device,
-			                            A_and_B_block_row_count, block_count),
+			trsm_batched_cuda<scalar_t>(
+					cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+					cublasOperation_t::CUBLAS_OP_N, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT,
+					nrhs, n,
+					&alpha,
+					A_array_device, n,
+					B_array_device, nrhs,
+					block_count
+			),
 			"Batched trsm failed in SolveBlockDiagonalCUDACholesky"
 	);
 	NNRT_CUBLAS_CHECK(
-			trsm_batched_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_LEFT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-			                            cublasOperation_t::CUBLAS_OP_N, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, A_and_B_block_row_count,
-			                            B_column_count, &alpha, A_array_device, A_and_B_block_row_count, B_array_device,
-			                            A_and_B_block_row_count, block_count),
+			trsm_batched_cuda<scalar_t>(
+					cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+					cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT,
+					nrhs, n,
+					&alpha,
+					A_array_device, n,
+					B_array_device, nrhs,
+					block_count
+			),
 			"Batched trsm failed in SolveBlockDiagonalCUDACholesky"
 	);
 	OPEN3D_CUDA_CHECK(cudaFree(info_array));

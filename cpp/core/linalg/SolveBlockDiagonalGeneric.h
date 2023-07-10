@@ -68,10 +68,8 @@ void SolveBlockDiagonal_Generic(
         utility::LogError("Input tensors should have no zero dimensions.");
     }
     // A and B data will get manipulated in-place by LAPACK routines, make clones
-    o3c::Tensor A_blocks_transposed = A_blocks.Clone().Transpose(1, 2);
+	o3c::Tensor A_blocks_transposed = A_blocks.Clone();
     void *A_blocks_data = A_blocks_transposed.GetDataPtr();
-    // take apart B array into block-sized portions, swap axesp to convert to column-major reordering
-    // X = B.Reshape({block_count, block_row_count, result_column_count}).Transpose(1, 2).Clone();
 	X = B.Clone();
     void *B_data = X.GetDataPtr();
 
@@ -86,13 +84,6 @@ void SolveBlockDiagonal_Generic(
         solve_on_cpu(A_blocks_data, B_data, block_row_count, result_column_count, block_count,
                      data_type, device);
     }
-
-    // Perform column- to row-major reordering using axis swap, re-stack
-    // if (result_column_count == 1) {
-    //     X = X.Transpose(1, 2).Reshape({result_row_count});
-    // } else {
-    //     X = X.Transpose(1, 2).Reshape({result_row_count, result_column_count});
-    // }
 }
 
 } // namespace nnrt::core::linalg

@@ -52,8 +52,24 @@ static void SolveCholeskyCPU_Generic(open3d::core::Tensor& X, const open3d::core
 	auto A_factorized = A.Clone();
 	auto A_factorized_data = A_factorized.GetDataPtr<scalar_t>();
 
-	NNRT_LAPACK_CHECK(potrf_cpu(LAPACK_ROW_MAJOR, 'l', n, A_factorized_data, n), "potrf failed in SolveCholesky on CPU");
-	NNRT_LAPACK_CHECK(potrs_cpu(LAPACK_ROW_MAJOR, 'l', n, nrhs, A_factorized_data, n, X_data, nrhs), "potrs failed in SolveCholesky on CPU");
+	NNRT_LAPACK_CHECK(potrf_cpu(LAPACK_COL_MAJOR, 'U', n, A_factorized_data, n), "potrf failed in SolveCholesky on CPU");
+	//solve LY = B
+	trsm_cpu<scalar_t>(
+			CblasColMajor, CblasRight, CblasUpper, CblasNoTrans, CblasNonUnit,
+			nrhs, n,
+			static_cast<scalar_t>(1),
+			A_factorized_data, n,
+			X_data, nrhs // out: Y
+	);
+	//solve LX = B
+	trsm_cpu<scalar_t>(
+			CblasColMajor, CblasRight, CblasUpper, CblasTrans, CblasNonUnit,
+			nrhs, n,
+			static_cast<scalar_t>(1),
+			A_factorized_data, n,
+			X_data, nrhs // out: X
+	);
+	// NNRT_LAPACK_CHECK(potrs_cpu(LAPACK_COL_MAJOR, 'l', n, nrhs, A_factorized_data, n, X_data, nrhs), "potrs failed in SolveCholesky on CPU");
 }
 
 void SolveCholeskyCPU(open3d::core::Tensor& X, const open3d::core::Tensor& A, const open3d::core::Tensor& B) {
