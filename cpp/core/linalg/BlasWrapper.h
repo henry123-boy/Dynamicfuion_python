@@ -109,25 +109,28 @@ inline void gemm_batched_cpu<double>(
 
 template<typename scalar_t>
 inline cublasStatus_t gemm_batched_cuda(
-		cublasHandle_t handle,
-		cublasOperation_t transpose_A,
-		cublasOperation_t transpose_B,
-		int m,
-		int n,
-		int k,
-		const scalar_t* alpha,
-		const scalar_t* A_array[],
-		int A_leading_dimension,
-		const scalar_t* B_array[],
-		int B_leading_dimension,
-		const scalar_t* beta,
+		cublasHandle_t
+handle,
+cublasOperation_t transpose_A,
+		cublasOperation_t
+transpose_B,
+int m,
+int n,
+int k,
+const scalar_t* alpha,
+const scalar_t* A_array[],
+int A_leading_dimension,
+const scalar_t* B_array[],
+int B_leading_dimension,
+const scalar_t* beta,
 		scalar_t
-		* C_array[],
-		int C_leading_dimension,
-		int batch_count
+* C_array[],
+int C_leading_dimension,
+int batch_count
 ) {
-	open3d::utility::LogError("Unsupported data type.");
-	return CUBLAS_STATUS_NOT_SUPPORTED;
+open3d::utility::LogError("Unsupported data type.");
+return
+CUBLAS_STATUS_NOT_SUPPORTED;
 }
 
 template<>
@@ -244,6 +247,77 @@ inline void trsm_cpu<double>(
 }
 
 #ifdef BUILD_CUDA_MODULE
+
+template<typename scalar_t>
+inline cublasStatus_t trsm_cuda(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int m,
+		int n,
+		const scalar_t* alpha,
+		const scalar_t* A,
+		int lda, // column leading dimension
+		scalar_t* B,
+		int ldb
+) {
+	open3d::utility::LogError("Unsupported data type.");
+	return CUBLAS_STATUS_NOT_SUPPORTED;
+}
+
+template<>
+inline cublasStatus_t trsm_cuda<float>(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int m,
+		int n,
+		const float* alpha,
+		const float* A,
+		int lda, // column leading dimension
+		float* B,
+		int ldb
+) {
+	return cublasStrsm(
+			handle,
+			side, upper_or_lower_triangle,
+			transpose_A, A_diagonal_type,
+			m, n,
+			alpha,
+			A, lda,
+			B, ldb
+	);
+}
+
+template<>
+inline cublasStatus_t trsm_cuda<double>(
+		cublasHandle_t handle,
+		cublasSideMode_t side,
+		cublasFillMode_t upper_or_lower_triangle,
+		cublasOperation_t transpose_A,
+		cublasDiagType_t A_diagonal_type,
+		int m,
+		int n,
+		const double* alpha,
+		const double* A,
+		int lda, // column leading dimension
+		double* B,
+		int ldb
+) {
+	return cublasDtrsm(
+			handle,
+			side, upper_or_lower_triangle,
+			transpose_A, A_diagonal_type,
+			m, n,
+			alpha,
+			A, lda,
+			B, ldb
+	);
+}
 
 template<typename scalar_t>
 inline cublasStatus_t trsm_batched_cuda(
@@ -432,6 +506,7 @@ inline void trmm_batched_cuda_inplace<double>(
 // region =============================================== ?geam : matrix-matrix addition/transposition ===============================================
 // region ==== CUDA ====
 #ifdef BUILD_CUDA_MODULE
+
 template<typename scalar_t>
 inline cublasStatus_t geam_cuda(
 		cublasHandle_t handle,
@@ -442,7 +517,8 @@ inline cublasStatus_t geam_cuda(
 		const scalar_t* A, int lda,
 		const scalar_t* beta,
 		const scalar_t* B, int ldb,
-		scalar_t* C, int ldc){
+		scalar_t* C, int ldc
+) {
 	open3d::utility::LogError("Unsupported data type.");
 	return CUBLAS_STATUS_NOT_SUPPORTED;
 }
@@ -457,7 +533,8 @@ inline cublasStatus_t geam_cuda<float>(
 		const float* A, int lda,
 		const float* beta,
 		const float* B, int ldb,
-		float* C, int ldc){
+		float* C, int ldc
+) {
 	return cublasSgeam(handle, transpose_A, transpose_B, m, n, alpha, A, lda, beta, B, ldb, C, ldc);
 }
 
@@ -471,9 +548,11 @@ inline cublasStatus_t geam_cuda<double>(
 		const double* A, int lda,
 		const double* beta,
 		const double* B, int ldb,
-		double* C, int ldc){
+		double* C, int ldc
+) {
 	return cublasDgeam(handle, transpose_A, transpose_B, m, n, alpha, A, lda, beta, B, ldb, C, ldc);
 }
+
 #endif
 // endregion
 // endregion

@@ -21,8 +21,10 @@ namespace nnrt::core::linalg {
 open3d::core::Tensor SolveCholesky(const open3d::core::Tensor& a, const open3d::core::Tensor& b);
 
 namespace internal {
-template<open3d::core::Device::DeviceType TDeviceType>
-void SolveCholesky(open3d::core::Tensor& X, const open3d::core::Tensor& A, const open3d::core::Tensor& B);
+
+void SolveCholeskyCPU(open3d::core::Tensor& X, const open3d::core::Tensor& A, const open3d::core::Tensor& B);
+void SolveCholeskyCUDA(open3d::core::Tensor& X, const open3d::core::Tensor& A, const open3d::core::Tensor& B);
+
 }
 
 }//namespace nnrt::core::linalg

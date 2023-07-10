@@ -24,11 +24,11 @@ open3d::core::Tensor SolveCholesky(const open3d::core::Tensor& a, const open3d::
 	core::ExecuteOnDevice(
 			a.GetDevice(),
 			[&]() {
-				internal::SolveCholesky<open3d::core::Device::DeviceType::CPU>(X, a, b);
+				internal::SolveCholeskyCPU(X, a, b);
 			},
 			[&]() {
 				NNRT_IF_CUDA(
-						internal::SolveCholesky<open3d::core::Device::DeviceType::CUDA>(X, a, b);
+						internal::SolveCholeskyCUDA(X, a, b);
 				);
 			}
 	);

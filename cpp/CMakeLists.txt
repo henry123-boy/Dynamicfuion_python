@@ -440,8 +440,10 @@ set(
     core/linalg/FactorizeBlocksCholesky.h
     core/linalg/FactorizeBlocksCholeskyCPU.cpp
     core/linalg/FactorizeBlocksCholeskyCUDA.cpp
-    core/linalg/InvertBlocks.cpp core/linalg/InvertBlocks.h
-    core/linalg/UpLoTriangular.h core/linalg/InvertBlocksCPU.cpp
+    core/linalg/InvertBlocks.cpp
+    core/linalg/InvertBlocks.h
+    core/linalg/UpLoTriangular.h
+    core/linalg/InvertBlocksCPU.cpp
     core/linalg/InvertBlocksCUDA.cu
 
     core/linalg/MagmaManager.cpp
@@ -449,9 +451,15 @@ set(
 
     core/CUDAUtils.h
     core/linalg/PointerAggregationForBatchOperationsCUDA.cuh
+
     core/linalg/SolveBlockSparseArrowheadCholesky.cpp
     core/linalg/SolveBlockSparseArrowheadCholesky.h
+    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp
+    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu
+    core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h
+
     core/linalg/BlockSparseArrowheadMatrix.h
+
     core/linalg/MatmulBlockSparse.cpp
     core/linalg/MatmulBlockSparse.h
     core/linalg/MatmulBlockSparseImpl.h
@@ -466,9 +474,50 @@ set(
     core/functional/kernel/TileImpl.h
     core/functional/kernel/instantiations/TileCPU.cpp
     core/functional/kernel/instantiations/TileCUDA.cu
-    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h core/linalg/LinalgKernels.cuh core/linalg/BlasAuxiliary.h
 
-    core/linalg/DiagonalBlocks.cpp core/linalg/DiagonalBlocks.h core/linalg/instantiations/DiagonalBlocksCUDA.cu core/linalg/instantiations/DiagonalBlocksCPU.cpp core/linalg/DiagonalBlocksImpl.h core/linalg/TransposeBlocks.cu core/linalg/TransposeBlocks.h core/platform_independence/AtomicTensor.h core/linalg/SchurComplement.cpp core/linalg/SchurComplement.h core/linalg/BlockSums.cpp core/linalg/BlockSums.h core/linalg/BlockSumsImpl.h core/linalg/instantiations/BlockSumsCPU.cpp core/linalg/instantiations/BlockSumsCUDA.cu core/linalg/SparseBlocks.cpp core/linalg/SparseBlocks.h core/linalg/SparseBlocks.h core/linalg/SparseBlocksImpl.h core/linalg/instantiations/SparseBlocksCPU.cpp core/linalg/instantiations/SparseBlocksCUDA.cu core/linalg/instantiations/SparseBlocksCUDA.cu core/linalg/PreconditionDiagonalBlocks.cpp core/linalg/PreconditionDiagonalBlocks.h core/linalg/PreconditionDiagonalBlocksImpl.h core/linalg/instantiations/PreconditionDiagonalBlocksCPU.cpp core/linalg/instantiations/PreconditionDiagonalBlocksCUDA.cu core/linalg/MatrixPreprocessingOperation.h core/linalg/SolveCholesky.cpp core/linalg/SolveCholesky.h core/linalg/SolveCholeskyImpl.h core/linalg/instantiations/SolveCholeskyCPU.cpp core/linalg/instantiations/SolveCholeskyCUDA.cu)
+    core/linalg/LinalgKernels.cuh
+    core/linalg/BlasAuxiliary.h
+
+    core/linalg/DiagonalBlocks.cpp
+    core/linalg/DiagonalBlocks.h
+    core/linalg/instantiations/DiagonalBlocksCUDA.cu
+    core/linalg/instantiations/DiagonalBlocksCPU.cpp
+    core/linalg/DiagonalBlocksImpl.h
+
+    core/linalg/TransposeBlocks.cu
+    core/linalg/TransposeBlocks.h
+    core/platform_independence/AtomicTensor.h
+    core/linalg/SchurComplement.cpp
+    core/linalg/SchurComplement.h
+
+    core/linalg/BlockSums.cpp
+    core/linalg/BlockSums.h
+    core/linalg/BlockSumsImpl.h
+    core/linalg/instantiations/BlockSumsCPU.cpp
+    core/linalg/instantiations/BlockSumsCUDA.cu
+
+    core/linalg/SparseBlocks.cpp
+    core/linalg/SparseBlocks.h
+    core/linalg/SparseBlocks.h
+    core/linalg/SparseBlocksImpl.h
+    core/linalg/instantiations/SparseBlocksCPU.cpp
+    core/linalg/instantiations/SparseBlocksCUDA.cu
+    core/linalg/instantiations/SparseBlocksCUDA.cu
+
+    core/linalg/PreconditionDiagonalBlocks.cpp
+    core/linalg/PreconditionDiagonalBlocks.h
+    core/linalg/PreconditionDiagonalBlocksImpl.h
+    core/linalg/instantiations/PreconditionDiagonalBlocksCPU.cpp
+    core/linalg/instantiations/PreconditionDiagonalBlocksCUDA.cu
+
+    core/linalg/MatrixPreprocessingOperation.h
+
+    core/linalg/SolveCholesky.cpp
+    core/linalg/SolveCholesky.h
+    core/linalg/SolveCholeskyCPU.cpp
+    core/linalg/SolveCholeskyCUDA.cpp
+
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

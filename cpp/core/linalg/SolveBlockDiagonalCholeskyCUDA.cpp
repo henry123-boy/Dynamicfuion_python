@@ -69,7 +69,7 @@ inline void SolveBlockDiagonalCholeskyCUDA_Generic(
 	cublasHandle_t cublas_handle = CuBLASContext::GetInstance()->GetHandle();
 	auto alpha = static_cast<scalar_t>(1);
 	NNRT_CUBLAS_CHECK(
-			trsm_batched_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_LEFT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+			trsm_batched_cuda<scalar_t>(cublas_handle, cublasSideMode_t::CUBLAS_SIDE_RIGHT, cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
 			                            cublasOperation_t::CUBLAS_OP_T, cublasDiagType_t::CUBLAS_DIAG_NON_UNIT, A_and_B_block_row_count,
 			                            B_column_count, &alpha, A_array_device, A_and_B_block_row_count, B_array_device,
 			                            A_and_B_block_row_count, block_count),
