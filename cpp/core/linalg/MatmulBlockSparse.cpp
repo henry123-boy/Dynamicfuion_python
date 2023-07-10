@@ -100,7 +100,7 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> MatmulBlockSparse(
 
 open3d::core::Tensor BlockSparseAndVectorProduct(
 		const open3d::core::Tensor& blocks_a,
-		int m,
+		int matrix_a_other_dimension,
 		const open3d::core::Tensor& blocks_a_coordinates,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
@@ -110,13 +110,13 @@ open3d::core::Tensor BlockSparseAndVectorProduct(
 			blocks_a.GetDevice(),
 			[&]() {
 				internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
-						out_vector, m,
+						out_vector, matrix_a_other_dimension,
 						blocks_a, blocks_a_coordinates, matrix_a_preprocessing, vector_b);
 			},
 			[&]() {
 				NNRT_IF_CUDA(
 						internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CUDA>(
-								out_vector, m,
+								out_vector, matrix_a_other_dimension,
 								blocks_a, blocks_a_coordinates, matrix_a_preprocessing, vector_b);
 				);
 			}

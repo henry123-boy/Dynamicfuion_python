@@ -19,11 +19,12 @@
 
 // local includes
 #include "SolveBlockSparseArrowheadCholesky.h"
+#include "core/DeviceSelection.h"
 #include "core/linalg/FactorizeBlocksCholesky.h"
 #include "core/linalg/InvertBlocks.h"
 #include "core/linalg/MatmulBlockSparse.h"
-#include "core/DeviceSelection.h"
-#include "SchurComplement.h"
+#include "core/linalg/SchurComplement.h"
+#include "core/linalg/SolveCholesky.h"
 
 namespace o3c = open3d::core;
 namespace utility = open3d::utility;
@@ -39,13 +40,13 @@ void SolveBlockSparseArrowheadCholesky(
 	int64_t b_element_count = b.GetShape(0);
 	auto device = a.GetDevice();
 
-	o3c::AssertTensorShape(b, {b_element_count});
+	o3c::AssertTensorShape(b, { b_element_count });
 	o3c::AssertTensorDevice(b, device);
 	o3c::AssertTensorDtype(b, o3c::Float32);
 
-	if(a.diagonal_block_count * a.GetBlockSize() != b_element_count){
+	if (a.diagonal_block_count * a.GetBlockSize() != b_element_count) {
 		utility::LogError("Size of lhs tensor b must be \\{{}\\}, matching the leading dimension of rhs matrix a, but is {} instead.",
-						  a.diagonal_block_count * a.GetBlockSize(), b_element_count);
+		                  a.diagonal_block_count * a.GetBlockSize(), b_element_count);
 	}
 
 	// compute D^(-1)
@@ -64,14 +65,25 @@ void SolveBlockSparseArrowheadCholesky(
 
 	// compute B^(T)D^(-1)b_D = (D^(-1)B)^(T)b_D
 	o3c::Tensor b_corner_update = core::linalg::BlockSparseAndVectorProduct(inverted_stem_and_upper_wing_product_blocks,
-																			a.diagonal_block_count - a.arrow_base_block_index,
-																			a.upper_wing_block_coordinates,
-																			MatrixPreprocessingOperation::TRANSPOSE, b_stem);
+	                                                                        a.diagonal_block_count - a.arrow_base_block_index,
+	                                                                        a.upper_wing_block_coordinates,
+	                                                                        MatrixPreprocessingOperation::TRANSPOSE, b_stem);
 	// compute b_C - B^(T)D^(-1)b_D
 	o3c::Tensor b_corner_prime = b_corner - b_corner_update;
 
 	// solve dense system of equations
+	//TODO: add reference-based signature to SolveCholesky that avoids initialization, in order to
+	// then init the entire x vector right away and use Slice(...) to reference x_corner and x_stem
+	o3c::Tensor x_corner = core::linalg::SolveCholesky(stem_schur_complement, b_corner_prime);
 
+	// compute Bx_C
+	o3c::Tensor wing_and_x_corner_product = core::linalg::BlockSparseAndVectorProduct(a.upper_wing_blocks,
+	                                                                                  a.arrow_base_block_index,
+	                                                                                  a.upper_wing_block_coordinates,
+	                                                                                  MatrixPreprocessingOperation::NONE, x_corner);
+	o3c::Tensor lhs_stem_operand = b_stem - wing_and_x_corner_product;
+	// TODO:
+	// auto x_stem =
 
 }
 

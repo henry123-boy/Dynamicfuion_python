@@ -57,7 +57,7 @@ MatmulBlockSparseRowWisePadded(
 
 open3d::core::Tensor BlockSparseAndVectorProduct(
 		const open3d::core::Tensor& blocks_a,
-		int m,
+		int matrix_a_other_dimension,
 		const open3d::core::Tensor& blocks_a_coordinates,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
