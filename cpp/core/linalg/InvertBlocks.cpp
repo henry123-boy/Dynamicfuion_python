@@ -79,7 +79,7 @@ open3d::core::Tensor InvertTriangularBlocks(
 	return inverted_blocks;
 }
 
-open3d::core::Tensor InvertSymmetricPositiveDefiniteBlocks(const open3d::core::Tensor& blocks) {
+open3d::core::Tensor InvertPositiveSemidefiniteBlocks(const open3d::core::Tensor& blocks) {
 	o3c::AssertTensorDtypes(blocks, { o3c::Float32, o3c::Float64 });
 	const o3c::Device device = blocks.GetDevice();
 	const o3c::Dtype data_type = blocks.GetDtype();
@@ -102,7 +102,7 @@ open3d::core::Tensor InvertSymmetricPositiveDefiniteBlocks(const open3d::core::T
 		utility::LogError("Input tensor should have no zero dimensions.");
 	}
 	// data will get manipulated in-place by LAPACK routines, make clone
-	o3c::Tensor factorized_blocks = blocks.Clone().Transpose(1, 2).Contiguous();
+	o3c::Tensor factorized_blocks = blocks.Clone();
 	o3c::Tensor inverted_blocks =
 			core::functional::Tile(o3c::Tensor::Eye(block_size, data_type, device), static_cast<int>(block_count), 1).Reshape(blocks_shape);
 

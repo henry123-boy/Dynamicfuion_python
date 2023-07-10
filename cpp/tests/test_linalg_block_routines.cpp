@@ -159,7 +159,7 @@ TEST_CASE("Test Transpose Blocks - CUDA") {
 }
 
 
-void TestInvertBlocks(const o3c::Device& device) {
+void TestInvertPositiveSemidefiniteBlocks(const o3c::Device& device) {
 	o3c::Tensor blocks(std::vector<float>{
 			16, 20, 24,
 			20, 29, 36,
@@ -174,7 +174,7 @@ void TestInvertBlocks(const o3c::Device& device) {
 			288, 516, 718
 	}, {3, 3, 3}, o3c::Float32, device);
 
-	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertSymmetricPositiveDefiniteBlocks(blocks);
+	o3c::Tensor inverted_blocks = nnrt::core::linalg::InvertPositiveSemidefiniteBlocks(blocks);
 
 	o3c::Tensor inverted_blocks_gt(std::vector<float>{
 			0.59375, -0.875, 0.375,
@@ -196,12 +196,12 @@ void TestInvertBlocks(const o3c::Device& device) {
 
 TEST_CASE("Test Invert Blocks - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestInvertBlocks(device);
+	TestInvertPositiveSemidefiniteBlocks(device);
 }
 
 TEST_CASE("Test Invert Blocks - CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestInvertBlocks(device);
+	TestInvertPositiveSemidefiniteBlocks(device);
 }
 
 void TestFillInDiagonalBlocks(const o3c::Device& device) {

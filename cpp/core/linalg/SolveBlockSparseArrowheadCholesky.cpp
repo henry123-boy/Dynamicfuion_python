@@ -49,7 +49,7 @@ void SolveBlockSparseArrowheadCholesky(
 	}
 
 	// compute D^(-1)
-	o3c::Tensor inverted_stem = InvertSymmetricPositiveDefiniteBlocks(a.StemDiagonalBlocks());
+	o3c::Tensor inverted_stem = InvertPositiveSemidefiniteBlocks(a.StemDiagonalBlocks());
 
 	// compute D^(-1)B
 	o3c::Tensor inverted_stem_and_upper_wing_product_blocks =
