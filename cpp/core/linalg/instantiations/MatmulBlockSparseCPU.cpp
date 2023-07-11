@@ -44,7 +44,15 @@ BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
 		int m,
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+);
+
+template
+void DiagonalBlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& out_vector,
+		const open3d::core::Tensor& blocks_d,
 		const open3d::core::Tensor& vector_b
 );
 

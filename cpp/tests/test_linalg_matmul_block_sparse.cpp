@@ -438,7 +438,7 @@ void TestBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
 
 	o3c::Tensor vector_c =
 			nnrt::core::linalg::BlockSparseAndVectorProduct(
-					a_blocks, m, a_coordinates, nnrt::core::linalg::MatrixPreprocessingOperation::NONE, vector_b
+					a_blocks, m, a_coordinates, std::tuple<int32_t, int32_t>(), nnrt::core::linalg::MatrixPreprocessingOperation::NONE, vector_b
 			);
 
 
@@ -478,7 +478,7 @@ void TestBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
 
 	o3c::Tensor vector_d =
 			nnrt::core::linalg::BlockSparseAndVectorProduct(
-					b_blocks, m, b_coordinates, nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE, vector_b
+					b_blocks, m, b_coordinates, std::tuple<int32_t, int32_t>(), nnrt::core::linalg::MatrixPreprocessingOperation::TRANSPOSE, vector_b
 			);
 
 	REQUIRE(vector_d.AllClose(vector_d_gt));
@@ -493,4 +493,49 @@ TEST_CASE("Test Block-Sparse & Vector Product (Small) - CPU") {
 TEST_CASE("Test  Block-Sparse & Vector Product (Small) - CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestBlockSparseAndVectorProduct_Small(device);
+}
+
+
+void TestDiagonalBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
+	o3c::Tensor d_blocks(std::vector<float>{
+			2., 2.,
+			2., 2.,
+
+			1., 1.,
+			1., 1.,
+
+			3., 3.,
+			3., 3.
+	}, {3, 2, 2}, o3c::Float32, device);
+
+	o3c::Tensor vector_b(std::vector<float>{
+			-2.,
+			-1.,
+			0.,
+			1.,
+			2.,
+			3.,
+	}, {6}, o3c::Float32, device);
+
+	o3c::Tensor vector_c_gt(std::vector<float>{
+			-6.,
+			-6.,
+			1.,
+			1.,
+			15.,
+			15.,
+	}, {6}, o3c::Float32, device);
+
+	o3c::Tensor vector_c = nnrt::core::linalg::DiagonalBlockSparseAndVectorProduct(d_blocks, vector_b);
+	REQUIRE(vector_c.AllClose(vector_c_gt));
+}
+
+TEST_CASE("Test Diagonal Block-Sparse & Vector Product (Small) - CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestDiagonalBlockSparseAndVectorProduct_Small(device);
+}
+
+TEST_CASE("Test  Diagonal Block-Sparse & Vector Product (Small) - CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestDiagonalBlockSparseAndVectorProduct_Small(device);
 }

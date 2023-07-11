@@ -444,6 +444,7 @@ void BlockSparseAndVectorProduct_Generic(
 		int m,
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		const open3d::core::Tensor& vector_b
 ) {
 	// counts & checks
@@ -494,19 +495,41 @@ void BlockSparseAndVectorProduct_Generic(
 			o3c::MemoryManager::Malloc(sizeof(float*) * block_count, device)
 	);
 
-	// aggregate pointers for block products
-	o3c::ParallelFor(
-			device,
-			block_count,
-			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
-				int i_block_row = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2 + 1] : blocks_a_coordinate_data[i_input_block * 2];
-				int i_block_column = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2] : blocks_a_coordinate_data[i_input_block * 2 + 1];
-				block_product_lhs_addresses[i_input_block] = blocks_a_data + i_input_block * block_stride;
-				block_product_rhs_addresses[i_input_block] = vector_b_data + i_block_column * block_size;
-				block_product_addresses[i_input_block] = block_product_data + i_input_block * block_size;
-				product_sum_index_data[i_input_block] = i_block_row;
-			}
-	);
+	int32_t block_row_offset = std::get<0>(block_coordinate_offset);
+	int32_t block_column_offset = std::get<1>(block_coordinate_offset);
+
+	if (block_row_offset != 0 || block_column_offset != 0) {
+		// aggregate pointers for block products
+		o3c::ParallelFor(
+				device,
+				block_count,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
+					int i_block_row = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2 + 1] +
+							block_column_offset : blocks_a_coordinate_data[i_input_block * 2] + block_row_offset;
+					int i_block_column = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2] +
+							block_row_offset : blocks_a_coordinate_data[i_input_block * 2 + 1] + block_column_offset;
+					block_product_lhs_addresses[i_input_block] = blocks_a_data + i_input_block * block_stride;
+					block_product_rhs_addresses[i_input_block] = vector_b_data + i_block_column * block_size;
+					block_product_addresses[i_input_block] = block_product_data + i_input_block * block_size;
+					product_sum_index_data[i_input_block] = i_block_row;
+				}
+		);
+	} else {
+		// aggregate pointers for block products
+		o3c::ParallelFor(
+				device,
+				block_count,
+				NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
+					int i_block_row = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2 + 1] : blocks_a_coordinate_data[i_input_block * 2];
+					int i_block_column = TTransposeA ? blocks_a_coordinate_data[i_input_block * 2] : blocks_a_coordinate_data[i_input_block * 2 + 1];
+					block_product_lhs_addresses[i_input_block] = blocks_a_data + i_input_block * block_stride;
+					block_product_rhs_addresses[i_input_block] = vector_b_data + i_block_column * block_size;
+					block_product_addresses[i_input_block] = block_product_data + i_input_block * block_size;
+					product_sum_index_data[i_input_block] = i_block_row;
+				}
+		);
+	}
+
 
 	float alpha = 1, beta = 0;
 
@@ -568,17 +591,106 @@ void BlockSparseAndVectorProduct(
 		int m,
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
 ) {
 	switch (matrix_a_preprocessing) {
 		case MatrixPreprocessingOperation::NONE:
-			BlockSparseAndVectorProduct_Generic<TDeviceType, false>(out_vector, m, blocks_a, blocks_a_coordinates, vector_b);
+			BlockSparseAndVectorProduct_Generic<TDeviceType, false>(out_vector, m, blocks_a, blocks_a_coordinates, block_coordinate_offset, vector_b);
 			break;
 		case MatrixPreprocessingOperation::TRANSPOSE:
-			BlockSparseAndVectorProduct_Generic<TDeviceType, true>(out_vector, m, blocks_a, blocks_a_coordinates, vector_b);
+			BlockSparseAndVectorProduct_Generic<TDeviceType, true>(out_vector, m, blocks_a, blocks_a_coordinates, block_coordinate_offset, vector_b);
 			break;
 	}
+}
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void
+DiagonalBlockSparseAndVectorProduct(open3d::core::Tensor& out_vector, const open3d::core::Tensor& blocks_d, const open3d::core::Tensor& vector_b) {
+	// counts & checks
+	int64_t block_count = blocks_d.GetShape(0);
+	int64_t block_size = blocks_d.GetShape(1);
+	int64_t block_stride = block_size * block_size;
+	o3c::Device device = blocks_d.GetDevice();
+	o3c::AssertTensorShape(blocks_d, { block_count, block_size, block_size });
+	o3c::AssertTensorDtype(blocks_d, o3c::Float32);
+
+	int64_t input_vector_element_count = block_size * block_count;
+	if (vector_b.NumDims() == 1) {
+		o3c::AssertTensorShape(vector_b, { input_vector_element_count });
+		out_vector = o3c::Tensor({input_vector_element_count}, o3c::Float32, device);
+	} else {
+		o3c::AssertTensorShape(vector_b, { input_vector_element_count, 1 });
+		out_vector = o3c::Tensor({input_vector_element_count, 1}, o3c::Float32, device);
+	}
+
+	o3c::AssertTensorDtype(vector_b, o3c::Float32);
+	o3c::AssertTensorDevice(vector_b, device);
+
+	// prep workspace
+	auto block_product_lhs_addresses = reinterpret_cast<const float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * block_count, device)
+	);
+	auto block_product_rhs_addresses = reinterpret_cast<const float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * block_count, device)
+	);
+
+	auto block_product_data = out_vector.GetDataPtr<float>();
+	auto block_product_addresses = reinterpret_cast<float**>(
+			o3c::MemoryManager::Malloc(sizeof(float*) * block_count, device)
+	);
+
+	auto block_d_data = blocks_d.GetDataPtr<float>();
+	auto vector_b_data = vector_b.GetDataPtr<float>();
+
+	// aggregate pointers for block products
+	o3c::ParallelFor(
+			device,
+			block_count,
+			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_input_block) {
+				block_product_lhs_addresses[i_input_block] = block_d_data + i_input_block * block_stride;
+				block_product_rhs_addresses[i_input_block] = vector_b_data + i_input_block * block_size;
+				block_product_addresses[i_input_block] = block_product_data + i_input_block * block_size;
+			}
+	);
+
+	float alpha = 1, beta = 0;
+
+	// compute block products
+#ifdef __CUDACC__
+	cublasHandle_t handle = CuBLASContext::GetInstance()->GetHandle();
+	NNRT_CUBLAS_CHECK(
+			gemm_batched_cuda<float>(
+					handle, CUBLAS_OP_T, CUBLAS_OP_N,
+					block_size, 1, block_size,
+					&alpha,
+					block_product_lhs_addresses, block_size,
+					block_product_rhs_addresses, block_size,
+					&beta,
+					block_product_addresses, block_size,
+					block_count
+			),
+			"cuda batched gemm failed"
+	);
+#else
+	gemm_batched_cpu<float>(
+			CblasRowMajor, CblasNoTrans, CblasNoTrans,
+			block_size, 1, block_size,
+			alpha,
+			block_product_lhs_addresses, block_size,
+			block_product_rhs_addresses, 1,
+			beta,
+			block_product_addresses, 1,
+			block_count
+	);
+#endif
+
+
+	o3c::MemoryManager::Free(block_product_lhs_addresses, device);
+	o3c::MemoryManager::Free(block_product_rhs_addresses, device);
+	o3c::MemoryManager::Free(block_product_addresses, device);
+
 }
 
 

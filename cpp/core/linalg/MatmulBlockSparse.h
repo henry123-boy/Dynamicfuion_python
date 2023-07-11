@@ -55,11 +55,28 @@ MatmulBlockSparseRowWisePadded(
 		const open3d::core::Tensor& blocks_b_coordinates
 );
 
+/**
+ * \brief Product of a block-sparse matrix or sub-matrix with a vector, i.e. Op(A)b
+ * \param blocks_a blocks comprising non-zero portions of matrix A
+ * \param matrix_a_other_dimension this is the output vector length, corresponding to the dimension of A that is NOT equivalent to the length of the
+ * input vector b
+ * \param blocks_a_coordinates coordinates of the non-zero blocks within A
+ * \param matrix_a_preprocessing whether or not to transpose A before the product
+ * \param vector_b column vector, can be either represented by a one-dimensional Tensor or a two-dimensional tensor with second dimension size of 1.
+ * \return tensor holding the product. Will be one-dimensional or two-dimensional (with the second dimension of length 1),
+ * depending how input vector b is represented.
+ */
 open3d::core::Tensor BlockSparseAndVectorProduct(
 		const open3d::core::Tensor& blocks_a,
 		int matrix_a_other_dimension,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
+		const open3d::core::Tensor& vector_b
+);
+
+open3d::core::Tensor DiagonalBlockSparseAndVectorProduct(
+		const open3d::core::Tensor& blocks_d,
 		const open3d::core::Tensor& vector_b
 );
 
@@ -103,9 +120,14 @@ void BlockSparseAndVectorProduct(
 		int m,
 		const open3d::core::Tensor& blocks_a,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
 );
+
+template<open3d::core::Device::DeviceType TDeviceType>
+void
+DiagonalBlockSparseAndVectorProduct(open3d::core::Tensor& out_vector, const open3d::core::Tensor& blocks_d, const open3d::core::Tensor& vector_b);
 
 template<open3d::core::Device::DeviceType TDeviceType>
 std::tuple<open3d::core::Tensor, open3d::core::Tensor>

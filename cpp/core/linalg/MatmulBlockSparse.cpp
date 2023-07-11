@@ -102,6 +102,7 @@ open3d::core::Tensor BlockSparseAndVectorProduct(
 		const open3d::core::Tensor& blocks_a,
 		int matrix_a_other_dimension,
 		const open3d::core::Tensor& blocks_a_coordinates,
+		std::tuple<int32_t, int32_t> block_coordinate_offset,
 		MatrixPreprocessingOperation matrix_a_preprocessing,
 		const open3d::core::Tensor& vector_b
 ) {
@@ -111,13 +112,31 @@ open3d::core::Tensor BlockSparseAndVectorProduct(
 			[&]() {
 				internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(
 						out_vector, matrix_a_other_dimension,
-						blocks_a, blocks_a_coordinates, matrix_a_preprocessing, vector_b);
+						blocks_a, blocks_a_coordinates, block_coordinate_offset, matrix_a_preprocessing, vector_b
+				);
 			},
 			[&]() {
 				NNRT_IF_CUDA(
 						internal::BlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CUDA>(
 								out_vector, matrix_a_other_dimension,
-								blocks_a, blocks_a_coordinates, matrix_a_preprocessing, vector_b);
+								blocks_a, blocks_a_coordinates, block_coordinate_offset, matrix_a_preprocessing, vector_b
+						);
+				);
+			}
+	);
+	return out_vector;
+}
+
+open3d::core::Tensor DiagonalBlockSparseAndVectorProduct(const open3d::core::Tensor& blocks_d, const open3d::core::Tensor& vector_b) {
+	open3d::core::Tensor out_vector;
+	core::ExecuteOnDevice(
+			blocks_d.GetDevice(),
+			[&]() {
+				internal::DiagonalBlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CPU>(out_vector, blocks_d, vector_b);
+			},
+			[&]() {
+				NNRT_IF_CUDA(
+						internal::DiagonalBlockSparseAndVectorProduct<open3d::core::Device::DeviceType::CUDA>(out_vector, blocks_d, vector_b);
 				);
 			}
 	);
