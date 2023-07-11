@@ -22,10 +22,10 @@
 #include "test_main.hpp"
 
 // code being tested
-#include "core/linalg/TransposeBlocks.h"
 #include "core/linalg/InvertBlocks.h"
 #include "core/linalg/DiagonalBlocks.h"
 #include "core/linalg/SparseBlocks.h"
+#include "core/linalg/TransposeBlocks.h"
 
 namespace o3c = open3d::core;
 

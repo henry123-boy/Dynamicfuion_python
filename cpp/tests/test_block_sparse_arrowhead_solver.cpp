@@ -49,46 +49,6 @@ nnrt::core::linalg::BlockSparseArrowheadMatrix LoadSparseArrowheadInputs(const o
 	return matrix;
 }
 
-void TestCholeskyBlockSparseArrowheadFactorization(const o3c::Device& device) {
-	auto matrix = LoadSparseArrowheadInputs(device);
-
-	o3c::Tensor U_diag, U_upper, U_lower_right_dense;
-	std::tie(U_diag, U_upper, U_lower_right_dense) = nnrt::core::linalg::FactorizeBlockSparseArrowheadCholesky_Upper(matrix);
-
-	o3c::Tensor U_diag_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_diag_upper_left.npy").To(device)
-	                                                                                                                          .To(o3c::Float32);
-	o3c::Tensor U_upper_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_upper.npy").To(device).To(o3c::Float32);
-	o3c::Tensor U_lower_right_dense_gt = o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/U_lower_right_dense.npy")
-			.To(device).To(o3c::Float32);
-
-	U_diag = U_diag.Contiguous();
-	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag, nnrt::core::linalg::UpLoTriangular::LOWER);
-
-
-	int block_size = static_cast<int32_t>(U_diag.GetShape(1));
-	o3c::Tensor U_diag_corner = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense, block_size);
-	nnrt::core::linalg::ZeroOutTriangularBlocks(U_diag_corner, nnrt::core::linalg::UpLoTriangular::LOWER);
-	nnrt::core::linalg::FillInDiagonalBlocks(U_lower_right_dense, U_diag_corner);
-
-	o3c::Tensor U_diag_corner_gt = nnrt::core::linalg::GetDiagonalBlocks(U_lower_right_dense_gt, block_size);
-
-
-	REQUIRE(U_diag.AllClose(U_diag_gt));
-	REQUIRE(U_upper.AllClose(U_upper_gt, 0, 1e-6));
-	REQUIRE(U_diag_corner.AllClose(U_diag_corner_gt, 0, 1e-6));
-	REQUIRE(U_lower_right_dense.AllClose(U_lower_right_dense_gt, 0, 1e-6));
-}
-
-TEST_CASE("Test Factorize Block-Sparse Arrowhead CPU") {
-	auto device = o3c::Device("CPU:0");
-	TestCholeskyBlockSparseArrowheadFactorization(device);
-}
-
-TEST_CASE("Test Factorize Block-Sparse Arrowhead CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	TestCholeskyBlockSparseArrowheadFactorization(device);
-}
-
 void TestSchurComplementComputation(const o3c::Device& device) {
 	auto matrix = LoadSparseArrowheadInputs(device);
 

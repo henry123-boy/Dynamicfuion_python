@@ -454,9 +454,6 @@ set(
 
     core/linalg/SolveBlockSparseArrowheadCholesky.cpp
     core/linalg/SolveBlockSparseArrowheadCholesky.h
-    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCPU.cpp
-    core/linalg/instantiations/SolveBlockSparseArrowheadCholeskyCUDA.cu
-    core/linalg/SolveBlockSparseArrowheadCholeskyImpl.h
 
     core/linalg/BlockSparseArrowheadMatrix.h
 

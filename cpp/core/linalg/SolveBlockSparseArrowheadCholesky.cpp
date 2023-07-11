@@ -92,49 +92,5 @@ void SolveBlockSparseArrowheadCholesky(
 	x = o3c::Concatenate({x_stem, x_corner});
 }
 
-std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>
-FactorizeBlockSparseArrowheadCholesky_Upper(const BlockSparseArrowheadMatrix& A) {
-	o3c::Tensor L_diagonal_upper_left;
-	FactorizeBlocksCholesky(L_diagonal_upper_left, A.StemDiagonalBlocks(), UpLoTriangular::LOWER);
-
-	o3c::Tensor L_inv_diagonal_upper_left = InvertTriangularBlocks(L_diagonal_upper_left, UpLoTriangular::LOWER);
-	o3c::Tensor U_diagonal_upper_left = L_diagonal_upper_left.Transpose(1, 2);
-
-	o3c::Tensor U_sparse_blocks = core::linalg::MatmulBlockSparseRowWisePadded(L_inv_diagonal_upper_left, A.upper_wing_blocks,
-	                                                                           A.upper_wing_block_coordinates);
-
-	o3c::Tensor U_factorized_dense_corner;
-	internal::FactorizeBlockSparseCholeskyCorner(U_factorized_dense_corner, U_sparse_blocks, A);
-
-	return std::make_tuple(U_diagonal_upper_left, U_sparse_blocks, U_factorized_dense_corner);
-}
-
-namespace internal {
-
-void FactorizeBlockSparseCholeskyCorner(
-		open3d::core::Tensor& factorized_upper_dense_corner,
-		const open3d::core::Tensor& factorized_upper_blocks,
-		const BlockSparseArrowheadMatrix& A
-) {
-	core::ExecuteOnDevice(
-			A.GetDevice(),
-			[&]() {
-				internal::FactorizeBlockSparseCholeskyCorner<open3d::core::Device::DeviceType::CPU>(
-						factorized_upper_dense_corner, factorized_upper_blocks, A
-				);
-			},
-			[&]() {
-				NNRT_IF_CUDA(
-						internal::FactorizeBlockSparseCholeskyCorner<open3d::core::Device::DeviceType::CUDA>(
-								factorized_upper_dense_corner, factorized_upper_blocks, A
-						);
-				);
-			}
-	);
-}
-
-} // namespace internal
-
-
 } // namespace nnrt::core::linalg
 
