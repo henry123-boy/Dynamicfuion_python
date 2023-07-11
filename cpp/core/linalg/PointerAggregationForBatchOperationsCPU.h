@@ -15,10 +15,9 @@
 //  ================================================================
 #pragma once
 // stdlib includes
-
+#include <cstdint>
 // third-party includes
 #include <open3d/utility/Parallel.h>
-#include <cstdint>
 
 // local includes
 namespace nnrt::core::linalg::internal {

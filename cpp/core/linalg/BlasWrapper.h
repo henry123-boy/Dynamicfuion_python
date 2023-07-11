@@ -556,4 +556,31 @@ inline cublasStatus_t geam_cuda<double>(
 #endif
 // endregion
 // endregion
+// region ========================================================== imatcopy (compute in-place scaled matrix copy or transpoistion) =================
+template<typename scalar_t>
+inline void imatcopy_batched_cpu(
+		char layout, const char* trans_array,
+		const size_t* rows_array, const size_t* cols_array,
+		const float* alpha_array, 
+		float** ab_array, const size_t* lda_array, 
+		const size_t* ldb_array,
+		size_t group_count, const size_t* group_size
+) {
+	open3d::utility::LogError("Unsupported data type.");
+}
+
+template<>
+inline void imatcopy_batched_cpu<float>(
+		char layout, const char* trans_array,
+		const size_t* rows_array, const size_t* cols_array,
+		const float* alpha_array,
+		float** ab_array, const size_t* lda_array,
+		const size_t* ldb_array,
+		size_t group_count, const size_t* group_size
+) {
+	//TODO
+}
+
+// ===================================================================================================================================================
+
 } // nnrt::core

@@ -13,31 +13,30 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// stdlib includes
+#include "core/linalg/TransposeBlocks.h"
+#include <open3d/utility/Logging.h>
+namespace utility = open3d::utility;
+
+#ifdef BUILD_CUDA_MODULE
 
 // third-party includes
 #include <open3d/core/Dispatch.h>
 #include <open3d/core/CUDAUtils.h>
 
 // local includes
-#include "core/linalg/TransposeBlocks.h"
 #include "core/linalg/LinalgKernels.cuh"
 #include "core/linalg/PointerAggregationForBatchOperationsCUDA.cuh"
 
 
 namespace o3c = open3d::core;
-namespace utility = open3d::utility;
 
-namespace nnrt::core::linalg {
+
+namespace nnrt::core::linalg::internal {
 
 
 template<typename TElement>
-void TransposeBlocksInPlace_TypeDispatched(open3d::core::Tensor& blocks) {
+inline void TransposeBlocksInPlaceCUDA_TypeDispatched(open3d::core::Tensor& blocks) {
 	auto device = blocks.GetDevice();
-
-	if (device.IsCPU()) {
-		utility::LogError("TransposeBlocksInPlace not implemented for CPU. Use regular Open3D routine, e.g. `blocks = blocks.Transpose(1, 2)`");
-	}
 	int64_t block_size = blocks.GetShape(1);
 	int64_t block_count = blocks.GetShape(0);
 	o3c::AssertTensorShape(blocks, { block_count, block_size, block_size });
@@ -54,13 +53,18 @@ void TransposeBlocksInPlace_TypeDispatched(open3d::core::Tensor& blocks) {
 	OPEN3D_CUDA_CHECK(cudaFree(block_array_device));
 }
 
-void TransposeBlocksInPlace(open3d::core::Tensor& blocks) {
+void TransposeBlocksInPlaceCUDA(open3d::core::Tensor& blocks) {
 	DISPATCH_DTYPE_TO_TEMPLATE(
 			blocks.GetDtype(),
 			[&] {
-				TransposeBlocksInPlace_TypeDispatched<scalar_t>(blocks);
+				TransposeBlocksInPlaceCUDA_TypeDispatched<scalar_t>(blocks);
 			}
 	);
 }
+#else
+void TransposeBlocksInPlaceCUDA(open3d::core::Tensor& blocks) {
+	utility::LogError("Attempting to call TransposeBlocksInPlaceCUDA routine when library not compiled with BUILD_CUDA_MODULE=ON");
+}
+#endif
 
-} // namespace nnrt::core::linalg
+} // namespace nnrt::core::linalg::interla

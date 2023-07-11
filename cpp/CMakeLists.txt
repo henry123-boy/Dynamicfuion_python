@@ -481,7 +481,7 @@ set(
     core/linalg/instantiations/DiagonalBlocksCPU.cpp
     core/linalg/DiagonalBlocksImpl.h
 
-    core/linalg/TransposeBlocks.cu
+    core/linalg/TransposeBlocksCUDA.cu
     core/linalg/TransposeBlocks.h
     core/platform_independence/AtomicTensor.h
     core/linalg/SchurComplement.cpp
@@ -514,7 +514,7 @@ set(
     core/linalg/SolveCholeskyCPU.cpp
     core/linalg/SolveCholeskyCUDA.cpp
 
-)
+    core/linalg/TransposeBlocks.cpp core/linalg/TransposeBlocks.cpp core/linalg/TransposeBlocksCPU.cpp)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 

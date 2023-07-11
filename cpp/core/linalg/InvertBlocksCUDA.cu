@@ -13,8 +13,11 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
+#include "core/linalg/InvertBlocks.h"
+#include <open3d/utility/Logging.h>
+namespace utility = open3d::utility;
 
-// stdlib includes
+#ifdef BUILD_CUDA_MODULE
 
 // third-party includes
 #include <open3d/core/Dtype.h>
@@ -22,13 +25,7 @@
 #include <open3d/utility/Parallel.h>
 #include <open3d/core/CUDAUtils.h>
 
-
 // local includes
-#include "core/linalg/InvertBlocks.h"
-
-
-#ifdef BUILD_CUDA_MODULE
-
 #include "core/linalg/LinalgUtils.h"
 #include "core/linalg/PointerAggregationForBatchOperationsCUDA.cuh"
 #include "core/linalg/LinalgKernels.cuh"
@@ -36,7 +33,6 @@
 #include "MagmaManager.h"
 
 
-namespace utility = open3d::utility;
 namespace o3c = open3d::core;
 
 namespace nnrt::core::linalg::internal {
