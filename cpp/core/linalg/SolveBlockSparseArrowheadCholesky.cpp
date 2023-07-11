@@ -13,9 +13,8 @@
 //  See the License for the specific language governing permissions and
 //  limitations under the License.
 //  ================================================================
-// stdlib includes
-
 // third-party includes
+#include <open3d/core/TensorFunction.h>
 
 // local includes
 #include "SolveBlockSparseArrowheadCholesky.h"
@@ -84,10 +83,13 @@ void SolveBlockSparseArrowheadCholesky(
 	                                                                                  a.upper_wing_block_coordinates,
 	                                                                                  std::make_tuple(0, a.arrow_base_block_index),
 	                                                                                  MatrixPreprocessingOperation::NONE, x_corner);
+	// compute b_D - Bx_C
 	o3c::Tensor lhs_stem_operand = b_stem - wing_and_x_corner_product;
 
-	// o3c::Tensor x_stem =
+	// compute x_D = D^(-1)(b_D - Bx_C)
+	o3c::Tensor x_stem = core::linalg::DiagonalBlockSparseAndVectorProduct(inverted_stem, wing_and_x_corner_product);
 
+	x = o3c::Concatenate({x_stem, x_corner});
 }
 
 std::tuple<open3d::core::Tensor, open3d::core::Tensor, open3d::core::Tensor>

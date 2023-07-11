@@ -109,3 +109,28 @@ TEST_CASE("Test Block-Sparse Arrowhead Stem Schur CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestSchurComplementComputation(device);
 }
+
+void TestBlockSparseArrowheadSolver(const o3c::Device& device) {
+	auto a = LoadSparseArrowheadInputs(device);
+
+	o3c::Tensor b =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/b.npy").To(device).To(o3c::Float32);
+
+	o3c::Tensor x_gt =
+			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/x.npy").To(device).To(o3c::Float32);
+
+	o3c::Tensor x;
+	nnrt::core::linalg::SolveBlockSparseArrowheadCholesky(x, a, b);
+
+	REQUIRE(x.AllClose(x_gt, 0, 1e-6));
+}
+
+TEST_CASE("Test Block-Sparse Arrowhead Solver CPU") {
+	auto device = o3c::Device("CPU:0");
+	TestSchurComplementComputation(device);
+}
+
+TEST_CASE("Test Block-Sparse Arrowhead Solver CUDA") {
+	auto device = o3c::Device("CUDA:0");
+	TestSchurComplementComputation(device);
+}

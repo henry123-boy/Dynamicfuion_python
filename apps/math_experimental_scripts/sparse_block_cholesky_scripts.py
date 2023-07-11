@@ -336,7 +336,7 @@ def cholesky_upper_triangular_from_sparse_H(hessian_blocks_diagonal: List[np.nda
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_diag_upper_left.npy",
                 np.array(U_diag_upper_left))
         U_upper = [L_inv_diag_upper_left[i] @ U_h if i < first_layer_node_count else np.zeros((block_size, block_size))
-                   for (i, j, U_h) in hessian_blocks_upper + hessian_blocks_upper_corner]
+                   for (i, j, U_h) in hessian_blocks_upper]
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_upper.npy",
                 np.array(U_upper))
         np.save("/mnt/Data/Reconstruction/output/matrix_experiments/U_lower_right_dense.npy", U_lower_right_dense)
@@ -524,6 +524,9 @@ def main():
 
     delta = solve_triangular_sparse_back_substitution(U_diag, U_upper, y)
     delta_gt = scipy.linalg.solve(H_aug, dummy_negJr)
+    if save_cpp_test_data:
+        np.save(str(Path(base_path) / "b.npy"), dummy_negJr)
+        np.save(str(Path(base_path) / "x.npy"), delta_gt)
     print("Lx=y block-sparse back-substitution finished successfully: ", np.allclose(delta, delta_gt))
 
     block_size = H_diag[0].shape[0]
