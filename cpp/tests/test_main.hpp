@@ -17,9 +17,10 @@
 
 #define CATCH_CONFIG_RUNNER
 
-#include "../../cmake-build-debug/_deps/catch2-src/src/catch2/catch_session.hpp"
-#include "../../cmake-build-debug/_deps/catch2-src/src/catch2/catch_test_macros.hpp"
-#include "../../3rd-party/pybind11/include/pybind11/pybind11.h"
+#include <pybind11/pybind11.h>
+#include <catch2/catch_session.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
 
 
 // Necessary to start running the test(s) as a python program

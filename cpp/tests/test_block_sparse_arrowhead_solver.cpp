@@ -80,6 +80,7 @@ void TestBlockSparseArrowheadSolver(const o3c::Device& device) {
 			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/x.npy").To(device).To(o3c::Float32);
 
 	o3c::Tensor x;
+	BENCHMARK("")
 	nnrt::core::linalg::SolveBlockSparseArrowheadCholesky(x, a, b);
 
 	REQUIRE(x.AllClose(x_gt, 0, 1e-6));

@@ -18,8 +18,6 @@
 
 // local includes
 #include "SolveBlockSparseArrowheadCholesky.h"
-#include "core/DeviceSelection.h"
-#include "core/linalg/FactorizeBlocksCholesky.h"
 #include "core/linalg/InvertBlocks.h"
 #include "core/linalg/MatmulBlockSparse.h"
 #include "core/linalg/SchurComplement.h"
