@@ -237,7 +237,6 @@ void DeformableMeshToImageFitter::FitToImage(
 			}
 
 		} else {
-
 			core::linalg::SolveBlockDiagonalCholesky(motion_updates, hessian_blocks_depth_diagonal, negative_gradient_depth);
 		}
 

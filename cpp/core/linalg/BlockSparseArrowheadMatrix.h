@@ -59,6 +59,14 @@ struct BlockSparseArrowheadMatrix : public open3d::core::IsDevice {
 		return this->diagonal_blocks.GetShape(1);
 	}
 
+	int64_t GetMatrixSize() const{
+		return this->GetBlockSize() * this->diagonal_blocks.GetShape(0);
+	}
+
+	int64_t GetMatrixSizeInBlocks() const{
+		return this->diagonal_blocks.GetShape(0);
+	}
+
 	open3d::core::Device GetDevice() const override{
 		return this->diagonal_blocks.GetDevice();
 	}

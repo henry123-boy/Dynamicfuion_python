@@ -516,16 +516,22 @@ def main():
 
     print("Block-sparse H factorized successfully: ", np.allclose(U, U_gt))
 
-    dummy_negJr = np.random.rand(node_count * 6)
+    randomize_b = False
+    if randomize_b:
+        b = np.random.rand(node_count * 6)
+    else:
+        b = np.load(str(Path(base_path) / "b.npy"))
 
-    y_gt = scipy.linalg.solve_triangular(U_gt.T, dummy_negJr, lower=True)
-    y = solve_triangular_sparse_forward_substitution(U_diag, U_upper, dummy_negJr)
+    y_gt = scipy.linalg.solve_triangular(U_gt.T, b, lower=True)
+    y = solve_triangular_sparse_forward_substitution(U_diag, U_upper, b)
     print("Uy=b block-sparse forward-substitution finished successfully: ", np.allclose(y_gt, y))
 
     delta = solve_triangular_sparse_back_substitution(U_diag, U_upper, y)
-    delta_gt = scipy.linalg.solve(H_aug, dummy_negJr)
+    delta_gt = scipy.linalg.solve(H_aug, b)
+    save_new_b = False
     if save_cpp_test_data:
-        np.save(str(Path(base_path) / "b.npy"), dummy_negJr)
+        if randomize_b and save_new_b:
+            np.save(str(Path(base_path) / "b.npy"), b)
         np.save(str(Path(base_path) / "x.npy"), delta_gt)
     print("Lx=y block-sparse back-substitution finished successfully: ", np.allclose(delta, delta_gt))
 
@@ -535,19 +541,20 @@ def main():
     B = H_aug[:arrowhead_base_index, arrowhead_base_index:]
     C = H_aug[arrowhead_base_index:, arrowhead_base_index:]
 
-    b_data = dummy_negJr[:arrowhead_base_index]
-    b_reg = dummy_negJr[arrowhead_base_index:]
+    b_stem = b[:arrowhead_base_index]
+    b_corner = b[arrowhead_base_index:]
 
     C_schur = C - B.T @ scipy.linalg.inv(D) @ B
+    b_reg_prime = b_corner - B.T @ scipy.linalg.inv(D) @ b_stem
+
+    x_C = np.linalg.solve(C_schur, b_reg_prime)
+    x_D = scipy.linalg.inv(D) @ (b_stem - B @ x_C)
+    x_schur = np.concatenate((x_D, x_C))
+
     if save_cpp_test_data:
         np.save(str(Path(base_path) / "stem_schur.npy"), C_schur)
 
-    b_reg_prime = b_reg - B.T @ scipy.linalg.inv(D) @ b_data
-    delta_C = np.linalg.solve(C_schur, b_reg_prime)
-    delta_D = scipy.linalg.inv(D) @ (b_data - B @ delta_C)
-
-    delta_schur = np.concatenate((delta_D, delta_C))
-    print("Schur approach to solver finished successfully: ", np.allclose(delta_schur, delta_gt))
+    print("Schur approach to solver finished successfully: ", np.allclose(x_schur, delta_gt))
 
     U_C_prime = scipy.linalg.cholesky(C_schur)
     print("Schur complement decomposition equivalent to U_corner_dense:", np.allclose(U_C_prime, U_corner_dense))

@@ -58,14 +58,15 @@ void SolveBlockSparseArrowheadCholesky(
 
 	//separate b_D and b_C out from b
 	o3c::Tensor b_stem = b.Slice(0, 0, a.arrow_base_block_index * a.GetBlockSize());
-	o3c::Tensor b_corner = b.Slice(0, a.arrow_base_block_index * a.GetBlockSize(), a.diagonal_block_count);
+	o3c::Tensor b_corner = b.Slice(0, a.arrow_base_block_index * a.GetBlockSize(), a.diagonal_block_count * a.GetBlockSize());
 
 	// compute B^(T)D^(-1)b_D = (D^(-1)B)^(T)b_D
 	int32_t corner_width_blocks = a.diagonal_block_count - a.arrow_base_block_index;
+	int32_t corner_width = corner_width_blocks * static_cast<int32_t>(a.GetBlockSize());
 	o3c::Tensor b_corner_update = core::linalg::BlockSparseAndVectorProduct(inverted_stem_and_upper_wing_product_blocks,
-	                                                                        corner_width_blocks,
+	                                                                        corner_width,
 	                                                                        a.upper_wing_block_coordinates,
-																			std::make_tuple(0, a.arrow_base_block_index),
+																			std::make_tuple(0, -a.arrow_base_block_index),
 	                                                                        MatrixPreprocessingOperation::TRANSPOSE, b_stem);
 	// compute b_C - B^(T)D^(-1)b_D
 	o3c::Tensor b_corner_prime = b_corner - b_corner_update;
@@ -76,16 +77,20 @@ void SolveBlockSparseArrowheadCholesky(
 	o3c::Tensor x_corner = core::linalg::SolveCholesky(stem_schur_complement, b_corner_prime);
 
 	// compute Bx_C
+	int32_t wing_row_count = a.arrow_base_block_index * static_cast<int32_t>(a.GetBlockSize());
 	o3c::Tensor wing_and_x_corner_product = core::linalg::BlockSparseAndVectorProduct(a.upper_wing_blocks,
-	                                                                                  a.arrow_base_block_index,
+	                                                                                  wing_row_count,
 	                                                                                  a.upper_wing_block_coordinates,
-	                                                                                  std::make_tuple(0, a.arrow_base_block_index),
+	                                                                                  std::make_tuple(0, -a.arrow_base_block_index),
 	                                                                                  MatrixPreprocessingOperation::NONE, x_corner);
 	// compute b_D - Bx_C
 	o3c::Tensor lhs_stem_operand = b_stem - wing_and_x_corner_product;
 
 	// compute x_D = D^(-1)(b_D - Bx_C)
-	o3c::Tensor x_stem = core::linalg::DiagonalBlockSparseAndVectorProduct(inverted_stem, wing_and_x_corner_product);
+	o3c::Tensor x_stem = core::linalg::DiagonalBlockSparseAndVectorProduct(inverted_stem, lhs_stem_operand);
+
+	//__DEBUG
+	auto x_stem_print = x_stem.Reshape({-1,6});
 
 	x = o3c::Concatenate({x_stem, x_corner});
 }

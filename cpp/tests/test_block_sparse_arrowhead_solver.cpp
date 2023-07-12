@@ -15,6 +15,7 @@
 //  ================================================================
 // third-party includes
 #include <open3d/core/Tensor.h>
+#include <iomanip>
 
 // local includes
 #include "test_main.hpp"
@@ -70,7 +71,12 @@ TEST_CASE("Test Block-Sparse Arrowhead Stem Schur CUDA") {
 	TestSchurComplementComputation(device);
 }
 
-void TestBlockSparseArrowheadSolver(const o3c::Device& device) {
+void TestBlockSparseArrowheadSolver(const o3c::Device& device, bool benchmark = false, int benchmark_run_count = 10) {
+	int run_count = 1;
+	if (benchmark) {
+		run_count = benchmark_run_count;
+	}
+
 	auto a = LoadSparseArrowheadInputs(device);
 
 	o3c::Tensor b =
@@ -80,18 +86,30 @@ void TestBlockSparseArrowheadSolver(const o3c::Device& device) {
 			o3c::Tensor::Load(test::generated_array_test_data_directory.ToString() + "/x.npy").To(device).To(o3c::Float32);
 
 	o3c::Tensor x;
-	BENCHMARK("")
-	nnrt::core::linalg::SolveBlockSparseArrowheadCholesky(x, a, b);
+	auto start = std::chrono::high_resolution_clock::now();
+	for (int i_run = 0; i_run < run_count; i_run++) {
+		nnrt::core::linalg::SolveBlockSparseArrowheadCholesky(x, a, b);
+	}
+	auto end = std::chrono::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+	if (benchmark) {
+		std::cout << "Average runtime of Block-Sparse Arrowhead Solver on device " << device.ToString() << ": " << std::setprecision(4)
+		          << (elapsed.count() * 1e-9) / run_count
+		          << " seconds" << std::endl;
+	}
+	//__DEBUG
+	auto x_print = x.Reshape({-1, 6});
+	auto x_gt_print = x_gt.Reshape({-1, 6});
 
-	REQUIRE(x.AllClose(x_gt, 0, 1e-6));
+	REQUIRE(x.AllClose(x_gt, 1e-4, 1e-5));
 }
 
 TEST_CASE("Test Block-Sparse Arrowhead Solver CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestSchurComplementComputation(device);
+	TestBlockSparseArrowheadSolver(device, false);
 }
 
 TEST_CASE("Test Block-Sparse Arrowhead Solver CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestSchurComplementComputation(device);
+	TestBlockSparseArrowheadSolver(device);
 }

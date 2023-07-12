@@ -498,14 +498,14 @@ TEST_CASE("Test  Block-Sparse & Vector Product (Small) - CUDA") {
 
 void TestDiagonalBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
 	o3c::Tensor d_blocks(std::vector<float>{
-			2., 2.,
+			2., -3.,
 			2., 2.,
 
 			1., 1.,
-			1., 1.,
+			4., 2.,
 
-			3., 3.,
-			3., 3.
+			4., 3.,
+			6., 3.
 	}, {3, 2, 2}, o3c::Float32, device);
 
 	o3c::Tensor vector_b(std::vector<float>{
@@ -518,12 +518,12 @@ void TestDiagonalBlockSparseAndVectorProduct_Small(const o3c::Device& device) {
 	}, {6}, o3c::Float32, device);
 
 	o3c::Tensor vector_c_gt(std::vector<float>{
+			-1.,
 			-6.,
-			-6.,
-			1.,
-			1.,
-			15.,
-			15.,
+			 1.,
+			 2.,
+			17.,
+			21.,
 	}, {6}, o3c::Float32, device);
 
 	o3c::Tensor vector_c = nnrt::core::linalg::DiagonalBlockSparseAndVectorProduct(d_blocks, vector_b);
