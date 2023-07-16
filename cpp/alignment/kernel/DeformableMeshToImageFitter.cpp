@@ -103,6 +103,42 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels(
 	);
 }
 
+
+void ComputeNegativeArapGradient(
+		open3d::core::Tensor& negative_gradient,
+		const open3d::core::Tensor& residuals,
+		const open3d::core::Tensor& edge_jacobians,
+		const open3d::core::Tensor& edges,
+		int64_t node_count,
+		IterationMode mode
+) {
+	core::ExecuteOnDevice(
+			edges.GetDevice(),
+			[&] {
+				ComputeNegativeArapGradient<open3d::core::Device::DeviceType::CPU>(
+						negative_gradient,
+						residuals,
+						edge_jacobians,
+						edges,
+						node_count,
+						mode
+				);
+			},
+			[&] {
+				NNRT_IF_CUDA(
+						ComputeNegativeArapGradient<open3d::core::Device::DeviceType::CUDA>(
+								negative_gradient,
+								residuals,
+								edge_jacobians,
+								edges,
+								node_count,
+								mode
+						);
+				);
+			}
+	);
+}
+
 void ComputeArapResiduals_FixedCoverageWeight(
 		open3d::core::Tensor& edge_residuals,
 		const open3d::core::Tensor& edges,
@@ -181,6 +217,5 @@ void ComputeArapResiduals_VariableCoverageWeight(
 			}
 	);
 }
-
 
 } // namespace nnrt::alignment::kernel

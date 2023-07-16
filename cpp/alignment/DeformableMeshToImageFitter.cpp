@@ -40,6 +40,7 @@
 #include "alignment/functional/ArapJacobian.h"
 #include "alignment/functional/ArapHessian.h"
 #include "core/linalg/PreconditionDiagonalBlocks.h"
+#include "core/linalg/SolveBlockSparseArrowheadCholesky.h"
 
 namespace o3tio = open3d::t::io;
 
@@ -47,8 +48,8 @@ namespace o3c = open3d::core;
 namespace utility = open3d::utility;
 namespace o3tg = open3d::t::geometry;
 
-
-#define DEBUG_HANDPICKED_DATA_PIXEL_REGION
+//__DEBUG
+//#define DEBUG_HANDPICKED_DATA_PIXEL_REGION
 
 namespace nnrt::alignment {
 
@@ -108,7 +109,7 @@ void DeformableMeshToImageFitter::FitToImage(
 
 	//TODO: fix second termination condition -- probably, better to use overall energy or residual sum.
 	while (iteration < max_iteration_count && maximum_update > min_update_threshold) {
-		IterationMode current_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
+		IterationMode current_iteration_mode = this->iteration_mode_sequence[iteration % this->iteration_mode_sequence.size()];
 
 		o3tg::TriangleMesh
 				warped_mesh = warp_field.WarpMesh(canonical_mesh, warp_anchors, warp_anchor_weights, true, extrinsic_matrix);
@@ -157,7 +158,7 @@ void DeformableMeshToImageFitter::FitToImage(
 		//TODO: revise termination conditions to check the residual magnitudes / energy somehow
 		o3c::Tensor warped_vertex_position_jacobians, warped_vertex_normal_jacobians;
 
-		if (current_mode == IterationMode::ALL || current_mode == IterationMode::ROTATION_ONLY) {
+		if (current_iteration_mode == IterationMode::ALL || current_iteration_mode == IterationMode::ROTATION_ONLY) {
 			// compute warped vertex and normal jacobians wrt. delta rotations and jacobians
 			// [V X A/V X 4], [V X A/V X 3]
 			std::tie(warped_vertex_position_jacobians, warped_vertex_normal_jacobians) =
@@ -191,10 +192,10 @@ void DeformableMeshToImageFitter::FitToImage(
 						warped_vertex_position_jacobians, warped_vertex_normal_jacobians,
 						point_map_vectors, rasterized_normals, residual_mask, pixel_face_indices,
 						face_node_anchors, face_node_anchor_counts, warp_field.node_positions.GetLength(),
-						use_tukey_penalty_for_depth_term, tukey_penalty_cutoff_cm, current_mode
+						use_tukey_penalty_for_depth_term, tukey_penalty_cutoff_cm, current_iteration_mode
 				);
 #ifdef DEBUG_HANDPICKED_DATA_PIXEL_REGION
-		int jacobian_stride = current_mode == IterationMode::ALL ? 6 : 3;
+		int jacobian_stride = current_iteration_mode == IterationMode::ALL ? 6 : 3;
 		int max_face_anchor_count = 3 * static_cast<int>(warped_vertex_position_jacobians.GetShape(1));
 		o3c::Tensor region_pixel_jacobians =
 				pixel_jacobians.Reshape({rendering_image_size[0], rendering_image_size[1], max_face_anchor_count, jacobian_stride})
@@ -206,16 +207,16 @@ void DeformableMeshToImageFitter::FitToImage(
 		open3d::core::Tensor hessian_blocks_depth_diagonal;
 		kernel::ComputeDepthHessianApproximationBlocks_UnorderedNodePixels(
 				hessian_blocks_depth_diagonal, pixel_jacobians,
-				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_mode
+				node_pixel_jacobian_indices_jagged, node_pixel_jacobian_counts, current_iteration_mode
 		);
 
 
 		// compute -(J_d^T)r_d (negative gradient for the data term)
-		o3c::Tensor negative_gradient_depth;
+		o3c::Tensor negative_gradient;
 		int max_anchor_count_per_vertex = static_cast<int32_t>(warp_anchors.GetShape(1));
 		kernel::ComputeNegativeDepthGradient_UnorderedNodePixels(
-				negative_gradient_depth, depth_residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
-				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_mode
+				negative_gradient, depth_residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices_jagged,
+				node_pixel_jacobian_counts, max_anchor_count_per_vertex, current_iteration_mode
 		);
 
 		open3d::core::Tensor motion_updates;
@@ -232,17 +233,29 @@ void DeformableMeshToImageFitter::FitToImage(
 
 			hessian_approximation.DiagonalBlocks() += hessian_blocks_depth_diagonal;
 
-			if(this->levenberg_marquart_factor > 0.f){
+			if (this->levenberg_marquart_factor > 0.f) {
 				core::linalg::PreconditionDiagonalBlocks(hessian_approximation.DiagonalBlocks(), this->levenberg_marquart_factor);
 			}
 
+			o3c::Tensor negative_gradient_edges;
+			kernel::ComputeNegativeArapGradient(negative_gradient_edges, edge_residuals, edge_jacobians, warp_field.GetEdges(),
+			                                    warp_field.node_positions.GetLength(), current_iteration_mode);
+
+			negative_gradient += negative_gradient_edges;
+
+			core::linalg::SolveBlockSparseArrowheadCholesky(motion_updates, hessian_approximation, negative_gradient);
+
 		} else {
-			core::linalg::SolveBlockDiagonalCholesky(motion_updates, hessian_blocks_depth_diagonal, negative_gradient_depth);
+			if (this->levenberg_marquart_factor > 0.f) {
+				core::linalg::PreconditionDiagonalBlocks(hessian_blocks_depth_diagonal, this->levenberg_marquart_factor);
+			}
+
+			core::linalg::SolveBlockDiagonalCholesky(motion_updates, hessian_blocks_depth_diagonal, negative_gradient);
 		}
 
 
 		o3c::Tensor rotation_matrix_updates;
-		switch (current_mode) {
+		switch (current_iteration_mode) {
 			case ALL: motion_updates = motion_updates.Reshape({motion_updates.GetShape(0) / 6, 6});
 				// convert rotation axis-angle vectors to matrices
 				rotation_matrix_updates = core::linalg::AxisAngleVectorsToMatricesRodrigues(motion_updates.Slice(1, 0, 3).Contiguous());

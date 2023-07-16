@@ -24,6 +24,7 @@
 #include "core/kernel/MathTypedefs.h"
 #include "core/linalg/KroneckerTensorProduct.h"
 #include "core/platform_independence/AtomicCounterArray.h"
+#include "core/platform_independence/AtomicTensor.h"
 #include "core/platform_independence/Atomics.h"
 #include "geometry/functional/kernel/Defines.h"
 
@@ -399,12 +400,12 @@ void ComputeNegativeGradient_UnorderedNodePixels_Generic(
 			device, node_count,
 			NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t node_index) {
 				int node_pixel_jacobian_list_length = node_pixel_count_data[node_index];
-				typename internal::Gradient<TIterationMode>::VectorType node_pixel_gradient;
-				if (TIterationMode == IterationMode::ALL) {
-					node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
-				} else {
-					node_pixel_gradient << 0.f, 0.f, 0.f;
-				}
+				typename internal::Gradient<TIterationMode>::VectorType node_pixel_gradient = internal::Gradient<TIterationMode>::VectorType::Zero();
+				// if (TIterationMode == IterationMode::ALL) {
+				// 	node_pixel_gradient << 0.f, 0.f, 0.f, 0.f, 0.f, 0.f;
+				// } else {
+				// 	node_pixel_gradient << 0.f, 0.f, 0.f;
+				// }
 				for (int i_node_pixel_jacobian = 0; i_node_pixel_jacobian < node_pixel_jacobian_list_length; i_node_pixel_jacobian++) {
 					int pixel_node_jacobian_address = node_pixel_jacobian_index_data[node_index * MAX_PIXELS_PER_NODE + i_node_pixel_jacobian];
 					int i_pixel = pixel_node_jacobian_address / (max_anchor_count_per_vertex * 3 * jacobian_stride);
@@ -449,6 +450,192 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels(
 			ComputeNegativeGradient_UnorderedNodePixels_Generic<TDevice, IterationMode::ROTATION_ONLY>(
 					negative_gradient, residuals, residual_mask, pixel_jacobians, node_pixel_jacobian_indices,
 					node_pixel_jacobian_counts, max_anchor_count_per_vertex
+			);
+			break;
+	}
+}
+
+enum class EdgeJacobianPortion : int64_t {
+	NODE_I_ROTATION = 0,
+	NODE_I_TRANSLATION = 1,
+	NODE_J_TRANSLATION = 2
+};
+
+template<open3d::core::Device::DeviceType TDevice, IterationMode TIterationMode>
+void ComputeNegativeArapGradient_ModeDispatched(
+		open3d::core::Tensor& negative_gradient,
+		const open3d::core::Tensor& residuals,
+		const open3d::core::Tensor& edge_jacobians,
+		const open3d::core::Tensor& edges,
+		int64_t node_count
+) {
+	// counts & checks
+	o3c::Device device = edges.GetDevice();
+
+	int64_t edge_count = edges.GetShape(0);
+	o3c::AssertTensorShape(edges, { edge_count, 2 });
+	o3c::AssertTensorDtype(edges, o3c::Int32);
+
+	o3c::AssertTensorShape(edge_jacobians, { edge_count, 5 });
+	o3c::AssertTensorDtype(edge_jacobians, o3c::Float32);
+	o3c::AssertTensorDevice(edge_jacobians, device);
+
+	o3c::AssertTensorShape(residuals, { edge_count * 3 });
+	o3c::AssertTensorDtype(residuals, o3c::Float32);
+	o3c::AssertTensorDevice(residuals, device);
+
+	int64_t jacobian_stride;
+	if (TIterationMode == IterationMode::ALL) {
+		jacobian_stride = 6;
+	} else {
+		jacobian_stride = 3;
+	}
+
+	// prep outputs & data access
+	core::AtomicTensor<TDevice, float> negative_gradient_atomic({node_count * jacobian_stride}, device);
+
+	auto edge_data = edges.GetDataPtr<int32_t>();
+	auto edge_jacobian_data = edge_jacobians.GetDataPtr<float>();
+	auto residual_data = residuals.GetDataPtr<float>();
+
+	switch (TIterationMode) {
+		case ALL: {
+			o3c::ParallelFor(
+					device, edge_count * 3,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_workload) {
+						int64_t i_edge = i_workload / 3;
+						auto jacobian_portion = static_cast<EdgeJacobianPortion>(i_workload % 3);
+						Eigen::Map<const Eigen::Vector3f> dEi_dR_dense(edge_jacobian_data + i_edge * 5);
+						Eigen::Map<const Eigen::Vector3f> edge_residual(residual_data + i_edge * 3);
+						core::kernel::Matrix3f dE;
+						int32_t node_index;
+						int32_t offset_in_gradient;
+						switch(jacobian_portion){
+							case EdgeJacobianPortion::NODE_I_ROTATION:
+								// TODO: (potential optimization) this still more operations than i_translation and j_translation cases require
+								//  (which can more efficiently be done using scalar-vector multiplication instead of matrix-vector).
+								//  The smarter way for CUDA would be to use intermediate value arrays for the i_rotation (and, maybe, i_translation)
+								//  cases instead -- there are consistent non-zero "diagonal" 6x12 blocks in J^(T), [de_Ri de_ti].
+								//  Think about how to more efficiently do skew-symmetric.T x 3-vector multiplications on CUDA.
+								//  Then, the blocks can be added up through some form of reduction. Likewise can be done for j_translation, but schema
+								//  for bottom (denser) part of J.T is different (look at matrix sparsity diagram)
+								dE = Eigen::SkewSymmetricMatrix3<float>(dEi_dR_dense).transpose();
+								node_index = edge_data[i_edge * 2];
+								offset_in_gradient = 0;
+								break;
+							case EdgeJacobianPortion::NODE_I_TRANSLATION:
+								// not the most efficient way, but, for now, we care more about thread divergence here (for CUDA version).
+								dE = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 3];
+								node_index = edge_data[i_edge * 2];
+								offset_in_gradient = 3;
+								break;
+							case EdgeJacobianPortion::NODE_J_TRANSLATION:
+								// not the most efficient way, but, for now, we care more about thread divergence here (for CUDA version).
+								dE = core::kernel::Matrix3f::Identity() * edge_jacobian_data[i_edge * 5 + 4];
+								node_index = edge_data[i_edge * 2 + 1];
+								offset_in_gradient = 3;
+								break;
+						}
+						Eigen::Vector3f negative_gradient_addend = dE * edge_residual;
+						int64_t first_element_offset = node_index * jacobian_stride + offset_in_gradient;
+#ifdef __CUDACC__
+						#pragma unroll
+#endif
+						for (int i_element = 0; i_element < 3; i_element++){
+							// subtract (instead of add) to make negative gradient
+							negative_gradient_atomic.FetchSub(first_element_offset + i_element, negative_gradient_addend.coeff(i_element));
+						}
+					}
+			);
+		}
+			break;
+		case ROTATION_ONLY:
+			o3c::ParallelFor(
+					device, edge_count,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_edge) {
+						Eigen::Map<const Eigen::Vector3f> dEi_dR_dense(edge_jacobian_data + i_edge * 5);
+						Eigen::Map<const Eigen::Vector3f> edge_residual(residual_data + i_edge * 3);
+						core::kernel::Matrix3f dE;
+						int32_t node_index = edge_data[i_edge * 2];
+						Eigen::Vector3f negative_gradient_addend = Eigen::SkewSymmetricMatrix3<float>(dEi_dR_dense).transpose() * edge_residual;
+						int64_t first_element_offset = node_index * jacobian_stride;
+#ifdef __CUDACC__
+#pragma unroll
+#endif
+						for (int i_element = 0; i_element < 3; i_element++){
+							// subtract (instead of add) to make negative gradient
+							negative_gradient_atomic.FetchSub(first_element_offset + i_element, negative_gradient_addend.coeff(i_element));
+						}
+ 					}
+			);
+			break;
+		case TRANSLATION_ONLY:
+			o3c::ParallelFor(
+					device, edge_count*2,
+					NNRT_LAMBDA_CAPTURE_CLAUSE NNRT_DEVICE_WHEN_CUDACC(int64_t i_workload) {
+						int64_t i_edge = i_workload / 2;
+						auto jacobian_portion = static_cast<EdgeJacobianPortion>(1 + i_workload % 2);
+						Eigen::Map<const Eigen::Vector3f> edge_residual(residual_data + i_edge * 3);
+						float factor;
+						int32_t node_index;
+						int32_t offset_in_gradient;
+						switch(jacobian_portion){
+							case EdgeJacobianPortion::NODE_I_TRANSLATION:
+								// not the most efficient way, but, for now, we care more about thread divergence here (for CUDA version).
+								factor = edge_jacobian_data[i_edge * 5 + 3];
+								node_index = edge_data[i_edge * 2];
+								offset_in_gradient = 0;
+								break;
+							case EdgeJacobianPortion::NODE_J_TRANSLATION:
+								// not the most efficient way, but, for now, we care more about thread divergence here (for CUDA version).
+								factor = edge_jacobian_data[i_edge * 5 + 4];
+								node_index = edge_data[i_edge * 2 + 1];
+								offset_in_gradient = 3;
+								break;
+							default:
+								printf("Warning: logic error in ComputeNegativeArapGradient_ModeDispatched\n");
+								break;
+						}
+						Eigen::Vector3f negative_gradient_addend = factor * edge_residual;
+						int64_t first_element_offset = node_index * jacobian_stride + offset_in_gradient;
+#ifdef __CUDACC__
+#pragma unroll
+#endif
+						for (int i_element = 0; i_element < 3; i_element++){
+							// subtract (instead of add) to make negative gradient
+							negative_gradient_atomic.FetchSub(first_element_offset + i_element, negative_gradient_addend.coeff(i_element));
+						}
+					}
+			);
+			break;
+	}
+	negative_gradient = negative_gradient_atomic.AsTensor(true);
+
+}
+
+template<open3d::core::Device::DeviceType TDevice>
+void ComputeNegativeArapGradient(
+		open3d::core::Tensor& negative_gradient,
+		const open3d::core::Tensor& residuals,
+		const open3d::core::Tensor& edge_jacobians,
+		const open3d::core::Tensor& edges,
+		int64_t node_count,
+		IterationMode mode
+) {
+	switch (mode) {
+		case ALL:
+			ComputeNegativeArapGradient_ModeDispatched<TDevice, IterationMode::ALL>(
+					negative_gradient, residuals, edge_jacobians, edges, node_count
+			);
+			break;
+		case TRANSLATION_ONLY:
+			ComputeNegativeArapGradient_ModeDispatched<TDevice, IterationMode::TRANSLATION_ONLY>(
+					negative_gradient, residuals, edge_jacobians, edges, node_count
+			);
+			break;
+		case ROTATION_ONLY:
+			ComputeNegativeArapGradient_ModeDispatched<TDevice, IterationMode::ROTATION_ONLY>(
+					negative_gradient, residuals, edge_jacobians, edges, node_count
 			);
 			break;
 	}
@@ -537,7 +724,7 @@ void ComputeArapResiduals_VariableCoverageWeight(
 		const open3d::core::Tensor& node_translations,
 		const open3d::core::Tensor& node_rotations,
 		float regularization_weight
-){
+) {
 	// counts & checks
 	int64_t edge_count = edges.GetLength();
 	int64_t node_count = node_positions.GetLength();
