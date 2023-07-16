@@ -67,7 +67,7 @@ public:
 
 	__device__
 	inline TElement FetchSub(int index, TElement amount) const {
-		return atomicSub(atomic_data + index, amount);
+		return atomicAdd(atomic_data + index, -amount);
 	}
 
 	TElement* GetDataPtr() {

@@ -53,6 +53,15 @@ void ComputeNegativeDepthGradient_UnorderedNodePixels<open3d::core::Device::Devi
 		IterationMode mode
 );
 
+template
+void ComputeNegativeArapGradient<open3d::core::Device::DeviceType::CPU>(
+		open3d::core::Tensor& negative_gradient,
+		const open3d::core::Tensor& residuals,
+		const open3d::core::Tensor& edge_jacobians,
+		const open3d::core::Tensor& edges,
+		int64_t node_count,
+		IterationMode mode
+);
 
 template
 void ComputeArapResiduals_FixedCoverageWeight<open3d::core::Device::DeviceType::CPU>(
