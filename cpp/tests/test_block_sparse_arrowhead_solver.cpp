@@ -106,10 +106,10 @@ void TestBlockSparseArrowheadSolver(const o3c::Device& device, bool benchmark = 
 
 TEST_CASE("Test Block-Sparse Arrowhead Solver CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestBlockSparseArrowheadSolver(device, false);
+	TestBlockSparseArrowheadSolver(device, true, 10);
 }
 
 TEST_CASE("Test Block-Sparse Arrowhead Solver CUDA") {
 	auto device = o3c::Device("CUDA:0");
-	TestBlockSparseArrowheadSolver(device);
+	TestBlockSparseArrowheadSolver(device, true, 100);
 }

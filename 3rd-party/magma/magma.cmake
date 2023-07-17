@@ -42,9 +42,12 @@ externalproject_add(
     -DMAGMA_ENABLE_CUDA=ON
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     UPDATE_COMMAND ""
+    BUILD_BYPRODUCTS
+        <INSTALL_DIR>/${NNRT_INSTALL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${lib_name}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        <INSTALL_DIR>/${NNRT_INSTALL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}${lib_sparse_name}${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 ExternalProject_Get_Property(ext_magma INSTALL_DIR)
 
 set(MAGMA_INCLUDE_DIRS ${INSTALL_DIR}/include/) # "/" is critical.
 set(MAGMA_LIB_DIR ${INSTALL_DIR}/${NNRT_INSTALL_LIB_DIR})
-set(MAGMA_LIBRARIES ${lib_name} ${lib_sparse_name})
+set(MAGMA_LIBRARIES ${lib_name};${lib_sparse_name})

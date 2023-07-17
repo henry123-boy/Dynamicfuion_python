@@ -246,7 +246,7 @@ def test_warp_meshes_using_node_anchors(device: torch.device, ground_truth_verti
 
     anchor_count = 4
     node_coverage = 0.5
-    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(mesh_o3d.vertex["positions"],
+    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_fixed_node_weight(mesh_o3d.vertex["positions"],
                                                                                       nodes_o3d, anchor_count, 0,
                                                                                       node_coverage=node_coverage)
 

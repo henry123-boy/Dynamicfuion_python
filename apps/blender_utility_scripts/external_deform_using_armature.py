@@ -99,7 +99,7 @@ def deform_objects(
         np.array([np.array(v.co) for v in skin_source_object.data.vertices]).astype(np.float32)
     )
 
-    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(
+    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_fixed_node_weight(
         skin_source_vertices, nodes_source, 4, 0, node_coverage
     )
     

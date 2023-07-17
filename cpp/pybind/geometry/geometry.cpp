@@ -19,6 +19,7 @@
 #include "geometry/NonRigidSurfaceVoxelBlockGrid.h"
 #include "geometry/HierarchicalGraphWarpField.h"
 #include "geometry/functional/AnchorComputationMethod.h"
+#include "geometry/WarpNodeCoverageComputationMethod.h"
 #include "geometry/TransformationMode.h"
 
 #include "geometry/functional/GeometrySampling.h"
@@ -46,8 +47,9 @@ void pybind_geometry(py::module& m) {
 }
 
 void pybind_geometry_enums(pybind11::module& m) {
-	//Example for how to export enums to Python
+	//Examples for how to export enums to Python
 	nnrt::export_enum<nnrt::geometry::AnchorComputationMethod>(m);
+	nnrt::export_enum<nnrt::geometry::WarpNodeCoverageComputationMethod>(m);
 }
 
 

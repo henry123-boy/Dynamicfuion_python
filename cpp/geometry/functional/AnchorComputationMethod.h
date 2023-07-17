@@ -16,6 +16,7 @@
 #pragma once
 namespace nnrt::geometry {
 
+//TODO: move out of functional folder, should be in cpp/geometry
 enum class AnchorComputationMethod : int {
 	EUCLIDEAN,
 	SHORTEST_PATH

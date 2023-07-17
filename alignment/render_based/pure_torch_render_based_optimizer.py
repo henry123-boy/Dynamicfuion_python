@@ -74,7 +74,7 @@ class PureTorchRenderBasedOptimizer:
 
         # note: assume weights are already normalized and weight rows add up to 1.0 skipping places where anchors are -1
         anchors, weights = nnrt.geometry.functional \
-            .compute_anchors_and_weights_shortest_path(canonical_mesh.vertex["positions"],
+            .compute_anchors_and_weights_shortest_path_fixed_node_weight(canonical_mesh.vertex["positions"],
                                                        warp_field.nodes, warp_field.edges,
                                                        anchor_count=self.anchor_count,
                                                        node_coverage=self.node_coverage)

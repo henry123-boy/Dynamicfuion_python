@@ -23,6 +23,7 @@
 
 
 namespace nnrt::geometry::functional {
+
 // region ======================================== EUCLIDEAN =========================================================================================
 void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
 		open3d::core::Tensor& anchors,

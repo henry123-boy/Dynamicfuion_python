@@ -14,10 +14,6 @@
 //  limitations under the License.
 //  ================================================================
 #pragma once
-// stdlib includes
-
-// third-party includes
-
 // local includes
 #include "geometry/WarpField.h"
 #include "geometry/functional/AnchorComputationMethod.h"

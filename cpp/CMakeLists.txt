@@ -481,9 +481,14 @@ set(
     core/linalg/instantiations/DiagonalBlocksCPU.cpp
     core/linalg/DiagonalBlocksImpl.h
 
-    core/linalg/TransposeBlocksCUDA.cu
     core/linalg/TransposeBlocks.h
+    core/linalg/TransposeBlocks.cpp
+    core/linalg/TransposeBlocks.cpp
+    core/linalg/TransposeBlocksCPU.cpp
+    core/linalg/TransposeBlocksCUDA.cu
+
     core/platform_independence/AtomicTensor.h
+
     core/linalg/SchurComplement.cpp
     core/linalg/SchurComplement.h
 
@@ -514,7 +519,8 @@ set(
     core/linalg/SolveCholeskyCPU.cpp
     core/linalg/SolveCholeskyCUDA.cpp
 
-    core/linalg/TransposeBlocks.cpp core/linalg/TransposeBlocks.cpp core/linalg/TransposeBlocksCPU.cpp)
+
+)
 
 add_library(nnrt_cpp STATIC ${NNRT_SOURCE_FILES})
 
@@ -562,7 +568,14 @@ pybind11_add_module(
     ${PYBIND_SOURCE_FILES}
 )
 
+target_link_directories(nnrt PUBLIC /home/algomorph/Builds/NeuralTracking/cmake-build-debug/magma/lib)
+target_link_directories(nnrt PUBLIC /home/algomorph/Builds/NeuralTracking/cmake-build-debug)
+target_link_libraries(nnrt PUBLIC magma)
+target_link_libraries(nnrt PUBLIC /home/algomorph/Builds/NeuralTracking/cmake-build-debug/magma/lib/libmagma.a)
+
+
 target_include_directories(nnrt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 
 target_link_libraries(nnrt PUBLIC nnrt_cpp)
 

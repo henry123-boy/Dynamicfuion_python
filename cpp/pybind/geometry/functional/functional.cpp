@@ -49,13 +49,28 @@ void pybind_geometry_functional(pybind11::module& m) {
 }
 
 void pybind_geometry_functional_warp_anchor_computation(pybind11::module& m) {
-	m.def("compute_anchors_and_weights_euclidean", py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, int, int,
-			      float>(&ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight), "points"_a, "nodes"_a, "anchor_count"_a,
-	      "minimum_valid_anchor_count"_a, "node_coverage"_a);
+	m.def("compute_anchors_and_weights_euclidean_fixed_node_weight",
+	      py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, int, int, float>(&ComputeAnchorsAndWeights_Euclidean_FixedNodeWeight),
+	      "points"_a, "nodes"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a, "node_coverage_weight"_a
+	);
 
-	m.def("compute_anchors_and_weights_shortest_path", py::overload_cast<const o3c::Tensor&, const o3c::Tensor&,
-			      const o3c::Tensor&, int, float>(&ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight), "points"_a, "nodes"_a, "edges"_a,
-	      "anchor_count"_a, "node_coverage"_a);
+	m.def("compute_anchors_and_weights_euclidean_variable_node_weight",
+	      py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int, int>
+			      (&ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight),
+	      "points"_a, "nodes"_a, "node_coverage_weights"_a, "anchor_count"_a, "minimum_valid_anchor_count"_a
+	);
+
+	m.def("compute_anchors_and_weights_shortest_path_fixed_node_weight",
+	      py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int, float>
+			      (&ComputeAnchorsAndWeights_ShortestPath_FixedNodeWeight),
+	      "points"_a, "nodes"_a, "edges"_a, "anchor_count"_a, "node_coverage_weight"_a
+	);
+
+	m.def("compute_anchors_and_weights_shortest_path_variable_node_weight",
+	      py::overload_cast<const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, const o3c::Tensor&, int>
+			      (&ComputeAnchorsAndWeights_ShortestPath_VariableNodeWeight),
+	      "points"_a, "nodes"_a, "node_coverage_weights"_a, "edges"_a, "anchor_count"_a
+	);
 }
 
 void pybind_geometry_functional_warping(pybind11::module& m) {

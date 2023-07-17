@@ -30,79 +30,9 @@ set(NNRT_3RDPARTY_PRIVATE_TARGETS)
 
 
 find_package(PkgConfig QUIET)
+include(find_package_3rdparty_library)
 
-# nnrt_find_package_3rdparty_library(name ...)
-#
-# Creates an interface library for a find_package dependency.
-#
-# The function will set ${name}_FOUND to TRUE or FALSE
-# indicating whether or not the library could be found.
-#
-# Valid options:
-#    REQUIRED
-#        finding the package is required
-#    QUIET
-#        finding the package is quiet
-#    PACKAGE <pkg>
-#        the name of the queried package <pkg> forwarded to find_package()
-#    TARGETS <target> [<target> ...]
-#        the expected targets to be found in <pkg>
-#    INCLUDE_DIRS
-#        the expected include directory variable names to be found in <pkg>.
-#        If <pkg> also defines targets, use them instead and pass them via TARGETS option.
-#    LIBRARIES
-#        the expected library variable names to be found in <pkg>.
-#        If <pkg> also defines targets, use them instead and pass them via TARGETS option.
-#
-function(nnrt_find_package_3rdparty_library name)
-    cmake_parse_arguments(arg "REQUIRED;QUIET" "PACKAGE" "TARGETS;INCLUDE_DIRS;LIBRARIES" ${ARGN})
-    if (arg_UNPARSED_ARGUMENTS)
-        message(STATUS "Unparsed: ${arg_UNPARSED_ARGUMENTS}")
-        message(FATAL_ERROR "Invalid syntax: nnrt_find_package_3rdparty_library(${name} ${ARGN})")
-    endif ()
-    if (NOT arg_PACKAGE)
-        message(FATAL_ERROR "nnrt_find_package_3rdparty_library: Expected value for argument PACKAGE")
-    endif ()
-    set(find_package_args "")
-    if (arg_REQUIRED)
-        list(APPEND find_package_args "REQUIRED")
-    endif ()
-    if (arg_QUIET)
-        list(APPEND find_package_args "QUIET")
-    endif ()
-    find_package(${arg_PACKAGE} ${find_package_args})
-    if (${arg_PACKAGE}_FOUND)
-        message(STATUS "Using installed third-party library ${name} ${${arg_PACKAGE}_VERSION}")
-        add_library(${name} INTERFACE)
-        if (arg_TARGETS)
-            foreach (target IN LISTS arg_TARGETS)
-                if (TARGET ${target})
-                    target_link_libraries(${name} INTERFACE ${target})
-                else ()
-                    message(WARNING "Skipping undefined target ${target}")
-                endif ()
-            endforeach ()
-        endif ()
-        if (arg_INCLUDE_DIRS)
-            foreach (incl IN LISTS arg_INCLUDE_DIRS)
-                target_include_directories(${name} INTERFACE ${${incl}})
-            endforeach ()
-        endif ()
-        if (arg_LIBRARIES)
-            foreach (lib IN LISTS arg_LIBRARIES)
-                target_link_libraries(${name} INTERFACE ${${lib}})
-            endforeach ()
-        endif ()
-        if (NOT BUILD_SHARED_LIBS)
-            install(TARGETS ${name} EXPORT ${PROJECT_NAME}Targets)
-        endif ()
-        set(${name}_FOUND TRUE PARENT_SCOPE)
-        add_library(${PROJECT_NAME}::${name} ALIAS ${name})
-    else ()
-        message(STATUS "Unable to find installed third-party library ${name}")
-        set(${name}_FOUND FALSE PARENT_SCOPE)
-    endif ()
-endfunction()
+
 
 # List of linker options for nnrt_cpp client binaries (eg: pybind) to hide 3rd-party
 # dependencies. Only needed with GCC, not AppleClang.
@@ -148,231 +78,8 @@ set(ExternalProject_CMAKE_ARGS_hidden
     -DCMAKE_VISIBILITY_INLINES_HIDDEN=ON
     )
 
-# nnrt_import_3rdparty_library(name ...)
-#
-# Imports a third-party library that has been built independently in a sub project.
-#
-# Valid options:
-#    PUBLIC
-#        the library belongs to the public interface and must be installed
-#    HEADER
-#        the library headers belong to the public interface and will be
-#        installed, but the library is linked privately.
-#    INCLUDE_ALL
-#        install all files in the include directories. Default is *.h, *.hpp
-#    HIDDEN
-#         Symbols from this library will not be exported to client code during
-#         linking with NNRT. This is the opposite of the VISIBLE option in
-#         nnrt_build_3rdparty_library.  Prefer hiding symbols during building 3rd
-#         party libraries, since this option is not supported by the MSVC linker.
-#    INCLUDE_DIRS
-#        the temporary location where the library headers have been installed.
-#        Trailing slashes have the same meaning as with install(DIRECTORY).
-#        If your include is "#include <x.hpp>" and the path of the file is
-#        "/path/to/libx/x.hpp" then you need to pass "/path/to/libx/"
-#        with the trailing "/". If you have "#include <libx/x.hpp>" then you
-#        need to pass "/path/to/libx".
-#    LIBRARIES
-#        the built library name(s). It is assumed that the library is static.
-#        If the library is PUBLIC, it will be renamed to NNRT_${name} at
-#        install time to prevent name collisions in the install space.
-#    LIB_DIR
-#        the temporary location of the library. Defaults to
-#        CMAKE_ARCHIVE_OUTPUT_DIRECTORY.
-#    DEPENDS <target> [<target> ...]
-#        targets on which <name> depends on and that must be built before.
-#
-function(nnrt_import_3rdparty_library name)
-    cmake_parse_arguments(arg "PUBLIC;HEADER;INCLUDE_ALL;HIDDEN" "LIB_DIR" "INCLUDE_DIRS;LIBRARIES;DEPENDS" ${ARGN})
-    if (arg_UNPARSED_ARGUMENTS)
-        message(STATUS "Unparsed: ${arg_UNPARSED_ARGUMENTS}")
-        message(FATAL_ERROR "Invalid syntax: nnrt_import_3rdparty_library(${name} ${ARGN})")
-    endif ()
-    if (NOT arg_LIB_DIR)
-        set(arg_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
-    endif ()
-    add_library(${name} INTERFACE)
-    if (arg_INCLUDE_DIRS)
-        foreach (incl IN LISTS arg_INCLUDE_DIRS)
-            if (incl MATCHES "(.*)/$")
-                set(incl_path ${CMAKE_MATCH_1})
-            else ()
-                get_filename_component(incl_path "${incl}" DIRECTORY)
-            endif ()
-            target_include_directories(${name} SYSTEM INTERFACE $<BUILD_INTERFACE:${incl_path}>)
-            if (arg_PUBLIC OR arg_HEADER)
-                if (arg_INCLUDE_ALL)
-                    install(DIRECTORY ${incl}
-                        DESTINATION ${NNRT_INSTALL_INCLUDE_DIR}/nnrt/3rdparty
-                        )
-                else ()
-                    install(DIRECTORY ${incl}
-                        DESTINATION ${NNRT_INSTALL_INCLUDE_DIR}/nnrt/3rdparty
-                        FILES_MATCHING
-                        PATTERN "*.h"
-                        PATTERN "*.hpp"
-                        )
-                endif ()
-                target_include_directories(${name} INTERFACE $<INSTALL_INTERFACE:${NNRT_INSTALL_INCLUDE_DIR}/nnrt/3rdparty>)
-            endif ()
-        endforeach ()
-    endif ()
-    if (arg_LIBRARIES)
-        list(LENGTH arg_LIBRARIES libcount)
-        if (arg_HIDDEN AND NOT arg_PUBLIC AND NOT arg_HEADER)
-            set(HIDDEN 1)
-        else ()
-            set(HIDDEN 0)
-        endif ()
-        foreach (arg_LIBRARY IN LISTS arg_LIBRARIES)
-            set(library_filename ${CMAKE_STATIC_LIBRARY_PREFIX}${arg_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX})
-            if (libcount EQUAL 1)
-                set(installed_library_filename ${CMAKE_STATIC_LIBRARY_PREFIX}${PROJECT_NAME}_${name}${CMAKE_STATIC_LIBRARY_SUFFIX})
-            else ()
-                set(installed_library_filename ${CMAKE_STATIC_LIBRARY_PREFIX}${PROJECT_NAME}_${name}_${arg_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX})
-            endif ()
-            # Apple compiler ld
-            target_link_libraries(${name} INTERFACE
-                "$<BUILD_INTERFACE:$<$<AND:${HIDDEN},${FLAG_load_hidden}>:-load_hidden >${arg_LIB_DIR}/${library_filename}>")
-            if (NOT BUILD_SHARED_LIBS OR arg_PUBLIC)
-                install(FILES ${arg_LIB_DIR}/${library_filename}
-                    DESTINATION ${NNRT_INSTALL_LIB_DIR}
-                    RENAME ${installed_library_filename}
-                    )
-                target_link_libraries(${name} INTERFACE $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${NNRT_INSTALL_LIB_DIR}/${installed_library_filename}>)
-            endif ()
-            if (HIDDEN)
-                # GNU compiler ld
-                target_link_options(${name} INTERFACE
-                    $<$<CXX_COMPILER_ID:GNU>:LINKER:--exclude-libs,${library_filename}>)
-                list(APPEND NNRT_HIDDEN_3RDPARTY_LINK_OPTIONS $<$<CXX_COMPILER_ID:GNU>:LINKER:--exclude-libs,${library_filename}>)
-                set(NNRT_HIDDEN_3RDPARTY_LINK_OPTIONS
-                    ${NNRT_HIDDEN_3RDPARTY_LINK_OPTIONS} PARENT_SCOPE)
-            endif ()
-        endforeach ()
-    endif ()
-    if (NOT BUILD_SHARED_LIBS OR arg_PUBLIC)
-        install(TARGETS ${name} EXPORT ${PROJECT_NAME}Targets)
-    endif ()
-    if (arg_DEPENDS)
-        add_dependencies(${name} ${arg_DEPENDS})
-    endif ()
-    add_library(${PROJECT_NAME}::${name} ALIAS ${name})
-endfunction()
-
-#
-# build_3rdparty_library(name ...)
-#
-# Builds a third-party library from source
-#
-# Valid options:
-#    PUBLIC
-#        the library belongs to the public interface and must be installed
-#    HEADER
-#        the library headers belong to the public interface, but the library
-#        itself is linked privately
-#    INCLUDE_ALL
-#        install all files in the include directories. Default is *.h, *.hpp
-#    DIRECTORY <dir>
-#        the library sources are in the subdirectory <dir> of 3rdparty/
-#    INCLUDE_DIRS <dir> [<dir> ...]
-#        include headers are in the subdirectories <dir>. Trailing slashes
-#        have the same meaning as with install(DIRECTORY). <dir> must be
-#        relative to the library source directory.
-#        If your include is "#include <x.hpp>" and the path of the file is
-#        "path/to/libx/x.hpp" then you need to pass "path/to/libx/"
-#        with the trailing "/". If you have "#include <libx/x.hpp>" then you
-#        need to pass "path/to/libx".
-#    SOURCES <src> [<src> ...]
-#        the library sources. Can be omitted for header-only libraries.
-#        All sources must be relative to the library source directory.
-#    LIBS <target> [<target> ...]
-#        extra link dependencies
-#
-function(build_3rdparty_library name)
-    cmake_parse_arguments(arg "PUBLIC;HEADER;INCLUDE_ALL" "DIRECTORY" "INCLUDE_DIRS;SOURCES;LIBS" ${ARGN})
-    if (arg_UNPARSED_ARGUMENTS)
-        message(FATAL_ERROR "Invalid syntax: build_3rdparty_library(${name} ${ARGN})")
-    endif ()
-    if (NOT arg_DIRECTORY)
-        set(arg_DIRECTORY "${name}")
-    endif ()
-    if (arg_INCLUDE_DIRS)
-        set(include_dirs)
-        foreach (incl IN LISTS arg_INCLUDE_DIRS)
-            list(APPEND include_dirs "${NNRT_3RDPARTY_DIR}/${arg_DIRECTORY}/${incl}")
-        endforeach ()
-    else ()
-        set(include_dirs "${NNRT_3RDPARTY_DIR}/${arg_DIRECTORY}/")
-    endif ()
-    message(STATUS "Building library ${name} from source")
-    if (arg_SOURCES)
-        set(sources)
-        foreach (src ${arg_SOURCES})
-            list(APPEND sources "${NNRT_3RDPARTY_DIR}/${arg_DIRECTORY}/${src}")
-        endforeach ()
-        add_library(${name} STATIC ${sources})
-        foreach (incl IN LISTS include_dirs)
-            if (incl MATCHES "(.*)/$")
-                set(incl_path ${CMAKE_MATCH_1})
-            else ()
-                get_filename_component(incl_path "${incl}" DIRECTORY)
-            endif ()
-            target_include_directories(${name} SYSTEM PUBLIC
-                $<BUILD_INTERFACE:${incl_path}>
-                )
-        endforeach ()
-        target_include_directories(${name} PUBLIC
-            $<INSTALL_INTERFACE:${NNRT_INSTALL_INCLUDE_DIR}/open3d/3rdparty>
-            )
-        nnrt_set_global_properties(${name})
-        set_target_properties(${name} PROPERTIES
-            OUTPUT_NAME "${PROJECT_NAME}_${name}"
-            )
-        if (arg_LIBS)
-            target_link_libraries(${name} PRIVATE ${arg_LIBS})
-        endif ()
-    else ()
-        add_library(${name} INTERFACE)
-        foreach (incl IN LISTS include_dirs)
-            if (incl MATCHES "(.*)/$")
-                set(incl_path ${CMAKE_MATCH_1})
-            else ()
-                get_filename_component(incl_path "${incl}" DIRECTORY)
-            endif ()
-            target_include_directories(${name} SYSTEM INTERFACE
-                $<BUILD_INTERFACE:${incl_path}>
-                )
-        endforeach ()
-        target_include_directories(${name} INTERFACE
-            $<INSTALL_INTERFACE:${NNRT_INSTALL_INCLUDE_DIR}/open3d/3rdparty>
-            )
-    endif ()
-    if (NOT BUILD_SHARED_LIBS OR arg_PUBLIC)
-        install(TARGETS ${name} EXPORT ${PROJECT_NAME}Targets
-            RUNTIME DESTINATION ${NNRT_INSTALL_BIN_DIR}
-            ARCHIVE DESTINATION ${NNRT_INSTALL_LIB_DIR}
-            LIBRARY DESTINATION ${NNRT_INSTALL_LIB_DIR}
-            )
-    endif ()
-    if (arg_PUBLIC OR arg_HEADER)
-        foreach (incl IN LISTS include_dirs)
-            if (arg_INCLUDE_ALL)
-                install(DIRECTORY ${incl}
-                    DESTINATION ${NNRT_INSTALL_INCLUDE_DIR}/open3d/3rdparty
-                    )
-            else ()
-                install(DIRECTORY ${incl}
-                    DESTINATION ${NNRT_INSTALL_INCLUDE_DIR}/open3d/3rdparty
-                    FILES_MATCHING
-                    PATTERN "*.h"
-                    PATTERN "*.hpp"
-                    )
-            endif ()
-        endforeach ()
-    endif ()
-    add_library(${PROJECT_NAME}::${name} ALIAS ${name})
-endfunction()
+include(import_3rdparty_library)
+include(build_3rdparty_library)
 # Convenience function to link against all third-party libraries
 # We need this because we create a lot of object libraries to assemble
 # the main library
@@ -825,7 +532,7 @@ if (BUILD_CUDA_MODULE)
     endif ()
 
 
-    # TODO when USE_SYSTEM_MAGMA, run FindMagma
+
     # MAGMA
     if (NOT USE_SYSTEM_MAGMA)
         include(${NNRT_3RDPARTY_DIR}/magma/magma.cmake)
@@ -835,9 +542,11 @@ if (BUILD_CUDA_MODULE)
             LIBRARIES ${MAGMA_LIBRARIES}
             DEPENDS ext_magma
             )
+        list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_magma)
+    else()
+        # TODO check USE_SYSTEM_MAGMA case
+        pkg_check_modules(MAGMA magma>=2.7.1)
     endif ()
-#     TODO not sure this needs to be happening like so if USE_SYSTEM_MAGMA=TRUE
-    list(APPEND NNRT_3RDPARTY_PRIVATE_TARGETS NNRT::3rdparty_magma)
 endif ()
 
 
