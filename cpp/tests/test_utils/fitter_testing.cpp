@@ -39,8 +39,9 @@ std::tuple<o3tg::TriangleMesh, o3tg::TriangleMesh> ReadAndTransformTwoMeshes(
 ) {
 	o3tg::TriangleMesh source_mesh, target_mesh;
 
-	o3tio::ReadTriangleMesh(static_mesh_test_data_directory.ToString() + "/" + mesh_name_1 + ".ply", source_mesh);
-	o3tio::ReadTriangleMesh(static_mesh_test_data_directory.ToString() + "/" + mesh_name_2 + ".ply", target_mesh);
+
+	o3tio::ReadTriangleMesh(generated_mesh_test_data_directory.ToString() + "/" + mesh_name_1 + ".ply", source_mesh);
+	o3tio::ReadTriangleMesh(generated_mesh_test_data_directory.ToString() + "/" + mesh_name_2 + ".ply", target_mesh);
 
 
 	source_mesh = source_mesh.To(device);

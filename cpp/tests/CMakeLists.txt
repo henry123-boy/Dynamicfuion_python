@@ -253,6 +253,20 @@ if (BUILD_CPP_TESTS)
         arrays/b.npy
     )
 
+    nnrt_add_test_data_download_target(
+        test_data_fitter_1_node
+        URL https://algomorph.com/storage/reco/fitter_1_node_test_data.7z
+        SHA256 6d7ffa7cc2fb6dc474687144ab3d1dff90b4fe98fab81de197cd922fa2ba0c8b
+        DESTINATION fitter_1_node_test_data.7z
+        EXTRACTED_NAMES
+        meshes/plane_skin_1_node_source.ply
+        meshes/plane_skin_1_node_target.ply
+        meshes/plane_skin_1_node_translation_target.ply
+        meshes/plane_skin_1_node_rotation_5_target.ply
+        meshes/plane_skin_1_node_rotation_45_target.ply
+        meshes/plane_skin_1_node_rotation_-45_target.ply
+    )
+
 
     ### add tests ###
     nnrt_add_test(test_graph_proc)
@@ -270,7 +284,7 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_voxel_block_grid_io)
     nnrt_add_test(test_unproject_3d_points)
     nnrt_add_test(test_extract_face_vertices)
-    nnrt_add_test(test_deformable_mesh_fitter_one_node)
+    nnrt_add_test(test_deformable_mesh_fitter_one_node DEPENDENCIES test_data_fitter_1_node)
     nnrt_add_test(test_deformable_mesh_fitter_two_nodes)
     nnrt_add_test(test_deformable_mesh_fitter_advanced DEPENDENCIES berlin_frames_28_29)
     nnrt_add_test(test_flat_edge_shader)
