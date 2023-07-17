@@ -77,7 +77,7 @@ void TestDeformableImageFitter_2NodePlanes(
 
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
-			test::ReadAndTransformTwoMeshes("plane_skin_source_2_nodes", "plane_skin_target_2_nodes_" + std::to_string(angle), device,
+			test::ReadAndTransformTwoMeshes("plane_fit_2_nodes_source", "plane_fit_2_nodes_" + std::to_string(angle) + "_target", device,
 			                                mesh_transform);
 
 	o3c::SizeVector image_resolution{100, 100};
@@ -281,7 +281,7 @@ void TestDeformableImageFitter_2NodeSurfaceTranslation(
 			 o3c::Tensor::Zeros(zero_bg_pixel_depths.GetShape(), zero_bg_pixel_depths.GetDtype(), device)).LogicalNot();
 
 	if (draw_depth) {
-		DrawDepth(pixel_depths, "contiguous_surface_2_node_skin_target");
+		DrawDepth(pixel_depths, "contiguous_surface_2_node_fit_target");
 	}
 
 
@@ -309,7 +309,7 @@ void TestDeformableImageFitter_2NodeSurfaceTranslation(
 	o3c::Tensor edges = o3c::Tensor(std::vector<int>{-1, -1, -1, -1,
 	                                                 -1, -1, -1, -1}, {2, 4}, o3c::Int32, device);
 
-	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 4, 0, warp_node_coverage_computation_method, 1);
+	nnrt::geometry::HierarchicalGraphWarpField warp_field(node_positions, node_coverage, false, 2, 0, warp_node_coverage_computation_method, 1);
 
 	nnrt::alignment::DeformableMeshToImageFitter fitter(max_iterations, std::move(iteration_modes), 1e-6,
 	                                                    use_perspective_correction, 10.f, false, 0.01, 0.1);
