@@ -26,7 +26,7 @@ import nnrt
 import open3d as o3d
 import open3d.core as o3c
 from scipy.spatial.transform import Rotation
-from triangle_indices_to_vertex_edge_array import triangle_indices_to_vertex_edge_array
+from apps.geometry_utility_scripts.triangle_indices_to_vertex_edge_array import triangle_indices_to_vertex_edge_array
 from enum import Enum
 
 PROGRAM_EXIT_SUCCESS = 0
@@ -37,27 +37,28 @@ def skew(vector):
                      [vector[2], 0, -vector[0]],
                      [-vector[1], vector[0], 0]])
 
+# input section
+NODES_SOURCE_OBJECT_NAME = "Plane Nodes Source"
+NODES_TARGET_OBJECT_NAME = "Plane Nodes Target"
+SKIN_SOURCE_OBJECT_NAME = "Plane Skin Source"
+SKIN_TARGET_OBJECT_NAME = "Plane Skin Target"
 
 def deform_objects(
         rotations: List[Rotation] | None = None, node_coverage: float = 0.1,
         rotate_using_normals: bool = False, export_edges: bool = False
 ):
-    # input section
-    nodes_source_object_name = "Plane Nodes Source"
-    nodes_target_object_name = "Plane Nodes Target"
-    skin_source_object_name = "Plane Skin Source"
     node_coverage = 0.1
 
     # calculation
     objects_to_look_at = None
-    if bpy.context.scene.collection.objects.get(nodes_source_object_name) is not None:
+    if bpy.context.scene.collection.objects.get(NODES_SOURCE_OBJECT_NAME) is not None:
         objects_to_look_at = bpy.context.scene.collection.objects
     else:
         objects_to_look_at = bpy.context.view_layer.active_layer_collection.collection.objects
 
-    nodes_source_mesh = objects_to_look_at.get(nodes_source_object_name).data
-    nodes_target_mesh = objects_to_look_at.get(nodes_target_object_name).data
-    skin_source_object = objects_to_look_at.get(skin_source_object_name)
+    nodes_source_mesh = objects_to_look_at.get(NODES_SOURCE_OBJECT_NAME).data
+    nodes_target_mesh = objects_to_look_at.get(NODES_TARGET_OBJECT_NAME).data
+    skin_source_object = objects_to_look_at.get(SKIN_SOURCE_OBJECT_NAME)
 
     nodes_source_np = np.array([np.array(v.co) for v in nodes_source_mesh.vertices]).astype(np.float32)
 
@@ -101,16 +102,16 @@ def deform_objects(
     anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean(
         skin_source_vertices, nodes_source, 4, 0, node_coverage
     )
-    skin_target_object_name = "Plane Skin Target"
+    
     skin_source_point_cloud = o3d.t.geometry.PointCloud(skin_source_vertices)
     skin_target_point_cloud = nnrt.geometry.functional.warp_point_cloud(
         skin_source_point_cloud, nodes_source, node_rotations, node_translations, anchors, weights, 0
     )
 
     skin_target_object = skin_source_object.copy()
-    skin_target_object.name = skin_target_object_name
+    skin_target_object.name = SKIN_TARGET_OBJECT_NAME
     skin_target_object.data = skin_target_object.data.copy()
-    skin_target_object.data.name = skin_target_object_name
+    skin_target_object.data.name = SKIN_TARGET_OBJECT_NAME
     for vertex, warped_coord in zip(skin_target_object.data.vertices,
                                     skin_target_point_cloud.point["positions"].numpy()):
         vertex.co[0] = warped_coord[0]
@@ -121,8 +122,10 @@ def deform_objects(
 
 class Scene(Enum):
     SINGLE_NODE_ROTATION = 0
-    TWO_NODE_SEPARATE_PLANES = 1
-    TWO_NODE_COMBINED_PLANES = 2
+    TWO_NODE_SEPARATE_PLANES_45 = 1
+    TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5 = 2
+    TWO_NODE_COMBINED_PLANES = 3
+
 
 
 SceneDescriptor = namedtuple("SceneDescriptor", "starter_file, rotations, node_coverage, output_prefix")
@@ -136,7 +139,7 @@ scene_data_map = {
         node_coverage=0.25,
         output_prefix="plane_fit_1_node_rotation_-45"
     ),
-    Scene.TWO_NODE_SEPARATE_PLANES: SceneDescriptor(
+    Scene.TWO_NODE_SEPARATE_PLANES_45: SceneDescriptor(
         starter_file="fitter_test_2-node_starter_file",
         rotations=[
             Rotation.from_euler('xyz', (45, 0, 0), degrees=True),
@@ -144,6 +147,15 @@ scene_data_map = {
         ],
         node_coverage=0.1,
         output_prefix="plane_fit_2_nodes_45"
+    ),
+    Scene.TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5: SceneDescriptor(
+        starter_file="fitter_test_2-node_rotation_only_starter_file",
+        rotations=[
+            Rotation.from_euler('xyz', (5, 0, 0), degrees=True),
+            Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)
+        ],
+        node_coverage=0.1,
+        output_prefix="plane_fit_2_nodes_rotation_only_5"
     ),
     Scene.TWO_NODE_COMBINED_PLANES: SceneDescriptor(
         starter_file="fitter_test_2-node_connected_starter_file",
@@ -158,7 +170,7 @@ scene_data_map = {
 
 
 def main():
-    scene = Scene.TWO_NODE_COMBINED_PLANES
+    scene = Scene.TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5
     scene_data = scene_data_map[scene]
     bpy.ops.wm.open_mainfile(
         filepath=f"{generated_blender_test_data_path}{scene_data.starter_file}.blend"
@@ -168,6 +180,36 @@ def main():
 
     bpy.ops.wm.save_mainfile(
         filepath=f"{generated_blender_test_data_path}{scene_data.output_prefix}.blend"
+    )
+
+    source_object = bpy.context.scene.objects[SKIN_SOURCE_OBJECT_NAME]
+    target_object = bpy.context.scene.objects[SKIN_TARGET_OBJECT_NAME]
+
+    source_object.select_set(True)
+
+    bpy.ops.export_mesh.ply(
+        filepath=f"{generated_blender_test_data_path}{scene_data.output_prefix}_source.ply",
+        use_selection=True,
+        use_normals=True,
+        use_mesh_modifiers=True,
+        use_uv_coords=True,
+        axis_forward='Y',
+        axis_up='Z',
+        use_ascii=False
+    )
+
+    source_object.select_set(False)
+    target_object.select_set(True)
+
+    bpy.ops.export_mesh.ply(
+        filepath=f"{generated_blender_test_data_path}{scene_data.output_prefix}_target.ply",
+        use_selection=True,
+        use_normals=True,
+        use_mesh_modifiers=True,
+        use_uv_coords=True,
+        axis_forward='Y',
+        axis_up='Z',
+        use_ascii=False
     )
 
     return PROGRAM_EXIT_SUCCESS

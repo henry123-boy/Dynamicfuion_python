@@ -71,7 +71,7 @@ void TestDeformableImageFitter_1NodePlaneTranslation(
 
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
-			test::ReadAndTransformTwoMeshes("plane_skin_source_1_node", "plane_skin_target_1_node_translation", device,
+			test::ReadAndTransformTwoMeshes("plane_skin_1_node_source", "plane_skin_1_node_translation_target", device,
 			                                mesh_transform);
 
 
@@ -192,8 +192,8 @@ void TestDeformableImageFitter_1NodePlaneRotation(
 
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
-			test::ReadAndTransformTwoMeshes("plane_skin_source_1_node", "plane_skin_target_1_node_rotation_"
-			                                                            + std::to_string(angle), device, mesh_transform);
+			test::ReadAndTransformTwoMeshes("plane_skin_1_node_source", "plane_skin_1_node_rotation_"
+			                                                            + std::to_string(angle) + "_target", device, mesh_transform);
 
 
 	o3c::SizeVector image_resolution{100, 100};
@@ -265,6 +265,14 @@ TEST_CASE("Test DMI Fitter - COMBINED - FIXED - 1 Node Plane Rotation x 45 - CPU
 	TestDeformableImageFitter_1NodePlaneRotation(
 			device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4,
 			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE
+	);
+}
+
+TEST_CASE("Test DMI Fitter - COMBINED - MIN - 1 Node Plane Rotation x 45 - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_1NodePlaneRotation(
+			device, 45, true, {nnrt::alignment::IterationMode::ALL}, 4,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE
 	);
 }
 
@@ -342,7 +350,7 @@ void TestDeformableImageFitter_1NodePlane(
 
 	//TODO: add files to test data pack
 	auto [source_mesh, target_mesh] =
-			test::ReadAndTransformTwoMeshes("plane_skin_source_1_node", "plane_skin_target_1_node", device, mesh_transform);
+			test::ReadAndTransformTwoMeshes("plane_skin_1_node_source", "plane_skin_1_node_target", device, mesh_transform);
 
 
 	o3c::SizeVector image_resolution{100, 100};
