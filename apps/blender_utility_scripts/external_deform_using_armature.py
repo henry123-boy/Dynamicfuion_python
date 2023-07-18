@@ -37,18 +37,18 @@ def skew(vector):
                      [vector[2], 0, -vector[0]],
                      [-vector[1], vector[0], 0]])
 
+
 # input section
 NODES_SOURCE_OBJECT_NAME = "Plane Nodes Source"
 NODES_TARGET_OBJECT_NAME = "Plane Nodes Target"
 SKIN_SOURCE_OBJECT_NAME = "Plane Skin Source"
 SKIN_TARGET_OBJECT_NAME = "Plane Skin Target"
 
+
 def deform_objects(
         rotations: List[Rotation] | None = None, node_coverage: float = 0.1,
-        rotate_using_normals: bool = False, export_edges: bool = False
+        rotate_using_normals: bool = False, export_edges: bool = False, fixed_node_coverage: bool = True
 ):
-    node_coverage = 0.1
-
     # calculation
     objects_to_look_at = None
     if bpy.context.scene.collection.objects.get(NODES_SOURCE_OBJECT_NAME) is not None:
@@ -65,6 +65,7 @@ def deform_objects(
     nodes_source = o3c.Tensor(nodes_source_np)
     nodes_target = o3c.Tensor(np.array([np.array(v.co) for v in nodes_target_mesh.vertices]).astype(np.float32))
     node_translations = nodes_target - nodes_source
+    node_count = len(nodes_source)
 
     if len(nodes_source) != len(nodes_target):
         raise ValueError(
@@ -99,10 +100,19 @@ def deform_objects(
         np.array([np.array(v.co) for v in skin_source_object.data.vertices]).astype(np.float32)
     )
 
-    anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_fixed_node_weight(
-        skin_source_vertices, nodes_source, 4, 0, node_coverage
-    )
-    
+    if fixed_node_coverage or node_count == 1:
+        anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_fixed_node_weight(
+            skin_source_vertices, nodes_source, 4, 0, node_coverage
+        )
+    else:
+        tree = nnrt.core.KDTree(nodes_source)
+        closest, distances = tree.find_k_nearest_to_points(nodes_source, 2, True)
+        node_weights = distances[:, 1]
+        node_weights *= node_weights
+        anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_variable_node_weight(
+            skin_source_vertices, nodes_source, node_weights, 4, 0
+        )
+
     skin_source_point_cloud = o3d.t.geometry.PointCloud(skin_source_vertices)
     skin_target_point_cloud = nnrt.geometry.functional.warp_point_cloud(
         skin_source_point_cloud, nodes_source, node_rotations, node_translations, anchors, weights, 0
@@ -124,11 +134,11 @@ class Scene(Enum):
     SINGLE_NODE_ROTATION = 0
     TWO_NODE_SEPARATE_PLANES_45 = 1
     TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5 = 2
-    TWO_NODE_COMBINED_PLANES = 3
+    TWO_NODE_SEPARATE_PLANES_MIN_ROTATION_ONLY_5 = 3
+    TWO_NODE_COMBINED_PLANES = 4
 
 
-
-SceneDescriptor = namedtuple("SceneDescriptor", "starter_file, rotations, node_coverage, output_prefix")
+SceneDescriptor = namedtuple("SceneDescriptor", "starter_file, rotations, node_coverage, output_prefix, fixed_coverage")
 
 generated_blender_test_data_path = "/mnt/Data/Reconstruction/synthetic_data/depth_fitter_tests/"
 
@@ -137,7 +147,8 @@ scene_data_map = {
         starter_file="fitter_test_starter_file",
         rotations=[Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)],
         node_coverage=0.25,
-        output_prefix="plane_fit_1_node_rotation_-45"
+        output_prefix="plane_fit_1_node_rotation_-45",
+        fixed_coverage=True
     ),
     Scene.TWO_NODE_SEPARATE_PLANES_45: SceneDescriptor(
         starter_file="fitter_test_2-node_starter_file",
@@ -146,16 +157,28 @@ scene_data_map = {
             Rotation.from_euler('xyz', (-45, 0, 0), degrees=True)
         ],
         node_coverage=0.1,
-        output_prefix="plane_fit_2_nodes_45"
+        output_prefix="plane_fit_2_nodes_45",
+        fixed_coverage=True
     ),
     Scene.TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5: SceneDescriptor(
-        starter_file="fitter_test_2-node_rotation_only_starter_file",
+        starter_file="fitter_test_2-node_starter_file",
         rotations=[
             Rotation.from_euler('xyz', (5, 0, 0), degrees=True),
             Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)
         ],
         node_coverage=0.1,
-        output_prefix="plane_fit_2_nodes_rotation_only_5"
+        output_prefix="plane_fit_2_nodes_rotation_only_5",
+        fixed_coverage=True
+    ),
+    Scene.TWO_NODE_SEPARATE_PLANES_MIN_ROTATION_ONLY_5: SceneDescriptor(
+        starter_file="fitter_test_2-node_starter_file",
+        rotations=[
+            Rotation.from_euler('xyz', (5, 0, 0), degrees=True),
+            Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)
+        ],
+        node_coverage=0.1,
+        output_prefix="plane_fit_2_nodes_min_rotation_only_5",
+        fixed_coverage=False
     ),
     Scene.TWO_NODE_COMBINED_PLANES: SceneDescriptor(
         starter_file="fitter_test_2-node_connected_starter_file",
@@ -164,19 +187,20 @@ scene_data_map = {
             Rotation.from_euler('xyz', (0, 0, 0), degrees=True)
         ],
         node_coverage=0.1,
-        output_prefix="contiguous_surface_fit_2_nodes"
+        output_prefix="contiguous_surface_fit_2_nodes",
+        fixed_coverage=True
     )
 }
 
 
 def main():
-    scene = Scene.TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5
+    scene = Scene.TWO_NODE_SEPARATE_PLANES_MIN_ROTATION_ONLY_5
     scene_data = scene_data_map[scene]
     bpy.ops.wm.open_mainfile(
         filepath=f"{generated_blender_test_data_path}{scene_data.starter_file}.blend"
     )
 
-    deform_objects(scene_data.rotations, scene_data.node_coverage)
+    deform_objects(scene_data.rotations, scene_data.node_coverage, fixed_node_coverage=scene_data.fixed_coverage)
 
     bpy.ops.wm.save_mainfile(
         filepath=f"{generated_blender_test_data_path}{scene_data.output_prefix}.blend"

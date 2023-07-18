@@ -19,5 +19,5 @@
 namespace nnrt::core {
 void pybind_core(py::module& m);
 void pybind_tensor_routines(py::module& m);
-
+void pybind_geometry_kd_tree(py::module& m);
 } //  nnrt::core
