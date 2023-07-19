@@ -75,7 +75,7 @@ void TestInterpolateFaceAttributes(const o3c::Device& device, const std::string&
 
 TEST_CASE("Test Interpolate Face Attributes - Bunny Res 4 - CPU") {
 	auto device = o3c::Device("CPU:0");
-	TestInterpolateFaceAttributes(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 200);
+	TestInterpolateFaceAttributes(device, "mesh_bunny_res4", std::make_tuple(0.f, -0.1f, 0.3f), 300);
 }
 
 TEST_CASE("Test Interpolate Face Attributes - Bunny Res 4 - CUDA") {

@@ -25,23 +25,25 @@ namespace utility = open3d::utility;
 namespace nnrt::core::linalg::internal {
 template<typename TElement>
 inline void TransposeBlocksInPlaceCPU_TypeDispatched(open3d::core::Tensor& blocks){
-	auto device = blocks.GetDevice();
+	//TODO
+
+/*	auto device = blocks.GetDevice();
 	int64_t block_size = blocks.GetShape(1);
 	int64_t block_count = blocks.GetShape(0);
 	int64_t block_stride = block_size * block_size;
 	o3c::AssertTensorShape(blocks, { block_count, block_size, block_size });
 
-	auto block_data = blocks.GetDataPtr<TElement>();
+	auto block_data = blocks.GetDataPtr<TElement>();*/
 
 	utility::LogError("Not implemented.");
 
-// #pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
-//     default(none) \
-//     firstprivate(block_count, block_size, block_stride) \
-//     shared(block_data)
-// 	for (int i_matrix = 0; i_matrix < block_count; i_matrix++) {
-//
-// 	}
+/*#pragma omp parallel for schedule(static) num_threads(open3d::utility::EstimateMaxThreads()) \
+    default(none) \
+    firstprivate(block_count, block_size, block_stride) \
+    shared(block_data)
+	for (int i_matrix = 0; i_matrix < block_count; i_matrix++) {
+
+	}*/
 }
 
 void TransposeBlocksInPlaceCPU(open3d::core::Tensor& blocks){
