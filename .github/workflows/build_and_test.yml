@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: cuda-toolkit
-      uses: Jimver/cuda-toolkit@v0.2.5
+      uses: Jimver/cuda-toolkit@v0.2.11
       id: cuda-toolkit
       with:
         cuda: '11.5.1'
