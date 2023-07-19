@@ -40,7 +40,7 @@ Python 3.8 or above is required. Check out the official [website](https://www.py
 PyTorch 1.9.0 or later should be installed following the standard `Pip` procedure from the PyTorch official ['Get Started' page](https://pytorch.org/get-started/locally). Please use matching PyTorch and CuPy CUDA version support, even though PyTorch for older CUDA builds sometimes works with the newer ones. Otherwise, there will be import errors due library loading conflicts. 
 
 #### Open3D ####
-Open3D still needs to be built from source in order for the extension to be compiled. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout `tags/v0.16.1`).
+I haven't yet tested building against the CUDA-enabled pip version of Open3D (from version 0.17), so probably Open3D still needs to be built from source in order for this extension to be compiled. At the very least, you'll need the headers. Hence, clone the [repository](https://github.com/isl-org/Open3D) and checkout `tags/v0.17.0-1fix6008` or download and extract the corresponding code release.
 
 Here are the [detailed instructions](media/Open3D_Build_Instructions.md) on how to go about building Open3D with CUDA support after you obtain the sources.
 
@@ -135,9 +135,9 @@ Under this formulation, correspondence confidences can be learned via self-super
 
 Please follow instructions for the Fusion project above. The original NNRT setup instructions with Docker or Python virtualenv is no longer up-to-date.
 
-## I just want to try it on two frames!
+## I just want to try the neural tracking on two frames!
 
-If you just want to get a feeling of the whole approach at inference time, you can run
+If you just want to get a feeling of neural tracking approach at inference time like in the original author's repo, you can run:
 
 ```
 python apps/example_viz.py
