@@ -67,15 +67,20 @@ void SortTensorByColumn(open3d::core::Tensor& sorted, const open3d::core::Tensor
 	int64_t row_count = unsorted.GetLength();
 	int64_t column_count = unsorted.GetShape(1);
 	o3c::AssertTensorShape(unsorted, { row_count, column_count });
-	o3c::AssertTensorDtypes(unsorted, { o3c::Float32, o3c::Float64, o3c::Int32 });
+	o3c::AssertTensorDtypes(unsorted, { o3c::Float32, o3c::Float64, o3c::Int32, o3c::Int64 });
 	if (column < 0 || column >= column_count) {
 		utility::LogError("Column index ({}) must be a non-zero value below column_count ({}).", column, column_count);
 	}
 	//TODO a more-versatile d-type dispatching macro
-	if (unsorted.GetDtype() == o3c::Int32) {
-		DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, int32_t, [&]() {
-			SortTensorByColumn_Dispatched<TDeviceType, int32_t, vector_t>(sorted, unsorted, column, in_place);
-		});
+	if (unsorted.GetDtype() == o3c::Int32 || unsorted.GetDtype() == o3c::Int64) {
+		DISPATCH_SIGNED_ONE_OR_TWO_WORD_DTYPE_TO_TEMPLATE(
+				unsorted.GetDtype(),
+				[&]() {
+					DISPATCH_VECTOR_1_to_4_SIZE_TO_EIGEN_TYPE(column_count, scalar_t , [&]() {
+						SortTensorByColumn_Dispatched<TDeviceType, scalar_t, vector_t>(sorted, unsorted, column, in_place);
+					});
+				}
+		);
 	} else {
 		DISPATCH_FLOAT_DTYPE_TO_TEMPLATE(
 				unsorted.GetDtype(),

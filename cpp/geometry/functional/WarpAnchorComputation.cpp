@@ -111,6 +111,12 @@ std::tuple<open3d::core::Tensor, open3d::core::Tensor> ComputeAnchorsAndWeights_
 	o3c::Tensor anchors, weights;
 	ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(anchors, weights, points, nodes, node_coverage_weights, anchor_count,
 														  minimum_valid_anchor_count);
+	//__DEBUG
+	std::cout << points.ToString() << std::endl;
+	std::cout << nodes.ToString() << std::endl;
+	std::cout << node_coverage_weights.ToString() << std::endl;
+	std::cout << anchors.ToString() << std::endl;
+	std::cout << weights.ToString() << std::endl;
 	return std::make_tuple(anchors, weights);
 }
 

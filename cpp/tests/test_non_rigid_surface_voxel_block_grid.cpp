@@ -82,12 +82,9 @@ void TestNonRigidSurfaceVoxelBlockGrid_GetBoundingBoxesOfWarpedBlocks(const o3c:
 			0, 2, -1, -1,
 			1, 2, -1, -1
 	};
-	o3c::Tensor edges(edge_data, {4, 4}, o3c::Dtype::Int32, device);
-	o3c::Tensor edge_weights = o3c::Tensor::Ones({4, 4}, o3c::Dtype::Float32, device);
-	o3c::Tensor clusters = o3c::Tensor::Ones({4}, o3c::Dtype::Float32, device);
 
 
-	geometry::WarpField field(nodes, edges, edge_weights, clusters, 1.0, false, 4);
+	geometry::HierarchicalGraphWarpField field(nodes, 1.0, false, 4, 0, nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE, 1);
 	// move one unit in the +x direction
 	std::vector<float> translation_data{1.0, 0.0, 0.0};
 	o3c::Tensor node_translations({4, 3}, o3c::Float32, device);
@@ -284,16 +281,10 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	o3c::Tensor node_translations = o3c::Tensor::Zeros({node_count, 3}, o3c::Float32, device);
 	// move just the first node 1 cm towards the camera
 	node_translations.SetItem(o3c::TensorKey::Index(0), o3c::Tensor(std::vector<float_t>({0.f, 0.f, -0.01}), {3}, o3c::Dtype::Float32, device));
-	o3c::Tensor edges(std::vector<std::int32_t>({1, 2, 3, 4,
-	                                             -1, -1, -1, -1,
-	                                             -1, -1, -1, -1,
-	                                             -1, -1, -1, -1,
-	                                             -1, -1, -1, -1}), {5, 4}, o3c::Int32, device);
-	o3c::Tensor edge_weights = o3c::Tensor::Ones(edges.GetShape(), o3c::Float32, device);
-	o3c::Tensor clusters = o3c::Tensor::Zeros({5}, o3c::Int32, device);
 	float node_coverage = 0.005f;
 	int minimum_valid_anchor_count = 1;
-	nnrt::geometry::WarpField graph_warp_field(nodes, edges, edge_weights, clusters, node_coverage, true, 4, minimum_valid_anchor_count);
+	nnrt::geometry::HierarchicalGraphWarpField graph_warp_field(nodes,  node_coverage, true, 4, minimum_valid_anchor_count,
+																nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE);
 	graph_warp_field.SetNodeRotations(node_rotations);
 	graph_warp_field.SetNodeTranslations(node_translations);
 

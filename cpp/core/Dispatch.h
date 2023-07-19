@@ -47,6 +47,21 @@
     }()
 #endif
 
+#ifndef DISPATCH_SIGNED_ONE_OR_TWO_WORD_DTYPE_TO_TEMPLATE
+#define DISPATCH_SIGNED_ONE_OR_TWO_WORD_DTYPE_TO_TEMPLATE(DTYPE, ...)        \
+    [&] {                                                        \
+        if (DTYPE == open3d::core::Int32) {                      \
+            using scalar_t = int32_t;                            \
+            return __VA_ARGS__();                                \
+        } else if (DTYPE == open3d::core::Int64) {               \
+            using scalar_t = int64_t;                            \
+            return __VA_ARGS__();                                \
+        } else {                                                 \
+            open3d::utility::LogError("Unsupported data type."); \
+        }                                                        \
+    }()
+#endif
+
 #ifndef DISPATCH_SIGNED_DTYPE_TO_TEMPLATE
 #define DISPATCH_SIGNED_DTYPE_TO_TEMPLATE(DTYPE, ...)            \
     [&] {                                                        \

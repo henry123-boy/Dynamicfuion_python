@@ -36,9 +36,11 @@ PlanarGraphWarpField::PlanarGraphWarpField(
 		float node_coverage,
 		bool threshold_nodes_by_distance_by_default,
 		int anchor_count,
-		int minimum_valid_anchor_count
+		int minimum_valid_anchor_count,
+		WarpNodeCoverageComputationMethod warp_node_coverage_computation_method/* = WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE*/,
+		int warp_node_coverage_neighbor_count/* = 4*/
 ) : WarpField(std::move(nodes), node_coverage, threshold_nodes_by_distance_by_default, anchor_count,
-              minimum_valid_anchor_count),
+              minimum_valid_anchor_count, warp_node_coverage_computation_method, warp_node_coverage_neighbor_count),
     edges(std::move(edges)), edge_weights(std::move(edge_weights)), clusters(std::move(clusters)) {
 	auto device = this->node_positions.GetDevice();
 	int64_t node_count = this->node_positions.GetLength();

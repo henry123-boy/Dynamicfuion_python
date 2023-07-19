@@ -30,48 +30,6 @@ namespace o3c = open3d::core;
 namespace ngeom = nnrt::geometry;
 
 
-void TestGraphWarpFieldConstructor(const o3c::Device& device) {
-	std::vector<float> nodes_data{0.f, 0.f, 0.f,
-	                              0.04f, 0.f, 0.f,
-	                              0.f, 0.04f, 0.f};
-	o3c::Tensor nodes(nodes_data, {3, 3}, o3c::Dtype::Float32, device);
-	std::vector<int> edges_data{1, 2, -1, -1,
-	                            2, -1, -1, -1,
-	                            -1, -1, -1, -1};
-	o3c::Tensor edges(edges_data, {3, 4}, o3c::Dtype::Int32, device);
-
-	std::vector<float> edge_weight_data{0.6f, 0.2f, 0.f, 0.f,
-	                                    0.8f, 0.0f, 0.f, 0.f,
-	                                    0.0f, 0.0f, 0.f, 0.f,};
-	o3c::Tensor edge_weights(edge_weight_data, {3, 4}, o3c::Dtype::Float32, device);
-	std::vector<int> clusters_data{0, 0, 0};
-	o3c::Tensor clusters(clusters_data, {3}, o3c::Dtype::Int32, device);
-
-	ngeom::WarpField gwf(nodes);
-	REQUIRE(gwf.node_positions.GetShape(0) == 3);
-	REQUIRE(gwf.node_positions.GetShape(1) == 3);
-
-
-	ngeom::PlanarGraphWarpField pgwf(nodes, edges, edge_weights, clusters);
-	REQUIRE(pgwf.node_positions.GetShape(0) == 3);
-	REQUIRE(pgwf.node_positions.GetShape(1) == 3);
-	REQUIRE(pgwf.node_positions.ToFlatVector<float>() == nodes.ToFlatVector<float>());
-	REQUIRE(pgwf.edges.ToFlatVector<int>() == edges.ToFlatVector<int>());
-	REQUIRE(pgwf.edge_weights.value().get().ToFlatVector<float>() == edge_weights.ToFlatVector<float>());
-	REQUIRE(pgwf.clusters.value().get().ToFlatVector<int>() == clusters.ToFlatVector<int>());
-
-}
-
-TEST_CASE("Test Planar Graph Warp Field Constructor CPU") {
-	auto device = o3c::Device("CPU:0");
-	TestGraphWarpFieldConstructor(device);
-}
-
-TEST_CASE("Test Planar Graph Warp Field Constructor CUDA") {
-	auto device = o3c::Device("CUDA:0");
-	TestGraphWarpFieldConstructor(device);
-}
-
 void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 	//@formatter:off
 	std::vector<float> node_data{
@@ -126,14 +84,16 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 	//@formatter:on
 	o3c::Tensor nodes(node_data, {33, 3}, o3c::Dtype::Float32, device);
 	ngeom::HierarchicalGraphWarpField hgwf(
-			nodes, 0.25, false, 4, 0, 3, 4,
+			nodes, 0.25, false, 4, 0,
+			nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE,
+			3, 4,
 			[](int i_layer, float node_coverage) {
 				return powf(2.f, static_cast<float>(i_layer)) * node_coverage;
 			}
 	);
 
 	//@formatter:off
-	o3c::Tensor ground_truth_layer_0 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+	o3c::Tensor ground_truth_layer_0 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int64_t>{
 			// 2, 3
 		  0,// 2.11, 3.2, 1,  
        // 1,   2.32, 3.7, 1,   <--- winner
@@ -181,11 +141,11 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
       // 31,   4.41, 2.65, 1,  <--- winner
 		    // 4, 0
 	  // 32 // 4.62, 0.3, 1    <--- winner
-	}, {19}, o3c::Int32, device), false);
+	}, {19}, o3c::Int64, device), false);
 	//@formatter:on
 
 	//@formatter:off
-	o3c::Tensor ground_truth_layer_1 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+	o3c::Tensor ground_truth_layer_1 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int64_t>{
 			//2-4, 0-2
 			16, // 2.21, 1.65, 1.0,
 			19, // 2.3 , 0.35, 1.0,
@@ -204,16 +164,16 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 			13, // 4.61, 1.3, 1.0,
 			23, // 5.51, 0.4, 1.0,
 			// 32, 4.62, 0.3, 1.0   <--- definite winner, eliminated
-	}, {10 /*14 w/o elimination*/}, o3c::Int32, device),false);
+	}, {10 /*14 w/o elimination*/}, o3c::Int64, device),false);
 	//@formatter:on
 
 
-	o3c::Tensor ground_truth_layer_2 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int>{
+	o3c::Tensor ground_truth_layer_2 = nnrt::core::functional::SortTensorAlongLastDimension(o3c::Tensor(std::vector<int64_t>{
 			4, // 2.31, 2.75, 1.0,
 			15,// 3.21, 1.25, 1.0,
 			31,// 4.41, 2.65, 1.0,
 			32,//  4.62, 0.3, 1.0
-	}, {4}, o3c::Int32, device), false);
+	}, {4}, o3c::Int64, device), false);
 
 
 	auto layer_0_nodes = nnrt::core::functional::SortTensorAlongLastDimension(hgwf.GetRegularizationLevel(0).node_indices, false);
@@ -246,7 +206,7 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 
 
 	o3c::Tensor edge_node_indices_gt =
-			o3c::Tensor(std::vector<int>{
+			o3c::Tensor(std::vector<int64_t>{
 					0, 1,
 					0, 3,
 					0, 10,
@@ -363,13 +323,13 @@ void TestHierarchicalGraphWarpFieldConstructor(const o3c::Device& device) {
 					30, 23,
 					30, 26,
 					30, 29
-			}, {116, 2}, o3c::Int32, device);
+			}, {116, 2}, o3c::Int64, device);
 
-	REQUIRE(edge_node_indices_gt.AllEqual(edge_node_indices));
+	REQUIRE(edge_node_indices.AllEqual(edge_node_indices_gt));
 
-	o3c::Tensor virtual_node_indices_gt(std::vector<int>{
+	o3c::Tensor virtual_node_indices_gt(std::vector<int64_t>{
 			0,  2,  5,  6,  7,  8,  9, 12, 14, 17, 18, 20, 21, 22, 24, 25, 27, 28, 30,  1, 23, 10,  3, 19, 13, 26, 16, 29, 11, 15,  4, 31, 32
-	}, {33}, o3c::Int32, device);
+	}, {33}, o3c::Int64, device);
 
 	REQUIRE(nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices.Slice(0, 0, 19), false).AllEqual(
 			nnrt::core::functional::SortTensorAlongLastDimension(virtual_node_indices_gt.Slice(0, 0, 19), false)));

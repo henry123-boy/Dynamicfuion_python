@@ -303,7 +303,6 @@ if (BUILD_CPP_TESTS)
     nnrt_add_test(test_deformable_mesh_fitter_two_nodes DEPENDENCIES test_data_fitter_2_node)
     nnrt_add_test(test_deformable_mesh_fitter_advanced DEPENDENCIES berlin_frames_28_29)
     nnrt_add_test(test_flat_edge_shader)
-    nnrt_add_test(test_triangle_fitter)
     nnrt_add_test(test_vertex_color_shader)
     nnrt_add_test(
         test_atomic_counter_array

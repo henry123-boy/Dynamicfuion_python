@@ -31,7 +31,9 @@ public:
 			float node_coverage = 0.05, // m
 			bool threshold_nodes_by_distance_by_default = false,
 			int anchor_count = 4,
-			int minimum_valid_anchor_count = 0
+			int minimum_valid_anchor_count = 0,
+			WarpNodeCoverageComputationMethod warp_node_coverage_computation_method = WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE,
+			int warp_node_coverage_neighbor_count = 4
 	);
 	PlanarGraphWarpField(const PlanarGraphWarpField& original) = default;
 	PlanarGraphWarpField(PlanarGraphWarpField&& other) = default;
