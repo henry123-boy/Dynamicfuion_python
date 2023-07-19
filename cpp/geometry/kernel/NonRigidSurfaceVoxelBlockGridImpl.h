@@ -31,7 +31,9 @@
 
 
 #ifndef __CUDACC__
+
 #include <tbb/concurrent_unordered_set.h>
+
 #endif
 
 
@@ -45,15 +47,16 @@ namespace nnrt::geometry::kernel::voxel_grid {
 
 using ArrayIndexer = TArrayIndexer<index_t>;
 
-template<open3d::core::Device::DeviceType TDeviceType, typename input_depth_t, typename input_color_t, typename weight_t, typename color_t>
-void
-IntegrateNonRigid_Generic
-		(const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
-		 open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal,
-		 index_t block_resolution, float voxel_size, float sdf_truncation_distance,
-		 const open3d::core::Tensor& depth, const open3d::core::Tensor& color,
-		 const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
-		 const open3d::core::Tensor& extrinsics, const WarpField& warp_field, float depth_scale, float depth_max) {
+template<open3d::core::Device::DeviceType TDeviceType, typename input_depth_t, typename input_color_t, typename weight_t, typename color_t,
+		bool TUseFixedNodeCoverage>
+void IntegrateNonRigid_Generic(
+		const open3d::core::Tensor& block_indices, const open3d::core::Tensor& block_keys,
+		open3d::t::geometry::TensorMap& block_value_map, open3d::core::Tensor& cos_voxel_ray_to_normal,
+		index_t block_resolution, float voxel_size, float sdf_truncation_distance,
+		const open3d::core::Tensor& depth, const open3d::core::Tensor& color,
+		const open3d::core::Tensor& depth_normals, const open3d::core::Tensor& depth_intrinsics, const open3d::core::Tensor& color_intrinsics,
+		const open3d::core::Tensor& extrinsics, const WarpField& warp_field, float depth_scale, float depth_max
+) {
 	using tsdf_t = float;
 	index_t block_resolution_cubed = block_resolution * block_resolution * block_resolution;
 	// Shape / transform indexers, no data involved
@@ -137,7 +140,8 @@ IntegrateNonRigid_Generic
 				int32_t anchor_indices[MAX_ANCHOR_COUNT];
 				float anchor_weights[MAX_ANCHOR_COUNT];
 
-				if(!warp_field.template ComputeAnchorsForPoint<TDeviceType, true, false>(anchor_indices, anchor_weights, voxel_camera)){
+				if (!warp_field
+						.template ComputeAnchorsForPoint<TDeviceType, true, TUseFixedNodeCoverage>(anchor_indices, anchor_weights, voxel_camera)) {
 					return;
 				}
 				// endregion
@@ -257,13 +261,24 @@ IntegrateNonRigid(
 	DISPATCH_INPUT_DTYPE_TO_TEMPLATE(
 			input_depth_dtype, input_color_dtype, [&] {
 		DISPATCH_VALUE_DTYPE_TO_TEMPLATE(block_weight_dtype, block_color_dtype, [&]() {
-//@formatter:on
-//TODO: when CUDA finally starts supporting C++20, revise this to use a templated lambda (so you don't have to maintain a rewrite of all the parameters
-// and the super-long call). See https://stackoverflow.com/a/62932369/844728 for reference.
-			IntegrateNonRigid_Generic<TDeviceType, input_depth_t, input_color_t, weight_t, color_t>(
-					block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
-					sdf_truncation_distance, depth, color, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
-					warp_field, depth_scale, depth_max);
+			switch (warp_field.warp_node_coverage_computation_method) {
+				case WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE:
+					IntegrateNonRigid_Generic<TDeviceType, input_depth_t, input_color_t, weight_t, color_t, true>(
+							block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+							sdf_truncation_distance, depth, color, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+							warp_field, depth_scale, depth_max);
+					break;
+				case WarpNodeCoverageComputationMethod::MINIMAL_K_NEIGHBOR_NODE_DISTANCE:
+					IntegrateNonRigid_Generic<TDeviceType, input_depth_t, input_color_t, weight_t, color_t, false>(
+							block_indices, block_keys, block_value_map, cos_voxel_ray_to_normal, block_resolution, voxel_size,
+							sdf_truncation_distance, depth, color, depth_normals, depth_intrinsics, color_intrinsics, extrinsics,
+							warp_field, depth_scale, depth_max);
+					break;
+				default:
+					utility::LogError("Unsupported warp node coverage computation method");
+					break;
+			}
+
 		} /* end lambda */ ); // end DISPATCH_VALUE_DTYPE_TO_TEMPLATE macro call
 	} /* end lambda  */ ); // end DISPATCH_INPUT_DTYPE_TO_TEMPLATE macro call
 #if defined(__CUDACC__)
@@ -272,9 +287,11 @@ IntegrateNonRigid(
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys,
-                                    const WarpField& warp_field, float voxel_size, index_t block_resolution,
-                                    const open3d::core::Tensor& extrinsics) {
+void GetBoundingBoxesOfWarpedBlocks(
+		open3d::core::Tensor& bounding_boxes, const open3d::core::Tensor& block_keys,
+		const WarpField& warp_field, float voxel_size, index_t block_resolution,
+		const open3d::core::Tensor& extrinsics
+) {
 	//TODO: optionally, filter out voxel blocks (this is an unnecessary optimization unless we need to use a great multitude of voxel blocks)
 	int64_t block_count = block_keys.GetLength();
 	o3c::Device device = block_keys.GetDevice();
@@ -332,7 +349,7 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 					Eigen::Vector3f corner_camera;
 					transform_indexer.RigidTransform(corner.x(), corner.y(), corner.z(),
 					                                 corner_camera.data(), corner_camera.data() + 1, corner_camera.data() + 2);
-					warp_field.template ComputeAnchorsForPoint<TDeviceType, true>(anchor_indices, anchor_weights, corner_camera);
+					warp_field.template ComputeAnchorsForPoint<TDeviceType, true, true>(anchor_indices, anchor_weights, corner_camera);
 					Eigen::Vector3f warped_corner = warp_field.template WarpPoint<TDeviceType>(corner_camera, anchor_indices, anchor_weights);
 					if (box_min.x() > warped_corner.x()) box_min.x() = warped_corner.x();
 					else if (box_max.x() < warped_corner.x()) box_max.x() = warped_corner.x();
@@ -346,9 +363,11 @@ void GetBoundingBoxesOfWarpedBlocks(open3d::core::Tensor& bounding_boxes, const 
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
-                                                const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
-                                                float truncation_distance) {
+void GetAxisAlignedBoxesInterceptingSurfaceMask(
+		open3d::core::Tensor& mask, const open3d::core::Tensor& boxes, const open3d::core::Tensor& intrinsics,
+		const open3d::core::Tensor& depth, float depth_scale, float depth_max, int32_t stride,
+		float truncation_distance
+) {
 	o3c::Device device = boxes.GetDevice();
 	int64_t box_count = boxes.GetLength();
 	mask = o3c::Tensor::Zeros({box_count}, o3c::Bool, device);
@@ -416,9 +435,11 @@ void GetAxisAlignedBoxesInterceptingSurfaceMask(open3d::core::Tensor& mask, cons
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices,
-                                      const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
-                                      int64_t block_resolution, float voxel_size) {
+void ExtractVoxelValuesAndCoordinates(
+		o3c::Tensor& voxel_values_and_coordinates, const open3d::core::Tensor& block_indices,
+		const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+		int64_t block_resolution, float voxel_size
+) {
 
 	using tsdf_t = float;
 
@@ -528,9 +549,11 @@ void ExtractVoxelValuesAndCoordinates(o3c::Tensor& voxel_values_and_coordinates,
 }
 
 template<open3d::core::Device::DeviceType TDeviceType>
-void ExtractVoxelValuesAt(o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& query_block_indices,
-                          const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
-                          int64_t block_resolution, float voxel_size) {
+void ExtractVoxelValuesAt(
+		o3c::Tensor& voxel_values, const o3c::Tensor& query_coordinates, const open3d::core::Tensor& query_block_indices,
+		const open3d::core::Tensor& block_keys, const open3d::t::geometry::TensorMap& block_value_map,
+		int64_t block_resolution, float voxel_size
+) {
 
 	using tsdf_t = float;
 

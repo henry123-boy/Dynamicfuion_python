@@ -158,13 +158,13 @@ void TestNonRigidSurfaceVoxelBlockGrid_GetAxisAlignedBoxesInterceptingSurfaceMas
 	REQUIRE(mask.AllEqual(mask_gt));
 
 }
-
-TEST_CASE("Test Non-Rigid Surface Voxel Block Grid GetAxisAlignedBoxesInterceptingSurfaceMask CPU") {
+// NR_SVBG == Non-Rigid Surface Voxel Block Grid
+TEST_CASE("Test NR_SVBG GetAxisAlignedBoxesInterceptingSurfaceMask CPU") {
 	auto device = o3c::Device("CPU:0");
 	TestNonRigidSurfaceVoxelBlockGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(device);
 }
 
-TEST_CASE("Test Non-Rigid Surface Voxel Block Grid GetAxisAlignedBoxesInterceptingSurfaceMask CUDA") {
+TEST_CASE("Test NR_SVBG GetAxisAlignedBoxesInterceptingSurfaceMask CUDA") {
 	auto device = o3c::Device("CUDA:0");
 	TestNonRigidSurfaceVoxelBlockGrid_GetAxisAlignedBoxesInterceptingSurfaceMask(device);
 }
@@ -284,7 +284,7 @@ void TestNonRigidSurfaceVoxelBlockGrid_IntegrateNonRigid(const o3c::Device& devi
 	float node_coverage = 0.005f;
 	int minimum_valid_anchor_count = 1;
 	nnrt::geometry::HierarchicalGraphWarpField graph_warp_field(nodes,  node_coverage, true, 4, minimum_valid_anchor_count,
-																nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE);
+																nnrt::geometry::WarpNodeCoverageComputationMethod::FIXED_NODE_COVERAGE, 1);
 	graph_warp_field.SetNodeRotations(node_rotations);
 	graph_warp_field.SetNodeTranslations(node_translations);
 

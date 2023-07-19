@@ -142,15 +142,16 @@ void TestDeformableImageFitter_25NodeSurface(
 	REQUIRE(true);
 }
 
-//TODO
-// restore all tests in file, make sure they are passing
+
 
 // DMI stands for "Deformable-Mesh-to-Image"
-// TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CPU") {
-// 	o3c::Device device("CPU:0");
-// 	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
-// }
-//
+TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CPU") {
+	o3c::Device device("CPU:0");
+	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
+}
+
+//TODO
+// restore all tests in file, make sure they are passing
 // TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CUDA") {
 // 	o3c::Device device("CUDA:0");
 // 	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
