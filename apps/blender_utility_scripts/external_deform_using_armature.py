@@ -161,7 +161,7 @@ scene_data_map = {
         fixed_coverage=True
     ),
     Scene.TWO_NODE_SEPARATE_PLANES_ROTATION_ONLY_5: SceneDescriptor(
-        starter_file="fitter_test_2-node_starter_file",
+        starter_file="fitter_test_2-node_rotation_only_starter_file",
         rotations=[
             Rotation.from_euler('xyz', (5, 0, 0), degrees=True),
             Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)
@@ -171,7 +171,7 @@ scene_data_map = {
         fixed_coverage=True
     ),
     Scene.TWO_NODE_SEPARATE_PLANES_MIN_ROTATION_ONLY_5: SceneDescriptor(
-        starter_file="fitter_test_2-node_starter_file",
+        starter_file="fitter_test_2-node_rotation_only_starter_file",
         rotations=[
             Rotation.from_euler('xyz', (5, 0, 0), degrees=True),
             Rotation.from_euler('xyz', (-5, 0, 0), degrees=True)

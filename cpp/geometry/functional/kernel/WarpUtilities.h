@@ -172,6 +172,16 @@ FindAnchorsAndWeightsForPoint_Euclidean_VariableNodeCoverageWeight(
 	ComputeAnchorWeights_VariableNodeCoverageWeight<TDeviceType, true>(
 			anchor_weights, weight_sum, anchor_node_indices, node_weights, squared_distances, anchor_count
 	);
+
+	//__DEBUG
+	auto node0 = node_indexer.GetDataPtr<float>(0);
+	auto node1 = node_indexer.GetDataPtr<float>(1);
+	printf("node0: %f %f %f\n", node0[0], node0[1], node0[2]);
+	printf("node1: %f %f %f\n", node1[0], node1[1], node1[2]);
+	printf("point: %f %f %f\n", point[0], point[1], point[2]);
+	for(int i_dist = 0; i_dist < 2; i_dist++) {
+		printf("%d %f\n", i_dist, anchor_weights[i_dist]);
+	}
 	NormalizeAnchorWeights<TDeviceType>(anchor_weights, weight_sum, anchor_count, anchor_count);
 }
 template<o3c::Device::DeviceType TDeviceType, typename TPointVector>

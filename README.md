@@ -1,9 +1,41 @@
 # NNRT Fusion 
 
-This repository is a work-in-progress on the application of the Neural Non-Rigid Tracking code by Aljaz Bozic and Pablo Palafox to an actual fusion application that can process entire RGB-D video sequences. 
+This repository is a work-in-progress on the application of the Neural Non-Rigid Tracking code by Aljaz Bozic and Pablo Palafox to an actual fusion application that can process entire RGB-D video sequences.
+
+## July 2023 Update ##
+
+Some new and exciting news to share on the dense depth tracker & fusion!
+
+### Dynamic Fusion Implementation ###
+
+The dynamic fusion implementation is now nearly complete!
+The three things that are still missing are:
+- Topological updates to the graph warp field based on newly-observed volume areas (although recomputing tree edge hierarchical structure is already implemented)
+- Variable node coverage weights based on distances between the nodes are implemented but not yet fully tested and functional. Fixed node coverage approach seems to work on basic examples.
+- Entire dense-depth pipeline still needs to be tested on a series of progressively complex scenes, then integrated with neural tracking.
+
+For the unpublished mathematical and algorithmic details the dense depth optimizer (including the rasterizer and block-sparse solver, mentioned below) is based on, check out this [matcha.io page](https://www.mathcha.io/editor/8Xl0ohWQUxzt87M2lKIlKD8pnhQv5n6XfNjLVY).
+
+### CUDA-based Differential Rasterizer/Renderer ###
+This repository now features a CUDA-based twice-differential rasterizer.
+Here is an example render of a scene with multiple famous Stanford Bunny replicas, together comprising a 4.45 million triangles.
+
+The new coarse-to-fine CUDA-based rasterizer is able to process this entire scene in under 77 milliseconds, which attests that the depth optimizer can work in real time, re-rasterizing the reconstructed scenes (much less complex than this) several times during fitting them to the input depth image.
+
+Of note is that the rasterizer produces not just the gradient of the difference to the target observed image, but also the jacobian: something that most differential renderers, such as [PyTorch3D](https://pytorch3d.org/), are not able to do.
+
+![mesh_64_bunny_array_render_preview.png](media%2Fmesh_64_bunny_array_render_preview.png)
+
+### Efficient Block-Sparse Arrowhead Matrix Solver ###
+
+This is a special solver that is able to efficiently handle the final step of each iteration in the GaussNewton or Levenberg-Marquardt optimization for tracking the surface based on dense depth. Please refer to the last few sections in the [math description](https://www.mathcha.io/editor/8Xl0ohWQUxzt87M2lKIlKD8pnhQv5n6XfNjLVY) for details. Currently, the CUDA version can solve a system of linear equations in the form Ax=b where A has size 1500x1500 in under 2.5 ms, which is critical for real-time operation of the system.
 
 ## July 2021 Result YouTube Video ##
+This is the animated reconstruction result of with the optimization based purely on the Neural Tracking component, which however uses the augmented voxel-hashed TSDF structure to aggregate the data over time:
+
 [![NeuralTracking Dynamic Fusion Pipeline Result (July 2021)](media/YouTubePreview.gif)](https://youtu.be/lrFXuSWLmy8 "NeuralTracking Dynamic Fusion Pipeline Result (July 2021)")
+
+
 
 ## Architecture Choices ##
 
