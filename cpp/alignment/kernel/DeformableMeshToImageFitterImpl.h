@@ -508,8 +508,8 @@ void ComputeNegativeArapGradient_ModeDispatched(
 						Eigen::Map<const Eigen::Vector3f> dEi_dR_dense(edge_jacobian_data + i_edge * 5);
 						Eigen::Map<const Eigen::Vector3f> edge_residual(residual_data + i_edge * 3);
 						core::kernel::Matrix3f dE;
-						int32_t node_index;
-						int32_t offset_in_gradient;
+						int32_t node_index = 0;
+						int32_t offset_in_gradient = 0;
 						switch(jacobian_portion){
 							case EdgeJacobianPortion::NODE_I_ROTATION:
 								// TODO: (potential optimization) this still more operations than i_translation and j_translation cases require
@@ -576,9 +576,9 @@ void ComputeNegativeArapGradient_ModeDispatched(
 						int64_t i_edge = i_workload / 2;
 						auto jacobian_portion = static_cast<EdgeJacobianPortion>(1 + i_workload % 2);
 						Eigen::Map<const Eigen::Vector3f> edge_residual(residual_data + i_edge * 3);
-						float factor;
-						int32_t node_index;
-						int32_t offset_in_gradient;
+						float factor = 0.f;
+						int32_t node_index = 0;
+						int32_t offset_in_gradient = 0;
 						switch(jacobian_portion){
 							case EdgeJacobianPortion::NODE_I_TRANSLATION:
 								// not the most efficient way, but, for now, we care more about thread divergence here (for CUDA version).

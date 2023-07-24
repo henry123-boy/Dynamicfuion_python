@@ -181,7 +181,7 @@ void Unproject_TypeDispatched(
     //TODO: upgrade to use cuda::std::function instead of boolean check once that is available. :Sadness: :..(
     // see https://nvidia.github.io/libcudacxx/standard_api/utility_library/functional.html
     bool use_uniform_depth = false;
-    TDepth uniform_depth;
+    TDepth uniform_depth = 0;
     if (projected_point_depth.NumElements() == 1) {
         o3c::AssertTensorShape(projected_point_depth, { 1 });
         uniform_depth = projected_point_depth.To(o3c::Device("CPU:0")).ToFlatVector<TDepth>()[0] / depth_scale;

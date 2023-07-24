@@ -348,8 +348,6 @@ set(
 
     alignment/DeformableMeshToImageFitter.cpp
     alignment/DeformableMeshToImageFitter.h
-    alignment/NdcTriangleFitter.h
-    alignment/NdcTriangleFitter.cpp
 
     alignment/kernel/DeformableMeshToImageFitter.cpp
     alignment/kernel/DeformableMeshToImageFitter.h

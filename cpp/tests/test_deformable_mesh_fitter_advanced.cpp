@@ -152,6 +152,7 @@ TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CPU") {
 
 //TODO
 // restore all tests in file, make sure they are passing
+
 // TEST_CASE("Test DMI Fitter - COMBINED MODE - 25 Node Plane - CUDA") {
 // 	o3c::Device device("CUDA:0");
 // 	TestDeformableImageFitter_25NodeSurface(device, true, {nnrt::alignment::IterationMode::ALL}, 3, false);
