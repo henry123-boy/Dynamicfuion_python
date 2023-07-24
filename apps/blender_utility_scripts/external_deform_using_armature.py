@@ -107,7 +107,7 @@ def deform_objects(
     else:
         tree = nnrt.core.KDTree(nodes_source)
         closest, distances = tree.find_k_nearest_to_points(nodes_source, 2, True)
-        node_weights = distances[:, 1]
+        node_weights = distances[:, 1].clone()
         node_weights *= node_weights
         anchors, weights = nnrt.geometry.functional.compute_anchors_and_weights_euclidean_variable_node_weight(
             skin_source_vertices, nodes_source, node_weights, 4, 0

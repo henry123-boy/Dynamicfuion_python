@@ -79,9 +79,6 @@ void TestComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(const o3c::Device
 	weights = nnrt::core::functional::SortTensorAlongLastDimension(weights, true, nnrt::core::functional::SortOrder::DESC);
 	anchors = nnrt::core::functional::SortTensorAlongLastDimension(anchors, true, nnrt::core::functional::SortOrder::DESC);
 
-	//__DEBUG
-	auto is_close = weights.IsClose(weights_gt, 1e-3, 1e-6);
-
 	REQUIRE(weights.AllClose(weights_gt, 1e-3, 1e-6));
 	REQUIRE(anchors.AllEqual(anchors_gt));
 }

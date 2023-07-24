@@ -97,10 +97,6 @@ void TestBlockSparseArrowheadSolver(const o3c::Device& device, bool benchmark = 
 		          << (elapsed.count() * 1e-9) / run_count
 		          << " seconds" << std::endl;
 	}
-	//__DEBUG
-	auto x_print = x.Reshape({-1, 6});
-	auto x_gt_print = x_gt.Reshape({-1, 6});
-
 	REQUIRE(x.AllClose(x_gt, 1e-4, 1e-5));
 }
 

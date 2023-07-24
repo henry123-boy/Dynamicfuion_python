@@ -36,8 +36,6 @@ def compute_block_sparse_product_count(
             if (i_a, j_a) in a_coordinate_set:
                 for j_b in range(0, m_b):
                     if (j_a, j_b) in b_coordinate_set:
-                        # __DEBUG
-                        print(f"A({i_a}, {j_a}) @ B({j_a}, {j_b})")
                         count += 1
     return count
 

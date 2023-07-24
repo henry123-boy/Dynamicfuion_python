@@ -89,9 +89,6 @@ void SolveBlockSparseArrowheadCholesky(
 	// compute x_D = D^(-1)(b_D - Bx_C)
 	o3c::Tensor x_stem = core::linalg::DiagonalBlockSparseAndVectorProduct(inverted_stem, lhs_stem_operand);
 
-	//__DEBUG
-	auto x_stem_print = x_stem.Reshape({-1,6});
-
 	x = o3c::Concatenate({x_stem, x_corner});
 }
 

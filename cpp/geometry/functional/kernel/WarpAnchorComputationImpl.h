@@ -53,6 +53,9 @@ void ComputeAnchorsAndWeights_Euclidean_VariableNodeWeight(
 	int64_t node_count = nodes.GetLength();
 	anchors = o3c::Tensor::Ones({point_count, anchor_count}, o3c::Dtype::Int32, nodes.GetDevice()) * -1;
 	anchor_weights = o3c::Tensor({point_count, anchor_count}, o3c::Dtype::Float32, nodes.GetDevice());
+	if(!node_coverage_weights.IsContiguous()){
+		utility::LogError("node_coverage_weights is not contiguous.");
+	}
 
 	//input indexers
 	NDArrayIndexer point_indexer(points, 1);

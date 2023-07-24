@@ -280,9 +280,6 @@ void TestCholeskySolver_Small(const o3c::Device& device) {
 			6.63114754, -41.09685792
 	}, {6, 2}, o3c::Float32, device);
 
-	//__DEBUG
-	auto solution_matrix_b_CPU = solution_matrix_b.To(o3c::Device("CPU:0"));
-
 	REQUIRE(solution_matrix_b.AllClose(solution_matrix_b_gt, 5e-4, 1e-7));
 }
 

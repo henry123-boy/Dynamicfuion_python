@@ -569,10 +569,6 @@ void BlockSparseAndVectorProduct_Generic(
 	// sum block products to get final result
 	internal::ComputeBlockSums<TDeviceType, float>(product_sums_atomic, output_vector_size_blocks, block_products, product_sum_indices, block_count);
 
-	//__DEBUG
-	auto y = block_products.To(o3c::Device("CPU:0"));
-	auto x = product_sums_atomic.AsTensor(false).To(o3c::Device("CPU:0"));
-
 	o3c::MemoryManager::Free(block_product_lhs_addresses, device);
 	o3c::MemoryManager::Free(block_product_rhs_addresses, device);
 	o3c::MemoryManager::Free(block_product_addresses, device);
